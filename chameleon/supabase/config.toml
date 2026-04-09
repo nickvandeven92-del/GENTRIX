@@ -7,7 +7,7 @@
 #   npx supabase db push
 #
 # project_id: voor lokale Docker-stack; voor alleen db push mag dit een label zijn.
-project_id = "chameleon-cart-main"
+project_id = "chameleon"
 
 [api]
 enabled = true

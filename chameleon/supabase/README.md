@@ -57,7 +57,7 @@ De bedoeling van Supabase is dat **migraties in Git** staan en je ze met de **CL
 
 1. Installeer de CLI: [Supabase CLI](https://supabase.com/docs/guides/cli) (of: `npm i -g supabase` / `npx supabase`).
 2. Login: `supabase login`
-3. Koppel je cloudproject vanuit de projectmap (`chameleon-cart-main`):
+3. Koppel je cloudproject vanuit de projectmap (`chameleon`):
 
    ```bash
    supabase link --project-ref <PROJECT_REF>
