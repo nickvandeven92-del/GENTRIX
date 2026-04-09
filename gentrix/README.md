@@ -1,10 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GENTRIX
 
-## Getting Started
+Next.js-studio (sites, admin, portaal) met in **`apps/`** de aparte Vite-apps **webshop** (`chameleon`) en **boeking** (`booking`).
 
-First, run the development server:
+## Getting Started (studio)
 
 ```bash
+cd gentrix   # of open deze map als projectroot in je editor
+npm install
 npm run dev
 # or
 yarn dev
