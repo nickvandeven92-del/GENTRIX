@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# GENTRIX — Webshop (Chameleon)
 
-TODO: Document your project here
+Vite + React webshop. Onderdeel van `gentrix/apps/chameleon`.

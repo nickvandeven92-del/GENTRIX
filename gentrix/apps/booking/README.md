@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# GENTRIX — Boeking (booking app)
 
-TODO: Document your project here
+Vite + React boekingsflow en dashboard. Onderdeel van de monorepo in `gentrix/apps/booking`.

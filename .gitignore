@@ -30,3 +30,6 @@
 # Misc
 **/*.tsbuildinfo
 **/.cache/
+
+# Lovable IDE (niet nodig in repo)
+**/.lovable/
