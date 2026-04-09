@@ -1,0 +1,51 @@
+# Supabase CLI-configuratie
+# Docs: https://supabase.com/docs/guides/cli/config
+#
+# Gebruik: vanuit projectroot
+#   npx supabase login
+#   npx supabase link --project-ref <jouw-project-ref>
+#   npx supabase db push
+#
+# project_id: voor lokale Docker-stack; voor alleen db push mag dit een label zijn.
+project_id = "chameleon-cart-main"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5173"
+additional_redirect_urls = ["https://127.0.0.1:5173"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true

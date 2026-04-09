@@ -1,0 +1,161 @@
+﻿@import "tailwindcss";
+
+/*
+ * dark: = systeem donker buiten admin, Ã³f html.dark (niet meer gebruikt op /admin; admin = altijd licht).
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(html:not(.admin-theme-light) *, html:not(.admin-theme-light)) {
+      @slot;
+    }
+  }
+  &:where(html.dark, html.dark *) {
+    @slot;
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* Geist wordt in root layout als --font-geist-sans gezet; Arial overschreef dat volledig. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Dunne, neutrale horizontale scrollbar (Sales OS boards) â€” geen dikke systeembalk over de hele pagina */
+.sales-os-scroll-x {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(115, 115, 115, 0.35) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sales-os-scroll-x::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.sales-os-scroll-x::-webkit-scrollbar-track {
+  margin: 0 4px;
+  background: transparent;
+}
+
+.sales-os-scroll-x::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(115, 115, 115, 0.28);
+}
+
+.sales-os-scroll-x::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 82, 82, 0.45);
+}
+
+/*
+ * Geen horizontale scroll op het hele werkvlak: brede tabellen (o.a. /admin/clients) scrollen in hun eigen
+ * `overflow-x-auto`-wrapper met `.sales-os-scroll-x`. Dubbele scroll-lagen verborgen de rechterkolom visueel.
+ */
+.sales-os-main-area {
+  overflow-x: clip;
+}
+
+/* Showroom: langzame â€œ3Dâ€-achtige drift voor gloed-blobs (geen motion-lib nodig). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes showroom-drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(3%, -4%) scale(1.06);
+    }
+  }
+  @keyframes showroom-drift-reverse {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    50% {
+      transform: translate(-4%, 3%) scale(1.04) rotate(-3deg);
+    }
+  }
+  .showroom-drift {
+    animation: showroom-drift 22s ease-in-out infinite;
+  }
+  .showroom-drift-reverse {
+    animation: showroom-drift-reverse 28s ease-in-out infinite;
+  }
+  .showroom-holo-shift {
+    background-size: 200% 200%;
+    animation: showroom-holo 8s ease infinite;
+  }
+  @keyframes showroom-holo {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+}
+
+
+/* Facturen/offertes: schone A4-print (geen shell) */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    background: white !important;
+    color: #171717 !important;
+  }
+
+  .sales-os-sidebar,
+  .sales-os-print-hide {
+    display: none !important;
+  }
+
+  .sales-os-workspace {
+    margin-left: 0 !important;
+    min-height: auto !important;
+  }
+
+  .sales-os-main-area {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .billing-no-print {
+    display: none !important;
+  }
+
+  .billing-document {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .billing-document table {
+    break-inside: avoid;
+  }
+}

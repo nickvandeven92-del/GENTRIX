@@ -1,0 +1,91 @@
+import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+
+/** Op het root-element van portaal-/dashboard-HTML (zoals door de studio-prompt gevraagd). */
+const PORTAL_VISIBILITY_RE = /data-studio-visibility\s*=\s*["']portal["']/i;
+
+export function isPortalSectionHtml(html: string): boolean {
+  return PORTAL_VISIBILITY_RE.test(html);
+}
+
+/** Publieke site: geen portaalblokken. */
+export function filterSectionsForPublicSite(sections: TailwindSection[]): TailwindSection[] {
+  return sections.filter((s) => !isPortalSectionHtml(s.html));
+}
+
+/** Alleen portaalblokken (achter login). */
+export function filterSectionsForPortalOnly(sections: TailwindSection[]): TailwindSection[] {
+  return sections.filter((s) => isPortalSectionHtml(s.html));
+}
+
+/**
+ * Placeholder in gegenereerde HTML voor links naar het MFA-beschermde portaal.
+ * Vervangen door `/portal/{slug}` bij render.
+ */
+export const STUDIO_PORTAL_PATH_PLACEHOLDER = "__STUDIO_PORTAL_PATH__";
+
+/** Publieke online boekingspagina op deze app: `/boek/{slug}`. */
+export const STUDIO_BOOKING_PATH_PLACEHOLDER = "__STUDIO_BOOKING_PATH__";
+
+/** Publieke webshop-landingspagina op deze app: `/winkel/{slug}`. */
+export const STUDIO_SHOP_PATH_PLACEHOLDER = "__STUDIO_SHOP_PATH__";
+
+export function applyStudioPortalPathPlaceholder(html: string, subfolderSlug: string): string {
+  const path = `/portal/${encodeURIComponent(subfolderSlug)}`;
+  return html.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join(path);
+}
+
+export function applyStudioBookingPathPlaceholder(html: string, subfolderSlug: string): string {
+  const path = `/boek/${encodeURIComponent(subfolderSlug)}`;
+  return html.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join(path);
+}
+
+export function applyStudioShopPathPlaceholder(html: string, subfolderSlug: string): string {
+  const path = `/winkel/${encodeURIComponent(subfolderSlug)}`;
+  return html.split(STUDIO_SHOP_PATH_PLACEHOLDER).join(path);
+}
+
+export type ApplyStudioPathsOptions = {
+  /** `false` = boek-placeholder wordt `#` en past bij module uit (geen `/boek/`-link). */
+  includeBooking?: boolean;
+  /** `false` = webshop-placeholder wordt `#` (geen `/winkel/`-link). */
+  includeShop?: boolean;
+};
+
+/** Portaal-, boekings- en webshop-placeholders (live preview + gepubliceerde site op hetzelfde domein). */
+export function applyStudioPublishedPathPlaceholders(
+  html: string,
+  subfolderSlug: string,
+  opts?: ApplyStudioPathsOptions,
+): string {
+  let h = applyStudioPortalPathPlaceholder(html, subfolderSlug);
+  if (opts?.includeBooking === false) {
+    h = h.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#");
+  } else {
+    h = applyStudioBookingPathPlaceholder(h, subfolderSlug);
+  }
+  if (opts?.includeShop === false) {
+    h = h.split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
+  } else {
+    h = applyStudioShopPathPlaceholder(h, subfolderSlug);
+  }
+  return h;
+}
+
+/** Enkele `href` (React-secties) — zelfde placeholder als in HTML-secties. */
+export function resolveStudioPortalHref(href: string, publishedSlug?: string | null): string {
+  const slug = publishedSlug?.trim();
+  if (!slug) return href;
+  return applyStudioPortalPathPlaceholder(href, slug);
+}
+
+export function resolveStudioBookingHref(href: string, publishedSlug?: string | null): string {
+  const slug = publishedSlug?.trim();
+  if (!slug) return href;
+  return applyStudioBookingPathPlaceholder(href, slug);
+}
+
+export function resolveStudioShopHref(href: string, publishedSlug?: string | null): string {
+  const slug = publishedSlug?.trim();
+  if (!slug) return href;
+  return applyStudioShopPathPlaceholder(href, slug);
+}

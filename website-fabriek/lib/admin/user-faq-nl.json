@@ -1,0 +1,54 @@
+[
+  {
+    "question": "Waarvoor is dit systeem bedoeld?",
+    "answer": "Je beheert hier klanten, hun website, afspraken, facturen en verkopen. Jouw klanten kunnen apart inloggen op hun eigen omgeving om bijvoorbeeld facturen te bekijken of een afspraak te plannen, als jij dat voor hen hebt aangezet."
+  },
+  {
+    "question": "Waar zet ik facturen, inloggen voor de klant of online afspraken aan?",
+    "answer": "Ga naar de klantpagina (het dossier van die klant). Daar vind je schakelaars voor onder andere facturen, account en afspraken. Alles wat uit staat, ziet de klant ook niet in zijn omgeving. Alles wat aan staat, is beschikbaar voor die klant."
+  },
+  {
+    "question": "Hoe werkt online afspraken maken voor bezoekers?",
+    "answer": "Als je bij de klant \"afspraken\" hebt aangezet, krijgen bezoekers een eigen boekpagina op jullie adres (dezelfde website als waar jij op werkt). Zij kunnen daar een tijd kiezen en hun gegevens invullen. Jij hoeft daarvoor geen apart programma te openen."
+  },
+  {
+    "question": "Moet de gewone website van de klant nog naar die boekpagina verwijzen?",
+    "answer": "Ja, anders weten bezoekers niet dat ze kunnen boeken. In de bewerkmodus van de site kun je een knop of link toevoegen die naar de boekpagina gaat. Er is ook een snelle knop die zo’n blok voor je klaarzet; die vind je bij de klant bij de instellingen van het portaal."
+  },
+  {
+    "question": "Wat is het verschil tussen concept en live?",
+    "answer": "Concept is de versie waar je aan werkt. Pas als je bewust publiceert, zien bezoekers de nieuwe stand. Zo kun je rustig proberen en controleren voordat iedereen het ziet."
+  },
+  {
+    "question": "Hoe logt een klant in?",
+    "answer": "De klant gebruikt zijn eigen inlogpagina (het klantportaal). Hij logt in met het e-mailadres dat bij jullie bekend is. De eerste keer krijgt hij meestal een mail om een wachtwoord te kiezen. Jij hoeft zelf geen wachtwoord voor hem te verzinnen."
+  },
+  {
+    "question": "Waarom moet ik soms een code uit mijn telefoon invullen bij inloggen?",
+    "answer": "Dat heet extra beveiliging. Het zorgt ervoor dat alleen jij bij de gegevens kunt, ook als iemand je wachtwoord zou raden. Die code staat in een app op je telefoon (zoals Google Authenticator). Staat dit eenmaal aan, dan blijft het zo voor die gebruiker."
+  },
+  {
+    "question": "Waar pas ik de website van een klant aan?",
+    "answer": "Via het overzicht met sites of via het dossier van de klant ga je naar de editor. Daar werk je direct in de pagina (tekst, knoppen, lay-out). Opslaan als concept is veilig; live zetten doe je als je tevreden bent."
+  },
+  {
+    "question": "Wat is de site-studio?",
+    "answer": "Dat is een hulpmiddel waarmee je in één keer een nieuwe opzet of grote wijziging van de site kunt laten maken op basis van een korte omschrijving. Handig voor een nieuwe stijl of extra onderdelen. Kleine tekstwijzigingen kun je meestal sneller in de gewone editor doen."
+  },
+  {
+    "question": "Kan de boekpagina op de bestaande website van de klant getoond worden?",
+    "answer": "Ja, dat kan. De boekpagina mag in een kader (iframe) op een andere site worden geplaatst, als die site dat toelaat. De exacte techniek regelt meestal de persoon die de andere website beheert. Het adres van de boekpagina vind je bij de klant bij de portaal-instellingen, zodra afspraken aan staan."
+  },
+  {
+    "question": "Waar vind ik verkopen, offertes en facturen in het groot?",
+    "answer": "In het menu onder commercie en financiën: leads, deals, facturen en offertes. Daar werk je verder voor al je klanten tegelijk, terwijl je per klant in het dossier de details ziet."
+  },
+  {
+    "question": "Ik zie een fout als ik boeken uitzet maar de site nog naar boeken linkt. Wat nu?",
+    "answer": "Zet ofwel afspraken weer aan, of haal de verwijzing naar boeken van de openbare site af. Anders klikken bezoekers op iets dat niet meer werkt."
+  },
+  {
+    "question": "Waar kan ik terecht met technische details voor ontwikkelaars?",
+    "answer": "Onder websites in het menu staat een aparte pagina met technische referentie van de generator. Die is bedoeld voor wie de onderliggende teksten en bestanden wil bekijken, niet voor dagelijks werk met klanten."
+  }
+]

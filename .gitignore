@@ -1,0 +1,32 @@
+# Dependencies & builds (alle subprojecten)
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/.turbo/
+**/.vercel/
+
+# Env & secrets — nooit committen
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.pem
+
+# Logs & OS
+**/.DS_Store
+**/Thumbs.db
+**/*.log
+**/npm-debug.log*
+
+# IDE / tooling
+**/.idea/
+**/.vscode/*
+!**/.vscode/extensions.json
+
+# Test / cache
+**/coverage/
+**/.eslintcache
+
+# Misc
+**/*.tsbuildinfo
+**/.cache/

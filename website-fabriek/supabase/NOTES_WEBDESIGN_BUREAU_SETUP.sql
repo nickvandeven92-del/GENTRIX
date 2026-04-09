@@ -1,0 +1,40 @@
+-- =============================================================================
+-- EERSTE ADMIN-LOGIN (geen account in de app zelf)
+-- =============================================================================
+-- 1) Supabase Dashboard → Authentication → Users → Add user → Create new user
+-- 2) Zelfde e-mail + wachtwoord gebruiken als op /login
+-- 3) Optioneel: Authentication → Providers → Email → "Confirm email" UIT voor lokaal testen
+-- =============================================================================
+
+-- =============================================================================
+-- Website Fabriek → Webdesign Bureau: setup-notities (geen verplichte migratie)
+-- =============================================================================
+--
+-- 1) SHOWROOM (homepage)
+--    Maak of update een rij in `public.clients`:
+--      - subfolder_slug = 'home'
+--      - status = 'active'  (anon/publiek leest alleen actieve sites)
+--      - site_data_json = jouw legacy JSON-site OF { "format": "tailwind_sections", ... }
+--
+-- 2) SUPABASE AUTH — MFA (Authenticator app)
+--    In het Supabase Dashboard:
+--      Authentication → Providers → zorg dat Email aan staat.
+--      Authentication → Settings → MFA → schakel TOTP in (Authenticator app).
+--    Per gebruiker: na eerste login kan de factor via de JS client worden geregistreerd
+--    (auth.mfa.enroll) of via je eigen flow; daarna is bij admin-routes AAL2 vereist
+--    zodra Supabase aangeeft dat nextLevel = aal2.
+--
+-- 3) GEBRUIKERS MET ALLEEN ADMIN-TOEGANG
+--    Maak users aan onder Authentication → Users. Zonder ingeschreven MFA-factor
+--    blijft nextLevel typisch aal1 en wordt de MFA-redirect in middleware niet getriggerd.
+--    Zodra een user TOTP enrolt en Supabase MFA afdwingt, moet de code op /login/mfa
+--    worden doorlopen.
+--
+-- 4) RLS
+--    Bestaande policies laten `authenticated` toe op `clients`. Service role blijft nodig
+--    voor POST /api/clients (upsert). Anon blijft nodig voor publieke reads (actief).
+--
+-- 5) SCHEMA-CACHE
+--    Na handmatige DDL: Project Settings → API → Reload schema.
+--
+-- =============================================================================

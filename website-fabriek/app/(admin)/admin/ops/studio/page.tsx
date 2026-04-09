@@ -1,0 +1,96 @@
+import type { Metadata } from "next";
+import { PanelTop } from "lucide-react";
+import { GeneratorForm } from "@/components/admin/generator-form";
+import { getDraftSiteJsonBySlug } from "@/lib/data/client-draft-site";
+import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
+import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import { formatSlugForDisplay } from "@/lib/slug";
+
+type Props = { searchParams: Promise<{ slug?: string; preset?: string }> };
+
+export const metadata: Metadata = {
+  title: "Site-studio",
+};
+
+export default async function SalesOpsStudioPage({ searchParams }: Props) {
+  const { slug } = await searchParams;
+  const decodedSlug = slug ? decodeURIComponent(slug) : "";
+  const existing = slug ? await getAdminClientBySlug(decodedSlug) : null;
+  const draftSiteJson = slug ? await getDraftSiteJsonBySlug(decodedSlug) : null;
+
+  const parsedDraft = draftSiteJson != null ? parseStoredSiteData(draftSiteJson) : null;
+  const existingDraftLocked = parsedDraft != null;
+
+  return (
+    <div className="studio-generator-scope w-full min-w-0 space-y-6">
+      <div className="sales-os-glass-panel rounded-2xl border border-neutral-200 bg-white p-6 md:p-8 dark:border-zinc-600/80 dark:bg-zinc-900/50">
+        <div className="flex flex-col gap-6">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/10">
+              <PanelTop className="size-6 text-neutral-600 dark:text-zinc-300" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-zinc-50">Site-studio</h1>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-zinc-400">
+                Genereer landingspagina&apos;s als <strong className="font-medium text-neutral-800 dark:text-zinc-200">tailwind_sections</strong>{" "}
+                (HTML-secties met Tailwind), met preview en opslag per klant. Vul bedrijfsnaam en briefing in; kies een
+                unieke URL-slug bij opslaan. De publieke homepage (
+                <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800 dark:bg-white/10 dark:text-zinc-200">/</code>)
+                is de vaste bureau-landingspagina; slug{" "}
+                <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800 dark:bg-white/10 dark:text-zinc-200">home</code>{" "}
+                wordt daar niet meer automatisch op geladen (wel bruikbaar voor klant-sites en previews).{" "}
+                {slug ? (
+                  <span className="font-medium text-neutral-800 dark:text-zinc-200">
+                    {existing?.name?.trim() ? (
+                      <>
+                        Je bewerkt nu <strong>{existing.name.trim()}</strong>
+                        <span className="font-normal text-neutral-600 dark:text-zinc-400">
+                          {" "}
+                          · slug{" "}
+                          <code className="rounded bg-neutral-100 px-1 font-mono text-xs dark:bg-white/10 dark:text-zinc-200">
+                            {decodeURIComponent(slug)}
+                          </code>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Je bewerkt nu <strong>{formatSlugForDisplay(decodeURIComponent(slug))}</strong>{" "}
+                        <span className="font-normal text-neutral-600 dark:text-zinc-400">
+                          (
+                          <code className="rounded bg-neutral-100 px-1 font-mono text-xs dark:bg-white/10 dark:text-zinc-200">
+                            {decodeURIComponent(slug)}
+                          </code>
+                          )
+                        </span>
+                      </>
+                    )}
+                    .
+                  </span>
+                ) : null}
+              </p>
+              {existingDraftLocked && parsedDraft?.kind === "react" ? (
+                <p className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/95 px-3 py-2 text-xs text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100">
+                  Dit dossier heeft nog <strong>React</strong>-concept (<code className="font-mono">react_sections</code>
+                  ). Nieuwe generatie is <strong>HTML + Tailwind</strong> — bij opslaan vervang je het concept (daarna
+                  HTML-editor).
+                </p>
+              ) : null}
+              {existingDraftLocked && parsedDraft?.kind === "legacy" ? (
+                <p className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/95 px-3 py-2 text-xs text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100">
+                  Dit dossier heeft <strong>legacy</strong> JSON. Genereer opnieuw voor een moderne Tailwind-site, of
+                  migreer handmatig.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+      <GeneratorForm
+        initialSubfolderSlug={slug}
+        initialClientName={existing?.name}
+        initialClientDescription={existing?.description}
+        existingDraftLocked={existingDraftLocked}
+      />
+    </div>
+  );
+}

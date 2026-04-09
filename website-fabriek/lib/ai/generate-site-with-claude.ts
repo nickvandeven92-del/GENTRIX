@@ -1,0 +1,1690 @@
+import { randomUUID } from "node:crypto";
+import Anthropic from "@anthropic-ai/sdk";
+import { generateDesignRationaleWithClaude } from "@/lib/ai/generate-design-rationale-with-claude";
+import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
+import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
+import type { MessageDeltaUsage } from "@anthropic-ai/sdk/resources/messages/messages";
+import { getKnowledgeContextForClaude } from "@/lib/data/ai-knowledge";
+import { buildContentAuthorityPolicyBlock } from "@/lib/ai/content-authority-policy";
+import { buildContentClaimDiagnosticsReport } from "@/lib/ai/content-claim-diagnostics";
+import {
+  MASTER_SITE_SYSTEM_PROMPT,
+  MASTER_SITE_SYSTEM_PROMPT_MINIMAL,
+} from "@/lib/ai/master-site-system-prompt";
+import { parseModelJsonObject } from "@/lib/ai/extract-json";
+import {
+  claudeTailwindPageOutputSchema,
+  MASTER_PROMPT_CONFIG_STYLE_MAX,
+  mapClaudeOutputToSections,
+  type GeneratedTailwindPage,
+  type MasterPromptPageConfig,
+  type TailwindSection,
+} from "@/lib/ai/tailwind-sections-schema";
+import { getGenerationPackagePromptBlock } from "@/lib/ai/generation-packages";
+import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
+import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-prompt";
+import {
+  normalizeHtmlWhitespaceForUpgradePrompt,
+  postProcessClaudeTailwindPage,
+  stableIdsForUpgradeSections,
+} from "@/lib/ai/generate-site-postprocess";
+import { tryExtractCompletedSections } from "@/lib/ai/stream-json-section-extractor";
+import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import { validateGeneratedPageHtml, type HomepagePlan } from "@/lib/ai/validate-generated-page";
+import { applySelfReviewToGeneratedPage } from "@/lib/ai/self-review-site-generation";
+import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace";
+import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
+import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
+import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
+import { ensureCanonicalBookingSectionInTailwindSections } from "@/lib/site/append-booking-section-to-payload";
+import { STUDIO_SHOP_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
+import { INDUSTRY_KEYWORDS, INDUSTRY_PROFILES } from "@/lib/ai/site-generation-industry-data";
+import type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
+
+export type { GeneratedTailwindPage, MasterPromptPageConfig, TailwindSection };
+export type { HomepagePlan };
+export type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
+
+/**
+ * Vereenvoudigde pipeline-feedback voor de generation_meta NDJSON event.
+ */
+/** Waar de gekozen stijl vandaan komt — handig voor debugging. */
+export type StyleDetectionSource = "explicit_stijl_line" | "keyword_match" | "none";
+
+export type GenerationPipelineFeedback = {
+  model: string;
+  interpreted: {
+    businessName: string;
+    description: string;
+    sections: string[];
+    /** Weergavenaam (label) */
+    detectedIndustry?: string;
+    /** Stabiele id, bv. \`barber\`, \`industrial_raw\` */
+    detectedIndustryId?: string;
+    detectedStyle?: string;
+    detectedStyleId?: string;
+    /** \`explicit_stijl_line\` = "Stijl …" in briefing; \`keyword_match\` = trefwoorden; \`none\` = creatieve vrijheid */
+    styleDetectionSource?: StyleDetectionSource;
+    /** Optioneel: referentie-URL die de server heeft opgehaald voor de prompt. */
+    referenceStyle?: {
+      requestedUrl: string;
+      status: "ingested" | "failed";
+      finalUrl?: string;
+      excerptChars?: number;
+      error?: string;
+    };
+    /** `true` bij SITE_GENERATION_MINIMAL_PROMPT of `minimalPrompt` in options. */
+    minimalPrompt?: boolean;
+  };
+};
+
+const DEFAULT_GENERATE_MODEL = "claude-sonnet-4-6";
+const DEFAULT_SUPPORT_MODEL = "claude-sonnet-4-6";
+const DEFAULT_MAX_OUTPUT_TOKENS = 24_576;
+
+
+/**
+ * Detecteer de branche op basis van de briefing-beschrijving.
+ * Retourneert het best matchende IndustryProfile, of null als geen match.
+ */
+export function detectIndustry(description: string): IndustryProfile | null {
+  let bestMatch: { profile: IndustryProfile; score: number } | null = null;
+  for (const { pattern, profileId } of INDUSTRY_KEYWORDS) {
+    const matches = description.match(new RegExp(pattern, "gi"));
+    if (matches) {
+      const score = matches.length;
+      const profile = INDUSTRY_PROFILES.find((p) => p.id === profileId);
+      if (profile && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { profile, score };
+      }
+    }
+  }
+  return bestMatch?.profile ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Sectie-analyse: keyword-detectie + branche-profiel = definitieve sectielijst
+// ---------------------------------------------------------------------------
+
+type BriefingSectionMatch = { id: string; weight: number };
+
+const EXTRA_SECTION_KEYWORDS: Record<string, { keywords: RegExp; weight: number }> = {
+  /** Alleen duidelijke webshop-/retail-product signalen — géén losse "product", "producten", "artikelen", "assortiment", "collectie", "verkoop" of los "bestellen" (die matchen te vaak op diensten, blogs en afspraken). Branche-profielen voegen `shop` al toe waar het hoort. */
+  shop: {
+    keywords:
+      /\b(webshop|webwinkel|winkel|e-?commerce|winkelwagen|winkelmand|(?:online|in\s+de\s+webshop)\s+bestellen|haarproducten|parfums|verzorgingsproducten)\b/i,
+    weight: 10,
+  },
+  gallery: {
+    keywords:
+      /\b(galerij|gallery|foto['']?s|instagram|werkplaats|impressie|portfolio|showroom|sfeerbeelden|beelden)\b/i,
+    weight: 6,
+  },
+  team: {
+    keywords:
+      /\b(team|medewerkers|barbers|kappers|stylisten|personeel|ons\s+team|wie\s+zijn\s+wij|collega['']?s|specialisten)\b/i,
+    weight: 4,
+  },
+  brands: {
+    keywords:
+      /\b(merken|brands|leveranciers|partners|reuzel|proraso|layrite|suavecito|american\s+crew|keune|wella|l['']?or[eé]al|topmerken)\b/i,
+    weight: 5,
+  },
+  about: {
+    keywords:
+      /\b(over\s+ons|about|wie\s+zijn|ons\s+verhaal|onze\s+geschiedenis|sinds|opgericht)\b/i,
+    weight: 3,
+  },
+};
+
+const SECTION_ORDER_PREFERENCE: readonly string[] = [
+  "hero",
+  "features",
+  "about",
+  "shop",
+  "gallery",
+  "brands",
+  "team",
+  "testimonials",
+  "pricing",
+  "faq",
+  "cta",
+  "contact",
+  "footer",
+];
+
+/**
+ * Scan de briefing op extra sectie-keywords bovenop het branche-profiel.
+ */
+export function analyzeBriefingForSections(description: string): string[] {
+  const extra: BriefingSectionMatch[] = [];
+  for (const [id, { keywords, weight }] of Object.entries(EXTRA_SECTION_KEYWORDS)) {
+    if (keywords.test(description)) {
+      extra.push({ id, weight });
+    }
+  }
+  return extra.sort((a, b) => b.weight - a.weight).map((m) => m.id);
+}
+
+/**
+ * Bouw de definitieve sectielijst op basis van:
+ * 1. Branche-profiel (als gedetecteerd) → geeft de basis
+ * 2. Keyword-detectie → voegt extra secties toe
+ * 3. Expliciete IDs (als meegegeven) → override
+ */
+export function buildSectionIdsFromBriefing(description: string, explicitIds?: string[]): string[] {
+  if (explicitIds?.length) {
+    const extra = analyzeBriefingForSections(description);
+    const merged = new Set(explicitIds.filter((id) => id !== "booking"));
+    for (const id of extra) merged.add(id);
+    merged.delete("booking");
+    return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id));
+  }
+
+  const industry = detectIndustry(description);
+  const baseSections = industry ? [...industry.sections] : [...DEFAULT_SECTIONS];
+  const extra = analyzeBriefingForSections(description);
+  const merged = new Set(baseSections);
+  for (const id of extra) merged.add(id);
+  merged.delete("booking");
+  return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id));
+}
+
+// ---------------------------------------------------------------------------
+// Stijl-detectie: herken visuele stijlrichting los van de branche
+// ---------------------------------------------------------------------------
+
+export type StyleProfile = {
+  id: string;
+  label: string;
+  /** Design language: typography, composition, spacing, mood — richtlijn; expliciete briefing/stijlregel wint. */
+  designLanguage: string;
+  /** Color advice — only applied when no explicit colors are specified in the briefing. */
+  colorPalette: string;
+};
+
+const STYLE_PROFILES: StyleProfile[] = [
+  {
+    id: "classic_vintage",
+    label: "Klassiek / Vintage",
+    designLanguage: `**DESIGNTAAL: KLASSIEK / VINTAGE** (richtlijn — briefing wint bij conflict)
+- **Typografie:** overwegend \`font-serif\` op koppen (slab-serif mag); body mag sans. Koppen mogen \`italic\` zijn. \`tracking-wide\` of \`uppercase\` voor labels boven koppen. Body-tekst mag sans-serif.
+- **Compositie:** warmte en ambacht uitstralen. Veel textuur in de layout — \`border\` met warme tinten, zachte \`shadow-lg\`, \`divide-y\` op lijsten. Niets mag "digital-first" of "SaaS" voelen.
+- **Sfeer:** nostalgie, vakmanschap, erfgoed. De site voelt als een ambachtelijke menukaart of tijdschrift uit de jaren '50-'70.
+- **Decoratie:** ornamentele lijn-dividers, ster-symbolen (★) als scheiders, vintage branche-iconen. SVG-decoratie in dunne lijnstijl.
+- **Spacing:** genereuze padding (\`py-20 md:py-28\`), content niet te breed (\`max-w-4xl\` voor tekst).
+- **Hero:** bij voorkeur typografisch met groot \`text-6xl md:text-7xl font-serif italic\` op donkere achtergrond, OF cinematic foto met warme tonen en overlay.
+- **Secties:** wissel donkere en warme lichte banden; liever warme off-white/stone i.p.v. koud klinisch wit als het past bij de briefing.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Aardekleuren als basis: warm bruin (\`bg-[#2c1810]\`, \`bg-amber-950\`) voor donkere secties, crème (\`bg-[#f5f0e8]\`, \`bg-stone-100\`) voor lichte secties, goud/amber als accent.`,
+  },
+  {
+    id: "modern_sleek",
+    label: "Modern / Strak",
+    designLanguage: `**DESIGNTAAL: MODERN / STRAK** (richtlijn — briefing wint bij conflict)
+- **Typografie:** \`font-sans\`, strakke koppen (\`tracking-tight\`), voorkeur \`font-light\` of \`font-bold\` — \`font-medium\` alleen als de briefing dat vraagt.
+- **Compositie:** minimalistisch. Veel witruimte. Scherpe lijnen. Grid-gebaseerd. Symmetrie of bewuste asymmetrie — nooit "per ongeluk".
+- **Sfeer:** strak, professioneel, confident. Minder is meer. Geen rommel, geen decoratie die niet functioneel is.
+- **Decoratie:** GEEN of minimaal — hoogstens één subtiele geometrische lijn. Geen branche-symbolen tenzij heel abstract. Geen ornamentele dividers.
+- **Spacing:** strakke spacing, consistent grid. \`gap-8\` niet \`gap-12\`. Compacter voelt moderner.
+- **Hero:** één strakke foto met hoog contrast, of typografisch met oversized sans — gebruik \`font-light\` of \`font-medium\`, **niet** \`font-black\` + lange subtekst. **Uitzondering — barbershop / salon / spa / hotel in de briefing:** gebruik in de hero **serif** + weinig woorden (high-end editorial), geen "fastfood"-layout met twee volle knoppen en een paragraaf.
+- **Secties:** scherp contrast tussen secties. Geen zachte overgangen. \`bg-white\` → \`bg-zinc-950\` → \`bg-white\`.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Zwart/wit basis met één krachtig accent (emerald, electric blue, of felrood). Minimaal kleurgebruik — de kracht zit in contrast.`,
+  },
+  {
+    id: "luxury_exclusive",
+    label: "Luxe / Exclusief",
+    designLanguage: `**DESIGNTAAL: LUXE / EXCLUSIEF** (richtlijn — briefing wint bij conflict)
+- **Typografie:** elegant \`font-serif\` op koppen, body in clean sans; ruimte voor grote koppen (\`text-5xl\`+) en uppercase labels waar het past — niet verplicht overal hetzelfde schaal-template.
+- **Compositie:** VEEL negatieve ruimte. Alles ademt kwaliteit en exclusiviteit. Elke sectie heeft ruime padding (\`py-24 md:py-32\`). Content is smal (\`max-w-3xl mx-auto\` voor tekst). Niets voelt "vol" of "druk".
+- **Sfeer:** high-end, aspirationeel, verfijnd — rust en materiaalgevoel belangrijker dan drukte.
+- **Decoratie:** MINIMAAL en verfijnd — dunne lijnen (\`border-[0.5px]\`), subtiele dividers, geen drukke patronen. Geen emoji's. Geen speelse elementen.
+- **Cards/lijsten:** geen standaard rounded kaarten met schaduw. Gebruik \`border-[0.5px]\` met \`hover:bg-[kleur]/5\` transities. Of helemaal geen cards — een elegante \`divide-y\` lijst is luxueuzer.
+- **Knoppen:** minimalistisch — \`border\` met \`uppercase tracking-widest text-xs\` tekst. Geen grote ronde gekleurde knoppen. Subtiel, niet schreeuwerig.
+- **Hero:** twee sterke opties — kies afhankelijk van de branche:
+  - **Optie 1 (visuele branches):** cinematic foto-hero met donkere overlay + **korte** oversized serif-kop (weinig woorden). **Geen** lange paragraaf in de hero — detailcopy in de volgende sectie. Grote beeldhoogte (\`min-h-[72vh] md:min-h-[80vh]\` of vergelijkbaar).
+  - **Optie 2 (abstracte/zakelijke branches):** puur typografisch — donkere achtergrond + oversized serif. Maar dan WEL met visuele elementen: gradient-overlay (\`bg-gradient-to-br\`), subtiele SVG-decoratie, of een split-layout met een sfeerbeeld aan één kant. Ook hier: **minimale** tekst in de hero.
+  - **Vermijd:** kale effen hero zonder enige laag (foto, gradient of subtiele textuur) tenzij de briefing expliciet minimalistisch wil.
+  - **Vermijd:** lange alinea + twee grote knoppen in de hero — meestal werkt rustiger beter.
+- **Secties:** contrast donker/licht helpt; lichte secties in zacht neutraal (\`bg-neutral-50\`, \`bg-stone-50\`) mag ook \`bg-white\` als de briefing helder/minimaal is.
+- **Prijzen/diensten:** lijst met dividers of een bewust ander patroon — niet standaard overal dezelfde productkaarten.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Donkere basis (\`bg-zinc-950\`, \`bg-[#0a0a0a]\`) met goud (\`text-amber-500\`, \`border-amber-600/30\`) of champagne als accent. Geen felle of primaire kleuren.`,
+  },
+  {
+    id: "warm_cozy",
+    label: "Warm / Gezellig",
+    designLanguage: `**DESIGNTAAL: WARM / GEZELLIG** (richtlijn — briefing wint bij conflict)
+- **Typografie:** rounded sans-serif of friendly serif. Niet te strak, niet te formeel. \`font-medium\` is warmer dan \`font-bold\`. Koppen mogen \`text-4xl\` zijn — niet te groot, niet intimiderend.
+- **Compositie:** uitnodigend, persoonlijk. Afgeronde hoeken (\`rounded-2xl\`, \`rounded-3xl\`), zachte schaduwen (\`shadow-md\`, \`shadow-lg\`). Alles voelt "zacht" en benaderbaar.
+- **Sfeer:** huiselijk, persoonlijk, als een warm welkom. De site voelt als een uitnodiging, niet als een verkooppraatje.
+- **Decoratie:** organische vormen, warmte-iconen (hart, zon, bloem). Zachte illustratieve accenten. Mag vriendelijker dan andere stijlen.
+- **Spacing:** ruim maar niet afstandelijk. \`py-16 md:py-24\`. Content mag iets breder — \`max-w-5xl\`.
+- **Hero:** foto met warme belichting en uitnodigende sfeer. Persoonlijk, niet corporate. Menselijke elementen.
+- **Secties:** warme lichte achtergronden, optioneel een donkerdere sectie maar nooit koud-zwart. Zachte overgangen.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Warme tinten: terracotta, warm oranje, zachtgeel. Achtergronden in \`bg-orange-50\`, \`bg-amber-50\`, \`bg-[#faf5ef]\`. Donkere secties in \`bg-stone-800\` of \`bg-amber-950\`.`,
+  },
+  {
+    id: "industrial_raw",
+    label: "Industrieel / Ruw",
+    designLanguage: `**DESIGNTAAL: INDUSTRIEEL / RAUWE** (richtlijn — briefing wint bij conflict)
+- **Typografie:** condensed of narrow sans (\`font-semibold\` / \`font-bold\`), \`uppercase tracking-[0.12em]\` op labels. Koppen mogen krachtig maar **niet** "fastfood-billboard": vermijd \`font-black\` + fel signaalrood op wit — dat is horeca-flyer, geen industrial loft.
+- **Compositie:** harde lijnen, \`rounded-none\` of \`rounded-sm\`. \`border\` / metalen randen i.p.v. zachte \`shadow-xl\`. Grid-based, strakke kolommen. Subtiele **textuur** in beeld of achtergrond (beton, staal, baksteen, geschuurd metaal) — niet alleen vlak zwart/wit/rood.
+- **Sfeer:** werkplaats, loft, staal en beton. Rauw en eerlijk. Geen gepolijste luxe-spa — wel **ruw vakmanschap**.
+- **Decoratie:** technische symbolen (tandwielen, bouten, moersleutel-silhouet) in monochroom met lage opacity. Geen speelse emoji of ronde "vriendelijke" iconen.
+- **Spacing:** compact maar niet claustrofobisch; donkere banden mogen \`py-20\` hebben.
+- **Hero:** full-bleed **sfeerbeeld** dat industrieel aanvoelt (exposed brick, leder/staal, dramatisch licht, workshop) + korte kop; of typografisch op **donker beton/zwart** met subtiele gradient/noise — **geen** witte hero met twee knalrode knoppen.
+- **Barbershop + industrieel:** combineer rauwe loft-sfeer met vakmanschap: donkere tonen, koper/roest/barnijs als accent, Unsplash op **barber workshop / leather chair / steel mirror** — niet alleen generiek rood/zwart contrast.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Beton- en staaltinten: \`bg-zinc-900\`, \`bg-neutral-900\`, \`bg-slate-950\`, \`text-zinc-300\`. Accent: **roest, koper, barnijs, gedesatureerd oranje of amber** — of koel **staalblauw**. **Vermijd** puur \`red-500\` + \`bg-white\` als hoofdpalet (pizza-tent); rood hoogstens zeer donker (\`red-950\`) of als dunne lijn, niet als grote vlakken.`,
+  },
+  {
+    id: "playful_creative",
+    label: "Speels / Creatief",
+    designLanguage: `**DESIGNTAAL: SPEELS / CREATIEF** (richtlijn — briefing wint bij conflict)
+- **Typografie:** rounded sans-serif. Variatie in groottes — koppen mogen \`text-7xl font-extrabold\`. Mag asymmetrisch. Kleur-accenten in koppen (één woord in accent-kleur).
+- **Compositie:** energie, beweging, onverwachte layouts. Mag afwijken van strakke grids. Overlappende elementen, scheve hoeken (\`-rotate-2\`), speelse plaatsing.
+- **Sfeer:** plezier, originaliteit, creativiteit. De site mag glimlachen — maar niet kinderachtig.
+- **Decoratie:** speelse SVG-vormen, kleurrijke iconen, optioneel subtiele emoji's. Gradient-accenten op tekst of achtergronden.
+- **Spacing:** variërend — soms strak, soms ruim. Het ritme mag verspringen.
+- **Hero:** levendig, vol energie. Grote foto met felle kleuren, of bold typografie met gradient-tekst (\`bg-gradient-to-r ... bg-clip-text text-transparent\`).
+- **Secties:** afwisseling van kleurrijke en neutrale secties. Gradients toegestaan en aangemoedigd.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Levendige kleuren: paars, koraal, turquoise, lime. Durf te combineren. Gradient-accenten zijn een pluspunt.`,
+  },
+  {
+    id: "glass_frosted",
+    label: "Glassmorphism",
+    designLanguage: `**DESIGNTAAL: GLASSMORPHISM** (richtlijn — briefing wint bij conflict)
+- **Oppervlakken:** semi-transparante lagen met \`backdrop-blur-md\` / \`backdrop-blur-xl\`, dunne rand \`border border-white/10\`–\`border-white/20\` (of \`border-slate-200/30\` op licht), lichte glans (\`bg-white/5\`–\`bg-white/15\` op donker).
+- **Achtergrond:** gradient, zachte blob-vormen of **sfeerfoto** achter het glas — anders mist het effect. Vermijd effen vlak zonder diepte.
+- **Typografie:** meestal strakke sans; koppen mogen licht gloeien (\`drop-shadow\`) — niet overdrijven.
+- **Cards/nav:** pill of afgeronde rechthoeken; **geen** zware skeuomorfe schaduwen — het contrast is glas vs. achtergrond.
+- **Contrast:** tekst op glas altijd leesbaar (donkere overlay onder tekst of sterkere blur).`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Zachte multi-stop gradients (\`from-violet-600/20 via-fuchsia-500/15 to-cyan-500/20\`) of donkerblauw/paars diepte; glas in neutraal wit/transparant; één helder accent (cyan, magenta, amber) voor knoppen.`,
+  },
+  {
+    id: "neumorphism",
+    label: "Neumorphism",
+    designLanguage: `**DESIGNTAAL: NEUMORPHISM (soft UI)** (richtlijn — briefing wint bij conflict)
+- **Basis:** één **monochrome** achtergrondkleur (bijv. \`bg-[#e0e5ec]\` of \`bg-slate-200\`); kaarten en knoppen iets dezelfde familie.
+- **Diepte:** dubbele schaduw — lichte highlight + donkere schaduw (\`shadow-[8px_8px_16px_#a3b1c6,-8px_-8px_16px_#ffffff]\` of vergelijkbaar); **inset** voor gedrukte knoppen.
+- **Vormen:** zacht afgerond (\`rounded-2xl\` / \`rounded-3xl\`); geen harde zwarte randen (dat is brutalism).
+- **Typografie:** rustig sans; weinig felle kleuren — accent spaarzaam.
+- **Let op:** te veel neumorfisme voelt traag; gebruik voor **CTA’s, cards, toggles** — niet elke sectie.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Neutrale grijs-blauwe basis (\`#e0e5ec\`, \`slate-200/300\`); tekst \`slate-600\`–\`slate-800\`; één zachte accent (blauw of teal) voor primaire actie.`,
+  },
+  {
+    id: "minimal_flat",
+    label: "Minimal / Flat design",
+    designLanguage: `**DESIGNTAAL: MINIMAL / FLAT** (richtlijn — briefing wint bij conflict)
+- **Vlakken:** platte kleurvlakken, **geen** diepte-schaduwen tenzij zeer subtiel; geen glans of 3D-illusie (dat is skeuomorphism).
+- **Iconen/UI:** 2D, lijn-iconen (\`data-lucide\`) of simpele geometrie; geen verloop op knoppen tenzij briefing vraagt om gradient-stijl.
+- **Typografie:** strak, veel witruimte, duidelijke hiërarchie; \`font-medium\` / \`font-semibold\` i.p.v. overbodige weights.
+- **Grid:** strakke uitlijning, consequente \`gap\`; geen decoratieve ruis.
+- **Hero:** typografisch of één sterk plat kleurblok + beperkte copy — past bij SaaS en designstudio’s.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Beperkt palet: wit/off-white basis + 1–2 primaire tinten (bijv. zwart + één signaalkleur); geen mesh-gradients tenzij briefing anders vraagt.`,
+  },
+  {
+    id: "gradient_vibrant",
+    label: "Gradient / Vibrant design",
+    designLanguage: `**DESIGNTAAL: GRADIENT / VIBRANT** (richtlijn — briefing wint bij conflict)
+- **Achtergronden:** \`bg-gradient-to-br\`, \`via-\`, \`from-\`/\`to-\`; mag **mesh-achtig** met meerdere stops of zachte radiale blobs (\`bg-[radial-gradient(...)]\` via style als nodig).
+- **Tekst op gradient:** \`bg-clip-text text-transparent\` op koppen of contrasterende lichte tekst met dunne outline/shadow voor leesbaarheid.
+- **Energie:** verzadigde kleuren, mag **contrasterend** (oranje/roze/paars/cyaan combinaties); niet per se “corporate blue”.
+- **Secties:** wissel gradient-intensiteit — soms rustig neutraal blok ertussen zodat het niet triggert.
+- **Niet verplicht:** elke sectie fel; één sterke gradient-hero + rustige content mag ook.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Durven: magenta–oranje–geel, paars–cyaan, of electric blue–violet; houd bodytekst leesbaar met effen contrasterende vlakken.`,
+  },
+  {
+    id: "brutalism",
+    label: "Brutalism / Neo-brutalism",
+    designLanguage: `**DESIGNTAAL: BRUTALISM / NEO-BRUTALISM** (richtlijn — briefing wint bij conflict)
+- **Randen:** dikke \`border-2\` / \`border-4\` \`border-black\` (of \`border-white\` op donker); scherpe hoeken \`rounded-none\` of mini \`rounded-sm\`.
+- **Typografie:** system-ui of **mono** voor labels; koppen groot en direct (\`font-black\`, \`uppercase\`, \`tracking-tight\`); mag bewust “ruw”.
+- **Kleur:** hoog contrast (zwart/wit/geel of zwart/wit/rood); **geen** zachte pastel tenzij neo-brutalist twist.
+- **Vorm:** zichtbare grid, harde blokken, soms **schaduweffect** als sticker (\`shadow-[4px_4px_0_0_#000]\` op knoppen).
+- **Vermijd:** glass blur en zachte neumorphic schaduwen — past zelden bij pure brutalism.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Zwart, wit, één felle accent (geel, rood, fel groen); optioneel fel blauw; geen subtiele luxe-goud tenzij bewuste twist.`,
+  },
+  {
+    id: "cyberpunk_futuristic",
+    label: "Cyberpunk / Futuristic",
+    designLanguage: `**DESIGNTAAL: CYBERPUNK / FUTURISTIC** (richtlijn — briefing wint bij conflict)
+- **Basis:** diep donker (\`bg-zinc-950\`, \`bg-[#0a0a0f]\`, near-black blue/purple).
+- **Accenten:** neon **cyan, magenta, lime, electric purple** — \`drop-shadow\` / \`shadow-[0_0_24px_rgba(...)]\` spaarzaam op koppen of knippen.
+- **Raster/lijnen:** subtiele \`bg-[linear-gradient(...)]\` grid met lage opacity; geen onleesbare drukte. **Geen** bewegende laser standaard — alleen als de briefing dat **expliciet** vraagt (zie §3).
+- **Typografie:** futuristic sans (\`tracking-wide\`, \`uppercase\` labels); mag mono voor data-achtige regels.
+- **UI:** scherpe of licht afgeronde knoppen met glow; glass **mag** als secundair accent op donker.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Zwart/donkerblauw basis; neon-accenten (cyan \`#22d3ee\`, magenta \`#e879f9\`, lime \`#a3e635\`); beperk tot 2–3 neonkleuren.`,
+  },
+  {
+    id: "editorial_luxury",
+    label: "Editorial / Luxury",
+    designLanguage: `**DESIGNTAAL: EDITORIAL / LUXURY** (richtlijn — briefing wint bij conflict)
+- **Compositie:** magazine-achtig — **asymmetrische grid**, grote kop (\`text-5xl\`–\`text-8xl\` serif), ruimte voor “spread”-gevoel; pull quotes, dunne hairline-dividers.
+- **Typografie:** krachtige **serif** op koppen, strakke sans voor body; caps labels met \`tracking-[0.2em]\` waar het past.
+- **Beeld:** full-bleed of editorial crop (\`object-cover\`); zwart-wit of gedesatureerd + één rijke accent.
+- **Luxe:** veel negatieve ruimte, geen drukke kaart-rasters; prijzen/diensten als elegante lijst of één spotlight.
+- **Verschil met algemeen “luxe” preset:** hier ligt nadruk op **editorial ritme en typografie**, niet alleen donker+goud.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Zwart/ivoor/wit of diep navy + crème; accent: goud/brons **of** diep wijnrood — één rijke signatuurkleur.`,
+  },
+  {
+    id: "skeuomorphism",
+    label: "Skeuomorphism",
+    designLanguage: `**DESIGNTAAL: SKEUOMORPHISM** (richtlijn — briefing wint bij conflict)
+- **Diepte:** licht lijkt van boven — \`bg-gradient-to-b\` op knoppen/vlakken, subtiele inner shadow (\`shadow-inner\`), afgeronde “object”-vormen.
+- **Materialen:** hints van **leer, papier, hout** via warme tinten en textuur (Unsplash-achtergrond of zeer subtiele noise — geen overdreven 2010-iOS).
+- **Knoppen:** mogen **relief** hebben (\`border-b-4\` donkerder rand); toggles/schuifjes als fysieke controls waar het past.
+- **Typografie:** serif of warme sans; uitstraling “ tastbaar ”.
+- **Balans:** moderne spacing (\`py-16\`+) zodat het niet oubollig wordt; combineer met **flat** secties als adempauze.`,
+    colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
+Warm bruin, leerbruin, crème, messing/goud accent; vermijd puur klinisch wit+zwart.`,
+  },
+];
+
+const STYLE_KEYWORDS: { pattern: RegExp; profileId: string }[] = [
+  { pattern: /\b(klassiek|vintage|retro|nostalgisch|oud|traditioneel|ambachtelijk|old\s*school|erfgoed|historisch)\b/i, profileId: "classic_vintage" },
+  { pattern: /\b(modern|strak|minimalistisch|minimal|clean|contemporary|eigentijds)\b/i, profileId: "modern_sleek" },
+  /** Geen \`premium\` hier: staat te vaak in branche-copy ("premium barbershop") en overschrijft dan bewuste stijlkeuzes zoals industrieel. */
+  { pattern: /\b(luxe|luxueus|exclusief|high[\s-]?end|chic|upscale|elite|prestige)\b/i, profileId: "luxury_exclusive" },
+  { pattern: /\b(warm|gezellig|huiselijk|knus|intiem|persoonlijk|gastvrij|uitnodigend)\b/i, profileId: "warm_cozy" },
+  { pattern: /\b(industrieel|industriële|industrial|rauw|rauwe|stoer|robuust|urban|loft|werkplaats[\s-]?stijl|raw|beton|staal|machinewinkel)\b/i, profileId: "industrial_raw" },
+  { pattern: /\b(speels|creatief|kleurrijk|fun|levendig|vrolijk|energiek|dynamisch)\b/i, profileId: "playful_creative" },
+  {
+    pattern:
+      /\b(glassmorphism|glass\s*morph|glasmorfisme|glasmorphin|glasmorph|mat\s*glas|frosted\s*glass|backdrop\s*blur)\b/i,
+    profileId: "glass_frosted",
+  },
+  { pattern: /\b(neumorphism|neumorfisme|neomorphism|soft\s*ui)\b/i, profileId: "neumorphism" },
+  { pattern: /\b(flat\s*design|flat\s*ui|plat\s*ontwerp|material\s*flat|2d\s*icons?)\b/i, profileId: "minimal_flat" },
+  { pattern: /\b(mesh\s*gradient|gradient|gradients|vibrant|verzadigd|kleurverloop)\b/i, profileId: "gradient_vibrant" },
+  { pattern: /\b(neo[\s-]?brutal|brutalism|brutalist|raw\s*web|anti\s*design)\b/i, profileId: "brutalism" },
+  {
+    pattern:
+      /\b(cyberpunk|cyber\s*punk|synthwave|retrowave|holographic|lasers?|neon\s*(?:grid|accent|licht)|sci[\s-]?fi\s*ui)\b/i,
+    profileId: "cyberpunk_futuristic",
+  },
+  /** `e?` zodat "futuristische" matcht (NL verbuiging), niet alleen het lemma "futuristisch". */
+  {
+    pattern: /\b(futuristische?|futuristic|state\s*of\s*the\s*art|high[\s-]?tech)\b/i,
+    profileId: "cyberpunk_futuristic",
+  },
+  { pattern: /\b(editorial|tijdschrift|magazine|lookbook|cover\s*story|fashion\s*spread)\b/i, profileId: "editorial_luxury" },
+  { pattern: /\b(skeuomorphism|skeuomorfisme|skeuomorphic|leather\s*texture|houtlook|3d\s*button)\b/i, profileId: "skeuomorphism" },
+];
+
+/**
+ * Expliciete stijlregel in de briefing (bijv. "Stijl industrieel", "style: industrial") wint altijd
+ * boven trefwoord-telling — lost conflicten op met generieke woorden zoals "premium" in de branchetekst.
+ */
+function parseExplicitStyleDirective(description: string): StyleProfile | null {
+  const m = description.match(/\b(?:stijl|style)\s*(?:[:\-]\s*|\s+)([^.!?\n]+)/i);
+  if (!m) return null;
+  const chunk = m[1].trim().toLowerCase();
+  if (chunk.length === 0) return null;
+
+  const rules: { keys: string[]; profileId: string }[] = [
+    {
+      keys: ["glassmorphism", "glasmorfisme", "glass morph", "glasmorphin", "glasmorph", "mat glas", "frosted glass"],
+      profileId: "glass_frosted",
+    },
+    { keys: ["neumorphism", "neumorfisme", "neomorphism", "soft ui"], profileId: "neumorphism" },
+    { keys: ["neo-brutal", "neo brutal", "brutalism", "brutalist"], profileId: "brutalism" },
+    { keys: ["cyberpunk", "synthwave", "retrowave"], profileId: "cyberpunk_futuristic" },
+    { keys: ["skeuomorphism", "skeuomorfisme", "skeuomorphic"], profileId: "skeuomorphism" },
+    { keys: ["flat design", "flat ui", "plat ontwerp"], profileId: "minimal_flat" },
+    { keys: ["mesh gradient", "gradient vibrant"], profileId: "gradient_vibrant" },
+    { keys: ["editorial", "lookbook", "magazine"], profileId: "editorial_luxury" },
+    { keys: ["industrieel", "industriële", "industrial", "loft", "rauw", "rauwe", "stoer", "robuust", "beton", "staal", "factory", "raw"], profileId: "industrial_raw" },
+    { keys: ["klassiek", "vintage", "retro", "nostalgisch", "ambachtelijk", "erfgoed", "old school", "historisch"], profileId: "classic_vintage" },
+    { keys: ["modern", "strak", "minimalistisch", "minimal", "clean", "eigentijds", "contemporary"], profileId: "modern_sleek" },
+    { keys: ["luxe", "luxueus", "exclusief", "premium", "high-end", "high end", "chic", "upscale", "elite", "prestige"], profileId: "luxury_exclusive" },
+    { keys: ["warm", "gezellig", "huiselijk", "knus", "intiem"], profileId: "warm_cozy" },
+    { keys: ["speels", "creatief", "kleurrijk", "levendig", "energiek", "vrolijk"], profileId: "playful_creative" },
+    { keys: ["futuristisch", "futuristic", "high tech", "high-tech", "state of the art"], profileId: "cyberpunk_futuristic" },
+    { keys: ["gradient", "gradients", "vibrant", "verzadigd"], profileId: "gradient_vibrant" },
+  ];
+  for (const { keys, profileId } of rules) {
+    if (keys.some((k) => chunk.includes(k))) {
+      return STYLE_PROFILES.find((p) => p.id === profileId) ?? null;
+    }
+  }
+  return null;
+}
+
+/** Telt alle \`STYLE_KEYWORDS\`-treffers per profiel (meerdere patronen mogen dezelfde \`profileId\` hebben). */
+function aggregateStyleKeywordScores(description: string): Map<string, { profile: StyleProfile; score: number; lastIndex: number }> {
+  const map = new Map<string, { profile: StyleProfile; score: number; lastIndex: number }>();
+  for (const { pattern, profileId } of STYLE_KEYWORDS) {
+    const profile = STYLE_PROFILES.find((p) => p.id === profileId);
+    if (!profile) continue;
+    const re = new RegExp(pattern.source, pattern.ignoreCase ? "gi" : "g");
+    let match: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((match = re.exec(description)) !== null) {
+      const prev = map.get(profileId);
+      if (!prev) {
+        map.set(profileId, { profile, score: 1, lastIndex: match.index });
+      } else {
+        prev.score += 1;
+        if (match.index > prev.lastIndex) prev.lastIndex = match.index;
+      }
+    }
+  }
+  return map;
+}
+
+function detectStyleFromKeywordsOnly(description: string): StyleProfile | null {
+  const map = aggregateStyleKeywordScores(description);
+  let best: { profile: StyleProfile; score: number; lastIndex: number } | null = null;
+  for (const v of map.values()) {
+    if (!best || v.score > best.score || (v.score === best.score && v.lastIndex > best.lastIndex)) {
+      best = v;
+    }
+  }
+  return best?.profile ?? null;
+}
+
+/** Secundaire stijlen voor blend-hint (zelfde briefing raakt meerdere presets aan). */
+function getSecondaryStyleProfilesForBlend(description: string, primaryId: string | null, maxExtra = 2): StyleProfile[] {
+  const map = aggregateStyleKeywordScores(description);
+  const ranked = [...map.values()]
+    .filter((v) => v.profile.id !== primaryId)
+    .filter((v) => v.score >= 1)
+    .sort((a, b) => b.score - a.score || b.lastIndex - a.lastIndex);
+  return ranked.slice(0, maxExtra).map((v) => v.profile);
+}
+
+/**
+ * Zelfde als \`detectStyle\`, plus **bron** (expliciete "Stijl …"-regel vs. trefwoord-match).
+ * Gebruik in pipeline-feedback en self-review zodat de 2e pass weet welke designtaal bedoeld was.
+ */
+export function resolveStyleDetection(description: string): {
+  profile: StyleProfile | null;
+  source: StyleDetectionSource;
+} {
+  const explicit = parseExplicitStyleDirective(description);
+  if (explicit) {
+    return { profile: explicit, source: "explicit_stijl_line" };
+  }
+  const fromKw = detectStyleFromKeywordsOnly(description);
+  if (fromKw) {
+    return { profile: fromKw, source: "keyword_match" };
+  }
+  return { profile: null, source: "none" };
+}
+
+/**
+ * Detecteer de visuele stijlrichting op basis van de briefing.
+ * Dit staat los van de branche — een barbershop kan zowel vintage als modern zijn.
+ */
+export function detectStyle(description: string): StyleProfile | null {
+  return resolveStyleDetection(description).profile;
+}
+
+/**
+ * Bouw de branche- en stijl-specifieke prompt-hints die meegestuurd worden naar Claude.
+ * Branche = structuur (welke secties, welk content-type).
+ * Stijl = visuele taal (kleuren, fonts, sfeer).
+ * Deze twee zijn onafhankelijk en worden apart meegestuurd.
+ */
+function buildIndustryPromptHint(description: string): string {
+  const industry = detectIndustry(description);
+  const style = detectStyle(description);
+  const parts: string[] = [];
+
+  if (industry) {
+    parts.push(`=== BRANCHE-INSPIRATIE (gedetecteerd: ${industry.label}) ===
+
+Structuur- en contenthint voor deze branche (geen vast sjabloon). Visuele stijl: zie hieronder of de briefing.
+
+${industry.promptHint}
+
+**Suggesties:** hero ≈ ${industry.heroStrategy === "photo" ? "foto-gedreven" : industry.heroStrategy === "typographic" ? "typografisch" : "productfocus"}; diensten ≈ ${industry.servicesFormat === "price-list" ? "prijslijst" : industry.servicesFormat === "card-grid" ? "kaarten/grid" : industry.servicesFormat === "split" ? "split" : "spotlight"} — alleen als het de briefing versterkt.`);
+  }
+
+  const explicitColors = detectExplicitColors(description);
+  const hasExplicitColors = explicitColors.length > 0;
+
+  if (style) {
+    parts.push(`=== DESIGNTAAL (hint: ${style.label}) ===
+
+Onderstaande tekst is een **richtlijn**. Als de briefing of branche iets anders vraagt, volg je de briefing.
+
+${style.designLanguage}`);
+
+    if (hasExplicitColors) {
+      parts.push(`=== KLEUR + STIJL ===
+Briefing noemt **${explicitColors.join(", ")}** met stijl **${style.label}**. Gebruik die kleuren als basis (donkere/lichte tinten), laat typografie en ritme bij de stijl passen, en voeg geen extra kleurfamilies toe tenzij de briefing dat vraagt.`);
+    } else {
+      parts.push(`=== KLEURPALET (geen expliciete kleuren in briefing) ===\n\n${style.colorPalette}`);
+    }
+
+    const secondaries = getSecondaryStyleProfilesForBlend(description, style.id);
+    if (secondaries.length > 0) {
+      parts.push(`=== MEERDERE STIJL-SIGNALEN (geen verplichte mix) ===
+**Primair (pipeline):** ${style.label}. **Ook in de tekst:** ${secondaries.map((s) => s.label).join(" · ")}.
+
+**Regels — coherentie boven “leuk mixen”:**
+1. **Eén hoofd-esthetiek.** Bouw de site alsof er **één** duidelijke visuele identiteit is.
+2. **Secundair alleen als het echt past** bij primair **én** bij de briefing. Gebruik het dan **spaarzaam** (één sectie, één componenttype, of kleine accenten — geen halve pagina in stijl A en halve in stijl B).
+3. **Als twee signalen botsen**, kies **alleen primair** en laat het andere **weg** — tenzij de briefing **expliciet** contrast/juxtapositie vraagt. Voorbeelden van **riskante combinaties** (niet samen als gelijkwaardig hoofdbeeld): Brutalism ↔ Neumorphism; Skeuomorphism ↔ Brutalism; Neumorphism ↔ Glassmorphism als beide dominant; Flat/minimal als **totale** vlakstijl ↔ zware skeuomorfe UI.
+4. **Combinaties die vaak wél logisch zijn** (één dominant): Cyberpunk/futuristisch + **lichte** glass-accenten op donker; Minimal/flat + **enkele** frosted panels; Editorial + luxe-typografie; Gradient/vibrant + modern strakke grid.
+
+Als je twijfelt: **kies primair en negeer secundair** — liever strak één stijl dan een onsamenhangende mash-up.`);
+    }
+  } else {
+    parts.push(`=== VISUELE STIJL (geen keyword-match — kies zelf) ===
+
+Geen "modern/luxe/vintage" gedetecteerd in de tekst. Kies de sterkste richting voor deze branche${industry ? ` (${industry.label})` : ""} en naam.
+
+- Vermijd generieke SaaS-starters: standaard indigo-slate + drie identieke feature-cards zonder reden.
+- Liever één duidelijk palet en typografie met karakter dan veilige defaults.`);
+  }
+
+  const uniquenessNote = `\n\n**Doel:** een site die **duidelijk bij deze klant** hoort — ${style && industry ? `Combinatie "${style.label}" met ${industry.label.toLowerCase()} mag fundamenteel anders zijn dan dezelfde branche met een andere stijl.` : `Compositie en detail maken het verschil, niet alleen kleur.`}`;
+
+  return `\n\n${parts.join("\n\n")}${uniquenessNote}\n`;
+}
+
+// ---------------------------------------------------------------------------
+// Kleur-detectie: haal expliciete kleurwensen uit de briefing
+// ---------------------------------------------------------------------------
+
+const COLOR_KEYWORDS: Record<string, string[]> = {
+  groen: ["groen", "green", "emerald", "smaragd"],
+  wit: ["wit", "white", "witte"],
+  zwart: ["zwart", "black", "donker", "dark"],
+  rood: ["rood", "red", "bordeaux", "robijn"],
+  blauw: ["blauw", "blue", "navy", "marine"],
+  goud: ["goud", "gold", "gouden"],
+  beige: ["beige", "crème", "creme", "zand", "sand"],
+  bruin: ["bruin", "brown", "espresso", "chocolade"],
+  oranje: ["oranje", "orange"],
+  paars: ["paars", "purple", "violet"],
+  roze: ["roze", "pink"],
+  teal: ["teal", "petrol", "turquoise"],
+  grijs: ["grijs", "grey", "gray"],
+};
+
+/**
+ * Detecteer of de briefing expliciete kleurwensen bevat.
+ * Retourneert de gevonden kleurnamen (NL), of een lege array als er geen zijn.
+ */
+export function detectExplicitColors(description: string): string[] {
+  const lower = description.toLowerCase();
+  const found: string[] = [];
+  for (const [colorName, variants] of Object.entries(COLOR_KEYWORDS)) {
+    if (variants.some((v) => lower.includes(v))) {
+      found.push(colorName);
+    }
+  }
+  return found;
+}
+
+function fnv1aHash(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function formatRecentClientsLine(names: string[]): string {
+  if (names.length === 0) {
+    return "(Geen recente klantnamen in DB — varieer desondanks waar het past.)";
+  }
+  return names.map((n) => `"${n.replace(/"/g, "'")}"`).join(", ");
+}
+
+const ACCENT_FAMILY_MANDATES = [
+  "Accent-familie **teal/petrol** (vertrouwd, fris): bijv. `#0f7669`, `#0d9488`, `#115e59` — **niet** oranje tenzij de branche expliciet warm/food vraagt.",
+  "Accent-familie **violet/indigo** (premium tech): bijv. `#5b21b6`, `#6d28d9`, `#4f46e5` — contrasteer met lichte of zandkleurige basis.",
+  "Accent-familie **robijn/roze** (energie, zorg, lifestyle): bijv. `#9f1239`, `#be123c`, `#db2777` — alleen op knoppen en highlights.",
+  "Accent-familie **elektrisch blauw** (SaaS, finance): bijv. `#1d4ed8`, `#2563eb`, `#1e40af` op warme of grijze achtergrond.",
+  "Accent-familie **mosterd/oker** (warm, niet standaard orange): bijv. `#a16207`, `#ca8a04` gecombineerd met **navy** als primary — vermijd `#f97316` als default.",
+  "Accent-familie **smaragd/bos** (groei, duurzaamheid, gezondheid): bijv. `#047857`, `#059669`, `#065f46`.",
+  "Accent-familie **slate + koper** (luxury modern): CTA in `#b45309` / `#c2410c` (koper) of diep `#0c4a6e` i.p.v. fel oranje.",
+] as const;
+
+function buildVarianceBlock(
+  businessName: string,
+  description: string,
+  recentClientNames: string[],
+  varianceNonce?: string,
+): string {
+  const h = fnv1aHash(
+    `${businessName}\n${description.slice(0, 120)}\n${recentClientNames.join(",")}\n${varianceNonce ?? ""}`,
+  );
+  const accentIdx = (h >> 3) % ACCENT_FAMILY_MANDATES.length;
+  const explicitColors = detectExplicitColors(description);
+  const hasExplicitColors = explicitColors.length > 0;
+  const accentLine = hasExplicitColors
+    ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** — gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
+    : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
+
+  return `=== 0A. COMPOSITIE (deze run) ===
+Kies **één** duidelijke lijn door de pagina (bijv. editorial type, asymmetrische splits, of een duidelijk licht/donker ritme) en houd die **consequent** vast. Herhaal niet in elke sectie hetzelfde 3-koloms kaarten-grid tenzij de briefing of branche dat echt vraagt.
+
+${accentLine}
+
+**Prioriteit:** sterke briefing > deze zinnetjes.`;
+}
+
+function buildUpgradePreserveLayoutBlock(): string {
+  return `=== 0A. UPGRADE — BEHOUD LAY-OUT (verplicht; gaat boven standaard-variatie) ===
+
+Deze opdracht is een **uitbreiding** op een bestaande site, **geen** volledige herontwerp-ronde.
+
+- **Negeer** voor deze run het normale "forceer een andere layout / andere nav / andere kleuren"-mandaat (§1 Uniekheids-protocol geldt hier **niet** voor wat al bestaat).
+- **Behoud** \`config\` (theme, font, style) **identiek** aan de bestaande site als die hieronder in JSON staat; zo niet beschikbaar, trek \`config\` **strikt** uit de briefing en wees **consistent** met de beschreven huidige look.
+- **Behoud** de **html** van elke bestaande marketingsectie **letterlijk** (zelfde Tailwind-classes en structuur), tenzij je **minimaal** een \`href="#…"\` of \`id\` moet toevoegen voor **nieuwe** secties uit de briefing / §0B.
+- Voeg **alleen** de **extra** secties/blokken toe die de briefing of §0B vereist (nieuwe \`id\`'s, uniek), op een logische plek in het \`sections\`-array. **Geen** dubbele \`id\`'s.
+- **Geen** wholesale redesign: geen andere kleurpalet-keuze, geen andere hero-structuur, geen herschikking "omdat het mooier is" — alleen gerichte uitbreiding.`;
+}
+
+function buildUniquenessProtocolSection(recent: string): string {
+  return `=== 1. VARIATIE ===
+Recente klanten (vermijd bewust copy-paste van hetzelfde stramien): ${recent}
+
+- Zet in \`config.style\` **één korte zin** (eigen woorden, **max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens**) welk compositieprincipe je kiest; laat layout en typografie dat ondersteunen.
+- Varieer sectie-opbouw (lijst / split / grid / typografie-led) — niet drie keer hetzelfde kaartpatroon achter elkaar zonder reden.
+- Sterke briefing en branche gaan boven gemakzuchtige defaults.`;
+}
+
+function buildUpgradeMergeSection(): string {
+  return `=== 1. UPGRADE — SAMENVOEGEN MET BESTAANDE SITE ===
+
+- Output = **één** geldig JSON-object met \`config\` + \`sections\` zoals in §5.
+- **config:** kopieer van de bestaande site (zie JSON hieronder of briefing) **zonder** esthetische wijziging.
+- **sections:** de bron-JSON bevat per rij \`id\` (stabiele slug), \`sectionName\` (label) en \`html\`. Behoud **exact** dezelfde \`id\`'s en **dezelfde** \`html\` voor die rijen, in **dezelfde volgorde**; voeg daartussen of aan het eind (logisch) **nieuwe** secties toe volgens briefing / §0B.
+- Nieuwe secties: unieke \`id\` (bijv. \`portal\`, \`client_dashboard\`); **geen** sectie \`id: "booking"\` — die injecteert de studio server-side. Inhoud en Tailwind-stijl moeten **visueel aansluiten** op de bestaande secties.
+- Als er **geen** bestaande JSON in de prompt staat: bouw de marketingpagina compact volgens de briefing, maar **zonder** "alles opnieuw verzinnen" — focus op **toevoegen** van gevraagde secties; varieer niet gratuit t.o.v. de beschreven huidige site.`;
+}
+
+// ---------------------------------------------------------------------------
+// Branche-specifieke prompt-blokken voor gedetecteerde secties
+// ---------------------------------------------------------------------------
+
+function buildBrancheSectionPromptBlocks(sectionIds: Set<string>): string {
+  const blocks: string[] = [];
+
+  if (sectionIds.has("shop")) {
+    blocks.push(`**=== SHOP (id: "shop") ===**
+Doel: producten of diensten met prijs/CTA duidelijk tonen. Kies zelf layout (spotlight, grid, rij) die bij het **aantal** items en de briefing past — niet per se hetzelfde als andere sites.
+- Geen verzonnen prijzen; zonder briefing: "Prijs op aanvraag" of geen prijsveld.
+- **Online winkel:** minstens één duidelijke knop of link met **exact** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (naar de studio-webshop-route); extra CTA naar \`#contact\` of \`https://wa.me/…\` als nummer bekend.
+- Nav/footer: bij webshop-signaal ook een link met \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (bv. icoon \`data-lucide="ShoppingBag"\`).`);
+  }
+
+  if (sectionIds.has("gallery")) {
+    blocks.push(`**=== GALERIJ (id: "gallery") ===**
+Doel: werk, sfeer of resultaten tonen. Kies grid/masonry/editorial zelf; **voldoende** beelden (denk ±6+) als het visueel zwaar moet wegen.
+- Unsplash passend bij branche; eigen stijl i.p.v. standaard hover-scale op elke foto.`);
+  }
+
+  if (sectionIds.has("brands")) {
+    blocks.push(`**=== MERKEN (id: "brands") ===**
+Doel: vertrouwen / partners. Eén rustige band met logo's of typografische merknamen — geen verplichte grayscale-template als iets anders beter past.`);
+  }
+
+  if (sectionIds.has("team")) {
+    blocks.push(`**=== TEAM (id: "team") ===**
+Doel: gezichten en rollen. Layout vrij (kaarten, rij, editorial). Zonder namen in de briefing: geen verzonnen persoonsnamen — generieke copy mag.`);
+  }
+
+  if (sectionIds.has("about")) {
+    blocks.push(`**=== OVER (id: "about") ===**
+Doel: verhaal en vertrouwen. Split, kolom of lang lopende tekst — wat bij tone of branche past; minstens één sterk beeld als het helpt.`);
+  }
+
+  return blocks.length > 0
+    ? `\n\n=== BRANCHE-SECTIES (kort — jij ontwerpt de uitwerking) ===\n\n${blocks.join("\n\n")}\n`
+    : "";
+}
+
+export type ClientImage = { url: string; label?: string };
+
+export type GenerateSitePromptOptions = {
+  preserveLayoutUpgrade?: boolean;
+  existingSiteTailwindJson?: string | null;
+  varianceNonce?: string;
+  sectionIdsHint?: string[];
+  /** Korte prompt (geen branche/stijl/variatie). Ook: env `SITE_GENERATION_MINIMAL_PROMPT=1`. */
+  minimalPrompt?: boolean;
+  clientImages?: ClientImage[];
+  /** Alleen server-side: uit formulier/API; wordt in \`prepareGenerateSiteClaudeCall\` omgezet naar \`referenceSiteSnapshot\`. */
+  referenceStyleUrl?: string;
+  /** Snapshot na fetch — wordt in de user-prompt ingevoegd. */
+  referenceSiteSnapshot?: { url: string; excerpt: string };
+};
+
+const UPGRADE_PROMPT_JSON_MAX = 150_000;
+
+export function extractSectionIdsFromTailwindUpgradeJson(json: string): string[] | null {
+  try {
+    const o = JSON.parse(json) as { sections?: unknown };
+    if (!Array.isArray(o.sections)) return null;
+    const ids: string[] = [];
+    for (const row of o.sections) {
+      if (row && typeof row === "object" && "id" in row) {
+        const id = (row as { id: unknown }).id;
+        if (typeof id === "string" && id.trim() !== "") ids.push(id);
+      }
+    }
+    return ids.length > 0 ? ids : null;
+  } catch {
+    return null;
+  }
+}
+
+export function mergeUpgradeSectionOrder(existing: string[] | null, planned: readonly string[]): string[] {
+  if (!existing?.length) return [...planned];
+  const out = [...existing];
+  for (const id of planned) {
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+export type SerializeSiteForUpgradeResult =
+  | { ok: true; json: string }
+  | { ok: false; reason: "not_tailwind" | "too_large" };
+
+export function serializeExistingSiteForUpgradePrompt(siteData: unknown): SerializeSiteForUpgradeResult {
+  const p = parseStoredSiteData(siteData);
+  if (!p || p.kind !== "tailwind") {
+    return { ok: false, reason: "not_tailwind" };
+  }
+
+  const ids = stableIdsForUpgradeSections(p.sections.map((s) => s.sectionName));
+
+  const build = (rows: { id: string; sectionName?: string; html: string }[]) =>
+    JSON.stringify({ config: p.config ?? null, sections: rows });
+
+  let json = build(
+    p.sections.map((s, i) => ({
+      id: ids[i]!,
+      sectionName: s.sectionName,
+      html: s.html,
+    })),
+  );
+  if (json.length <= UPGRADE_PROMPT_JSON_MAX) {
+    return { ok: true, json };
+  }
+
+  json = build(
+    p.sections.map((s, i) => ({
+      id: ids[i]!,
+      sectionName: s.sectionName,
+      html: normalizeHtmlWhitespaceForUpgradePrompt(s.html),
+    })),
+  );
+  if (json.length <= UPGRADE_PROMPT_JSON_MAX) {
+    return { ok: true, json };
+  }
+
+  json = build(
+    p.sections.map((s, i) => ({
+      id: ids[i]!,
+      html: normalizeHtmlWhitespaceForUpgradePrompt(s.html),
+    })),
+  );
+  if (json.length <= UPGRADE_PROMPT_JSON_MAX) {
+    return { ok: true, json };
+  }
+
+  return { ok: false, reason: "too_large" };
+}
+
+const DEFAULT_SECTIONS = ["hero", "features", "testimonials", "pricing", "faq", "footer"] as const;
+
+/** Minimale HomepagePlan voor self-review / validate. */
+function buildMinimalHomepagePlan(sectionIds?: string[]): HomepagePlan {
+  const ids = sectionIds ?? [...DEFAULT_SECTIONS];
+  return {
+    experienceModel: "service_leadgen",
+    densityProfile: "balanced",
+    compositionPlan: {
+      layoutArchetype: "default",
+      visualTension: "medium",
+      motionPersonality: "subtle",
+      macroComposition: "linear",
+    },
+    navigationModel: { searchPriority: "low" },
+    sectionSequence: ids.map((id) => ({
+      id,
+      type: "marketing",
+      density: "balanced",
+      priority: "normal",
+    })),
+  };
+}
+
+type SiteGenerationOperationalTailInput = {
+  preserve: boolean;
+  requiredIdsLine: string;
+  section4Nav: string;
+  section5IdsNote: string;
+};
+
+function buildHeroViewportRulesMarkdown(preserve: boolean): string {
+  if (preserve) return "";
+  return `
+- **VIEWPORT / HERO-HOOGTE (kritisch — voorkomt “smalle strook + wit gat” onder de fold):**
+  - **\`<section id="hero">\` (buitenste tag):** zet **altijd** een expliciete minimale hoogte op die sectie: \`min-h-[72vh] md:min-h-[80vh]\` (foto-/video-hero) of minstens \`min-h-[65vh] md:min-h-[72vh]\` (typografisch). **Zonder** deze \`min-h-*\` krimpt de hero tot één regel hoogte en vult het iframe-onderste deel met leeg wit — dat is een fout.
+  - **Volle viewport op de hero** is toegestaan met **dynamische eenheden**: \`min-h-[100dvh]\` of \`min-h-[min(100dvh,100svh)]\` mag **alleen** op \`#hero\`, niet op andere secties. Gebruik liever \`72vh/80vh\` als je twijfelt.
+  - **Verbod (niet-hero secties):** gebruik **geen** \`min-h-screen\`, \`h-screen\`, \`min-h-[100vh]\`, \`h-[100vh]\` op \`#features\`, \`#about\`, shop, footer, enz. — dat maakt lege kolommen en rare scroll in previews. Daar: \`py-16 md:py-24\` + inhoud.
+  - **Achtergrond-banden** (CTA/galerij met \`background-image\`, geen hero): max. \`min-h-[40vh] md:min-h-[50vh]\`, geen volledige viewport.
+  - **Padding:** op \`#hero\` mag \`py-*\` bíj \`min-h-*\`, maar voorkom extreem hoge \`py-32+\` **zonder** \`min-h-*\` (dan blijft de strook alsnog laag ten opzichte van het scherm).
+`;
+}
+
+function buildExistingSiteJsonBlock(existingJson: string | undefined | null): string {
+  const t = existingJson?.trim();
+  if (!t) return "";
+  return `
+
+=== BESTAANDE SITE (bron voor config + secties; bij upgrade letterlijk behouden) ===
+
+${t}
+`;
+}
+
+function buildOperationalNavParts(
+  preserve: boolean,
+  sectionIdsHint: string[] | undefined,
+): Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote"> {
+  const section4Nav = preserve
+    ? `- **Nav / upgrade:** behoud navigatie en hero-structuur uit de **bestaande** hero-\`html\`; werk alleen \`href="#…"\` / \`id\` bij waar nieuwe secties dat vereisen. Nav-vorm **niet verplicht wijzigen** — zie minimale UX-fix onder §3B.\n`
+    : `- **Navigatie:** zie §3 — **exact één** globale site-nav (één \`<header>\`/\`<nav>\`-blok met alle ankers); **geen** tweede verticale/zijbalk met dezelfde linkset naast de header. \`href="#…"\` matchen sectie-\`id\`'s. **Vorm vrij** zolang de nav bereikbaar blijft.\n`;
+  const section5IdsNote = preserve
+    ? `\nIn **upgrade-modus:** behoud alle \`id\`'s (en bij voorkeur de \`html\`) van de bron-secties; voeg alleen **nieuwe** secties toe waar de briefing dat vraagt.`
+    : "";
+  const requiredIdsLine =
+    sectionIdsHint && sectionIdsHint.length > 0
+      ? sectionIdsHint.map((s) => `\`${s}\``).join(", ")
+      : "`hero`, `features`, `testimonials`, `pricing`, `faq`, `footer`";
+  return { section4Nav, section5IdsNote, requiredIdsLine };
+}
+
+function buildClientImagesPromptBlock(clientImages: ClientImage[]): string {
+  if (clientImages.length === 0) return "";
+  const list = clientImages.map((img, i) => `${i + 1}. ${img.url}${img.label ? ` — ${img.label}` : ""}`).join("\n");
+  return `
+=== KLANTFOTO'S (VERPLICHT VERWERKEN) ===
+
+De klant heeft **eigen foto's** aangeleverd. Gebruik deze **in plaats van** Unsplash-stockfoto's. Dit zijn echte foto's van het bedrijf — ze maken de website persoonlijk en authentiek.
+
+${list}
+
+**Regels voor klantfoto's:**
+- **NIET in de hero gebruiken.** De hero moet altijd een sterke, professionele Unsplash-foto hebben die de branche visueel neerzet. Klantfoto's zijn vaak niet van hero-kwaliteit (resolutie, compositie, belichting). De hero moet op eigen kracht imponeren.
+- **Wel prominent in andere secties:** "over ons"-sectie, galerij, naast tekst in split-secties, diensten, team, of shop-secties. Niet als kleine thumbnails verstoppen.
+- **Alle aangeleverde foto's moeten zichtbaar in de site komen.** Verdeel ze logisch over de secties (excl. hero).
+- Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover ...">\` of als achtergrondbeeld via inline \`style\` attribuut met \`background-image\` + \`bg-cover bg-center\`.
+- **Aanvullen mag:** als er meer visuele plekken zijn dan klantfoto's, vul aan met passende Unsplash-foto's of decoratieve gradiënten. Maar klantfoto's hebben **altijd voorrang** op stockfoto's (behalve in de hero).
+- Geef elke klantfoto een beschrijvende \`alt\`-tekst gebaseerd op het label of de context.
+
+`;
+}
+
+function buildReferenceSitePromptBlock(
+  snap: GenerateSitePromptOptions["referenceSiteSnapshot"],
+  businessName: string,
+): string {
+  if (!snap?.excerpt?.trim()) return "";
+  return `
+
+=== REFERENTIESITE (door de server opgehaald — stijl- en structuurhint; geen lange teksten letterlijk kopiëren) ===
+URL: ${snap.url}
+
+${snap.excerpt}
+
+**Vertaal naar een eigen one-pager voor "${businessName}":**
+- Pak kleurenfamilie, typografie (serif/sans, gewicht), ritme en globale opzet die bij bovenstaande snapshot passen.
+- Waar je menu/ankers gebruikt: zorg dat \`href="#…"\` logisch aansluit op de sectie-\`id\`'s op deze one-pager.
+
+`;
+}
+
+function buildSection3UpgradeTailMarkdown(preserve: boolean): string {
+  return preserve
+    ? `\n- **Upgrade-modus:** wijzig geen bestaande sectie-\`html\` tenzij minimaal nodig voor nieuwe \`#id\`-links; nieuwe secties sluiten qua Tailwind-stijl aan op de bestaande blokken.\n`
+    : "";
+}
+
+/** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
+function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTailInput): string {
+  const { preserve, requiredIdsLine, section4Nav, section5IdsNote } = input;
+  return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
+
+- **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum, geen lege placeholders) — **maar** geen **verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (zie **CONTENT AUTHORITY** hierboven). Headlines en USP's: alleen claims die uit de **briefing** volgen; ontbreken die feiten → neutrale, bescheiden copy zonder fake social proof of prijzen. FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands (geen kromme woorden of verkeerde werkwoordsvormen zoals "Productic" i.p.v. "Productie").
+- **Sectie-ankers:** Het **buitenste** element van elke sectie-\`html\` (eerste tag, meestal \`<section>\`) heeft \`id="…"\` dat **exact gelijk** is aan de JSON-\`id\` van die sectie (bijv. \`"id": "faq"\` → \`<section id="faq" class="…">\`). Zo werkt elke interne link.
+- **Interne links (\`#…\`):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#…">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen — plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).
+- **Contact:** Zonder e-mail/telefoon in de briefing: gebruik **werkende** \`mailto:\`/\`tel:\` met **plausible** adressen afgeleid van de bedrijfsnaam (bijv. \`mailto:info@<kortenaam-zonder-spaties>.nl\`, \`tel:+3185…\` als fictief maar **geldig formaat**) **of** link naar \`#contact\` / \`#footer\` waar een duidelijk contactblok staat — geen dode knoppen.
+- **WhatsApp:** Alleen \`https://wa.me/…\` als een nummer in de briefing staat; anders CTA naar \`#contact\` met copy "Neem contact op".
+- **Extern (https):** Alleen \`https://\` URL's; gebruik **bestaande** patronen (Google Maps-zoeklink, officiële social templates) of vermijd de link en gebruik intern \`#contact\`. Geen \`http://\` zonder TLS.
+- **Knoppen:** Geen decoratieve \`<button>\` zonder actie: gebruik \`<a class="…">\` met echte \`href\` voor navigatie.
+- **Nieuw tabblad:** Bij \`target="_blank"\` altijd \`rel="noopener noreferrer"\`.
+${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten **behalve** een **minimale** UX-fix als de primaire nav bij scroll onbruikbaar wegglijdt: \`sticky\`, \`fixed\` of hoge \`z-\` + voldoende contrast aanvullen **zonder** de hele header-layout te herontwerpen. **Nieuwe** secties: zelfde regels (root-\`id\`, alleen geldige \`href\`). Nieuwe nav-items: verwijzen naar bestaande **of** nieuwe id's; geen \`href="#"\`.\n` : ""}
+=== 4. TECHNISCHE HTML-REGELS ===
+
+- Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
+- **Afbeeldingen — BELANGRIJK:** De foto moet **inhoudelijk kloppen** bij de tekst ernaast. Een sectie over waterglijbanen toont waterglijbanen, niet een kantoor. Een restaurant toont eten, niet cosmetica.
+  - Gebruik \`https://images.unsplash.com/photo-XXXX?auto=format&fit=crop&w=800&q=80\` met een \`photo-\` id dat het juiste onderwerp toont. Relevante beelden helpen; gradient/kleurvlak mag als het past.
+  - \`alt\`-tekst beschrijft wat de foto **moet** tonen (bijv. \`alt="Barbershop interieur met klassieke stoelen en warme verlichting"\`), niet een generieke beschrijving.
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en foto's die **niet matchen** met de context van het blok.
+  - Voor overige secties (niet-hero): als je geen passende foto vindt, is een sfeervolle **gradient of kleurvlak** acceptabel — maar probeer altijd **eerst** een goede foto.
+- Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
+${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
+
+=== 5. OUTPUT-FORMAAT (strikt JSON) ===
+
+Lever **uitsluitend** één JSON-object. Geen markdown, geen code fences, geen tekst ervoor of erna.
+
+Structuur:
+
+{
+  "config": {
+    "style": "korte naam van je gekozen visuele richting (max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens)",
+    "theme": {
+      "primary": "#hex (merkbasis)",
+      "accent": "#hex (contrasterende CTA)",
+      "primaryLight": "#hex",
+      "primaryMain": "#hex",
+      "primaryDark": "#hex",
+      "secondary": "#hex (optioneel — zichtbaar in UI)",
+      "background": "#hex (optioneel pagina/sectie-basis)",
+      "textColor": "#hex (optioneel bodytekst)",
+      "textMuted": "#hex (optioneel subtekst)",
+      "vibe": "luxury|rustic|modern|minimal|playful|corporate|creative|warm|industrial|artisan (optioneel — alleen deze waarden)",
+      "typographyStyle": "modern|elegant|bold|minimal|playful|industrial|artisan (optioneel — alleen deze waarden)",
+      "borderRadius": "none|sm|md|lg|xl|2xl|full (optioneel)",
+      "shadowScale": "none|sm|md|lg|xl|2xl (optioneel)",
+      "spacingScale": "compact|normal|relaxed|generous (optioneel)"
+    },
+    "font": "CSS font-stack, bijv. Inter, system-ui, sans-serif"
+  },
+  "sections": [
+    { "id": "hero", "html": "<section id=\\"hero\\" class=\\"... min-h …\\">… geldige Tailwind + evt. data-animation …</section>" },
+    { "id": "features", "html": "<section id=\\"features\\" class=\\"py-16 md:py-24 …\\">…</section>" }
+  ]
+}
+
+Minimaal deze sectie-\`id\`'s (eigen volgorde mag): ${requiredIdsLine}. Je mag \`name\` per sectie toevoegen (optioneel); anders wordt het label afgeleid van \`id\`.${section5IdsNote}
+
+JSON moet geldig zijn.`;
+}
+
+/**
+ * `SITE_GENERATION_MINIMAL_PROMPT=1|true|yes` — minder sturing (geen branche-/stijl-/variatieblokken).
+ * API kan `minimalPrompt: true` zetten (wint niet over env: beide activeren minimal).
+ */
+export function isSiteGenerationMinimalPromptFromEnv(): boolean {
+  const v = process.env.SITE_GENERATION_MINIMAL_PROMPT?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** Alleen briefing + CONTENT AUTHORITY + studio-contract + technische tail — geen INDUSTRY/DESIGNTAAL/variatie/§1/shop-blokken. */
+function buildMinimalWebsiteGenerationUserPrompt(
+  businessName: string,
+  description: string,
+  _recentClientNames: string[],
+  options?: GenerateSitePromptOptions,
+): string {
+  const preserve = Boolean(options?.preserveLayoutUpgrade);
+  const packageBlock = getGenerationPackagePromptBlock(undefined, { preserveLayoutUpgrade: preserve });
+  const existingBlock = buildExistingSiteJsonBlock(options?.existingSiteTailwindJson);
+  const upgrade0A = preserve ? `${buildUpgradePreserveLayoutBlock()}\n\n` : "";
+  const section1 = preserve ? `${buildUpgradeMergeSection()}\n\n` : "";
+  const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
+  const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve);
+  const { section4Nav, section5IdsNote, requiredIdsLine } = buildOperationalNavParts(
+    preserve,
+    options?.sectionIdsHint,
+  );
+  const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
+  const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
+  const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
+  const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
+
+  const psychColorLeadMin = preserve
+    ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
+    : "";
+
+  return `Je genereert **één** one-pager als JSON (Tailwind). Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
+
+Bedrijfsnaam: ${businessName}
+Context / branche: ${description}
+${clientImagesBlock}${referenceSiteBlock}
+${upgrade0A}${contentAuthorityBlock}
+
+=== 0B. SITE STUDIO — PRODUCTINSTRUCTIES ===
+
+${packageBlock}${existingBlock}
+${section1}=== KERN (technisch) ===
+
+1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
+2. **Responsive** layout; sectie-\`id\`'s kloppen met \`href="#…"\` overal.
+3. Altijd \`config\` (volledig \`theme\`) + \`sections\`.
+4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : "Geen vast sjabloon — de briefing is leidend."}
+
+=== 2. THEMA / KLEUR ===
+
+${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet in de HTML zichtbaar terugkomen. ${preserve ? "" : "Oranje alleen als het inhoudelijk past."}
+
+=== 3. PAGINA → HTML (Tailwind) ===
+
+- **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll.
+- **Hero:** sterke eerste indruk; **geen** vaste knoppen/CTA in de hero tenzij de briefing dat **expliciet** vraagt.
+- **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
+- **Klantfoto's:** volg het blok hierboven (niet in de hero).
+- Optioneel \`data-animation\`, \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud); **geen** laser tenzij de briefing **expliciet** futuristisch/neon/scan vraagt (§3). Video alleen met **werkende** MP4-URL.
+
+${section3Tail}${section3HeroHeight}
+
+${getAlpineInteractivityPromptBlock()}
+
+${buildSiteGenerationOperationalTail({ preserve, requiredIdsLine, section4Nav, section5IdsNote })}`;
+}
+
+export function buildWebsiteGenerationUserPrompt(
+  businessName: string,
+  description: string,
+  recentClientNames: string[],
+  options?: GenerateSitePromptOptions,
+): string {
+  const recent = formatRecentClientsLine(recentClientNames);
+  if (options?.minimalPrompt) {
+    return buildMinimalWebsiteGenerationUserPrompt(businessName, description, recentClientNames, options);
+  }
+  const preserve = Boolean(options?.preserveLayoutUpgrade);
+  const variance = preserve
+    ? buildUpgradePreserveLayoutBlock()
+    : buildVarianceBlock(businessName, description, recentClientNames, options?.varianceNonce);
+  const packageBlock = getGenerationPackagePromptBlock(undefined, { preserveLayoutUpgrade: preserve });
+  const existingBlock = buildExistingSiteJsonBlock(options?.existingSiteTailwindJson);
+  const section1 = preserve ? buildUpgradeMergeSection() : buildUniquenessProtocolSection(recent);
+
+  const psychColorLead = preserve
+    ? `In **upgrade-modus met bron-JSON:** negeer "nieuw palet kiezen" — kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. Zonder bron-JSON: trek \`config\` uit de briefing en wijzig die niet gratuit.\n\n`
+    : "";
+
+  const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
+  const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve);
+  const { section4Nav, section5IdsNote, requiredIdsLine } = buildOperationalNavParts(
+    preserve,
+    options?.sectionIdsHint,
+  );
+  const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
+
+  const detectedSections = new Set(
+    options?.sectionIdsHint ?? buildSectionIdsFromBriefing(description),
+  );
+  const brancheSectionBlocks = buildBrancheSectionPromptBlocks(detectedSections);
+  const industryHint = buildIndustryPromptHint(description);
+
+  const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
+  const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
+  const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
+
+  return `Je genereert **één** one-pager als JSON (Tailwind). Maak een **professionele, leesbare** site die past bij de briefing — je hebt ruimte om zelf sterk ontwerp te kiezen.
+
+Bedrijfsnaam: ${businessName}
+Context / branche: ${description}
+${clientImagesBlock}${referenceSiteBlock}
+=== SFEER (lees de briefing) ===
+
+Let op woorden als vintage, modern, strak, warm, luxe, beige, donker, speels — én expliciete stijlen zoals **glassmorphism**, **neumorphism**, **flat/minimal**, **gradients**, **brutalism**, **cyberpunk/futuristisch**, **editorial**, **skeuomorphism** — vertaal ze naar kleur, typografie en beeld **als de briefing dat impliceert**.
+
+- **Kleur:** als de briefing een palet noemt, volg dat. Anders: kies een coherent palet dat bij branche en toon past (warm, koel, contrastrijk, minimal, …).
+- **Typografie en beeld:** serif vs. sans, schaduwen, foto vs. typografie — laat de briefing leidend zijn; geen verplichte "premium barber"-formule.
+- **Branche ≠ één look:** dezelfde branche kan rustiek, luxe, urban of minimal — kies wat het beste aansluit op de **tekst** van de klant.
+- **Stijlen mixen:** meerdere trefwoorden in de briefing betekenen **niet** automatisch “alles erin”. Zie het blok **MEERDERE STIJL-SIGNALEN** hieronder: **alleen combineren wat esthetisch samenhangt**; anders **één** dominante stijl (zoals gedetecteerd) en de rest laten vallen.
+- **Geen “twee sites in één”:** **één** navbar, **één** visueel taalspoor (typografie + layout-ritme) — geen losse experimenten per sectie die niet bij elkaar horen.
+
+${variance}
+${industryHint}
+${contentAuthorityBlock}
+
+=== 0B. SITE STUDIO — PRODUCTINSTRUCTIES (gaat boven algemene uitbreiding) ===
+
+${packageBlock}${existingBlock}
+
+=== 0. KERN (technisch + kwaliteit) ===
+
+1. Output = **één geldig JSON** volgens §5 — geen andere vorm.
+2. **Balans:** duidelijke hiërarchie en leesbaarheid; \`60-30-10\` is optionele richting, geen wiskunde.
+3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; sectie-\`id\`'s consistent met ankers.
+4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`.
+5. **Kleur:** als een flashy wens botst met de branche, gebruik die kleur liever **als accent** (§2). ${preserve ? " **Upgrade:** bestaande \`config.theme\` uit bron wint." : ""}
+
+${section1}
+
+=== 2. THEMA / KLEUR ===
+
+${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`primaryLight\` / \`primaryMain\` / \`primaryDark\` + contrasterende \`accent\`. Oranje alleen als het inhoudelijk klopt; de accent-suggestie in §0A is **vrijwillig**. Houd dominante vlakken rustig.
+
+**Kleur in HTML:** laat \`config.theme\` ook in de markup terugkomen (achtergronden, accenten, CTA) — niet alleen in metadata. Als de briefing warm beige/zand vraagt, vermijd een volledig koud-grijs default-palet tenzij dat bewust past.
+
+=== 3. PAGINA COMPOSEREN → HTML (Tailwind) ===
+
+**Vrijheid:** hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan).
+
+**Navigatie (one-pager):** **één** globale nav met **merk/bedrijfsnaam** en **minstens twee tot vier** interne links \`href="#sectie-id"\`; **geen tweede** volledige menu (geen verticale dubbele linklijst + topbar met dezelfde items). Primaire CTA mag in de nav en/of **één** vaste floating afspraakknop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Niet** leveren zonder zichtbare site-nav boven de vouw.
+
+**Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
+
+**Hero (\`#hero\`):** eerste indruk: kop, eventueel korte intro en sterk visueel element; **optioneel** één primaire CTA (mag ook alleen in de nav staan). Volg de **viewport-/min-h-regels** hieronder (§VIEWPORT) zodat de preview geen smalle strook + leeg wit wordt. Combineer tekst met **foto (Unsplash), split-layout of gradient** waar dat sterk is; een **kaal effen donkervlak zonder enige laag** is meestal zwak — tenzij de briefing expliciet zo minimaal wil. **Achtergrond-\`<video>\`:** **niet** standaard — alleen als de gebruikersbriefing **expliciet** om video, bewegende achtergrond, filmische loop, fullscreen motion of dergelijke vraagt (losse woorden als “cinematisch”, “premium” of “stoer” tellen **niet** als video-mandaat). Houd je aan **BRANCHE-INSPIRATIE** (bijv. barbershop: grote **stilstaande** cinematic foto, geen Pexels-achtergrondvideo tenzij de briefing om beweging vraagt).
+
+**Klantfoto's:** blijven **buiten** de hero (zie blok KLANTFOTO'S hierboven).
+
+**Verdere secties:** typisch \`py-16 md:py-24\` en \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of jouw ontwerp dat vraagt. Wissel achtergronden voor ritme; **geen** harde eis op aantal donkere banden.
+
+**Diensten / features:** kies lijst, grid, split of iets anders — wat bij inhoud en branche past.
+
+**Decoratie:** optioneel kleine **inline SVG** of \`data-lucide\` — niet verplicht.
+
+**Animatie (\`data-animation\`):** optioneel op koppen, blokken, kaarten; studio triggert bij scroll. **Geen** minimum aantal elementen.
+
+**Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
+
+**Laserlijn / scan (zelden — zoals Lovable alleen op **passende** cyber-hero’s):** **Standaard: helemaal geen** \`studio-laser-*\`. Zelfde principe als marquee: **niet** decoreren omdat het kan. Alleen als de klant **duidelijk** om zo’n effect vraagt: woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn, futuristische interface**, of \`Stijl: …\` / zin die dat expliciet maakt. **Niet** toevoegen op basis van “branche is kapper” of “donker thema” alleen — dan **geen** laser. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` hero; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal op de pagina).
+
+**Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
+
+**Video-hero (alleen na expliciete briefing — zie hero-regel hierboven):** als de briefing **video / bewegende achtergrond / filmische hero** (als bewegend beeld) vraagt **zonder** eigen klant-URL: gebruik **altijd** een echt \`<video autoplay muted loop playsinline>\` met **één** van de **studio-standaard MP4-URL's** uit het blok **STUDIO-VOORZIENE ACHTERGRONDVIDEO** hieronder (Alpine/interactie-sectie). Geen verzonnen URLs; geen “CSS-video” i.p.v. \`<video>\` tenzij de briefing uitdrukkelijk statisch wil. **Geen** \`poster\` met een **andere** stockfoto dan de video — dat **knippert** zichtbaar bij buffer/loop; volg het patroon in dat blok (\`bg-black\` op wrapper, \`preload="auto"\`, poster weglaten tenzij matcht met video).
+
+**Foto's:** relevante Unsplash waar het helpt; gradient of kleurvlak mag. Match onderwerp met tekst.
+
+${section3Tail}${section3HeroHeight}
+
+${getAlpineInteractivityPromptBlock()}
+${brancheSectionBlocks}
+${buildSiteGenerationOperationalTail({ preserve, requiredIdsLine, section4Nav, section5IdsNote })}`;
+}
+
+export type GenerateSiteResult =
+  | { ok: true; data: GeneratedTailwindPage }
+  | { ok: false; error: string; rawText?: string };
+
+export type GenerateSiteStreamHooks = {
+  onTextDelta?: (chunk: string) => void;
+};
+
+type PreparedGenerateSiteClaudeCall = {
+  client: Anthropic;
+  /** Model voor de site-generatie zelf (streaming, groot output). */
+  generateModel: string;
+  /** Model voor support-calls: self-review, design rationale (non-streaming, kleiner). */
+  supportModel: string;
+  max_tokens: number;
+  system?: string;
+  userContent: string | ContentBlockParam[];
+  homepagePlan: HomepagePlan;
+  pipelineFeedback: GenerationPipelineFeedback;
+};
+
+type PrepareGenerateSiteResult = PreparedGenerateSiteClaudeCall | { ok: false; error: string };
+
+async function prepareGenerateSiteClaudeCall(
+  businessName: string,
+  description: string,
+  recentClientNames: string[],
+  promptOptions?: GenerateSitePromptOptions,
+): Promise<PrepareGenerateSiteResult> {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) {
+    return {
+      ok: false,
+      error: `ANTHROPIC_API_KEY ontbreekt in de omgeving. ${ANTHROPIC_KEY_MISSING_USER_HINT}`,
+    };
+  }
+
+  const generateModel = process.env.ANTHROPIC_GENERATE_MODEL ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_GENERATE_MODEL;
+  const supportModel = process.env.ANTHROPIC_MODEL ?? DEFAULT_SUPPORT_MODEL;
+  const client = new Anthropic({ apiKey });
+
+  const { systemText: knowledgeSystem, userPrefixBlocks } = await getKnowledgeContextForClaude();
+
+  const preserveLayout = Boolean(promptOptions?.preserveLayoutUpgrade);
+  const mergedPromptOptions: GenerateSitePromptOptions = {
+    ...promptOptions,
+    varianceNonce: promptOptions?.varianceNonce ?? randomUUID(),
+  };
+
+  const refUrlRequested = mergedPromptOptions.referenceStyleUrl?.trim();
+  let referenceSiteSnapshot: { url: string; excerpt: string } | undefined;
+  let referenceStyleField: GenerationPipelineFeedback["interpreted"]["referenceStyle"] | undefined;
+  if (refUrlRequested) {
+    const fr = await fetchReferenceSiteForPrompt(refUrlRequested);
+    if (fr.ok) {
+      referenceSiteSnapshot = { url: fr.finalUrl, excerpt: fr.excerpt };
+      referenceStyleField = {
+        requestedUrl: refUrlRequested,
+        status: "ingested",
+        finalUrl: fr.finalUrl,
+        excerptChars: fr.excerpt.length,
+      };
+    } else {
+      referenceStyleField = {
+        requestedUrl: refUrlRequested,
+        status: "failed",
+        error: fr.error,
+      };
+    }
+  }
+
+  const briefingSectionIds = buildSectionIdsFromBriefing(description, promptOptions?.sectionIdsHint);
+  const sectionIds = [...briefingSectionIds];
+  if (preserveLayout && promptOptions?.existingSiteTailwindJson) {
+    const existing = extractSectionIdsFromTailwindUpgradeJson(promptOptions.existingSiteTailwindJson);
+    if (existing) {
+      sectionIds.length = 0;
+      sectionIds.push(...mergeUpgradeSectionOrder(existing, briefingSectionIds));
+    }
+  }
+
+  const homepagePlan = buildMinimalHomepagePlan(sectionIds);
+
+  const detectedIndustry = detectIndustry(description);
+  const styleResolved = resolveStyleDetection(description);
+  const minimalPrompt =
+    Boolean(mergedPromptOptions.minimalPrompt) || isSiteGenerationMinimalPromptFromEnv();
+  const pipelineFeedback: GenerationPipelineFeedback = {
+    model: generateModel,
+    interpreted: {
+      businessName: businessName.trim(),
+      description: description.trim().slice(0, 500),
+      sections: sectionIds,
+      detectedIndustry: detectedIndustry?.label,
+      detectedIndustryId: detectedIndustry?.id,
+      detectedStyle: styleResolved.profile?.label,
+      detectedStyleId: styleResolved.profile?.id,
+      styleDetectionSource: styleResolved.source,
+      ...(referenceStyleField ? { referenceStyle: referenceStyleField } : {}),
+      minimalPrompt,
+    },
+  };
+
+  const { referenceStyleUrl: _omitRefUrl, ...promptOptsForBuild } = mergedPromptOptions;
+  const corePrompt = buildWebsiteGenerationUserPrompt(
+    businessName,
+    description,
+    recentClientNames,
+    {
+      ...promptOptsForBuild,
+      sectionIdsHint: sectionIds,
+      ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
+      minimalPrompt,
+    },
+  );
+  const mainUserPrompt = corePrompt;
+
+  const maxTokensRaw = Number.parseInt(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS ?? "", 10);
+  const max_tokens = Number.isFinite(maxTokensRaw) && maxTokensRaw >= 4096
+    ? Math.min(maxTokensRaw, 64_000)
+    : DEFAULT_MAX_OUTPUT_TOKENS;
+
+  const userContent: string | ContentBlockParam[] =
+    userPrefixBlocks.length > 0
+      ? [...userPrefixBlocks, { type: "text", text: `\n\n=== OPDRACHT (site-generatie) ===\n\n${mainUserPrompt}` }]
+      : mainUserPrompt;
+
+  const systemParts = [
+    minimalPrompt ? MASTER_SITE_SYSTEM_PROMPT_MINIMAL : MASTER_SITE_SYSTEM_PROMPT,
+  ];
+  if (knowledgeSystem?.trim()) {
+    systemParts.push(knowledgeSystem.trim());
+  }
+  const system = systemParts.join("\n\n---\n\n");
+
+  return {
+    client,
+    generateModel,
+    supportModel,
+    max_tokens,
+    system,
+    userContent,
+    homepagePlan,
+    pipelineFeedback,
+  };
+}
+
+export function withContentClaimDiagnostics(data: GeneratedTailwindPage): GeneratedTailwindPage {
+  const html = data.sections.map((s) => s.html).join("\n");
+  return {
+    ...data,
+    contentClaimDiagnostics: buildContentClaimDiagnosticsReport(html),
+  };
+}
+
+function finalizeGenerateSiteFromClaudeText(
+  textBody: string,
+  stop_reason: string | null,
+): GenerateSiteResult {
+  if (!textBody.trim()) {
+    return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
+  }
+
+  const parsedResult = parseModelJsonObject(textBody);
+  if (!parsedResult.ok) {
+    const truncated =
+      stop_reason === "max_tokens"
+        ? " Het antwoord werd afgekapt (max_tokens). Verhoog ANTHROPIC_MAX_OUTPUT_TOKENS of verkort de briefing."
+        : "";
+    return {
+      ok: false,
+      error: `Antwoord is geen geldige JSON.${truncated}`,
+      rawText: textBody,
+    };
+  }
+
+  const validated = claudeTailwindPageOutputSchema.safeParse(parsedResult.value);
+  if (!validated.success) {
+    return {
+      ok: false,
+      error: `JSON voldoet niet aan het schema: ${validated.error.message}`,
+      rawText: textBody,
+    };
+  }
+
+  const processed = postProcessClaudeTailwindPage(validated.data);
+  return { ok: true, data: mapClaudeOutputToSections(processed) };
+}
+
+export async function generateSiteWithClaude(
+  businessName: string,
+  description: string,
+  recentClientNames: string[] = [],
+  promptOptions?: GenerateSitePromptOptions,
+  streamHooks?: GenerateSiteStreamHooks,
+): Promise<GenerateSiteResult> {
+  const prepared = await prepareGenerateSiteClaudeCall(businessName, description, recentClientNames, promptOptions);
+
+  if ("ok" in prepared && prepared.ok === false) {
+    return { ok: false, error: prepared.error };
+  }
+
+  const p = prepared as PreparedGenerateSiteClaudeCall;
+
+  let textBody = "";
+  let usage: MessageDeltaUsage | null = null;
+  let stop_reason: string | null = null;
+
+  try {
+    for await (const ev of streamClaudeMessageText(p.client, {
+      model: p.generateModel,
+      max_tokens: p.max_tokens,
+      system: p.system,
+      userContent: p.userContent,
+    })) {
+      if (ev.type === "delta") {
+        textBody += ev.text;
+        streamHooks?.onTextDelta?.(ev.text);
+      } else {
+        usage = ev.usage;
+        stop_reason = ev.stop_reason;
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Claude-streaming mislukt.";
+    return { ok: false, error: msg };
+  }
+
+  if (usage) {
+    await logClaudeMessageUsage("generate_site", p.generateModel, {
+      input_tokens: usage.input_tokens ?? 0,
+      output_tokens: usage.output_tokens,
+      cache_creation_input_tokens: usage.cache_creation_input_tokens,
+      cache_read_input_tokens: usage.cache_read_input_tokens,
+    });
+  }
+
+  const result = finalizeGenerateSiteFromClaudeText(textBody, stop_reason);
+  if (!result.ok) {
+    return result;
+  }
+
+  let data = withContentClaimDiagnostics(result.data);
+
+  const reviewed = await applySelfReviewToGeneratedPage({
+    client: p.client,
+    model: p.supportModel,
+    businessName,
+    description,
+    draft: data,
+    homepagePlan: p.homepagePlan,
+    preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+    pipelineInterpreted: p.pipelineFeedback.interpreted,
+  });
+  data = reviewed.data;
+
+  data = {
+    ...data,
+    sections: await replaceUnsplashImagesInSections(
+      data.sections,
+      process.env.UNSPLASH_ACCESS_KEY,
+    ),
+  };
+
+  data = {
+    ...data,
+    sections: ensureCanonicalBookingSectionInTailwindSections(data.sections),
+  };
+
+  if (process.env.NODE_ENV === "development") {
+    const joined = data.sections.map((s) => s.html).join("\n");
+    const v = validateGeneratedPageHtml(joined, p.homepagePlan);
+    if (v.errors.length > 0 || v.warnings.length > 0) {
+      console.warn("[validateGeneratedPageHtml]", v);
+    }
+  }
+
+  return { ok: true, data };
+}
+
+export type GenerateSiteStreamNdjsonEvent =
+  | { type: "status"; message: string }
+  | { type: "generation_meta"; feedback: GenerationPipelineFeedback }
+  | { type: "design_rationale"; text: string | null; skipReason?: string }
+  | { type: "self_review"; ran: boolean; refined: boolean }
+  | { type: "token"; content: string }
+  | { type: "section_complete"; section: { id: string; html: string; sectionName?: string } }
+  | { type: "complete"; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage }
+  | { type: "complete"; outputFormat: "react_sections"; data: ReactSiteDocument }
+  | { type: "error"; message: string; rawText?: string };
+
+export type CreateGenerateSiteReadableStreamOptions = {
+  onSuccess?: (data: GeneratedTailwindPage) => Promise<void>;
+};
+
+export function createGenerateSiteReadableStream(
+  businessName: string,
+  description: string,
+  recentClientNames: string[],
+  promptOptions?: GenerateSitePromptOptions,
+  streamOptions?: CreateGenerateSiteReadableStreamOptions,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const send = (controller: ReadableStreamDefaultController<Uint8Array>, event: GenerateSiteStreamNdjsonEvent) => {
+    controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+  };
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        send(controller, { type: "status", message: "Generatie gestart" });
+
+        const prepared = await prepareGenerateSiteClaudeCall(
+          businessName,
+          description,
+          recentClientNames,
+          promptOptions,
+        );
+
+        if ("ok" in prepared && prepared.ok === false) {
+          send(controller, { type: "error", message: prepared.error });
+          controller.close();
+          return;
+        }
+
+        const p = prepared as PreparedGenerateSiteClaudeCall;
+        send(controller, { type: "generation_meta", feedback: p.pipelineFeedback });
+
+        send(controller, { type: "status", message: "Denklijn uitschrijven (interpretatie → woorden)…" });
+        const rationale = await generateDesignRationaleWithClaude(p.client, p.supportModel, {
+          businessName,
+          description,
+          feedback: p.pipelineFeedback,
+        });
+        if (rationale.ok) {
+          send(controller, { type: "design_rationale", text: rationale.text });
+        } else {
+          send(controller, {
+            type: "design_rationale",
+            text: null,
+            skipReason: rationale.error,
+          });
+        }
+
+        send(controller, { type: "status", message: "Pagina genereren (HTML/JSON)…" });
+        let buffer = "";
+        const sentSectionIds = new Set<string>();
+        let extractTick = 0;
+        let usage: MessageDeltaUsage | null = null;
+        let stop_reason: string | null = null;
+
+        for await (const ev of streamClaudeMessageText(p.client, {
+          model: p.generateModel,
+          max_tokens: p.max_tokens,
+          system: p.system,
+          userContent: p.userContent,
+        })) {
+          if (ev.type === "delta") {
+            buffer += ev.text;
+            send(controller, { type: "token", content: ev.text });
+            extractTick += 1;
+            if (buffer.length < 120_000 || extractTick % 14 === 0) {
+              const { newSections } = tryExtractCompletedSections(buffer, sentSectionIds);
+              for (const section of newSections) {
+                send(controller, { type: "section_complete", section });
+              }
+            }
+          } else {
+            usage = ev.usage;
+            stop_reason = ev.stop_reason;
+          }
+        }
+
+        if (usage) {
+          await logClaudeMessageUsage("generate_site", p.generateModel, {
+            input_tokens: usage.input_tokens ?? 0,
+            output_tokens: usage.output_tokens,
+            cache_creation_input_tokens: usage.cache_creation_input_tokens,
+            cache_read_input_tokens: usage.cache_read_input_tokens,
+          });
+        }
+
+        const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason);
+        if (!result.ok) {
+          send(controller, {
+            type: "error",
+            message: result.error,
+            ...(result.rawText ? { rawText: result.rawText } : {}),
+          });
+          controller.close();
+          return;
+        }
+
+        let data = withContentClaimDiagnostics(result.data);
+
+        send(controller, {
+          type: "status",
+          message: "Kwaliteitscontrole: concept nalopen en zo nodig verbeteren (zelfreview)…",
+        });
+        const reviewed = await applySelfReviewToGeneratedPage({
+          client: p.client,
+          model: p.supportModel,
+          businessName,
+          description,
+          draft: data,
+          homepagePlan: p.homepagePlan,
+          preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+          pipelineInterpreted: p.pipelineFeedback.interpreted,
+        });
+        data = reviewed.data;
+        send(controller, { type: "self_review", ran: reviewed.ran, refined: reviewed.usedRefined });
+        send(controller, {
+          type: "status",
+          message: reviewed.usedRefined
+            ? "Zelfreview toegepast — finale HTML bijgewerkt."
+            : reviewed.ran
+              ? "Zelfreview afgerond (geen wijziging of overgeslagen)."
+              : "Zelfreview overgeslagen (upgrade-modus of uitgeschakeld).",
+        });
+
+        if (process.env.UNSPLASH_ACCESS_KEY) {
+          send(controller, {
+            type: "status",
+            message: "Afbeeldingen matchen via Unsplash…",
+          });
+        }
+        data = {
+          ...data,
+          sections: await replaceUnsplashImagesInSections(
+            data.sections,
+            process.env.UNSPLASH_ACCESS_KEY,
+          ),
+        };
+
+        data = {
+          ...data,
+          sections: ensureCanonicalBookingSectionInTailwindSections(data.sections),
+        };
+
+        if (process.env.NODE_ENV === "development") {
+          const joined = data.sections.map((s) => s.html).join("\n");
+          const v = validateGeneratedPageHtml(joined, p.homepagePlan);
+          if (v.errors.length > 0 || v.warnings.length > 0) {
+            console.warn("[validateGeneratedPageHtml]", v);
+          }
+        }
+
+        await streamOptions?.onSuccess?.(data);
+
+        send(controller, { type: "complete", outputFormat: "tailwind_sections", data });
+        send(controller, { type: "status", message: "Generatie voltooid" });
+        controller.close();
+      } catch (error) {
+        send(controller, {
+          type: "error",
+          message: error instanceof Error ? error.message : "Onbekende fout",
+        });
+        controller.close();
+      }
+    },
+  });
+}
+
+export function generateSiteWithClaudeStreaming(
+  businessName: string,
+  description: string,
+  recentClientNames: string[],
+  promptOptions?: GenerateSitePromptOptions,
+  streamOptions?: CreateGenerateSiteReadableStreamOptions,
+): ReadableStream<Uint8Array> {
+  return createGenerateSiteReadableStream(businessName, description, recentClientNames, promptOptions, streamOptions);
+}
