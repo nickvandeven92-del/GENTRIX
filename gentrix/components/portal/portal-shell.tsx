@@ -56,12 +56,12 @@ export function PortalShell({
       ) : null}
       <div className="sticky top-0 z-40">
         <header className="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2">
-            <div>
+          <div className="mx-auto flex max-w-6xl min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Klantportaal</p>
-              <p className="font-semibold text-zinc-900 dark:text-zinc-50">{clientName}</p>
+              <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">{clientName}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
               <a
                 href={siteHref}
                 target="_blank"

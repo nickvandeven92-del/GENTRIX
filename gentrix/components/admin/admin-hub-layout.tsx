@@ -336,7 +336,7 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
                   })}
             </div>
           </div>
-          <main className="mx-auto max-w-6xl p-4 md:p-8">{children}</main>
+          <main className="mx-auto max-w-6xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8">{children}</main>
         </div>
       </div>
     </div>

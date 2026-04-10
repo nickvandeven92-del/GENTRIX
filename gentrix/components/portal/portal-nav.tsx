@@ -37,10 +37,15 @@ export function PortalNav({
 
   return (
     <nav
-      className="border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900"
+      className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
       aria-label="Portaal"
     >
-      <div className="mx-auto flex max-w-6xl flex-wrap gap-1 py-2">
+      <div
+        className={cn(
+          "mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2",
+          "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        )}
+      >
         {items.map(({ href, label }) => {
           const active =
             href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
@@ -49,7 +54,7 @@ export function PortalNav({
               key={href}
               href={href}
               className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium",
+                "shrink-0 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap",
                 active
                   ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
                   : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800",

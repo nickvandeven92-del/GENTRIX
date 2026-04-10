@@ -53,21 +53,27 @@ export function DashboardLayout() {
         </div>
       </aside>
 
-      {/* Mobile nav */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t flex overflow-x-auto">
-        {navItems.slice(0, 5).map(item => {
+      {/* Mobile nav — horizontaal scrollbaar zodat alle items bereikbaar zijn */}
+      <div
+        className={cn(
+          'lg:hidden fixed bottom-0 left-0 right-0 z-50 flex gap-0.5 overflow-x-auto border-t bg-card px-1 py-1',
+          '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          'pb-[max(0.5rem,env(safe-area-inset-bottom))]',
+        )}
+      >
+        {navItems.map(item => {
           const active = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'flex-1 flex flex-col items-center py-2 text-xs min-w-0',
-                active ? 'text-primary' : 'text-muted-foreground'
+                'flex min-w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-lg px-1 py-2 text-[11px] leading-tight',
+                active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground',
               )}
             >
-              <item.icon className="w-4 h-4 mb-0.5" />
-              <span className="truncate">{item.label}</span>
+              <item.icon className="mb-0.5 h-4 w-4 shrink-0" />
+              <span className="max-w-[4.25rem] text-center">{item.label}</span>
             </Link>
           );
         })}
