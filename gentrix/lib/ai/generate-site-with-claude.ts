@@ -1216,7 +1216,9 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 **Decoratie:** optioneel kleine **inline SVG** of \`data-lucide\` — niet verplicht.
 
-**Animatie (\`data-animation\`):** optioneel op koppen, blokken, kaarten; studio triggert bij scroll. **Geen** minimum aantal elementen.
+**Animatie (\`data-animation\`):** standaard **optioneel** op koppen, blokken, kaarten; de studio zet bij scroll \`.studio-in-view\` en triggert o.a. \`fade-up\` (inhoud schuift van onder naar binnen — geen GSAP nodig).
+**Verplicht als de briefing expliciet om beweging vraagt:** woorden/zinnen zoals **interactief**, **dynamisch**, **animatie**, **motion**, **micro-interactions**, **scroll-animaties**, **in beweging**, **levend** (in die zin): zet dan op **minstens 10** zichtbare blokken (koppen \`h2\`/\`h3\`, feature-kaarten, grotere tekstkolommen — niet op elk klein label) \`data-animation="fade-up"\` of afwisselend \`slide-in-left\` / \`slide-in-right\` / \`scale-in\` voor variatie. Eerste scherm (hero + evt. nav): mag subtiel; onder de vouw duidelijker.
+**Rand/kader dat als los lijnwerk “rond de viewport” meescrolt** is **geen** ondersteund studio-patroon — gebruik reveal-animaties, \`transition\` op kaarten, of (alleen bij passende futuristische briefing) max. één \`studio-laser-*\` in de hero (zie laser-regel).
 
 **Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
 
@@ -1679,7 +1681,11 @@ export function createGenerateSiteReadableStream(
           }
         }
 
-        await streamOptions?.onSuccess?.(data);
+        try {
+          await streamOptions?.onSuccess?.(data);
+        } catch (journalErr) {
+          console.error("[generate-site-stream] onSuccess (journal/log) mislukt; generatie wordt alsnog afgerond:", journalErr);
+        }
 
         send(controller, { type: "complete", outputFormat: "tailwind_sections", data });
         send(controller, { type: "status", message: "Generatie voltooid" });

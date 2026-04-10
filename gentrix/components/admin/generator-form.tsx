@@ -13,6 +13,7 @@ import {
 } from "@/lib/ai/stream-json-section-extractor";
 import { publishedPayloadFromParsed } from "@/lib/site/project-published-payload";
 import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
+import type { GenerateSiteStreamNdjsonEvent } from "@/lib/ai/generate-site-with-claude";
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,8 @@ export function GeneratorForm({
   const [designRationale, setDesignRationale] = useState<string | null>(null);
   const [designRationaleLoading, setDesignRationaleLoading] = useState(false);
   const [designRationaleSkipReason, setDesignRationaleSkipReason] = useState<string | null>(null);
+  /** Stream stopte zonder `complete` (vaak timeout/proxy tijdens zelfreview) — toch laatste secties tonen. */
+  const [streamEndedWithoutComplete, setStreamEndedWithoutComplete] = useState(false);
 
   const streamJsonBufferRef = useRef("");
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
@@ -139,6 +142,7 @@ export function GeneratorForm({
     setDesignRationale(null);
     setDesignRationaleLoading(false);
     setDesignRationaleSkipReason(null);
+    setStreamEndedWithoutComplete(false);
     setLoading(true);
     try {
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
@@ -188,10 +192,7 @@ export function GeneratorForm({
       let buffer = "";
       let streamStopped = false;
 
-      while (!streamStopped) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer = consumeGenerateSiteNdjsonBuffer(buffer, decoder.decode(value, { stream: true }), (ev) => {
+      const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
           if (ev.type === "generation_meta") {
             setPipelineFeedback(ev.feedback);
             setDesignRationaleLoading(true);
@@ -226,6 +227,7 @@ export function GeneratorForm({
             if (cfg) setStreamingConfig(cfg);
           }
           if (ev.type === "complete") {
+            setStreamEndedWithoutComplete(false);
             setStreamingSections([]);
             setStreamingConfig(null);
             streamJsonBufferRef.current = "";
@@ -236,6 +238,7 @@ export function GeneratorForm({
             streamStopped = true;
           }
           if (ev.type === "error") {
+            setStreamEndedWithoutComplete(false);
             setStreamingSections([]);
             setStreamingConfig(null);
             streamJsonBufferRef.current = "";
@@ -244,7 +247,24 @@ export function GeneratorForm({
             setDesignRationaleLoading(false);
             streamStopped = true;
           }
-        });
+      };
+
+      while (!streamStopped) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer = consumeGenerateSiteNdjsonBuffer(buffer, decoder.decode(value, { stream: true }), handleNdjsonEvent);
+      }
+
+      if (buffer.trim()) {
+        buffer = consumeGenerateSiteNdjsonBuffer(buffer, "\n", handleNdjsonEvent);
+      }
+
+      if (!streamStopped) {
+        setStreamEndedWithoutComplete(true);
+        setError((prev) =>
+          prev ??
+          "De verbinding met de server werd verbroken vóór de generatie kon worden afgerond (dit gebeurt soms tijdens de kwaliteitscontrole aan het eind). Hieronder staan de laatst ontvangen secties — genereer opnieuw om op te kunnen slaan.",
+        );
       }
 
       await reader.cancel().catch(() => {});
@@ -494,13 +514,24 @@ export function GeneratorForm({
         />
       ) : null}
 
-      {loading && !generatedTailwind && streamingSections.length > 0 ? (
+      {!generatedTailwind && streamingSections.length > 0 ? (
         <section className="space-y-3 border-t border-slate-200 pt-8">
           <div className="flex flex-wrap items-center gap-2">
             <Monitor className="size-5 text-indigo-500" aria-hidden />
             <h2 className="text-lg font-semibold text-slate-900">Live preview</h2>
-            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-900">tijdens generatie</span>
+            {loading ? (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-900">tijdens generatie</span>
+            ) : streamEndedWithoutComplete ? (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-950">stream afgebroken</span>
+            ) : null}
           </div>
+          {streamEndedWithoutComplete ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              De verbinding werd verbroken vóór de server <strong>generatie voltooid</strong> meldde — vaak tijdens de
+              kwaliteitscontrole (zelfreview) of net erna. Je ziet hieronder de laatst ontvangen secties; gebruik{" "}
+              <strong>Genereer opnieuw</strong> om op te kunnen slaan.
+            </p>
+          ) : null}
           <p className="text-sm text-slate-600">
             Elke afgeronde sectie verschijnt hier in dezelfde web-preview als daarna. Zodra het model{" "}
             <code className="rounded bg-slate-100 px-1 text-xs">config</code> vóór{" "}
