@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { SalesSidebar } from "@/components/sales-os/sidebar";
+import { SalesSidebar, SalesSidebarContent } from "@/components/sales-os/sidebar";
 import { SalesTopbar } from "@/components/sales-os/topbar";
 import { SALES_OS_GUTTER_X_CLASS, SALES_OS_MAIN_MAX_CLASS } from "@/lib/sales-os/layout-shell";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ type SalesOsShellProps = {
 export function SalesOsShell({ children }: SalesOsShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -43,18 +44,30 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
   const onOpenSearch = useCallback(() => setSearchOpen(true), []);
 
   useEffect(() => {
+    if (!mobileNavOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
       }
-      if (e.key === "Escape") setSearchOpen(false);
+      if (e.key === "Escape") {
+        setSearchOpen(false);
+        setMobileNavOpen(false);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const mainMargin = collapsed ? "ml-[84px]" : "ml-[220px]";
+  const mainMargin = collapsed ? "lg:ml-[84px]" : "lg:ml-[220px]";
 
   const inputFocus =
     "focus:border-neutral-950 focus:outline-none focus:ring-1 focus:ring-neutral-950/10 dark:focus:border-zinc-100 dark:focus:ring-zinc-100/15";
@@ -67,6 +80,31 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
         onOpenSearch={onOpenSearch}
       />
 
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-[45] bg-neutral-950/40 backdrop-blur-[1px] dark:bg-black/60 lg:hidden"
+          aria-label="Menu sluiten"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[min(100vw,280px)] max-w-full transform border-r border-neutral-200 bg-[#fafafa] shadow-xl transition-transform duration-200 ease-out dark:border-zinc-700/80 dark:bg-zinc-950 lg:hidden",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full pointer-events-none",
+        )}
+        aria-hidden={!mobileNavOpen}
+      >
+        <SalesSidebarContent
+          collapsed={collapsed}
+          onToggleCollapse={onToggleCollapse}
+          onOpenSearch={onOpenSearch}
+          onNavLinkClick={() => setMobileNavOpen(false)}
+          mobileClose={() => setMobileNavOpen(false)}
+        />
+      </div>
+
       <div
         className={cn(
           "sales-os-workspace flex min-h-screen min-w-0 flex-col bg-white transition-[margin] duration-200 ease-out dark:bg-zinc-900",
@@ -74,7 +112,7 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
         )}
       >
         <div className="sales-os-print-hide">
-          <SalesTopbar onOpenSearch={onOpenSearch} />
+          <SalesTopbar onOpenSearch={onOpenSearch} onOpenMobileNav={() => setMobileNavOpen(true)} />
         </div>
         <div
           className={cn(

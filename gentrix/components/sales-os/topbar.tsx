@@ -8,6 +8,7 @@ import {
   FileText,
   Globe,
   Mail,
+  Menu,
   MoreHorizontal,
   Phone,
   Plus,
@@ -30,9 +31,11 @@ const QUICK_ACTIONS: { label: string; href?: string; icon: typeof Plus; disabled
 
 type SalesTopbarProps = {
   onOpenSearch: () => void;
+  /** Alleen < lg: opent het mobiele navigatiedrawer */
+  onOpenMobileNav?: () => void;
 };
 
-export function SalesTopbar({ onOpenSearch }: SalesTopbarProps) {
+export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps) {
   const pathname = usePathname();
   const { title, subtitle } = pageMetaForPath(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,10 +60,20 @@ export function SalesTopbar({ onOpenSearch }: SalesTopbarProps) {
     >
       <div
         className={cn(
-          "mx-auto flex h-14 min-w-0 w-full items-center gap-3 sm:gap-4",
+          "mx-auto flex h-14 min-w-0 w-full items-center gap-2 sm:gap-4",
           SALES_OS_MAIN_MAX_CLASS,
         )}
       >
+        {onOpenMobileNav ? (
+          <button
+            type="button"
+            className="flex size-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800 lg:hidden"
+            aria-label="Menu openen"
+            onClick={onOpenMobileNav}
+          >
+            <Menu className="size-5" aria-hidden />
+          </button>
+        ) : null}
         {isOpsHome ? (
           <div className="min-w-0 flex-1" aria-hidden />
         ) : (
