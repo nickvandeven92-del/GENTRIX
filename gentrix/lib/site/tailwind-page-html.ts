@@ -816,6 +816,14 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
           return;
         }
       }catch(_){}
+      /* Voorkom navigatie naar dev-hosts (localhost in opgeslagen HTML) → ERR_CONNECTION_REFUSED buiten dev. */
+      try{
+        var uDev=new URL(href);
+        var hDev=(uDev.hostname||"").toLowerCase();
+        if(hDev==="localhost"||hDev==="127.0.0.1"||hDev==="::1"){
+          e.preventDefault();
+        }
+      }catch(_dev){}
       return;
     }
     var pq=splitHashQuery(href);
