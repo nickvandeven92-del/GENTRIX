@@ -8,7 +8,12 @@ import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
-import type { GeneratedTailwindPage, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import {
+  slugifyToSectionId,
+  type GeneratedTailwindPage,
+  type TailwindPageConfig,
+  type TailwindSection,
+} from "@/lib/ai/tailwind-sections-schema";
 import {
   tryExtractStreamingTailwindConfig,
 } from "@/lib/ai/stream-json-section-extractor";
@@ -635,7 +640,10 @@ export function GeneratorForm({
             />
           </div>
           <DutchSpellcheckPanel
-            sections={generatedTailwind.sections.map((s) => ({ id: s.id, html: s.html }))}
+            sections={generatedTailwind.sections.map((s, i) => ({
+              id: s.id ?? slugifyToSectionId(s.sectionName, i),
+              html: s.html,
+            }))}
           />
           <SaveSitePanel
             page={generatedTailwind}
