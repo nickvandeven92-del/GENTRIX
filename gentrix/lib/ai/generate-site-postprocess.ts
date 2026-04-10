@@ -318,10 +318,21 @@ export function postProcessClaudeTailwindMarketingSite(
 ): ClaudeTailwindMarketingSiteOutput {
   const landing = postProcessClaudeTailwindPage({ config: page.config, sections: page.sections });
   const contact = postProcessClaudeTailwindPage({ config: page.config, sections: page.contactSections });
+  const marketingPagesRaw = page.marketingPages;
+  const marketingPages =
+    marketingPagesRaw != null && Object.keys(marketingPagesRaw).length > 0
+      ? Object.fromEntries(
+          Object.entries(marketingPagesRaw).map(([k, secs]) => [
+            k,
+            postProcessClaudeTailwindPage({ config: page.config, sections: secs }).sections,
+          ]),
+        )
+      : undefined;
   return {
     config: landing.config,
     sections: landing.sections,
     contactSections: contact.sections,
+    ...(marketingPages != null ? { marketingPages } : {}),
   };
 }
 

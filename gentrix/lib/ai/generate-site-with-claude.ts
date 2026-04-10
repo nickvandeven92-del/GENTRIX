@@ -903,7 +903,7 @@ type SiteGenerationOperationalTailInput = {
   section5IdsNote: string;
 };
 
-/** §3B–§5 voor multi-route marketing (landing + /contact), zelfde technische HTML-regels als one-pager. */
+/** §3B–§5 voor multi-route marketing: landing + vaste subpagina's + contact. */
 function buildMarketingMultiPageOperationalTail(
   input: Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote">,
 ): string {
@@ -911,12 +911,16 @@ function buildMarketingMultiPageOperationalTail(
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
 - **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum) — zelfde CONTENT AUTHORITY-regels als standaard.
-- **Twee pagina’s in één JSON:** \`sections\` = **alleen landingspagina** (marketing, geen lead-<form>). \`contactSections\` = **contactpagina** met minstens één **werkend** <form> (naam/e-mail/bericht of vergelijkbaar).
-- **Verboden op landings-\`sections\`:** elk \`<form>\` (ook geen “mini” newsletter-form). CTA’s: knoppen/links naar \`__STUDIO_CONTACT_PATH__\` of \`mailto:\`/\`tel:\`.
-- **Sectie-ankers (per pagina):** het **buitenste** element van elke sectie heeft \`id="…"\` gelijk aan de JSON-\`id\` **van die pagina**. Landings-nav gebruikt \`href="#…"\` **alleen** naar id’s die in \`sections\` bestaan. Contactpagina: eigen id-set in \`contactSections\`.
-- **Cross-route naar contact:** gebruik **uitsluitend** het exacte token \`href="__STUDIO_CONTACT_PATH__"\` (geen \`/contact\`, geen \`/site/…\` zelf verzinnen, geen \`href="#"\`). Meerdere CTAs (“Neem contact op”, nav “Contact”) mogen allemaal naar dat token wijzen.
-- **Verboden:** \`href="#"\`, lege \`href\`, verzonnen \`#fragment\` dat niet op **diezelfde pagina** bestaat, of paden naar routes die niet bestaan (geen \`/blog\`, \`/pricing\`, … tenzij de briefing expliciet vraagt én je die sectie-id’s ook echt op de landing uitwerkt — liever niet).
-- **Studio-placeholders (alleen letterlijk deze strings):** \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\`, \`__STUDIO_CONTACT_PATH__\` — volgens module-instructies uit §0B.
+- **Meerdere echte pagina’s in één JSON:**
+  - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige “Wat wij doen”-longread hier — dat staat op de eigen subpagina).
+  - \`marketingPages\` = **verplicht** exact deze vier keys, elk met **eigen** HTML-secties (minstens één sectie per key, eigen \`id\`'s binnen die pagina): \`"wat-wij-doen"\`, \`"werkwijze"\`, \`"over-ons"\`, \`"faq"\`.
+  - \`contactSections\` = **contactpagina** met minstens één **werkend** <form> (naam/e-mail/bericht of vergelijkbaar).
+- **Verboden op landings-\`sections\` en op elke \`marketingPages[*]\`:** elk \`<form>\` (ook geen newsletter-mini). Alleen \`contactSections\` mag formulieren.
+- **Sectie-ankers:** binnen **één pagina** (\`sections\` of één key van \`marketingPages\`) gebruik je \`href="#…"\` alleen naar \`id\`'s die **op diezelfde pagina** bestaan.
+- **Cross-pagina (verplicht):** gebruik **uitsluitend** het token \`href="__STUDIO_SITE_BASE__/wat-wij-doen"\` (zelfde patroon voor \`werkwijze\`, \`over-ons\`, \`faq\`) en \`href="__STUDIO_CONTACT_PATH__"\` voor Contact. **Verboden:** zelf \`/site/…\`, \`/contact\`, of losse paden verzinnen; **verboden** \`#werkwijze\` / \`#faq\` in de nav als die inhoud in \`marketingPages\` staat (dat is geen echte subroute).
+- **Zelfde header op elke pagina:** herhaal **dezelfde** \`<header>\`/nav-structuur (zelfde links met \`__STUDIO_SITE_BASE__/…\` + \`__STUDIO_CONTACT_PATH__\`) bovenaan **landing**, elke \`marketingPages\`-pagina, en \`contactSections\` — zo voelt het als één site met echte pagina’s.
+- **Verboden:** \`href="#"\`, lege \`href\`, verzonnen routes buiten de vijf studio-paden hierboven.
+- **Studio-placeholders (alleen letterlijk deze strings):** \`__STUDIO_SITE_BASE__\`, \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\`, \`__STUDIO_CONTACT_PATH__\` — volgens module-instructies uit §0B.
 - **WhatsApp:** alleen \`https://wa.me/…\` als een nummer in de briefing staat; anders link naar \`__STUDIO_CONTACT_PATH__\`.
 - **Extern (https):** alleen \`https://\`; geen \`http://\` zonder TLS.
 - **Knoppen:** geen decoratieve \`<button>\` zonder actie: gebruik \`<a class="…">\` met echte \`href\`.
@@ -937,19 +941,25 @@ ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikba
 
 Lever **uitsluitend** één JSON-object. Geen markdown, geen code fences, geen tekst ervoor of erna.
 
-Structuur (let op: **beide** arrays zijn verplicht):
+Structuur — \`marketingPages\` met **precies** de keys \`wat-wij-doen\`, \`werkwijze\`, \`over-ons\`, \`faq\` (verplicht):
 
 {
   "config": { "style": "…", "theme": { "primary": "#…", "accent": "#…", "primaryLight": "#…", "primaryMain": "#…", "primaryDark": "#…" }, "font": "…" },
   "sections": [
     { "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">…</section>" }
   ],
+  "marketingPages": {
+    "wat-wij-doen": [{ "id": "intro", "html": "<section id=\\"intro\\" class=\\"...\\">…</section>" }],
+    "werkwijze": [{ "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">…</section>" }],
+    "over-ons": [{ "id": "team", "html": "<section id=\\"team\\" class=\\"...\\">…</section>" }],
+    "faq": [{ "id": "faq", "html": "<section id=\\"faq\\" class=\\"...\\">…</section>" }]
+  },
   "contactSections": [
     { "id": "contact", "html": "<section id=\\"contact\\" class=\\"...\\"><form>…</form></section>" }
   ]
 }
 
-Minimaal deze landings-sectie-\`id\`'s (eigen volgorde mag): ${requiredIdsLine}. **Geen** \`contact\`-sectie met formulier op de landing — contact staat in \`contactSections\`. Je mag \`name\` per sectie toevoegen (optioneel).${section5IdsNote}
+Minimaal deze landings-sectie-\`id\`'s (eigen volgorde mag): ${requiredIdsLine}. **Geen** \`contact\`-sectie met formulier buiten \`contactSections\`. Je mag \`name\` per sectie toevoegen (optioneel).${section5IdsNote}
 
 JSON moet geldig zijn.`;
 }
@@ -1144,7 +1154,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
     ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
     : "";
 
-  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + contactpagina** (`sections` + `contactSections`)" : "**één** one-pager (`sections`)"}. Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
+  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + vaste subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
@@ -1157,8 +1167,8 @@ ${packageBlock}${existingBlock}
 ${section1}=== KERN (technisch) ===
 
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
-2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina naar contact via \`__STUDIO_CONTACT_PATH__\` (zie §3B).
-3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `contactSections` (minstens één sectie met <form>)" : ""}.
+2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\` (zie §3B).
+3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (minstens één sectie met <form>)" : ""}.
 4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
@@ -1229,7 +1239,7 @@ export function buildWebsiteGenerationUserPrompt(
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
 
-  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + contactpagina** (`sections` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, leesbare** site die past bij de briefing — je hebt ruimte om zelf sterk ontwerp te kiezen.
+  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, leesbare** site die past bij de briefing — je hebt ruimte om zelf sterk ontwerp te kiezen.
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
@@ -1256,8 +1266,8 @@ ${packageBlock}${existingBlock}
 
 1. Output = **één geldig JSON** volgens §5 — geen andere vorm.
 2. **Balans:** duidelijke hiërarchie en leesbaarheid; \`60-30-10\` is optionele richting, geen wiskunde.
-3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; landings-\`id\`'s consistent met \`href="#…"\` op de landing; link “Contact” in de nav naar \`__STUDIO_CONTACT_PATH__\` ${marketingMultiPage ? "(verplicht token)" : ""}.
-4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `contactSections` (contactpagina met formulier)" : ""}.
+3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; ${marketingMultiPage ? "subpagina-links via __STUDIO_SITE_BASE__ (zie §3B); " : ""}landings-\`id\`'s consistent met \`href="#…"\` **alleen binnen dezelfde pagina**; link “Contact” naar \`__STUDIO_CONTACT_PATH__\` ${marketingMultiPage ? "(verplicht token)" : ""}.
+4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (contactpagina met formulier)" : ""}.
 5. **Kleur:** als een flashy wens botst met de branche, gebruik die kleur liever **als accent** (§2). ${preserve ? " **Upgrade:** bestaande \`config.theme\` uit bron wint." : ""}
 
 ${section1}
@@ -1272,7 +1282,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 **Vrijheid:** hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan).
 
-**Navigatie (${marketingMultiPage ? "landing + contact-route" : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en **minstens twee tot vier** bruikbare links. Op de landing: \`href="#sectie-id"\` naar secties in \`sections\`. **Contact** in het menu: \`href="__STUDIO_CONTACT_PATH__"\` (exact token). **Geen tweede** volledige menu (geen verticale dubbele linklijst + topbar met dezelfde items). Primaire CTA mag in de nav en/of **één** vaste floating afspraakknop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Niet** leveren zonder zichtbare site-nav boven de vouw.
+**Navigatie (${marketingMultiPage ? "multi-page: landing + 4 subpagina's + contact" : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? "“Wat wij doen”, “Werkwijze”, “Over ons”, “FAQ”: gebruik **uitsluitend** het pad-token __STUDIO_SITE_BASE__ plus het segment (bv. __STUDIO_SITE_BASE__/werkwijze); **geen** ankers zoals #werkwijze voor die inhoud als die op een subpagina staat. " : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
@@ -1461,7 +1471,13 @@ async function prepareGenerateSiteClaudeCall(
 }
 
 export function withContentClaimDiagnostics(data: GeneratedTailwindPage): GeneratedTailwindPage {
-  const html = [...data.sections, ...(data.contactSections ?? [])].map((s) => s.html).join("\n");
+  const html = [
+    ...data.sections.map((s) => s.html),
+    ...(data.contactSections ?? []).map((s) => s.html),
+    ...(data.marketingPages != null
+      ? Object.values(data.marketingPages).flatMap((secs) => secs.map((s) => s.html))
+      : []),
+  ].join("\n");
   return {
     ...data,
     contentClaimDiagnostics: buildContentClaimDiagnosticsReport(html),
@@ -1501,7 +1517,11 @@ function finalizeGenerateSiteFromClaudeText(
     }
     const processed = postProcessClaudeTailwindMarketingSite(validated.data);
     const mapped = mapClaudeMarketingSiteOutputToSections(processed);
-    const ruleErrors = validateMarketingSiteHardRules(mapped.sections, mapped.contactSections);
+    const ruleErrors = validateMarketingSiteHardRules(
+      mapped.sections,
+      mapped.contactSections,
+      mapped.marketingPages,
+    );
     if (ruleErrors.length > 0) {
       return {
         ok: false,
@@ -1605,6 +1625,18 @@ export async function generateSiteWithClaude(
           contactSections: await replaceUnsplashImagesInSections(
             data.contactSections,
             process.env.UNSPLASH_ACCESS_KEY,
+          ),
+        }
+      : {}),
+    ...(data.marketingPages != null && Object.keys(data.marketingPages).length > 0
+      ? {
+          marketingPages: Object.fromEntries(
+            await Promise.all(
+              Object.entries(data.marketingPages).map(async ([k, secs]) => [
+                k,
+                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY),
+              ]),
+            ),
           ),
         }
       : {}),

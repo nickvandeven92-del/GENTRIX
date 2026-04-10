@@ -9,6 +9,7 @@ const BARE_HASH_HREF_RE = /\bhref\s*=\s*["']#["']/i;
 export function validateMarketingSiteHardRules(
   landingSections: TailwindSection[],
   contactSections: TailwindSection[],
+  marketingPages?: Record<string, TailwindSection[]>,
 ): string[] {
   const errors: string[] = [];
   const landingHtml = landingSections.map((s) => s.html).join("\n");
@@ -23,6 +24,21 @@ export function validateMarketingSiteHardRules(
   }
   if (BARE_HASH_HREF_RE.test(landingHtml) || BARE_HASH_HREF_RE.test(contactHtml)) {
     errors.push('Verboden: lege anker-links (href="#"). Gebruik echte sectie-ankers of __STUDIO_CONTACT_PATH__.');
+  }
+  if (marketingPages) {
+    for (const [key, secs] of Object.entries(marketingPages)) {
+      const html = secs.map((s) => s.html).join("\n");
+      if (/<form\b/i.test(html)) {
+        errors.push(
+          `Marketingpagina "${key}" mag geen HTML-<form>": leadformulier alleen op de contactpagina.`,
+        );
+      }
+      if (BARE_HASH_HREF_RE.test(html)) {
+        errors.push(
+          `Verboden op "${key}": lege anker-links (href="#"). Gebruik echte ankers of __STUDIO_SITE_BASE__/… / __STUDIO_CONTACT_PATH__.`,
+        );
+      }
+    }
   }
   return errors;
 }

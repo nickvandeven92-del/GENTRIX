@@ -11,6 +11,7 @@ import {
   STUDIO_DATA_ANIMATION_CSS,
   STUDIO_LASER_LINE_CSS,
   STUDIO_MARQUEE_CSS,
+  STUDIO_ALPINE_X_CLOAK_CSS,
   STUDIO_SCROLL_REVEAL_SCRIPT,
 } from "@/lib/site/tailwind-page-html";
 import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
@@ -127,6 +128,7 @@ export function buildStandaloneExportHtmlDocument(
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
+    ${STUDIO_ALPINE_X_CLOAK_CSS}
     body { font-family: ${fontStack}; }
     ${rootCssBlock}
     ${STUDIO_DATA_ANIMATION_CSS}

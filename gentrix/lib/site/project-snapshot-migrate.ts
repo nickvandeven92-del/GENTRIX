@@ -1,4 +1,8 @@
-import { slugifyToSectionId, tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
+import {
+  marketingPageKeyStoredSchema,
+  slugifyToSectionId,
+  tailwindSectionsPayloadSchema,
+} from "@/lib/ai/tailwind-sections-schema";
 import { assertProjectSnapshotInvariants } from "@/lib/site/project-snapshot-invariants";
 import {
   PROJECT_SNAPSHOT_FORMAT,
@@ -118,6 +122,33 @@ export function upgradeLooseProjectSnapshotV1(
     return out;
   });
 
+  const mpIn = raw.marketingPages;
+  const marketingPages: Record<string, Record<string, unknown>[]> = {};
+  if (mpIn != null && typeof mpIn === "object" && !Array.isArray(mpIn)) {
+    for (const [rawKey, rows] of Object.entries(mpIn as Record<string, unknown>)) {
+      const keyParsed = marketingPageKeyStoredSchema.safeParse(rawKey);
+      if (!keyParsed.success || !Array.isArray(rows)) continue;
+      const key = keyParsed.data;
+      marketingPages[key] = rows.map((row: unknown, i: number) => {
+        if (!row || typeof row !== "object") {
+          return { id: `${key}-section-${i}`, sectionName: `Pagina ${i + 1}`, html: "<section></section>" };
+        }
+        const s = row as Record<string, unknown>;
+        const sectionName = typeof s.sectionName === "string" ? s.sectionName : `Pagina ${i + 1}`;
+        const html = typeof s.html === "string" ? s.html : "<section></section>";
+        const id =
+          typeof s.id === "string" && /^[a-z0-9-]{1,64}$/.test(s.id)
+            ? s.id
+            : slugifyToSectionId(sectionName, i);
+        const out: Record<string, unknown> = { id, sectionName: sectionName.trim(), html };
+        if (typeof s.semanticRole === "string") out.semanticRole = s.semanticRole;
+        if (typeof s.copyIntent === "string") out.copyIntent = s.copyIntent;
+        return out;
+      });
+    }
+  }
+  const hasMarketingPages = Object.keys(marketingPages).length > 0;
+
   const ids = sections.map((s) => (s as { id: string }).id);
   const compIn = (raw.composition as Record<string, unknown> | undefined) ?? {};
   let sectionIdsOrdered = Array.isArray(compIn.sectionIdsOrdered)
@@ -185,6 +216,7 @@ export function upgradeLooseProjectSnapshotV1(
     composition,
     sections,
     ...(hasDedicatedContactPage ? { contactSections } : {}),
+    ...(hasMarketingPages ? { marketingPages } : {}),
     theme,
     assets,
     editor,

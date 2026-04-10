@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   Check,
-  ChevronDown,
   Eye,
   History,
   Loader2,
@@ -31,7 +30,6 @@ import {
   getCurrentSnapshot,
   siteHistoryReducer,
 } from "@/lib/editor/site-history-reducer";
-import { USER_SITE_CSS_MAX, USER_SITE_JS_MAX } from "@/lib/site/user-site-assets";
 import { formatSlugForDisplay } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -81,48 +79,17 @@ export function SiteHtmlEditor({
   const config = snap?.config;
 
   const [status, setStatus] = useState(initialStatus);
-  const [activeIndex, setActiveIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   /** Na concept-opslag: waar je de opgeslagen site volledig kunt bekijken (los van de editor-preview). */
   const [postSaveDraftView, setPostSaveDraftView] = useState<{ clientPreviewTokenUrl: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
-  const [codePanelOpen, setCodePanelOpen] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
-  const [customCss, setCustomCss] = useState(() => initialCustomCss);
-  const [customJs, setCustomJs] = useState(() => initialCustomJs);
-  const [assetsPanelOpen, setAssetsPanelOpen] = useState(false);
+  const customCss = initialCustomCss;
+  const customJs = initialCustomJs;
   const [pageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
   const snapshotSourceRef = useRef<"editor" | "ai_command">("editor");
-
-  useEffect(() => {
-    if (activeIndex >= sections.length) {
-      setActiveIndex(Math.max(0, sections.length - 1));
-    }
-  }, [activeIndex, sections.length]);
-
-  const active = sections[activeIndex];
-
-  const updateActiveHtml = useCallback(
-    (html: string) => {
-      snapshotSourceRef.current = "editor";
-      dispatch({ type: "patch-section-html", sectionIndex: activeIndex, html });
-      setSaveMsg(null);
-      setSaveError(null);
-    },
-    [activeIndex],
-  );
-
-  const updateActiveName = useCallback(
-    (sectionName: string) => {
-      snapshotSourceRef.current = "editor";
-      dispatch({ type: "patch-section-name", sectionIndex: activeIndex, sectionName });
-      setSaveMsg(null);
-      setSaveError(null);
-    },
-    [activeIndex],
-  );
 
   const payload = useMemo(
     () =>
@@ -475,173 +442,31 @@ export function SiteHtmlEditor({
         }
         main={
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
-          <div className="min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="section-select" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              Sectie
-            </label>
-            <select
-              id="section-select"
-              value={activeIndex}
-              onChange={(e) => setActiveIndex(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-600 dark:bg-zinc-950"
-            >
-              {sections.map((s, i) => (
-                <option key={i} value={i}>
-                  {s.sectionName || `Sectie ${i + 1}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="button"
-            aria-expanded={codePanelOpen}
-            aria-controls="html-source-panel"
-            onClick={() => setCodePanelOpen((o) => !o)}
-            className={cn(
-              "inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium sm:w-auto",
-              codePanelOpen
-                ? "border-blue-800 bg-blue-50 text-blue-950 dark:border-blue-600 dark:bg-blue-950/50 dark:text-blue-100"
-                : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900",
-            )}
-          >
-            <ChevronDown
-              className={cn("size-4 shrink-0 transition-transform", codePanelOpen && "rotate-180")}
-              aria-hidden
-            />
-            {codePanelOpen ? "Verberg HTML-broncode" : "Toon HTML-broncode"}
-          </button>
-          </div>
-
-          <div
-            id="html-source-panel"
-            hidden={!codePanelOpen}
-            className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
-          >
-          <div className="border-b border-zinc-200 p-3 dark:border-zinc-800">
-            <label htmlFor="section-label" className="block text-xs font-medium text-zinc-500">
-              Sectienaam (label)
-            </label>
-            <input
-              id="section-label"
-              type="text"
-              value={active?.sectionName ?? ""}
-              onChange={(e) => updateActiveName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm dark:border-zinc-600 dark:bg-zinc-900"
-            />
-          </div>
-          <label htmlFor="html-editor" className="sr-only">
-            HTML fragment
-          </label>
-          <textarea
-            id="html-editor"
-            value={active?.html ?? ""}
-            onChange={(e) => updateActiveHtml(e.target.value)}
-            spellCheck={false}
-            className={cn(
-              "min-h-[240px] w-full resize-y border-0 bg-zinc-50 p-4 font-mono text-xs leading-relaxed text-zinc-900",
-              "focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-800/30 dark:bg-zinc-950 dark:text-zinc-100 sm:min-h-[320px]",
-            )}
-            autoComplete="off"
-          />
-            <p className="border-t border-zinc-200 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800">
-              Tailwind utility-classes; wijzigingen horen bij de huidige stap in <strong>Stappen</strong>. Het thema (
-              <code>config</code>) kan Claude in de chat wijzigen (master-formaat). Daarna <strong>Opslaan</strong> naar
-              Supabase.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/40">
-            <button
-              type="button"
-              aria-expanded={assetsPanelOpen}
-              onClick={() => setAssetsPanelOpen((o) => !o)}
-              className={cn(
-                "flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium",
-                assetsPanelOpen
-                  ? "text-blue-950 dark:text-blue-100"
-                  : "text-zinc-700 dark:text-zinc-300",
-              )}
-            >
-              <span>Eigen CSS &amp; JavaScript</span>
-              <ChevronDown
-                className={cn("size-4 shrink-0 transition-transform", assetsPanelOpen && "rotate-180")}
-                aria-hidden
-              />
-            </button>
-            {assetsPanelOpen && (
-              <div className="space-y-3 border-t border-zinc-200 px-3 pb-3 pt-2 dark:border-zinc-800">
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                Preview draait in een <strong>sandboxed iframe</strong> (geen same-origin). Op de <strong>live site</strong>{" "}
-                draait JavaScript wel op jouw domein — alleen code gebruiken die je vertrouwt.{" "}
-                <code>@import</code> in CSS wordt verwijderd; <code>&lt;script&gt;</code> hoort niet in deze velden (
-                gebruik het JS-veld).
-              </p>
-              <div>
-                <label htmlFor="custom-css" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                  Custom CSS (max. {USER_SITE_CSS_MAX.toLocaleString("nl-NL")} tekens)
-                </label>
-                <textarea
-                  id="custom-css"
-                  value={customCss}
-                  onChange={(e) => {
-                    setCustomCss(e.target.value.slice(0, USER_SITE_CSS_MAX));
-                    setSaveMsg(null);
-                    setSaveError(null);
-                  }}
-                  spellCheck={false}
-                  rows={5}
-                  className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white p-2 font-mono text-xs dark:border-zinc-600 dark:bg-zinc-950"
-                  autoComplete="off"
-                />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 lg:min-h-[200px]">
+              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                Live preview
               </div>
-              <div>
-                <label htmlFor="custom-js" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                  Custom JavaScript (max. {USER_SITE_JS_MAX.toLocaleString("nl-NL")} tekens)
-                </label>
-                <textarea
-                  id="custom-js"
-                  value={customJs}
-                  onChange={(e) => {
-                    setCustomJs(e.target.value.slice(0, USER_SITE_JS_MAX));
-                    setSaveMsg(null);
-                    setSaveError(null);
-                  }}
-                  spellCheck={false}
-                  rows={6}
-                  className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white p-2 font-mono text-xs dark:border-zinc-600 dark:bg-zinc-950"
-                  autoComplete="off"
+              <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
+                <TailwindSectionsPreview
+                  key={previewKey}
+                  sections={sections}
+                  pageConfig={config}
+                  userCss={customCss}
+                  userJs={customJs}
+                  logoSet={initialLogoSet}
+                  publishedSlug={subfolderSlug}
+                  appointmentsEnabled={appointmentsEnabled}
+                  webshopEnabled={webshopEnabled}
+                  composePlan={composePlan}
+                  title={`Preview ${subfolderSlug}`}
+                  className="h-full min-h-0 w-full rounded-none border-0 bg-white"
+                  frameClassName="h-full min-h-[280px] w-full"
+                  autoResizeFromPostMessage
+                  documentHeightMode="panel"
+                  maxMeasuredHeight={3200}
                 />
               </div>
             </div>
-          )}
-        </div>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 lg:min-h-[200px]">
-          <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            Live preview
-          </div>
-          <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
-            <TailwindSectionsPreview
-              key={previewKey}
-              sections={sections}
-              pageConfig={config}
-              userCss={customCss}
-              userJs={customJs}
-              logoSet={initialLogoSet}
-              publishedSlug={subfolderSlug}
-              appointmentsEnabled={appointmentsEnabled}
-              webshopEnabled={webshopEnabled}
-              composePlan={composePlan}
-              title={`Preview ${subfolderSlug}`}
-              className="h-full min-h-0 w-full rounded-none border-0 bg-white"
-              frameClassName="h-full min-h-[280px] w-full"
-              autoResizeFromPostMessage
-              documentHeightMode="panel"
-              maxMeasuredHeight={3200}
-            />
-          </div>
-        </div>
           </div>
         }
       />

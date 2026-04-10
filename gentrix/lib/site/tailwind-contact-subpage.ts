@@ -61,9 +61,15 @@ export function landingSectionIdsForContactSubpage(
 export type ContactSubpageNavScriptInput = {
   pageOrigin: string;
   slug: string;
-  view: "landing" | "contact";
+  view: "landing" | "contact" | "marketing";
   contactSectionId: string;
   landingSectionIds: string[];
+  /**
+   * Keys uit `marketingPages` in `site_data_json` — cross-nav tussen `/site/{slug}/…` subroutes.
+   */
+  marketingSlugs?: string[];
+  /** Gezet wanneer `view === "marketing"` (huidige subpagina in iframe). */
+  activeMarketingSlug?: string;
   /**
    * Publieke concept-preview: top-navigatie naar `/preview/...?token=` i.p.v. `/site/...`
    * (draft heeft geen live `/site`-bundle; oude `/site/`-href in HTML wordt hier ook herkend).
@@ -87,6 +93,11 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
   const origin = input.pageOrigin.replace(/\/$/, "");
   const baseAbs = `${origin}${basePath}${tokenQ}`;
   const contactAbs = `${origin}${contactPath}${tokenQ}`;
+  const marketingSlugs = (input.marketingSlugs ?? []).filter((s) => typeof s === "string" && s.trim().length > 0);
+  const mabs: Record<string, string> = {};
+  for (const k of marketingSlugs) {
+    mabs[k] = `${origin}${basePath}/${encodeURIComponent(k)}${tokenQ}`;
+  }
   const cfg = {
     src: STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
     view: input.view,
@@ -98,12 +109,24 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
     legC,
     cid: input.contactSectionId,
     lids: input.landingSectionIds,
+    ms: marketingSlugs,
+    mabs,
+    mcur: input.view === "marketing" ? (input.activeMarketingSlug ?? "").trim() : "",
   };
   const json = JSON.stringify(cfg);
   return `<script>(function(){
 var CFG=${json};
 function isBase(p){return p===CFG.basePath||p===CFG.basePath+"/"||(CFG.legB&&(p===CFG.legB||p===CFG.legB+"/"));}
 function isContact(p){return p===CFG.contactPath||p===CFG.contactPath+"/"||(CFG.legC&&(p===CFG.legC||p===CFG.legC+"/"));}
+function isMarketingPath(p){
+  if(!CFG.ms||!CFG.ms.length)return null;
+  for(var i=0;i<CFG.ms.length;i++){
+    var k=CFG.ms[i];
+    var mp=CFG.basePath+"/"+k;
+    if(p===mp||p===mp+"/")return k;
+  }
+  return null;
+}
 function postTop(url){
   try{
     if(window.top&&window.top!==window)window.top.location.assign(url);
@@ -125,6 +148,26 @@ document.addEventListener("click",function(e){
   if(a.getAttribute("target")==="_blank")return;
   var raw=(a.getAttribute("href")||"").trim();
   if(!raw||/^(mailto:|tel:|javascript:)/i.test(raw))return;
+  if(CFG.view==="marketing"){
+    var lidM={};
+    for(var im=0;im<CFG.lids.length;im++)lidM[normFrag(CFG.lids[im])]=true;
+    if(raw.charAt(0)==="#"){
+      var fm=normFrag(raw.slice(1));
+      if(lidM[fm]){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.baseAbs+raw);return;}
+      return;
+    }
+    try{
+      var absM=raw.charAt(0)==="/"?CFG.origin+raw:raw;
+      var um=new URL(absM);
+      var pm=um.pathname||"";
+      if(isContact(pm)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(um.hash||""));return;}
+      if(isBase(pm)&&(!um.hash||um.hash.length<=1)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.baseAbs);return;}
+      if(isBase(pm)&&um.hash&&um.hash.length>1&&lidM[normFrag(um.hash.slice(1))]){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.baseAbs+um.hash);return;}
+      var mk=isMarketingPath(pm);
+      if(mk&&normFrag(mk)!==normFrag(CFG.mcur)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.mabs[mk]+(um.hash||""));return;}
+    }catch(_){}
+    return;
+  }
   if(CFG.view==="landing"){
     if(raw.charAt(0)==="#"){
       var hf=raw.slice(1);
@@ -135,6 +178,8 @@ document.addEventListener("click",function(e){
         var u=new URL(raw);
         var p=u.pathname||"";
         if(isContact(p)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(u.hash||""));return;}
+        var mkU=isMarketingPath(p);
+        if(mkU){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.mabs[mkU]+(u.hash||""));return;}
         if(isBase(p)&&u.hash&&u.hash.length>1){
           var hx=normFrag(u.hash.slice(1));
           if(hx===normFrag(CFG.cid)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs);return;}
@@ -146,6 +191,8 @@ document.addEventListener("click",function(e){
         var pq=raw.split("#");
         var pathOnly=pq[0].split("?")[0];
         if(isContact(pathOnly)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(pq[1]?"#"+pq[1]:""));return;}
+        var mkR=isMarketingPath(pathOnly);
+        if(mkR){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.mabs[mkR]+(pq[1]?"#"+pq[1]:""));return;}
         if(isBase(pathOnly)&&pq[1]&&normFrag(pq[1])===normFrag(CFG.cid)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs);return;}
       }
     }catch(__){}
@@ -167,8 +214,19 @@ document.addEventListener("click",function(e){
           var f3=normFrag(u2.hash.slice(1));
           if(f3!==normFrag(CFG.cid)&&lidSet[f3]){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.baseAbs+u2.hash);return;}
         }
+        var mk2=isMarketingPath(p2);
+        if(mk2){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.mabs[mk2]+(u2.hash||""));return;}
       }
     }catch(_){}
+    try{
+      if(raw.charAt(0)==="/"){
+        var pqC=raw.split("#");
+        var pathC=pqC[0].split("?")[0];
+        if(isBase(pathC)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.baseAbs+(pqC[1]?"#"+pqC[1]:""));return;}
+        var mkC=isMarketingPath(pathC);
+        if(mkC){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.mabs[mkC]+(pqC[1]?"#"+pqC[1]:""));return;}
+      }
+    }catch(__){}
   }
 },true);
 })();</script>`;

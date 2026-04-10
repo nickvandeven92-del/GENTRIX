@@ -38,6 +38,12 @@ html.tw-ready body { visibility: visible; }
 `;
 
 /**
+ * Alpine verbergt `x-cloak`-nodes pas na init; zonder deze regel zijn `x-show`-menu’s en het sluit-icoon
+ * kort (of permanent zonder JS) zichtbaar — FOUC en misleidende Lighthouse-filmstrips.
+ */
+export const STUDIO_ALPINE_X_CLOAK_CSS = `[x-cloak]{display:none!important}`;
+
+/**
  * CSS voor `data-animation` (fade-up, slide-in-*, scale-in).
  * Animaties starten **pas** als `.studio-in-view` gezet wordt (scroll-reveal script) — zo voelt de pagina
  * “levend” zoals bij Lovable: hero bij binnenkomst, diensten-blokken bij scroll.
@@ -1024,7 +1030,7 @@ export function buildTailwindIframeSrcDoc(
   const contactSubpageScript =
     contactSubpageNav?.pageOrigin?.trim().length &&
     contactSubpageNav.slug?.trim().length &&
-    contactSubpageNav.landingSectionIds?.length
+    ((contactSubpageNav.marketingSlugs?.length ?? 0) > 0 || (contactSubpageNav.landingSectionIds?.length ?? 0) > 0)
       ? buildContactSubpageCaptureNavScript(contactSubpageNav)
       : "";
 
@@ -1042,6 +1048,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
+    ${STUDIO_ALPINE_X_CLOAK_CSS}
     /* Vaste top-nav (fixed) + hash-scroll: zonder padding komen koppen onder de balk (afgeknipt, "overlap"). */
     html { scroll-padding-top: 5.5rem; }
     body { font-family: ${fontStack}; }

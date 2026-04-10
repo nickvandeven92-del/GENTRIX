@@ -105,6 +105,9 @@ export function GeneratorForm({
         ...(generatedTailwind.contactSections != null && generatedTailwind.contactSections.length > 0
           ? { contactSections: generatedTailwind.contactSections }
           : {}),
+        ...(generatedTailwind.marketingPages != null && Object.keys(generatedTailwind.marketingPages).length > 0
+          ? { marketingPages: generatedTailwind.marketingPages }
+          : {}),
         sectionIdsOrdered,
         siteIr: buildSiteIrV1({
           detectedIndustryId: detectedIndustryId ?? undefined,

@@ -33,6 +33,8 @@ export type PublishedSitePayload =
       siteIr?: SiteIrV1;
       /** Aparte `/contact`-HTML; ontbreekt bij legacy one-pager. */
       contactSections?: TailwindSection[];
+      /** Subroutes `/site/{slug}/<key>`. */
+      marketingPages?: Record<string, TailwindSection[]>;
     }
   | {
       kind: "react";
@@ -81,6 +83,9 @@ export function publishedPayloadFromParsed(
       ...(parsed.siteIr != null ? { siteIr: parsed.siteIr } : {}),
       ...(parsed.contactSections != null && parsed.contactSections.length > 0
         ? { contactSections: parsed.contactSections }
+        : {}),
+      ...(parsed.marketingPages != null && Object.keys(parsed.marketingPages).length > 0
+        ? { marketingPages: parsed.marketingPages }
         : {}),
     };
   }

@@ -15,6 +15,7 @@ import {
   selectTailwindSectionsForPublicView,
 } from "@/lib/site/tailwind-contact-subpage";
 import { cn } from "@/lib/utils";
+import { formatSlugForDisplay } from "@/lib/slug";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -31,6 +32,10 @@ type PublishedSiteViewProps = {
    */
   publicSiteTailwindPath?: "landing" | "contact";
   /**
+   * Tailwind `marketingPages[key]` — echte subroute `/site/[slug]/[key]` (en preview-variant).
+   */
+  marketingSubpageKey?: string | null;
+  /**
    * Admin-routes (concept-preview): `nav_overlay` gebruikt `position:fixed` — zonder dit kleef je aan de hele viewport.
    */
   embedReactInChrome?: boolean;
@@ -46,6 +51,7 @@ export function PublishedSiteView({
   appointmentsEnabled = true,
   webshopEnabled = true,
   publicSiteTailwindPath = "landing",
+  marketingSubpageKey = null,
   embedReactInChrome = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
@@ -75,6 +81,11 @@ export function PublishedSiteView({
           }
         : undefined;
 
+    const marketingKeys = Object.keys(payload.marketingPages ?? {});
+    const marketingKey = typeof marketingSubpageKey === "string" ? marketingSubpageKey.trim() : "";
+    const marketingPageSections =
+      marketingKey !== "" && payload.marketingPages != null ? payload.marketingPages[marketingKey] : undefined;
+
     const sections =
       visibility === "public"
         ? composePublicMarketingTailwindSections(
@@ -91,17 +102,28 @@ export function PublishedSiteView({
         ? resolvePublicTailwindContactPlan(sections, payload.contactSections)
         : { kind: "none" as const };
     const twSections =
-      visibility === "public"
-        ? selectTailwindSectionsForPublicView(
-            sections,
-            publicSiteTailwindPath === "contact" ? "contact" : "landing",
-            contactPlan,
+      visibility === "public" && marketingPageSections != null && marketingPageSections.length > 0
+        ? composePublicMarketingTailwindSections(
+            filterSectionsForPublicSite(marketingPageSections),
+            {
+              appointmentsEnabled,
+              webshopEnabled,
+            },
+            composePlan,
           )
-        : sections;
+        : visibility === "public"
+          ? selectTailwindSectionsForPublicView(
+              sections,
+              publicSiteTailwindPath === "contact" ? "contact" : "landing",
+              contactPlan,
+            )
+          : sections;
     const iframeTitle =
-      publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)
-        ? `${docTitle} · Contact`
-        : docTitle;
+      marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
+        ? `${docTitle} · ${formatSlugForDisplay(marketingKey)}`
+        : publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)
+          ? `${docTitle} · Contact`
+          : docTitle;
     return (
       <div
         className={cn(
@@ -125,12 +147,24 @@ export function PublishedSiteView({
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
           contactSubpageNavBase={
-            hasResolvedPublicContactRoute(contactPlan) && publishedSlug?.trim() && visibility === "public"
+            publishedSlug?.trim() &&
+            visibility === "public" &&
+            (hasResolvedPublicContactRoute(contactPlan) || marketingKeys.length > 0)
               ? {
                   slug: publishedSlug.trim(),
-                  view: publicSiteTailwindPath === "contact" ? "contact" : "landing",
+                  view:
+                    marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
+                      ? "marketing"
+                      : publicSiteTailwindPath === "contact"
+                        ? "contact"
+                        : "landing",
+                  activeMarketingSlug:
+                    marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
+                      ? marketingKey
+                      : undefined,
                   contactSectionId: contactNavCaptureFragmentId(contactPlan),
                   landingSectionIds: landingSectionIdsForPublicSubpageNav(sections, contactPlan),
+                  marketingSlugs: marketingKeys,
                 }
               : null
           }

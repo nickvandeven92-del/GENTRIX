@@ -32,6 +32,12 @@ export const STUDIO_SHOP_PATH_PLACEHOLDER = "__STUDIO_SHOP_PATH__";
 /** Publieke contactsubpagina: `/site/{slug}/contact` (of preview-token-variant). */
 export const STUDIO_CONTACT_PATH_PLACEHOLDER = "__STUDIO_CONTACT_PATH__";
 
+/**
+ * Basis voor interne marketingroutes: `href="__STUDIO_SITE_BASE__/wat-wij-doen"` → `/site/{slug}/wat-wij-doen`.
+ * Geen slash aan het einde van de basis.
+ */
+export const STUDIO_SITE_BASE_PLACEHOLDER = "__STUDIO_SITE_BASE__";
+
 export function applyStudioPortalPathPlaceholder(html: string, subfolderSlug: string): string {
   const path = `/portal/${encodeURIComponent(subfolderSlug)}`;
   return html.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join(path);
@@ -52,6 +58,11 @@ export function applyStudioContactPathPlaceholder(html: string, subfolderSlug: s
   return html.split(STUDIO_CONTACT_PATH_PLACEHOLDER).join(path);
 }
 
+export function applyStudioSiteBasePlaceholder(html: string, siteBasePath: string): string {
+  const base = siteBasePath.replace(/\/$/, "");
+  return html.split(STUDIO_SITE_BASE_PLACEHOLDER).join(base);
+}
+
 export type ApplyStudioPathsOptions = {
   /** `false` = boek-placeholder wordt `#` en past bij module uit (geen `/boek/`-link). */
   includeBooking?: boolean;
@@ -62,6 +73,10 @@ export type ApplyStudioPathsOptions = {
    * Standaard `true`: live preview en `/site` op hetzelfde domein als de app.
    */
   resolvePortalPath?: boolean;
+  /**
+   * Standaard `/site/{slug}` (url-gecodeerd). Voor statische ZIP-export bv. `"."` zodat links `./pagina` worden.
+   */
+  publishedSiteBasePath?: string;
 };
 
 /** Portaal-, boekings- en webshop-placeholders (live preview + gepubliceerde site op hetzelfde domein). */
@@ -70,10 +85,15 @@ export function applyStudioPublishedPathPlaceholders(
   subfolderSlug: string,
   opts?: ApplyStudioPathsOptions,
 ): string {
-  let h =
+  const siteBase =
+    typeof opts?.publishedSiteBasePath === "string" && opts.publishedSiteBasePath.trim() !== ""
+      ? opts.publishedSiteBasePath.trim()
+      : `/site/${encodeURIComponent(subfolderSlug)}`;
+  let h = applyStudioSiteBasePlaceholder(html, siteBase);
+  h =
     opts?.resolvePortalPath === false
-      ? html.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
-      : applyStudioPortalPathPlaceholder(html, subfolderSlug);
+      ? h.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
+      : applyStudioPortalPathPlaceholder(h, subfolderSlug);
   if (opts?.includeBooking === false) {
     h = h.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#");
   } else {
@@ -97,7 +117,8 @@ export function stripLeakedStudioPlaceholderTokens(html: string): string {
     .split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("")
     .split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("")
     .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("")
-    .split(STUDIO_CONTACT_PATH_PLACEHOLDER).join("");
+    .split(STUDIO_CONTACT_PATH_PLACEHOLDER).join("")
+    .split(STUDIO_SITE_BASE_PLACEHOLDER).join("");
 }
 
 /**
@@ -108,7 +129,8 @@ export function neutralizeStudioPathPlaceholdersWithoutSlug(html: string): strin
     .split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
     .split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#")
     .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#")
-    .split(STUDIO_CONTACT_PATH_PLACEHOLDER).join("#");
+    .split(STUDIO_CONTACT_PATH_PLACEHOLDER).join("#")
+    .split(STUDIO_SITE_BASE_PLACEHOLDER).join("#");
 }
 
 /** Enkele `href` (React-secties) — zelfde placeholder als in HTML-secties. */

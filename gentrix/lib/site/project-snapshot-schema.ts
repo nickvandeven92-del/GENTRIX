@@ -1,5 +1,6 @@
 import { z, type ZodIssue } from "zod";
 import {
+  marketingPageKeyStoredSchema,
   sectionIdSchema,
   slugifyToSectionId,
   tailwindPageConfigSchema,
@@ -173,6 +174,15 @@ export const projectSnapshotSchema = z
     sections: z.array(snapshotSectionSchema).min(1).max(24),
     /** `/site/[slug]/contact` — optioneel; landings-`sections` zonder dit veld = legacy one-pager/split. */
     contactSections: z.array(snapshotSectionSchema).max(12).optional(),
+    /** `/site/[slug]/<key>` — optioneel marketing-subpagina's (naast landing + contact). */
+    marketingPages: z
+      .record(marketingPageKeyStoredSchema, z.array(snapshotSectionSchema).min(1).max(16))
+      .superRefine((rec, ctx) => {
+        if (Object.keys(rec).length > 8) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Maximaal 8 marketing-subpagina's." });
+        }
+      })
+      .optional(),
     theme: themeTokensSchema,
     assets: projectAssetsSchema,
     editor: editorStateSchema,
@@ -283,6 +293,25 @@ export function tailwindSectionsPayloadToProjectSnapshot(
           };
         })
       : undefined;
+  const marketingPagesRaw = payload.marketingPages;
+  const marketingPages: Record<string, SnapshotSection[]> | undefined =
+    marketingPagesRaw != null && Object.keys(marketingPagesRaw).length > 0
+      ? Object.fromEntries(
+          Object.entries(marketingPagesRaw).map(([key, secs]) => [
+            key,
+            secs.map((s, i) => {
+              const id = s.id ?? slugifyToSectionId(s.sectionName, i);
+              return {
+                id,
+                sectionName: s.sectionName.trim(),
+                html: s.html,
+                ...(s.semanticRole != null ? { semanticRole: s.semanticRole } : {}),
+                ...(s.copyIntent != null ? { copyIntent: s.copyIntent } : {}),
+              };
+            }),
+          ]),
+        )
+      : undefined;
   const sectionIdsOrdered = sections.map((s) => s.id);
   const kind = options?.createdByKind ?? mapSourceToCreatedByKind(options?.generationSource);
   return projectSnapshotSchema.parse({
@@ -304,6 +333,7 @@ export function tailwindSectionsPayloadToProjectSnapshot(
     },
     sections,
     ...(contactSections != null && contactSections.length > 0 ? { contactSections } : {}),
+    ...(marketingPages != null && Object.keys(marketingPages).length > 0 ? { marketingPages } : {}),
     theme: {
       pageConfig: payload.config,
       tokenOverrides: {},
@@ -378,6 +408,25 @@ export function projectSnapshotToTailwindSectionsPayload(snapshot: ProjectSnapsh
             if (s.copyIntent != null) row.copyIntent = s.copyIntent;
             return row;
           }),
+        }
+      : {}),
+    ...(snapshot.marketingPages != null && Object.keys(snapshot.marketingPages).length > 0
+      ? {
+          marketingPages: Object.fromEntries(
+            Object.entries(snapshot.marketingPages).map(([k, secs]) => [
+              k,
+              secs.map((s) => {
+                const row: TailwindSection = {
+                  id: s.id,
+                  sectionName: s.sectionName,
+                  html: s.html,
+                };
+                if (s.semanticRole != null) row.semanticRole = s.semanticRole;
+                if (s.copyIntent != null) row.copyIntent = s.copyIntent;
+                return row;
+              }),
+            ]),
+          ),
         }
       : {}),
     ...(snapshot.composition.pageType != null ? { pageType: snapshot.composition.pageType } : {}),

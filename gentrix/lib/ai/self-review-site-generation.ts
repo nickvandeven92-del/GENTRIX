@@ -44,15 +44,15 @@ import type { GenerationPipelineFeedback, StyleDetectionSource } from "@/lib/ai/
 
 const MAX_DRAFT_JSON_CHARS = 380_000;
 
-const SELF_REVIEW_SYSTEM = `Je bent senior QA en front-end reviser voor Tailwind-marketing sites als **JSON**: \`config\` + \`sections\` (landing), en **indien het concept \`contactSections\` heeft** ook die array (contactpagina met formulier).
+const SELF_REVIEW_SYSTEM = `Je bent senior QA en front-end reviser voor Tailwind-marketing sites als **JSON**: \`config\` + \`sections\` (landing), **optioneel** \`marketingPages\` (object met subpagina-keys → sectie-arrays), en **indien het concept \`contactSections\` heeft** ook die array (contactpagina met formulier).
 
 Je krijgt de briefing, een **concept**-JSON, en **automatische checks** (validator + claim-scan). Behandel de markup alsof je de pagina visueel doorloopt: hiërarchie, hero-impact, redundante trust-blokken, generieke kaartenmuur, verticale lengte, en vooral **feitelijke integriteit**.
 
 === OUTPUT ===
 - Antwoord met **alleen** één geldig JSON-object (geen markdown-fences, geen toelichting buiten JSON).
-- Vorm: **zelfde top-level keys als het concept** (één of twee sectie-arrays). Geen keys weglaten die het concept wél had.
+- Vorm: **zelfde top-level keys als het concept** (sectie-arrays + optioneel \`marketingPages\`). Geen keys weglaten die het concept wél had.
 - Houd **hetzelfde aantal secties** in elke array en **dezelfde sectie-\`id\`’s in dezelfde volgorde** als het concept. Alleen \`html\` (en zo nodig \`name\`) inhoudelijk verbeteren; \`config\` alleen bij kleine correctie als die duidelijk botst met de briefing (kleur/font), niet opnieuw ontwerpen.
-- **Multi-pagina:** landing zonder \`<form>\`; contact met formulier; cross-route via \`__STUDIO_CONTACT_PATH__\`; **geen** \`href="#"\`.
+- **Multi-pagina:** landing zonder \`<form>\`; subpagina's in \`marketingPages\` zonder \`<form>\`; contact met formulier; cross-route via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\`; **geen** \`href="#"\`.
 
 === INHOUD (strikt) ===
 ${buildContentAuthorityPolicyBlock()}
@@ -93,15 +93,25 @@ export function generatedTailwindPageToClaudeOutput(
     name: s.sectionName,
   }));
   if (page.contactSections != null && page.contactSections.length > 0) {
-    return {
+    const row = (s: (typeof page.sections)[number], i: number) => ({
+      id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
+      html: s.html,
+      name: s.sectionName,
+    });
+    const base: ClaudeTailwindMarketingSiteOutput = {
       config: page.config,
       sections: sectionRows,
-      contactSections: page.contactSections.map((s, i) => ({
-        id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
-        html: s.html,
-        name: s.sectionName,
-      })),
+      contactSections: page.contactSections.map(row),
     };
+    if (page.marketingPages != null && Object.keys(page.marketingPages).length > 0) {
+      return {
+        ...base,
+        marketingPages: Object.fromEntries(
+          Object.entries(page.marketingPages).map(([k, secs]) => [k, secs.map(row)]),
+        ),
+      };
+    }
+    return base;
   }
   return {
     config: page.config,
@@ -225,9 +235,18 @@ export async function applySelfReviewToGeneratedPage(options: {
     draft.contactSections != null && draft.contactSections.length > 0
       ? draft.contactSections.map((s) => s.html).join("\n")
       : "";
+  const marketingJoined =
+    draft.marketingPages != null
+      ? Object.values(draft.marketingPages)
+          .flat()
+          .map((s) => s.html)
+          .join("\n")
+      : "";
   const claims =
     draft.contentClaimDiagnostics ??
-    buildContentClaimDiagnosticsReport(joined + (contactJoined ? `\n${contactJoined}` : ""));
+    buildContentClaimDiagnosticsReport(
+      joined + (contactJoined ? `\n${contactJoined}` : "") + (marketingJoined ? `\n${marketingJoined}` : ""),
+    );
 
   const user = buildSelfReviewUserPrompt({
     businessName,
@@ -296,7 +315,35 @@ export async function applySelfReviewToGeneratedPage(options: {
         return { data: draft, ran: true, usedRefined: false };
       }
     }
-    const rules = validateMarketingSiteHardRules(mapped.sections, mapped.contactSections);
+    if (draft.marketingPages != null && Object.keys(draft.marketingPages).length > 0) {
+      const dMp = draft.marketingPages;
+      const mMp = mapped.marketingPages;
+      if (mMp == null) {
+        console.warn("[self-review] marketingPages ontbreken na revisie; concept behouden.");
+        return { data: draft, ran: true, usedRefined: false };
+      }
+      const dKeys = Object.keys(dMp).sort().join("\0");
+      const mKeys = Object.keys(mMp).sort().join("\0");
+      if (dKeys !== mKeys) {
+        console.warn("[self-review] marketingPages-keys gewijzigd; concept behouden.");
+        return { data: draft, ran: true, usedRefined: false };
+      }
+      for (const k of Object.keys(dMp)) {
+        const a = dMp[k]!;
+        const b = mMp[k]!;
+        if (a.length !== b.length) {
+          console.warn(`[self-review] marketingPages["${k}"] aantal secties gewijzigd; concept behouden.`);
+          return { data: draft, ran: true, usedRefined: false };
+        }
+        for (let i = 0; i < a.length; i++) {
+          if (b[i]?.id !== a[i]?.id) {
+            console.warn(`[self-review] marketingPages["${k}"] id op index ${i} afwijkend; concept behouden.`);
+            return { data: draft, ran: true, usedRefined: false };
+          }
+        }
+      }
+    }
+    const rules = validateMarketingSiteHardRules(mapped.sections, mapped.contactSections, mapped.marketingPages);
     if (rules.length > 0) {
       console.warn("[self-review] harde marketing-regels geschonden na revisie; concept behouden:", rules.join(" "));
       return { data: draft, ran: true, usedRefined: false };
@@ -305,10 +352,14 @@ export async function applySelfReviewToGeneratedPage(options: {
       config: mapped.config,
       sections: mapped.sections,
       contactSections: mapped.contactSections,
+      ...(mapped.marketingPages != null && Object.keys(mapped.marketingPages).length > 0
+        ? { marketingPages: mapped.marketingPages }
+        : {}),
       ...(draft.logoSet != null ? { logoSet: draft.logoSet } : {}),
     };
     const contactSecs = refined.contactSections ?? [];
-    const htmlJoined = [...refined.sections, ...contactSecs].map((s) => s.html).join("\n");
+    const marketingSecs = refined.marketingPages != null ? Object.values(refined.marketingPages).flat() : [];
+    const htmlJoined = [...refined.sections, ...contactSecs, ...marketingSecs].map((s) => s.html).join("\n");
     return {
       data: {
         ...refined,
