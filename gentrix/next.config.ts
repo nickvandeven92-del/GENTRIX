@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
    * Test je via de “Network”-URL? Zet hier je LAN-hostname/IP (zoals in de dev-server output).
    */
   allowedDevOrigins: ["127.0.0.1"],
-  /** Playwright blijft extern (zwaar). isomorphic-dompurify/jsdom niet extern: Node `require()` breekt op ESM-deps (@exodus/bytes) op Vercel. */
+  /** Playwright blijft extern (zwaar). jsdom 29+ → html-encoding-sniffer 6 → ERR_REQUIRE_ESM op @exodus/bytes; zie `package.json` overrides (jsdom 25). */
   serverExternalPackages: ["playwright"],
   images: {
     remotePatterns: [
