@@ -1,6 +1,7 @@
 import { generatedSiteSchema, type GeneratedSite } from "@/lib/ai/generated-site-schema";
 import {
   tailwindPageConfigSchema,
+  tailwindSectionSchema,
   tailwindSectionsArraySchema,
   type TailwindPageConfig,
   type TailwindSection,
@@ -33,11 +34,13 @@ export type ParsedStoredSite =
       /** Afkomstig uit `project_snapshot_v1.composition` — alleen voor compose-volgorde. */
       sectionIdsOrdered?: string[];
       siteIr?: SiteIrV1;
+      contactSections?: TailwindSection[];
     };
 
 /** Secties + optionele config zonder `format: "tailwind_sections"` (sommige handmatige exports). */
 const tailwindSectionsLooseSchema = z.object({
   sections: tailwindSectionsArraySchema,
+  contactSections: z.array(tailwindSectionSchema).min(1).max(12).optional(),
   pageType: snapshotPageTypeSchema.optional(),
   config: tailwindPageConfigSchema.optional(),
   customCss: z.string().max(48_000).optional(),
@@ -70,6 +73,7 @@ function tailwindParsedFromSnapshotFlow(input: unknown): ParsedStoredSite | null
       : {}),
     sectionIdsOrdered: orderFromIr,
     ...(snap.siteIr != null ? { siteIr: snap.siteIr } : {}),
+    ...(tw.contactSections != null && tw.contactSections.length > 0 ? { contactSections: tw.contactSections } : {}),
   };
 }
 

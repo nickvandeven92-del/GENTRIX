@@ -31,6 +31,8 @@ export type PublishedSitePayload =
       sectionIdsOrdered?: string[];
       /** Site IR v1 wanneer bron `project_snapshot_v1` was. */
       siteIr?: SiteIrV1;
+      /** Aparte `/contact`-HTML; ontbreekt bij legacy one-pager. */
+      contactSections?: TailwindSection[];
     }
   | {
       kind: "react";
@@ -77,6 +79,9 @@ export function publishedPayloadFromParsed(
         ? { sectionIdsOrdered: [...parsed.sectionIdsOrdered] }
         : {}),
       ...(parsed.siteIr != null ? { siteIr: parsed.siteIr } : {}),
+      ...(parsed.contactSections != null && parsed.contactSections.length > 0
+        ? { contactSections: parsed.contactSections }
+        : {}),
     };
   }
   if (parsed.kind === "react") {

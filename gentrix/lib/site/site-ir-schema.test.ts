@@ -8,7 +8,16 @@ describe("buildSiteIrV1", () => {
     expect(ir.schemaVersion).toBe(1);
     expect(ir.blueprintId).toBe(SITE_BLUEPRINT_STUDIO_MARKETING_SINGLE_PAGE);
     expect(ir.primaryPage.routeKey).toBe("public_landing");
+    expect(ir.activeRoutes).toEqual(["public_landing", "public_contact"]);
+    expect(ir.routes?.map((r) => r.routeKey)).toEqual(["public_landing", "public_contact"]);
     expect(ir.moduleSlots.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("kan contact-route uitzetten voor legacy one-pager payload", () => {
+    const ir = buildSiteIrV1({ hasDedicatedContactPage: false });
+    expect(ir.activeRoutes).toEqual(["public_landing"]);
+    expect(ir.routes?.length).toBe(1);
+    expect(ir.routes?.[0]?.routeKey).toBe("public_landing");
   });
 
   it("accepteert industry-id", () => {

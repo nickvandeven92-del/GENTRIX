@@ -171,6 +171,8 @@ export const projectSnapshotSchema = z
     siteConfig: siteConfigSchema,
     composition: compositionPlanSchema,
     sections: z.array(snapshotSectionSchema).min(1).max(24),
+    /** `/site/[slug]/contact` — optioneel; landings-`sections` zonder dit veld = legacy one-pager/split. */
+    contactSections: z.array(snapshotSectionSchema).max(12).optional(),
     theme: themeTokensSchema,
     assets: projectAssetsSchema,
     editor: editorStateSchema,
@@ -267,6 +269,20 @@ export function tailwindSectionsPayloadToProjectSnapshot(
       ...(s.copyIntent != null ? { copyIntent: s.copyIntent } : {}),
     };
   });
+  const contactSectionsRaw = payload.contactSections;
+  const contactSections: SnapshotSection[] | undefined =
+    contactSectionsRaw != null && contactSectionsRaw.length > 0
+      ? contactSectionsRaw.map((s, i) => {
+          const id = s.id ?? slugifyToSectionId(s.sectionName, i);
+          return {
+            id,
+            sectionName: s.sectionName.trim(),
+            html: s.html,
+            ...(s.semanticRole != null ? { semanticRole: s.semanticRole } : {}),
+            ...(s.copyIntent != null ? { copyIntent: s.copyIntent } : {}),
+          };
+        })
+      : undefined;
   const sectionIdsOrdered = sections.map((s) => s.id);
   const kind = options?.createdByKind ?? mapSourceToCreatedByKind(options?.generationSource);
   return projectSnapshotSchema.parse({
@@ -287,6 +303,7 @@ export function tailwindSectionsPayloadToProjectSnapshot(
       ...(payload.pageType != null ? { pageType: payload.pageType } : {}),
     },
     sections,
+    ...(contactSections != null && contactSections.length > 0 ? { contactSections } : {}),
     theme: {
       pageConfig: payload.config,
       tokenOverrides: {},
@@ -311,6 +328,7 @@ export function tailwindSectionsPayloadToProjectSnapshot(
       blueprintId: options?.siteIrHints?.blueprintId ?? undefined,
       detectedIndustryId: options?.siteIrHints?.detectedIndustryId ?? undefined,
       sectionIdsOrdered,
+      hasDedicatedContactPage: Boolean(contactSections != null && contactSections.length > 0),
     }),
   });
 }
@@ -348,6 +366,20 @@ export function projectSnapshotToTailwindSectionsPayload(snapshot: ProjectSnapsh
   return {
     format: "tailwind_sections",
     sections,
+    ...(snapshot.contactSections != null && snapshot.contactSections.length > 0
+      ? {
+          contactSections: snapshot.contactSections.map((s) => {
+            const row: TailwindSection = {
+              id: s.id,
+              sectionName: s.sectionName,
+              html: s.html,
+            };
+            if (s.semanticRole != null) row.semanticRole = s.semanticRole;
+            if (s.copyIntent != null) row.copyIntent = s.copyIntent;
+            return row;
+          }),
+        }
+      : {}),
     ...(snapshot.composition.pageType != null ? { pageType: snapshot.composition.pageType } : {}),
     ...(snapshot.theme.pageConfig != null ? { config: snapshot.theme.pageConfig as TailwindPageConfig } : {}),
     ...(snapshot.assets.customCss != null && snapshot.assets.customCss !== ""

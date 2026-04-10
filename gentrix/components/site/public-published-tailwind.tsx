@@ -26,6 +26,8 @@ type PublicPublishedTailwindProps = {
   className?: string;
   visibility?: "public" | "portal";
   publishedSlug?: string;
+  /** Zie `buildTailwindIframeSrcDoc` — alleen token-preview. */
+  draftPublicPreviewToken?: string | null;
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
@@ -55,6 +57,7 @@ export function PublicPublishedTailwind({
   className,
   visibility = "public",
   publishedSlug,
+  draftPublicPreviewToken,
   userCss,
   userJs,
   logoSet,
@@ -88,6 +91,7 @@ export function PublicPublishedTailwind({
         userJs,
         logoSet,
         publishedSlug: publishedSlug?.trim(),
+        draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
         appointmentsEnabled,
         webshopEnabled,
         /* Scroll-reveal aan: `data-animation` + STUDIO_SCROLL_REVEAL_SCRIPT (zie tailwind-page-html).
@@ -129,6 +133,7 @@ export function PublicPublishedTailwind({
     documentTitle,
     compiledTailwindCss,
     contactSubpageNavBase,
+    draftPublicPreviewToken,
   ]);
 
   const iframeStyle: CSSProperties = embedded

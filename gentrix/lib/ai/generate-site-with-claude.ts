@@ -13,8 +13,10 @@ import {
 } from "@/lib/ai/master-site-system-prompt";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import {
+  claudeTailwindMarketingSiteOutputSchema,
   claudeTailwindPageOutputSchema,
   MASTER_PROMPT_CONFIG_STYLE_MAX,
+  mapClaudeMarketingSiteOutputToSections,
   mapClaudeOutputToSections,
   type GeneratedTailwindPage,
   type MasterPromptPageConfig,
@@ -25,11 +27,13 @@ import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-prompt";
 import {
   normalizeHtmlWhitespaceForUpgradePrompt,
+  postProcessClaudeTailwindMarketingSite,
   postProcessClaudeTailwindPage,
   stableIdsForUpgradeSections,
 } from "@/lib/ai/generate-site-postprocess";
 import { tryExtractCompletedSections } from "@/lib/ai/stream-json-section-extractor";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import { validateGeneratedPageHtml, type HomepagePlan } from "@/lib/ai/validate-generated-page";
 import { applySelfReviewToGeneratedPage } from "@/lib/ai/self-review-site-generation";
 import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace";
@@ -193,7 +197,8 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
     for (const id of extra) merged.add(id);
     merged.delete("booking");
     merged.delete("shop");
-    return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id));
+    merged.delete("contact");
+    return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact");
   }
 
   const industry = detectIndustry(description);
@@ -203,7 +208,8 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
   for (const id of extra) merged.add(id);
   merged.delete("booking");
   merged.delete("shop");
-  return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id));
+  merged.delete("contact");
+  return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact");
 }
 
 // ---------------------------------------------------------------------------
@@ -864,7 +870,7 @@ export function serializeExistingSiteForUpgradePrompt(siteData: unknown): Serial
 }
 
 /** Fallback als er geen branche-match is: geen vaste “SaaS-landing” (testimonials/pricing/faq) — die komen via keywords of industry-profiel. */
-const DEFAULT_SECTIONS = ["hero", "features", "about", "contact", "footer"] as const;
+const DEFAULT_SECTIONS = ["hero", "features", "about", "footer"] as const;
 
 /** Minimale HomepagePlan voor self-review / validate. */
 function buildMinimalHomepagePlan(sectionIds?: string[]): HomepagePlan {
@@ -890,10 +896,63 @@ function buildMinimalHomepagePlan(sectionIds?: string[]): HomepagePlan {
 
 type SiteGenerationOperationalTailInput = {
   preserve: boolean;
+  /** Nieuwe marketing-sites: landings-JSON + aparte \`contactSections\` (geen one-pager). */
+  marketingMultiPage?: boolean;
   requiredIdsLine: string;
   section4Nav: string;
   section5IdsNote: string;
 };
+
+/** §3B–§5 voor multi-route marketing (landing + /contact), zelfde technische HTML-regels als one-pager. */
+function buildMarketingMultiPageOperationalTail(
+  input: Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote">,
+): string {
+  const { requiredIdsLine, section4Nav, section5IdsNote } = input;
+  return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
+
+- **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum) — zelfde CONTENT AUTHORITY-regels als standaard.
+- **Twee pagina’s in één JSON:** \`sections\` = **alleen landingspagina** (marketing, geen lead-<form>). \`contactSections\` = **contactpagina** met minstens één **werkend** <form> (naam/e-mail/bericht of vergelijkbaar).
+- **Verboden op landings-\`sections\`:** elk \`<form>\` (ook geen “mini” newsletter-form). CTA’s: knoppen/links naar \`__STUDIO_CONTACT_PATH__\` of \`mailto:\`/\`tel:\`.
+- **Sectie-ankers (per pagina):** het **buitenste** element van elke sectie heeft \`id="…"\` gelijk aan de JSON-\`id\` **van die pagina**. Landings-nav gebruikt \`href="#…"\` **alleen** naar id’s die in \`sections\` bestaan. Contactpagina: eigen id-set in \`contactSections\`.
+- **Cross-route naar contact:** gebruik **uitsluitend** het exacte token \`href="__STUDIO_CONTACT_PATH__"\` (geen \`/contact\`, geen \`/site/…\` zelf verzinnen, geen \`href="#"\`). Meerdere CTAs (“Neem contact op”, nav “Contact”) mogen allemaal naar dat token wijzen.
+- **Verboden:** \`href="#"\`, lege \`href\`, verzonnen \`#fragment\` dat niet op **diezelfde pagina** bestaat, of paden naar routes die niet bestaan (geen \`/blog\`, \`/pricing\`, … tenzij de briefing expliciet vraagt én je die sectie-id’s ook echt op de landing uitwerkt — liever niet).
+- **Studio-placeholders (alleen letterlijk deze strings):** \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\`, \`__STUDIO_CONTACT_PATH__\` — volgens module-instructies uit §0B.
+- **WhatsApp:** alleen \`https://wa.me/…\` als een nummer in de briefing staat; anders link naar \`__STUDIO_CONTACT_PATH__\`.
+- **Extern (https):** alleen \`https://\`; geen \`http://\` zonder TLS.
+- **Knoppen:** geen decoratieve \`<button>\` zonder actie: gebruik \`<a class="…">\` met echte \`href\`.
+- **Nieuw tabblad:** bij \`target="_blank"\` altijd \`rel="noopener noreferrer"\`.
+
+=== 4. TECHNISCHE HTML-REGELS ===
+
+- Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
+- **Afbeeldingen — BELANGRIJK:** De foto moet **inhoudelijk kloppen** bij de tekst ernaast. Een sectie over waterglijbanen toont waterglijbanen, niet een kantoor. Een restaurant toont eten, niet cosmetica.
+  - Gebruik \`https://images.unsplash.com/photo-XXXX?auto=format&fit=crop&w=800&q=80\` met een \`photo-\` id dat het juiste onderwerp toont. Relevante beelden helpen; gradient/kleurvlak mag als het past.
+  - \`alt\`-tekst beschrijft wat de foto **moet** tonen (bijv. \`alt="Barbershop interieur met klassieke stoelen en warme verlichting"\`), niet een generieke beschrijving.
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en foto's die **niet matchen** met de context van het blok.
+  - Voor overige secties (niet-hero): als je geen passende foto vindt, is een sfeervolle **gradient of kleurvlak** acceptabel — maar probeer altijd **eerst** een goede foto.
+- Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
+${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
+
+=== 5. OUTPUT-FORMAAT (strikt JSON) ===
+
+Lever **uitsluitend** één JSON-object. Geen markdown, geen code fences, geen tekst ervoor of erna.
+
+Structuur (let op: **beide** arrays zijn verplicht):
+
+{
+  "config": { "style": "…", "theme": { "primary": "#…", "accent": "#…", "primaryLight": "#…", "primaryMain": "#…", "primaryDark": "#…" }, "font": "…" },
+  "sections": [
+    { "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">…</section>" }
+  ],
+  "contactSections": [
+    { "id": "contact", "html": "<section id=\\"contact\\" class=\\"...\\"><form>…</form></section>" }
+  ]
+}
+
+Minimaal deze landings-sectie-\`id\`'s (eigen volgorde mag): ${requiredIdsLine}. **Geen** \`contact\`-sectie met formulier op de landing — contact staat in \`contactSections\`. Je mag \`name\` per sectie toevoegen (optioneel).${section5IdsNote}
+
+JSON moet geldig zijn.`;
+}
 
 function buildHeroViewportRulesMarkdown(preserve: boolean): string {
   if (preserve) return "";
@@ -931,7 +990,7 @@ function buildOperationalNavParts(
   const requiredIdsLine =
     sectionIdsHint && sectionIdsHint.length > 0
       ? sectionIdsHint.map((s) => `\`${s}\``).join(", ")
-      : "`hero`, `features`, `about`, `contact`, `footer` (uitbreiding via briefing/branche; geen vaste testimonials/pricing/faq)";
+      : "`hero`, `features`, `about`, `footer` (+ briefing/branche; **geen** `contact`-sectie met formulier op de landing — contact staat in `contactSections`)";
   return { section4Nav, section5IdsNote, requiredIdsLine };
 }
 
@@ -983,6 +1042,9 @@ function buildSection3UpgradeTailMarkdown(preserve: boolean): string {
 
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
 function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTailInput): string {
+  if (input.marketingMultiPage && !input.preserve) {
+    return buildMarketingMultiPageOperationalTail(input);
+  }
   const { preserve, requiredIdsLine, section4Nav, section5IdsNote } = input;
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
@@ -1072,6 +1134,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
     preserve,
     options?.sectionIdsHint,
   );
+  const marketingMultiPage = !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
@@ -1081,7 +1144,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
     ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
     : "";
 
-  return `Je genereert **één** one-pager als JSON (Tailwind). Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
+  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + contactpagina** (`sections` + `contactSections`)" : "**één** one-pager (`sections`)"}. Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
@@ -1094,8 +1157,8 @@ ${packageBlock}${existingBlock}
 ${section1}=== KERN (technisch) ===
 
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
-2. **Responsive** layout; sectie-\`id\`'s kloppen met \`href="#…"\` overal.
-3. Altijd \`config\` (volledig \`theme\`) + \`sections\`.
+2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina naar contact via \`__STUDIO_CONTACT_PATH__\` (zie §3B).
+3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `contactSections` (minstens één sectie met <form>)" : ""}.
 4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
@@ -1114,7 +1177,13 @@ ${section3Tail}${section3HeroHeight}
 
 ${getAlpineInteractivityPromptBlock()}
 
-${buildSiteGenerationOperationalTail({ preserve, requiredIdsLine, section4Nav, section5IdsNote })}`;
+${buildSiteGenerationOperationalTail({
+    preserve,
+    marketingMultiPage,
+    requiredIdsLine,
+    section4Nav,
+    section5IdsNote,
+  })}`;
 }
 
 export function buildWebsiteGenerationUserPrompt(
@@ -1145,6 +1214,7 @@ export function buildWebsiteGenerationUserPrompt(
     preserve,
     options?.sectionIdsHint,
   );
+  const marketingMultiPage = !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
 
   const detectedSections = new Set(
@@ -1159,7 +1229,7 @@ export function buildWebsiteGenerationUserPrompt(
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
 
-  return `Je genereert **één** one-pager als JSON (Tailwind). Maak een **professionele, leesbare** site die past bij de briefing — je hebt ruimte om zelf sterk ontwerp te kiezen.
+  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + contactpagina** (`sections` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, leesbare** site die past bij de briefing — je hebt ruimte om zelf sterk ontwerp te kiezen.
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
@@ -1186,8 +1256,8 @@ ${packageBlock}${existingBlock}
 
 1. Output = **één geldig JSON** volgens §5 — geen andere vorm.
 2. **Balans:** duidelijke hiërarchie en leesbaarheid; \`60-30-10\` is optionele richting, geen wiskunde.
-3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; sectie-\`id\`'s consistent met ankers.
-4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`.
+3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; landings-\`id\`'s consistent met \`href="#…"\` op de landing; link “Contact” in de nav naar \`__STUDIO_CONTACT_PATH__\` ${marketingMultiPage ? "(verplicht token)" : ""}.
+4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `contactSections` (contactpagina met formulier)" : ""}.
 5. **Kleur:** als een flashy wens botst met de branche, gebruik die kleur liever **als accent** (§2). ${preserve ? " **Upgrade:** bestaande \`config.theme\` uit bron wint." : ""}
 
 ${section1}
@@ -1202,7 +1272,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 **Vrijheid:** hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan).
 
-**Navigatie (one-pager):** **één** globale nav met **merk/bedrijfsnaam** en **minstens twee tot vier** interne links \`href="#sectie-id"\`; **geen tweede** volledige menu (geen verticale dubbele linklijst + topbar met dezelfde items). Primaire CTA mag in de nav en/of **één** vaste floating afspraakknop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Niet** leveren zonder zichtbare site-nav boven de vouw.
+**Navigatie (${marketingMultiPage ? "landing + contact-route" : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en **minstens twee tot vier** bruikbare links. Op de landing: \`href="#sectie-id"\` naar secties in \`sections\`. **Contact** in het menu: \`href="__STUDIO_CONTACT_PATH__"\` (exact token). **Geen tweede** volledige menu (geen verticale dubbele linklijst + topbar met dezelfde items). Primaire CTA mag in de nav en/of **één** vaste floating afspraakknop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
@@ -1234,7 +1304,13 @@ ${section3Tail}${section3HeroHeight}
 
 ${getAlpineInteractivityPromptBlock()}
 ${brancheSectionBlocks}
-${buildSiteGenerationOperationalTail({ preserve, requiredIdsLine, section4Nav, section5IdsNote })}`;
+${buildSiteGenerationOperationalTail({
+    preserve,
+    marketingMultiPage,
+    requiredIdsLine,
+    section4Nav,
+    section5IdsNote,
+  })}`;
 }
 
 export type GenerateSiteResult =
@@ -1256,6 +1332,8 @@ type PreparedGenerateSiteClaudeCall = {
   userContent: string | ContentBlockParam[];
   homepagePlan: HomepagePlan;
   pipelineFeedback: GenerationPipelineFeedback;
+  /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
+  useMarketingMultiPage: boolean;
 };
 
 type PrepareGenerateSiteResult = PreparedGenerateSiteClaudeCall | { ok: false; error: string };
@@ -1378,11 +1456,12 @@ async function prepareGenerateSiteClaudeCall(
     userContent,
     homepagePlan,
     pipelineFeedback,
+    useMarketingMultiPage: !preserveLayout,
   };
 }
 
 export function withContentClaimDiagnostics(data: GeneratedTailwindPage): GeneratedTailwindPage {
-  const html = data.sections.map((s) => s.html).join("\n");
+  const html = [...data.sections, ...(data.contactSections ?? [])].map((s) => s.html).join("\n");
   return {
     ...data,
     contentClaimDiagnostics: buildContentClaimDiagnosticsReport(html),
@@ -1392,6 +1471,7 @@ export function withContentClaimDiagnostics(data: GeneratedTailwindPage): Genera
 function finalizeGenerateSiteFromClaudeText(
   textBody: string,
   stop_reason: string | null,
+  options: { useMarketingMultiPage: boolean },
 ): GenerateSiteResult {
   if (!textBody.trim()) {
     return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
@@ -1408,6 +1488,28 @@ function finalizeGenerateSiteFromClaudeText(
       error: `Antwoord is geen geldige JSON.${truncated}`,
       rawText: textBody,
     };
+  }
+
+  if (options.useMarketingMultiPage) {
+    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(parsedResult.value);
+    if (!validated.success) {
+      return {
+        ok: false,
+        error: `JSON voldoet niet aan het schema: ${validated.error.message}`,
+        rawText: textBody,
+      };
+    }
+    const processed = postProcessClaudeTailwindMarketingSite(validated.data);
+    const mapped = mapClaudeMarketingSiteOutputToSections(processed);
+    const ruleErrors = validateMarketingSiteHardRules(mapped.sections, mapped.contactSections);
+    if (ruleErrors.length > 0) {
+      return {
+        ok: false,
+        error: `Site-regels: ${ruleErrors.join(" ")}`,
+        rawText: textBody,
+      };
+    }
+    return { ok: true, data: mapped };
   }
 
   const validated = claudeTailwindPageOutputSchema.safeParse(parsedResult.value);
@@ -1471,7 +1573,9 @@ export async function generateSiteWithClaude(
     });
   }
 
-  const result = finalizeGenerateSiteFromClaudeText(textBody, stop_reason);
+  const result = finalizeGenerateSiteFromClaudeText(textBody, stop_reason, {
+    useMarketingMultiPage: p.useMarketingMultiPage,
+  });
   if (!result.ok) {
     return result;
   }
@@ -1496,6 +1600,14 @@ export async function generateSiteWithClaude(
       data.sections,
       process.env.UNSPLASH_ACCESS_KEY,
     ),
+    ...(data.contactSections != null && data.contactSections.length > 0
+      ? {
+          contactSections: await replaceUnsplashImagesInSections(
+            data.contactSections,
+            process.env.UNSPLASH_ACCESS_KEY,
+          ),
+        }
+      : {}),
   };
 
   data = {
@@ -1640,7 +1752,9 @@ export function createGenerateSiteReadableStream(
           });
         }
 
-        const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason);
+        const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason, {
+          useMarketingMultiPage: p.useMarketingMultiPage,
+        });
         if (!result.ok) {
           send(controller, {
             type: "error",
@@ -1692,17 +1806,25 @@ export function createGenerateSiteReadableStream(
         }
         const stopUnsplashKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         let sectionsAfterUnsplash: typeof data.sections;
+        let contactAfterUnsplash: typeof data.contactSections | undefined;
         try {
           sectionsAfterUnsplash = await replaceUnsplashImagesInSections(
             data.sections,
             process.env.UNSPLASH_ACCESS_KEY,
           );
+          contactAfterUnsplash =
+            data.contactSections != null && data.contactSections.length > 0
+              ? await replaceUnsplashImagesInSections(data.contactSections, process.env.UNSPLASH_ACCESS_KEY)
+              : undefined;
         } finally {
           stopUnsplashKeepalive();
         }
         data = {
           ...data,
           sections: sectionsAfterUnsplash,
+          ...(contactAfterUnsplash != null && contactAfterUnsplash.length > 0
+            ? { contactSections: contactAfterUnsplash }
+            : {}),
         };
 
         data = {

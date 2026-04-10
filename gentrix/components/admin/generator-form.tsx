@@ -102,10 +102,16 @@ export function GeneratorForm({
         sections: generatedTailwind.sections,
         config: generatedTailwind.config,
         ...(generatedTailwind.logoSet != null ? { logoSet: generatedTailwind.logoSet } : {}),
+        ...(generatedTailwind.contactSections != null && generatedTailwind.contactSections.length > 0
+          ? { contactSections: generatedTailwind.contactSections }
+          : {}),
         sectionIdsOrdered,
         siteIr: buildSiteIrV1({
           detectedIndustryId: detectedIndustryId ?? undefined,
           sectionIdsOrdered,
+          hasDedicatedContactPage: Boolean(
+            generatedTailwind.contactSections != null && generatedTailwind.contactSections.length > 0,
+          ),
         }),
       },
       businessName.trim() || "Website",

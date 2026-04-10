@@ -23,28 +23,36 @@ import {
   type ContentClaimDiagnosticsReport,
 } from "@/lib/ai/content-claim-diagnostics";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
-import { postProcessClaudeTailwindPage } from "@/lib/ai/generate-site-postprocess";
+import {
+  postProcessClaudeTailwindMarketingSite,
+  postProcessClaudeTailwindPage,
+} from "@/lib/ai/generate-site-postprocess";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import {
+  claudeTailwindMarketingSiteOutputSchema,
   claudeTailwindPageOutputSchema,
+  mapClaudeMarketingSiteOutputToSections,
   mapClaudeOutputToSections,
   slugifyToSectionId,
+  type ClaudeTailwindMarketingSiteOutput,
   type ClaudeTailwindPageOutput,
   type GeneratedTailwindPage,
 } from "@/lib/ai/tailwind-sections-schema";
+import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import { validateGeneratedPageHtml } from "@/lib/ai/validate-generated-page";
 import type { GenerationPipelineFeedback, StyleDetectionSource } from "@/lib/ai/generate-site-with-claude";
 
 const MAX_DRAFT_JSON_CHARS = 380_000;
 
-const SELF_REVIEW_SYSTEM = `Je bent senior QA en front-end reviser voor éénpagina Tailwind-marketing sites die als **JSON** (\`config\` + \`sections\` met HTML) worden geleverd.
+const SELF_REVIEW_SYSTEM = `Je bent senior QA en front-end reviser voor Tailwind-marketing sites als **JSON**: \`config\` + \`sections\` (landing), en **indien het concept \`contactSections\` heeft** ook die array (contactpagina met formulier).
 
 Je krijgt de briefing, een **concept**-JSON, en **automatische checks** (validator + claim-scan). Behandel de markup alsof je de pagina visueel doorloopt: hiërarchie, hero-impact, redundante trust-blokken, generieke kaartenmuur, verticale lengte, en vooral **feitelijke integriteit**.
 
 === OUTPUT ===
 - Antwoord met **alleen** één geldig JSON-object (geen markdown-fences, geen toelichting buiten JSON).
-- Vorm: \`{ "config": { … }, "sections": [ { "id": "…", "html": "…", "name": "…?" } ] }\` — zelfde velden als het concept.
-- Houd **hetzelfde aantal secties** en **dezelfde \`id\`’s in dezelfde volgorde** als het concept. Alleen \`html\` (en zo nodig \`name\`) inhoudelijk verbeteren; \`config\` alleen bij kleine correctie als die duidelijk botst met de briefing (kleur/font), niet opnieuw ontwerpen.
+- Vorm: **zelfde top-level keys als het concept** (één of twee sectie-arrays). Geen keys weglaten die het concept wél had.
+- Houd **hetzelfde aantal secties** in elke array en **dezelfde sectie-\`id\`’s in dezelfde volgorde** als het concept. Alleen \`html\` (en zo nodig \`name\`) inhoudelijk verbeteren; \`config\` alleen bij kleine correctie als die duidelijk botst met de briefing (kleur/font), niet opnieuw ontwerpen.
+- **Multi-pagina:** landing zonder \`<form>\`; contact met formulier; cross-route via \`__STUDIO_CONTACT_PATH__\`; **geen** \`href="#"\`.
 
 === INHOUD (strikt) ===
 ${buildContentAuthorityPolicyBlock()}
@@ -76,14 +84,28 @@ export function isSiteSelfReviewEnabled(): boolean {
   return true;
 }
 
-export function generatedTailwindPageToClaudeOutput(page: GeneratedTailwindPage): ClaudeTailwindPageOutput {
+export function generatedTailwindPageToClaudeOutput(
+  page: GeneratedTailwindPage,
+): ClaudeTailwindPageOutput | ClaudeTailwindMarketingSiteOutput {
+  const sectionRows = page.sections.map((s, i) => ({
+    id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
+    html: s.html,
+    name: s.sectionName,
+  }));
+  if (page.contactSections != null && page.contactSections.length > 0) {
+    return {
+      config: page.config,
+      sections: sectionRows,
+      contactSections: page.contactSections.map((s, i) => ({
+        id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
+        html: s.html,
+        name: s.sectionName,
+      })),
+    };
+  }
   return {
     config: page.config,
-    sections: page.sections.map((s, i) => ({
-      id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
-      html: s.html,
-      name: s.sectionName,
-    })),
+    sections: sectionRows,
   };
 }
 
@@ -103,7 +125,7 @@ function styleSourceNl(source: StyleDetectionSource | undefined): string {
 function buildSelfReviewUserPrompt(params: {
   businessName: string;
   description: string;
-  draft: ClaudeTailwindPageOutput;
+  draft: ClaudeTailwindPageOutput | ClaudeTailwindMarketingSiteOutput;
   validation: ReturnType<typeof validateGeneratedPageHtml>;
   claims: ContentClaimDiagnosticsReport;
   /** Zelfde detectie als pass 1 — zodat revisie weet welke designtaal bedoeld was. */
@@ -199,8 +221,13 @@ export async function applySelfReviewToGeneratedPage(options: {
 
   const joined = draft.sections.map((s) => s.html).join("\n");
   const validation = validateGeneratedPageHtml(joined, homepagePlan);
+  const contactJoined =
+    draft.contactSections != null && draft.contactSections.length > 0
+      ? draft.contactSections.map((s) => s.html).join("\n")
+      : "";
   const claims =
-    draft.contentClaimDiagnostics ?? buildContentClaimDiagnosticsReport(joined);
+    draft.contentClaimDiagnostics ??
+    buildContentClaimDiagnosticsReport(joined + (contactJoined ? `\n${contactJoined}` : ""));
 
   const user = buildSelfReviewUserPrompt({
     businessName,
@@ -238,6 +265,58 @@ export async function applySelfReviewToGeneratedPage(options: {
   if (!parsedResult.ok) {
     console.warn("[self-review] geen geldige JSON; concept behouden.");
     return { data: draft, ran: true, usedRefined: false };
+  }
+
+  const marketingMulti = draft.contactSections != null && draft.contactSections.length > 0;
+
+  if (marketingMulti) {
+    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(parsedResult.value);
+    if (!validated.success) {
+      console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);
+      return { data: draft, ran: true, usedRefined: false };
+    }
+    const processed = postProcessClaudeTailwindMarketingSite(validated.data);
+    const mapped = mapClaudeMarketingSiteOutputToSections(processed);
+    if (
+      mapped.sections.length !== draft.sections.length ||
+      mapped.contactSections.length !== draft.contactSections!.length
+    ) {
+      console.warn("[self-review] sectie-aantal gewijzigd (multi-page); concept behouden.");
+      return { data: draft, ran: true, usedRefined: false };
+    }
+    for (let i = 0; i < draft.sections.length; i++) {
+      if (mapped.sections[i]?.id !== draft.sections[i]?.id) {
+        console.warn(`[self-review] landings-sectie-id op index ${i} afwijkend; concept behouden.`);
+        return { data: draft, ran: true, usedRefined: false };
+      }
+    }
+    for (let i = 0; i < draft.contactSections!.length; i++) {
+      if (mapped.contactSections[i]?.id !== draft.contactSections![i]?.id) {
+        console.warn(`[self-review] contact-sectie-id op index ${i} afwijkend; concept behouden.`);
+        return { data: draft, ran: true, usedRefined: false };
+      }
+    }
+    const rules = validateMarketingSiteHardRules(mapped.sections, mapped.contactSections);
+    if (rules.length > 0) {
+      console.warn("[self-review] harde marketing-regels geschonden na revisie; concept behouden:", rules.join(" "));
+      return { data: draft, ran: true, usedRefined: false };
+    }
+    const refined: GeneratedTailwindPage = {
+      config: mapped.config,
+      sections: mapped.sections,
+      contactSections: mapped.contactSections,
+      ...(draft.logoSet != null ? { logoSet: draft.logoSet } : {}),
+    };
+    const contactSecs = refined.contactSections ?? [];
+    const htmlJoined = [...refined.sections, ...contactSecs].map((s) => s.html).join("\n");
+    return {
+      data: {
+        ...refined,
+        contentClaimDiagnostics: buildContentClaimDiagnosticsReport(htmlJoined),
+      },
+      ran: true,
+      usedRefined: true,
+    };
   }
 
   const validated = claudeTailwindPageOutputSchema.safeParse(parsedResult.value);

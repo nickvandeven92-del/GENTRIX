@@ -64,6 +64,11 @@ export type ContactSubpageNavScriptInput = {
   view: "landing" | "contact";
   contactSectionId: string;
   landingSectionIds: string[];
+  /**
+   * Publieke concept-preview: top-navigatie naar `/preview/...?token=` i.p.v. `/site/...`
+   * (draft heeft geen live `/site`-bundle; oude `/site/`-href in HTML wordt hier ook herkend).
+   */
+  draftPublicPreviewToken?: string | null;
 };
 
 /**
@@ -72,11 +77,16 @@ export type ContactSubpageNavScriptInput = {
  */
 export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScriptInput): string {
   const encSlug = encodeURIComponent(input.slug);
-  const basePath = `/site/${encSlug}`;
+  const tokenRaw = typeof input.draftPublicPreviewToken === "string" ? input.draftPublicPreviewToken.trim() : "";
+  const usePreview = tokenRaw.length > 0;
+  const tokenQ = usePreview ? `?token=${encodeURIComponent(tokenRaw)}` : "";
+  const basePath = usePreview ? `/preview/${encSlug}` : `/site/${encSlug}`;
   const contactPath = `${basePath}/contact`;
+  const legB = usePreview ? `/site/${encSlug}` : null;
+  const legC = usePreview ? `${legB}/contact` : null;
   const origin = input.pageOrigin.replace(/\/$/, "");
-  const baseAbs = `${origin}${basePath}`;
-  const contactAbs = `${origin}${contactPath}`;
+  const baseAbs = `${origin}${basePath}${tokenQ}`;
+  const contactAbs = `${origin}${contactPath}${tokenQ}`;
   const cfg = {
     src: STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
     view: input.view,
@@ -84,12 +94,16 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
     baseAbs,
     contactPath,
     contactAbs,
+    legB,
+    legC,
     cid: input.contactSectionId,
     lids: input.landingSectionIds,
   };
   const json = JSON.stringify(cfg);
   return `<script>(function(){
 var CFG=${json};
+function isBase(p){return p===CFG.basePath||p===CFG.basePath+"/"||(CFG.legB&&(p===CFG.legB||p===CFG.legB+"/"));}
+function isContact(p){return p===CFG.contactPath||p===CFG.contactPath+"/"||(CFG.legC&&(p===CFG.legC||p===CFG.legC+"/"));}
 function postTop(url){
   try{
     if(window.top&&window.top!==window)window.top.location.assign(url);
@@ -120,8 +134,8 @@ document.addEventListener("click",function(e){
       if(/^https?:\\/\\//i.test(raw)){
         var u=new URL(raw);
         var p=u.pathname||"";
-        if(p===CFG.contactPath||p===CFG.contactPath+"/"){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(u.hash||""));return;}
-        if((p===CFG.basePath||p===CFG.basePath+"/")&&u.hash&&u.hash.length>1){
+        if(isContact(p)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(u.hash||""));return;}
+        if(isBase(p)&&u.hash&&u.hash.length>1){
           var hx=normFrag(u.hash.slice(1));
           if(hx===normFrag(CFG.cid)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs);return;}
         }
@@ -131,8 +145,8 @@ document.addEventListener("click",function(e){
       if(raw.charAt(0)==="/"){
         var pq=raw.split("#");
         var pathOnly=pq[0].split("?")[0];
-        if(pathOnly===CFG.contactPath||pathOnly===CFG.contactPath+"/"){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(pq[1]?"#"+pq[1]:""));return;}
-        if((pathOnly===CFG.basePath||pathOnly===CFG.basePath+"/")&&pq[1]&&normFrag(pq[1])===normFrag(CFG.cid)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs);return;}
+        if(isContact(pathOnly)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs+(pq[1]?"#"+pq[1]:""));return;}
+        if(isBase(pathOnly)&&pq[1]&&normFrag(pq[1])===normFrag(CFG.cid)){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.contactAbs);return;}
       }
     }catch(__){}
     return;
@@ -149,7 +163,7 @@ document.addEventListener("click",function(e){
       if(/^https?:\\/\\//i.test(raw)){
         var u2=new URL(raw);
         var p2=u2.pathname||"";
-        if((p2===CFG.basePath||p2===CFG.basePath+"/")&&u2.hash&&u2.hash.length>1){
+        if(isBase(p2)&&u2.hash&&u2.hash.length>1){
           var f3=normFrag(u2.hash.slice(1));
           if(f3!==normFrag(CFG.cid)&&lidSet[f3]){e.preventDefault();e.stopImmediatePropagation();postTop(CFG.baseAbs+u2.hash);return;}
         }
@@ -158,4 +172,56 @@ document.addEventListener("click",function(e){
   }
 },true);
 })();</script>`;
+}
+
+/** Publieke weergave: geen split | env-split uit één JSON | aparte `contactSections` (generator). */
+export type PublicTailwindContactPlan =
+  | { kind: "none" }
+  | { kind: "dedicated"; firstContactSectionId: string; contactSections: TailwindSection[] }
+  | ({ kind: "split" } & TailwindContactSubpagePlan);
+
+export function resolvePublicTailwindContactPlan(
+  landingSections: TailwindSection[],
+  dedicatedContactSections?: TailwindSection[] | null | undefined,
+): PublicTailwindContactPlan {
+  if (dedicatedContactSections != null && dedicatedContactSections.length > 0) {
+    const s0 = dedicatedContactSections[0]!;
+    const firstContactSectionId = (s0.id?.trim() || slugifyToSectionId(s0.sectionName, 0)).trim();
+    return { kind: "dedicated", firstContactSectionId, contactSections: dedicatedContactSections };
+  }
+  const split = detectTailwindContactSubpagePlan(landingSections);
+  if (!split) return { kind: "none" };
+  return { kind: "split", ...split };
+}
+
+export function hasResolvedPublicContactRoute(plan: PublicTailwindContactPlan): boolean {
+  return plan.kind !== "none";
+}
+
+export function selectTailwindSectionsForPublicView(
+  landingSections: TailwindSection[],
+  view: "landing" | "contact",
+  plan: PublicTailwindContactPlan,
+): TailwindSection[] {
+  if (plan.kind === "none") return landingSections;
+  if (plan.kind === "dedicated") {
+    return view === "contact" ? plan.contactSections : landingSections;
+  }
+  return selectTailwindSectionsForContactSubpageView(landingSections, view, plan);
+}
+
+export function landingSectionIdsForPublicSubpageNav(
+  landingSections: TailwindSection[],
+  plan: PublicTailwindContactPlan,
+): string[] {
+  if (plan.kind === "none" || plan.kind === "dedicated") {
+    return landingSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
+  }
+  return landingSectionIdsForContactSubpage(landingSections, plan);
+}
+
+export function contactNavCaptureFragmentId(plan: PublicTailwindContactPlan): string {
+  if (plan.kind === "none") return "contact";
+  if (plan.kind === "dedicated") return plan.firstContactSectionId;
+  return plan.contactSectionId;
 }

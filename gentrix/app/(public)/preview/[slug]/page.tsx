@@ -3,10 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getDraftPublishedSitePayloadBySlug } from "@/lib/data/client-draft-site";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
-import { previewSecretsEqual } from "@/lib/preview/preview-secret-crypto";
+import { getPublicConceptPreviewAccess } from "@/lib/preview/public-concept-preview-access";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -31,28 +30,13 @@ export default async function PublicConceptPreviewPage({ params, searchParams }:
   if (!decoded) notFound();
 
   const token = typeof sp.token === "string" ? sp.token : "";
-  if (!token) notFound();
-
-  const supabase = createServiceRoleClient();
-  const { data: row, error } = await supabase
-    .from("clients")
-    .select("preview_secret, status")
-    .eq("subfolder_slug", decoded)
-    .maybeSingle();
-
-  if (error && isPostgrestUnknownColumnError(error, "preview_secret")) {
-    notFound();
-  }
-  if (error || !row) notFound();
-
-  if (row.status === "active") {
+  const access = await getPublicConceptPreviewAccess(decoded, token);
+  if (access === "not_found") notFound();
+  if (access === "redirect_active") {
     redirect(`/site/${encodeURIComponent(decoded)}`);
   }
 
-  const secret = (row as { preview_secret?: string | null }).preview_secret;
-  if (!previewSecretsEqual(secret ?? null, token)) {
-    notFound();
-  }
+  const supabase = createServiceRoleClient();
 
   const payload = await getDraftPublishedSitePayloadBySlug(decoded);
   if (!payload) notFound();
@@ -75,6 +59,7 @@ export default async function PublicConceptPreviewPage({ params, searchParams }:
         appointmentsEnabled={appointmentsEnabled}
         webshopEnabled={webshopEnabled}
         embedReactInChrome
+        draftPublicPreviewToken={token}
       />
     </div>
   );

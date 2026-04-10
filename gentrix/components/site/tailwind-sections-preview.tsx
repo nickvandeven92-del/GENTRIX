@@ -36,6 +36,11 @@ type TailwindSectionsPreviewProps = {
   previewPostMessageBridge?: boolean;
   /** Past iframe-hoogte aan op basis van documenthoogte uit de iframe (met cap). */
   autoResizeFromPostMessage?: boolean;
+  /**
+   * `panel` (standaard): iframe-hoogte max. paneel / ~82vh — je scrollt **in** de iframe.
+   * `full`: iframe = gemeten documenthoogte (tot `maxMeasuredHeight`) — je scrollt **rond** de iframe (bijv. editorkolom).
+   */
+  documentHeightMode?: "panel" | "full";
   /** Max. hoogte (px) na meting — voorkomt extreem lange preview bij `min-h-screen`-stacking in HTML. */
   maxMeasuredHeight?: number;
   /** Eigen CSS/JS; iframe gebruikt sandbox zonder same-origin. */
@@ -59,6 +64,7 @@ export function TailwindSectionsPreview({
   frameClassName,
   previewPostMessageBridge = true,
   autoResizeFromPostMessage = false,
+  documentHeightMode = "panel",
   maxMeasuredHeight = 2400,
   userCss,
   userJs,
@@ -123,7 +129,7 @@ export function TailwindSectionsPreview({
   }, [srcDoc]);
 
   useLayoutEffect(() => {
-    if (!autoResizeFromPostMessage) {
+    if (!autoResizeFromPostMessage || documentHeightMode === "full") {
       setPanelClipPx(null);
       return;
     }
@@ -137,7 +143,7 @@ export function TailwindSectionsPreview({
     const ro = new ResizeObserver(apply);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [autoResizeFromPostMessage, srcDoc]);
+  }, [autoResizeFromPostMessage, documentHeightMode, srcDoc]);
 
   useEffect(() => {
     if (!previewPostMessageBridge || !autoResizeFromPostMessage) return;
@@ -157,21 +163,27 @@ export function TailwindSectionsPreview({
 
   const autoResizeHeightPx =
     autoResizeFromPostMessage && measuredHeight != null
-      ? Math.min(
-          measuredHeight,
-          maxMeasuredHeight,
-          panelClipPx != null && panelClipPx > 0
-            ? panelClipPx
-            : typeof window !== "undefined"
-              ? Math.round(window.innerHeight * 0.82)
-              : 920,
-        )
+      ? documentHeightMode === "full"
+        ? Math.min(Math.max(measuredHeight, 320), maxMeasuredHeight)
+        : Math.min(
+            measuredHeight,
+            maxMeasuredHeight,
+            panelClipPx != null && panelClipPx > 0
+              ? panelClipPx
+              : typeof window !== "undefined"
+                ? Math.round(window.innerHeight * 0.82)
+                : 920,
+          )
       : null;
 
   return (
     <div
       ref={containerRef}
-      className={cn("flex min-h-0 flex-col overflow-hidden rounded-b-xl bg-white", className)}
+      className={cn(
+        "flex flex-col rounded-b-xl bg-white",
+        documentHeightMode === "full" ? "overflow-visible" : "min-h-0 overflow-hidden",
+        className,
+      )}
     >
       <iframe
         ref={iframeRef}

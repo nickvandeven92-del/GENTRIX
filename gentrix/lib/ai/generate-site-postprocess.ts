@@ -1,4 +1,4 @@
-import type { ClaudeTailwindPageOutput } from "@/lib/ai/tailwind-sections-schema";
+import type { ClaudeTailwindMarketingSiteOutput, ClaudeTailwindPageOutput } from "@/lib/ai/tailwind-sections-schema";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -306,6 +306,21 @@ export function ensureHeroRootMinViewportClass(html: string): string {
 /**
  * Na Zod-validatie: stabiele id's, root-id in markup, werkende interne links.
  */
+/**
+ * Landings- + contactpagina los post-processen (unieke id’s, interne #ankers per pagina).
+ */
+export function postProcessClaudeTailwindMarketingSite(
+  page: ClaudeTailwindMarketingSiteOutput,
+): ClaudeTailwindMarketingSiteOutput {
+  const landing = postProcessClaudeTailwindPage({ config: page.config, sections: page.sections });
+  const contact = postProcessClaudeTailwindPage({ config: page.config, sections: page.contactSections });
+  return {
+    config: landing.config,
+    sections: landing.sections,
+    contactSections: contact.sections,
+  };
+}
+
 export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): ClaudeTailwindPageOutput {
   const withIds = ensureUniqueSectionIds(page.sections);
   const combined = withIds.map((row) => withRootIdOnSectionHtml(row.html, row.id)).join("\n");

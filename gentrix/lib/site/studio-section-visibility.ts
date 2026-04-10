@@ -29,6 +29,9 @@ export const STUDIO_BOOKING_PATH_PLACEHOLDER = "__STUDIO_BOOKING_PATH__";
 /** Publieke webshop-landingspagina op deze app: `/winkel/{slug}`. */
 export const STUDIO_SHOP_PATH_PLACEHOLDER = "__STUDIO_SHOP_PATH__";
 
+/** Publieke contactsubpagina: `/site/{slug}/contact` (of preview-token-variant). */
+export const STUDIO_CONTACT_PATH_PLACEHOLDER = "__STUDIO_CONTACT_PATH__";
+
 export function applyStudioPortalPathPlaceholder(html: string, subfolderSlug: string): string {
   const path = `/portal/${encodeURIComponent(subfolderSlug)}`;
   return html.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join(path);
@@ -42,6 +45,11 @@ export function applyStudioBookingPathPlaceholder(html: string, subfolderSlug: s
 export function applyStudioShopPathPlaceholder(html: string, subfolderSlug: string): string {
   const path = `/winkel/${encodeURIComponent(subfolderSlug)}`;
   return html.split(STUDIO_SHOP_PATH_PLACEHOLDER).join(path);
+}
+
+export function applyStudioContactPathPlaceholder(html: string, subfolderSlug: string): string {
+  const path = `/site/${encodeURIComponent(subfolderSlug)}/contact`;
+  return html.split(STUDIO_CONTACT_PATH_PLACEHOLDER).join(path);
 }
 
 export type ApplyStudioPathsOptions = {
@@ -76,6 +84,7 @@ export function applyStudioPublishedPathPlaceholders(
   } else {
     h = applyStudioShopPathPlaceholder(h, subfolderSlug);
   }
+  h = applyStudioContactPathPlaceholder(h, subfolderSlug);
   return h;
 }
 
@@ -87,7 +96,8 @@ export function stripLeakedStudioPlaceholderTokens(html: string): string {
   return html
     .split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("")
     .split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("")
-    .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("");
+    .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("")
+    .split(STUDIO_CONTACT_PATH_PLACEHOLDER).join("");
 }
 
 /**
@@ -97,7 +107,8 @@ export function neutralizeStudioPathPlaceholdersWithoutSlug(html: string): strin
   return html
     .split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
     .split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#")
-    .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
+    .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#")
+    .split(STUDIO_CONTACT_PATH_PLACEHOLDER).join("#");
 }
 
 /** Enkele `href` (React-secties) — zelfde placeholder als in HTML-secties. */

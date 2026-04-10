@@ -8,9 +8,11 @@ import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibilit
 import { PublicPublishedTailwind } from "@/components/site/public-published-tailwind";
 import { SiteRenderer } from "@/components/site/site-renderer";
 import {
-  detectTailwindContactSubpagePlan,
-  landingSectionIdsForContactSubpage,
-  selectTailwindSectionsForContactSubpageView,
+  contactNavCaptureFragmentId,
+  hasResolvedPublicContactRoute,
+  landingSectionIdsForPublicSubpageNav,
+  resolvePublicTailwindContactPlan,
+  selectTailwindSectionsForPublicView,
 } from "@/lib/site/tailwind-contact-subpage";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +20,14 @@ type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
   className?: string;
   publishedSlug?: string;
+  /** Publieke concept-preview (`/preview/...?token=`): iframe-links en portaal-placeholders. */
+  draftPublicPreviewToken?: string | null;
   visibility?: "public" | "portal";
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
   /**
-   * Publieke Tailwind: `contact` = weergave voor `/site/[slug]/contact` (zelfde JSON, andere sectieselectie).
-   * Alleen actief met `SITE_CONTACT_SUBPAGE=1` en een gedetecteerde contact-sectie met formulier.
+   * Publieke Tailwind: `contact` = weergave voor `/site/[slug]/contact`
+   * (`contactSections` in payload, of legacy split met `SITE_CONTACT_SUBPAGE=1`).
    */
   publicSiteTailwindPath?: "landing" | "contact";
   /**
@@ -37,6 +41,7 @@ export function PublishedSiteView({
   payload,
   className,
   publishedSlug,
+  draftPublicPreviewToken,
   visibility = "public",
   appointmentsEnabled = true,
   webshopEnabled = true,
@@ -81,17 +86,22 @@ export function PublishedSiteView({
             composePlan,
           )
         : payload.sections;
-    const contactPlan = visibility === "public" ? detectTailwindContactSubpagePlan(sections) : null;
+    const contactPlan =
+      visibility === "public"
+        ? resolvePublicTailwindContactPlan(sections, payload.contactSections)
+        : { kind: "none" as const };
     const twSections =
-      contactPlan != null
-        ? selectTailwindSectionsForContactSubpageView(
+      visibility === "public"
+        ? selectTailwindSectionsForPublicView(
             sections,
             publicSiteTailwindPath === "contact" ? "contact" : "landing",
             contactPlan,
           )
         : sections;
     const iframeTitle =
-      publicSiteTailwindPath === "contact" && contactPlan != null ? `${docTitle} · Contact` : docTitle;
+      publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)
+        ? `${docTitle} · Contact`
+        : docTitle;
     return (
       <div
         className={cn(
@@ -105,6 +115,7 @@ export function PublishedSiteView({
           className={cn("min-h-0 flex flex-1 flex-col", className)}
           visibility={visibility}
           publishedSlug={publishedSlug}
+          draftPublicPreviewToken={draftPublicPreviewToken}
           userCss={payload.customCss}
           userJs={payload.customJs}
           logoSet={payload.logoSet}
@@ -114,12 +125,12 @@ export function PublishedSiteView({
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
           contactSubpageNavBase={
-            contactPlan && publishedSlug?.trim() && visibility === "public"
+            hasResolvedPublicContactRoute(contactPlan) && publishedSlug?.trim() && visibility === "public"
               ? {
                   slug: publishedSlug.trim(),
                   view: publicSiteTailwindPath === "contact" ? "contact" : "landing",
-                  contactSectionId: contactPlan.contactSectionId,
-                  landingSectionIds: landingSectionIdsForContactSubpage(sections, contactPlan),
+                  contactSectionId: contactNavCaptureFragmentId(contactPlan),
+                  landingSectionIds: landingSectionIdsForPublicSubpageNav(sections, contactPlan),
                 }
               : null
           }

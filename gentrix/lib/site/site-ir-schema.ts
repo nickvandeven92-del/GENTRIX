@@ -4,9 +4,22 @@ import { resolveSiteBlueprintId } from "@/lib/site/site-blueprint-registry";
 
 export const SITE_IR_SCHEMA_VERSION = 1 as const;
 
-export const siteIrRouteKeySchema = z.enum(["public_landing"]);
+/** Publieke marketing-routes (structuur; geen ontwerp). */
+export const siteIrRouteKeySchema = z.enum(["public_landing", "public_contact"]);
 
-export const siteIrPageKindSchema = z.enum(["marketing_landing"]);
+export const siteIrPageKindSchema = z.enum(["marketing_landing", "contact_page"]);
+
+const siteIrRouteDescriptorSchema = z
+  .object({
+    routeKey: siteIrRouteKeySchema,
+    /** Pad op de gepubliceerde site, bv. `/` of `/contact`. */
+    path: z.string().min(1).max(64),
+    kind: siteIrPageKindSchema,
+  })
+  .strict();
+
+/** Welke routes deze snapshot/HTML-dekking heeft (generator + validatie). */
+export const siteIrActiveRoutesSchema = z.array(siteIrRouteKeySchema).min(1).max(16);
 
 export const siteIrPrimaryPageSchema = z
   .object({
@@ -35,6 +48,13 @@ export const siteIrV1Schema = z
      */
     sectionIdsOrdered: z.array(sectionIdSchema).min(1).max(24).optional(),
     primaryPage: siteIrPrimaryPageSchema,
+    /**
+     * Actieve publieke routes voor deze site (minimaal primary).
+     * Ontbreekt op oude snapshots: afleiden uit `contactSections` in payload/snapshot.
+     */
+    activeRoutes: siteIrActiveRoutesSchema.optional(),
+    /** Optioneel register voor tooling/export; geen layout-voorschrift. */
+    routes: z.array(siteIrRouteDescriptorSchema).max(16).optional(),
     moduleSlots: z.array(siteIrModuleSlotSchema).max(24),
   })
   .strict();
@@ -46,6 +66,11 @@ export type BuildSiteIrV1Input = {
   detectedIndustryId?: string | null;
   /** Marketing-sectievolgorde; wordt in snapshot altijd gelijk gehouden aan `composition.sectionIdsOrdered`. */
   sectionIdsOrdered?: readonly string[] | null;
+  /**
+   * `true` wanneer er een aparte contactpagina (`contactSections`) is.
+   * `false` = legacy one-pager zonder vaste `/contact`-payload. Standaard `true` (studio-marketing).
+   */
+  hasDedicatedContactPage?: boolean | null;
 };
 
 /**
@@ -55,6 +80,16 @@ export function buildSiteIrV1(input?: BuildSiteIrV1Input): SiteIrV1 {
   const blueprint = resolveSiteBlueprintId(input?.blueprintId ?? undefined);
   const industry = input?.detectedIndustryId?.trim();
   const order = input?.sectionIdsOrdered?.filter((x) => typeof x === "string" && x.length > 0);
+  const includeContactRoute = input?.hasDedicatedContactPage !== false;
+  const activeRoutes = includeContactRoute
+    ? (["public_landing", "public_contact"] as const)
+    : (["public_landing"] as const);
+  const routes = includeContactRoute
+    ? ([
+        { routeKey: "public_landing" as const, path: "/", kind: "marketing_landing" as const },
+        { routeKey: "public_contact" as const, path: "/contact", kind: "contact_page" as const },
+      ] as const)
+    : ([{ routeKey: "public_landing" as const, path: "/", kind: "marketing_landing" as const }] as const);
   const raw: SiteIrV1 = {
     schemaVersion: SITE_IR_SCHEMA_VERSION,
     blueprintId: blueprint.id,
@@ -64,6 +99,8 @@ export function buildSiteIrV1(input?: BuildSiteIrV1Input): SiteIrV1 {
       routeKey: "public_landing",
       kind: "marketing_landing",
     },
+    activeRoutes: [...activeRoutes],
+    routes: [...routes],
     moduleSlots: [...blueprint.defaultModuleSlots()],
   };
   return siteIrV1Schema.parse(raw);

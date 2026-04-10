@@ -625,8 +625,8 @@ export function SiteHtmlEditor({
           )}
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
             Live preview
           </div>
           <TailwindSectionsPreview
@@ -641,9 +641,11 @@ export function SiteHtmlEditor({
             webshopEnabled={webshopEnabled}
             composePlan={composePlan}
             title={`Preview ${subfolderSlug}`}
-            className="min-h-0 flex-1 rounded-none border-0 bg-white"
-            frameClassName="min-h-[min(85vh,920px)] w-full flex-1 sm:min-h-[calc(100vh-11rem)]"
+            className="w-full shrink-0 rounded-none border-0 bg-white"
+            frameClassName="min-h-[320px] w-full"
             autoResizeFromPostMessage
+            documentHeightMode="full"
+            maxMeasuredHeight={100_000}
           />
         </div>
         </div>

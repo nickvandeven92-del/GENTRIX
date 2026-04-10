@@ -912,6 +912,10 @@ export type BuildTailwindIframeSrcDocOptions = {
    */
   contactSubpageNav?: ContactSubpageNavScriptInput;
   /**
+   * Publieke concept-preview: portaal-placeholder → `#` (geen `/portal/…` → inlogscherm) en contact-nav gebruikt token-URL.
+   */
+  draftPublicPreviewToken?: string | null;
+  /**
    * Studio iframe-preview: `width=device-width` in een smal paneel triggert mobiele Tailwind-breakpoints.
    * Zet dit aan om de layout te laten aansluiten op het **browservenster** (desktop vs mobiel), niet op de iframewidth.
    */
@@ -930,9 +934,11 @@ export function buildTailwindIframeSrcDoc(
   if (slug) {
     const appt = options?.appointmentsEnabled;
     const shop = options?.webshopEnabled;
+    const previewTok = options?.draftPublicPreviewToken?.trim();
     body = applyStudioPublishedPathPlaceholders(body, slug, {
       includeBooking: appt !== false,
       includeShop: shop !== false,
+      resolvePortalPath: previewTok ? false : undefined,
     });
     body = stripLeakedStudioPlaceholderTokens(body);
   } else {
@@ -985,7 +991,15 @@ export function buildTailwindIframeSrcDoc(
 <script>setTimeout(function(){var e=document.documentElement;if(e.classList.contains("tw-loading")){e.classList.remove("tw-loading");e.classList.add("tw-ready")}},4500)</script>
 `;
 
-  const contactSubpageNav = options?.contactSubpageNav;
+  const contactSubpageNavRaw = options?.contactSubpageNav;
+  const contactSubpageNav =
+    contactSubpageNavRaw != null
+      ? {
+          ...contactSubpageNavRaw,
+          draftPublicPreviewToken:
+            contactSubpageNavRaw.draftPublicPreviewToken ?? options?.draftPublicPreviewToken ?? undefined,
+        }
+      : undefined;
   const contactSubpageScript =
     contactSubpageNav?.pageOrigin?.trim().length &&
     contactSubpageNav.slug?.trim().length &&

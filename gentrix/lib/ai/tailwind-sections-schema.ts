@@ -281,6 +281,15 @@ export const claudeTailwindPageOutputSchema = z.object({
 
 export type ClaudeTailwindPageOutput = z.infer<typeof claudeTailwindPageOutputSchema>;
 
+/** Claude master-output: landingspagina + aparte contactpagina (zelfde `config`). */
+export const claudeTailwindMarketingSiteOutputSchema = z.object({
+  config: masterPromptPageConfigSchema,
+  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(24),
+  contactSections: z.array(claudeTailwindSectionRowSchema).min(1).max(12),
+});
+
+export type ClaudeTailwindMarketingSiteOutput = z.infer<typeof claudeTailwindMarketingSiteOutputSchema>;
+
 function idToSectionLabel(id: string): string {
   return id
     .split(/[-_]/g)
@@ -303,6 +312,22 @@ export function mapClaudeOutputToSections(page: ClaudeTailwindPageOutput): {
   };
 }
 
+export function mapClaudeMarketingSiteOutputToSections(page: ClaudeTailwindMarketingSiteOutput): {
+  config: MasterPromptPageConfig;
+  sections: TailwindSection[];
+  contactSections: TailwindSection[];
+} {
+  const landing = mapClaudeOutputToSections({ config: page.config, sections: page.sections });
+  const contact = mapClaudeOutputToSections({ config: page.config, sections: page.contactSections });
+  return {
+    config: landing.config,
+    sections: landing.sections,
+    contactSections: contact.sections,
+  };
+}
+
+const tailwindContactSectionsArraySchema = z.array(tailwindSectionSchema).min(1).max(12);
+
 const tailwindPayloadStrictObjectSchema = z
   .object({
     format: z.literal("tailwind_sections"),
@@ -310,6 +335,10 @@ const tailwindPayloadStrictObjectSchema = z
     pageType: snapshotPageTypeSchema.optional(),
     config: tailwindPageConfigSchema.optional(),
     sections: tailwindSectionsArraySchema,
+    /**
+     * Aparte HTML voor `/contact` (formulier hier). Landings-`sections` blijven marketing-only (geen lead-<form>).
+     */
+    contactSections: tailwindContactSectionsArraySchema.optional(),
     /** Eigen CSS (editor); wordt gesanitiseerd bij render/export. */
     customCss: z.string().max(48_000).optional(),
     /** Eigen JS (editor); iframe sandbox / live same-origin — alleen vertrouwde code. */
@@ -337,6 +366,7 @@ export function stripUnknownTailwindPayloadKeys(input: unknown): unknown {
   if ("pageType" in o && o.pageType !== undefined) next.pageType = o.pageType;
   if ("config" in o && o.config !== undefined) next.config = o.config;
   if ("sections" in o && o.sections !== undefined) next.sections = o.sections;
+  if ("contactSections" in o && o.contactSections !== undefined) next.contactSections = o.contactSections;
   if ("customCss" in o && o.customCss !== undefined) next.customCss = o.customCss;
   if ("customJs" in o && o.customJs !== undefined) next.customJs = o.customJs;
   if ("logoSet" in o && o.logoSet !== undefined) next.logoSet = o.logoSet;
@@ -356,6 +386,8 @@ export type TailwindSectionsPayload = z.infer<typeof tailwindPayloadStrictObject
 export type GeneratedTailwindPage = {
   config: MasterPromptPageConfig;
   sections: TailwindSection[];
+  /** Optioneel: vaste contactroute (`/site/.../contact`); landings-`sections` zonder lead-formulier. */
+  contactSections?: TailwindSection[];
   logoSet?: GeneratedLogoSet;
   /** Heuristiek op HTML; voor admin/preview — niet in `site_data_json` persisteren. */
   contentClaimDiagnostics?: ContentClaimDiagnosticsReport;
@@ -367,6 +399,9 @@ export function generatedTailwindPageToSectionsPayload(page: GeneratedTailwindPa
     format: "tailwind_sections",
     config: page.config,
     sections: page.sections,
+    ...(page.contactSections != null && page.contactSections.length > 0
+      ? { contactSections: page.contactSections }
+      : {}),
     ...(page.logoSet != null ? { logoSet: page.logoSet } : {}),
   });
 }

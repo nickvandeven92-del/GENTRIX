@@ -5,7 +5,10 @@ import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
-import { detectTailwindContactSubpagePlan } from "@/lib/site/tailwind-contact-subpage";
+import {
+  hasResolvedPublicContactRoute,
+  resolvePublicTailwindContactPlan,
+} from "@/lib/site/tailwind-contact-subpage";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type ContactSitePageProps = {
@@ -75,7 +78,11 @@ export default async function PublicClientSiteContactPage({ params }: ContactSit
       : undefined,
   );
 
-  if (!detectTailwindContactSubpagePlan(sections)) {
+  const contactPlan = resolvePublicTailwindContactPlan(
+    sections,
+    bundle.payload.kind === "tailwind" ? bundle.payload.contactSections : undefined,
+  );
+  if (!hasResolvedPublicContactRoute(contactPlan)) {
     redirect(`/site/${encodeURIComponent(slug)}`);
   }
 

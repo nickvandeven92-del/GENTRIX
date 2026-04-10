@@ -100,6 +100,24 @@ export function upgradeLooseProjectSnapshotV1(
     }
   }
 
+  const contactSectionsRaw = Array.isArray(raw.contactSections) ? raw.contactSections : [];
+  const contactSections = contactSectionsRaw.map((row: unknown, i: number) => {
+    if (!row || typeof row !== "object") {
+      return { id: `contact-section-${i}`, sectionName: `Contact ${i + 1}`, html: "<section></section>" };
+    }
+    const s = row as Record<string, unknown>;
+    const sectionName = typeof s.sectionName === "string" ? s.sectionName : `Contact ${i + 1}`;
+    const html = typeof s.html === "string" ? s.html : "<section></section>";
+    const id =
+      typeof s.id === "string" && /^[a-z0-9-]{1,64}$/.test(s.id)
+        ? s.id
+        : slugifyToSectionId(sectionName, i);
+    const out: Record<string, unknown> = { id, sectionName: sectionName.trim(), html };
+    if (typeof s.semanticRole === "string") out.semanticRole = s.semanticRole;
+    if (typeof s.copyIntent === "string") out.copyIntent = s.copyIntent;
+    return out;
+  });
+
   const ids = sections.map((s) => (s as { id: string }).id);
   const compIn = (raw.composition as Record<string, unknown> | undefined) ?? {};
   let sectionIdsOrdered = Array.isArray(compIn.sectionIdsOrdered)
@@ -136,13 +154,28 @@ export function upgradeLooseProjectSnapshotV1(
   const generation = { ...genIn };
 
   const compOrdered = composition.sectionIdsOrdered as string[];
-  let siteIr = safeParseSiteIrV1(raw.siteIr) ?? buildSiteIrV1();
+  const hasDedicatedContactPage = contactSections.length > 0;
+  let siteIr =
+    safeParseSiteIrV1(raw.siteIr) ??
+    buildSiteIrV1({
+      hasDedicatedContactPage,
+    });
   if (
     (!siteIr.sectionIdsOrdered || siteIr.sectionIdsOrdered.length === 0) &&
     compOrdered.length > 0 &&
     compOrdered.length === sections.length
   ) {
     siteIr = siteIrV1Schema.parse({ ...siteIr, sectionIdsOrdered: [...compOrdered] });
+  }
+  if (hasDedicatedContactPage && !siteIr.activeRoutes?.includes("public_contact")) {
+    siteIr = siteIrV1Schema.parse({
+      ...siteIr,
+      activeRoutes: ["public_landing", "public_contact"],
+      routes: [
+        { routeKey: "public_landing", path: "/", kind: "marketing_landing" },
+        { routeKey: "public_contact", path: "/contact", kind: "contact_page" },
+      ],
+    });
   }
 
   return {
@@ -151,6 +184,7 @@ export function upgradeLooseProjectSnapshotV1(
     siteConfig,
     composition,
     sections,
+    ...(hasDedicatedContactPage ? { contactSections } : {}),
     theme,
     assets,
     editor,
