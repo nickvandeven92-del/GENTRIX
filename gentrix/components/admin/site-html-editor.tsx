@@ -20,6 +20,7 @@ import {
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
+import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { SiteAiChatPanel } from "@/components/admin/site-ai-chat-panel";
 import { SNAPSHOT_PAGE_TYPES, type SnapshotPageType } from "@/lib/site/snapshot-page-type";
 import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
@@ -240,12 +241,15 @@ export function SiteHtmlEditor({
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href={`/admin/clients/${encodeURIComponent(subfolderSlug)}`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+            aria-label="Editor verlaten, terug naar klantdossier"
           >
-            <ArrowLeft className="size-4" aria-hidden />
-            Dossier
+            <ArrowLeft className="size-4 shrink-0" aria-hidden />
+            Terug naar dossier
           </Link>
-          <span className="text-zinc-300 dark:text-zinc-700">|</span>
+          <span className="hidden text-zinc-300 sm:inline dark:text-zinc-700" aria-hidden>
+            |
+          </span>
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">HTML-editor</h1>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             {clientLabel ? (
@@ -435,62 +439,67 @@ export function SiteHtmlEditor({
           </p>
         </div>
       )}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:flex-row lg:items-start">
-        <aside className="flex w-full min-h-0 flex-col gap-2 lg:sticky lg:top-0 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:max-w-[min(100%,440px)] lg:flex-shrink-0 lg:overflow-y-auto">
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/50">
-            <label htmlFor="page-type-select" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              Paginatype (opslag)
-            </label>
-            <select
-              id="page-type-select"
-              value={pageType}
-              onChange={(e) => {
-                setPageType(e.target.value as SnapshotPageType);
+      <ResizableEditorPanels
+        defaultSidebarPx={400}
+        minSidebarPx={280}
+        maxSidebarPx={560}
+        sidebar={
+          <>
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <label htmlFor="page-type-select" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                Paginatype (opslag)
+              </label>
+              <select
+                id="page-type-select"
+                value={pageType}
+                onChange={(e) => {
+                  setPageType(e.target.value as SnapshotPageType);
+                  setSaveMsg(null);
+                  snapshotSourceRef.current = "editor";
+                }}
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              >
+                {SNAPSHOT_PAGE_TYPES.map((pt) => (
+                  <option key={pt} value={pt}>
+                    {pt === "landing"
+                      ? "Landing / marketing"
+                      : pt === "legal"
+                        ? "Juridisch / policy"
+                        : pt === "article"
+                          ? "Artikel / longread"
+                          : "Overig"}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                Wordt mee opgeslagen in site-data; helpt bij context voor AI en kwaliteitschecks.
+              </p>
+            </div>
+            <SiteAiChatPanel
+              className="flex min-h-[min(420px,50dvh)] flex-1 flex-col lg:min-h-[min(480px,55dvh)]"
+              subfolderSlug={subfolderSlug}
+              sections={sections}
+              config={config}
+              appointmentsEnabled={appointmentsEnabled}
+              webshopEnabled={webshopEnabled}
+              disabled={sections.length === 0}
+              onApplyAi={({ sections: nextSections, config: nextConfig, label }) => {
+                snapshotSourceRef.current = "ai_command";
+                dispatch({
+                  type: "push-ai",
+                  sections: nextSections,
+                  config: nextConfig,
+                  label,
+                });
                 setSaveMsg(null);
-                snapshotSourceRef.current = "editor";
+                setSaveError(null);
+                setPreviewKey((k) => k + 1);
               }}
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            >
-              {SNAPSHOT_PAGE_TYPES.map((pt) => (
-                <option key={pt} value={pt}>
-                  {pt === "landing"
-                    ? "Landing / marketing"
-                    : pt === "legal"
-                      ? "Juridisch / policy"
-                      : pt === "article"
-                        ? "Artikel / longread"
-                        : "Overig"}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-              Wordt mee opgeslagen in site-data; helpt bij context voor AI en kwaliteitschecks.
-            </p>
-          </div>
-          <SiteAiChatPanel
-            className="flex min-h-[min(420px,50dvh)] flex-1 flex-col lg:min-h-[min(480px,55dvh)]"
-            subfolderSlug={subfolderSlug}
-            sections={sections}
-            config={config}
-            appointmentsEnabled={appointmentsEnabled}
-            webshopEnabled={webshopEnabled}
-            disabled={sections.length === 0}
-            onApplyAi={({ sections: nextSections, config: nextConfig, label }) => {
-              snapshotSourceRef.current = "ai_command";
-              dispatch({
-                type: "push-ai",
-                sections: nextSections,
-                config: nextConfig,
-                label,
-              });
-              setSaveMsg(null);
-              setSaveError(null);
-              setPreviewKey((k) => k + 1);
-            }}
-          />
-        </aside>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 lg:min-h-0 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:overflow-y-auto">
+            />
+          </>
+        }
+        main={
+          <>
           <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
           <div className="min-w-0 flex-1 sm:max-w-xs">
             <label htmlFor="section-select" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -658,8 +667,9 @@ export function SiteHtmlEditor({
             />
           </div>
         </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     </div>
   );
 }
