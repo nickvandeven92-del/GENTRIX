@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
+import { readResponseJson } from "@/lib/api/read-response-json";
 import { cn } from "@/lib/utils";
 
 type Hit = { id: string; name: string; subfolder_slug: string; status: string };
@@ -25,8 +26,8 @@ export function AdminGlobalSearch() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/search?q=${encodeURIComponent(t)}`, { credentials: "include" });
-      const json = (await res.json()) as { ok?: boolean; results?: Hit[] };
-      if (json.ok && Array.isArray(json.results)) setHits(json.results);
+      const { data: json } = await readResponseJson<{ ok?: boolean; results?: Hit[] }>(res);
+      if (json?.ok && Array.isArray(json.results)) setHits(json.results);
       else setHits([]);
     } catch {
       setHits([]);

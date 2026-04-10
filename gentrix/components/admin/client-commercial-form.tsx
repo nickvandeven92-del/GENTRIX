@@ -12,6 +12,7 @@ import {
   PLAN_TYPES,
   PLAN_TYPE_LABELS,
 } from "@/lib/commercial/client-commercial";
+import { readResponseJson } from "@/lib/api/read-response-json";
 import type { ClientCommercialRow } from "@/lib/data/get-client-commercial-by-slug";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +79,7 @@ export function ClientCommercialForm({ initial }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resend }),
       });
-      const json = (await res.json()) as {
+      const { data: json } = await readResponseJson<{
         ok?: boolean;
         error?: string;
         portal_invite?: {
@@ -87,12 +88,12 @@ export function ClientCommercialForm({ initial }: Props) {
           email_dispatched?: boolean;
           reason?: string;
         };
-      };
-      if (!res.ok || !json.ok) {
-        setErr(json.error ?? "Uitnodigen mislukt.");
+      }>(res);
+      if (!res.ok || !json?.ok) {
+        setErr(json?.error ?? `Uitnodigen mislukt (HTTP ${res.status}).`);
         return;
       }
-      const pi = json.portal_invite;
+      const pi = json?.portal_invite;
       if (pi?.status === "sent") {
         setMsg(
           pi.email_dispatched
@@ -127,9 +128,9 @@ export function ClientCommercialForm({ initial }: Props) {
           subscription_cancel_requested_at: null,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !json.ok) {
-        setErr(json.error ?? "Intrekken mislukt.");
+      const { data: json } = await readResponseJson<{ ok?: boolean; error?: string }>(res);
+      if (!res.ok || !json?.ok) {
+        setErr(json?.error ?? `Serverfout (${res.status}). Controleer netwerk of logs.`);
         return;
       }
       setMsg("Portaal-opzegging ingetrokken.");
@@ -178,7 +179,7 @@ export function ClientCommercialForm({ initial }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const json = (await res.json()) as {
+      const { data: json } = await readResponseJson<{
         ok?: boolean;
         error?: string;
         portal_invite?: {
@@ -188,12 +189,12 @@ export function ClientCommercialForm({ initial }: Props) {
           reason?: string;
           error?: string;
         };
-      };
-      if (!res.ok || !json.ok) {
-        setErr(json.error ?? "Opslaan mislukt.");
+      }>(res);
+      if (!res.ok || !json?.ok) {
+        setErr(json?.error ?? `Opslaan mislukt (HTTP ${res.status}).`);
         return;
       }
-      const pi = json.portal_invite;
+      const pi = json?.portal_invite;
       if (pi?.status === "sent") {
         setMsg(
           pi.email_dispatched
