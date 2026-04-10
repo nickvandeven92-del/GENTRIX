@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
    * Test je via de “Network”-URL? Zet hier je LAN-hostname/IP (zoals in de dev-server output).
    */
   allowedDevOrigins: ["127.0.0.1"],
-  serverExternalPackages: ["playwright"],
+  /** DOMPurify/jsdom: bundelen op de server kan op Vercel crashen; als externe Node-packages laten laden. */
+  serverExternalPackages: ["playwright", "isomorphic-dompurify", "jsdom"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },

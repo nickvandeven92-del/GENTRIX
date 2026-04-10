@@ -75,6 +75,14 @@ export function PublicPublishedTailwind({
     )}</title></head><body style="font-family:system-ui;padding:1.5rem">Deze site kan tijdelijk niet worden opgebouwd. Vernieuw de pagina of neem contact op met de beheerder.</body></html>`;
   }
 
+  /** RSC/response-limiet op serverless: extreem grote srcDoc breekt deployment/streaming. */
+  const MAX_SRC_DOC_CHARS = 3_500_000;
+  if (srcDoc.length > MAX_SRC_DOC_CHARS) {
+    srcDoc = `<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"/><title>${escapeHtmlForSrcDocTitle(
+      documentTitle,
+    )}</title></head><body style="font-family:system-ui;padding:1.5rem">Deze pagina is te groot om hier te tonen. Verklein de site in de editor of splits content.</body></html>`;
+  }
+
   const iframeStyle: React.CSSProperties = embedded
     ? {
         width: "100%",

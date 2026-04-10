@@ -8,6 +8,11 @@ type SitePageProps = {
   params: Promise<{ slug: string }>;
 };
 
+/** Vercel hobby: standaard ~10s; bij zware HTML-build iets ruimer (Pro/hogere limiet). */
+export const maxDuration = 60;
+
+export const dynamic = "force-dynamic";
+
 /** Te grote data-URL’s in metadata kunnen SSR op Vercel laten falen. */
 const MAX_METADATA_FAVICON_CHARS = 12_000;
 
