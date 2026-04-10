@@ -58,6 +58,8 @@ export type Database = {
           subscription_cancel_at_period_end: boolean;
           subscription_cancel_requested_at: string | null;
           portal_user_id: string | null;
+          /** Token voor /preview/{slug}?token= (concept zonder status active). */
+          preview_secret: string | null;
         };
         Insert: {
           id?: string;
@@ -101,6 +103,7 @@ export type Database = {
           subscription_cancel_at_period_end?: boolean;
           subscription_cancel_requested_at?: string | null;
           portal_user_id?: string | null;
+          preview_secret?: string | null;
         };
         Update: {
           id?: string;
@@ -143,6 +146,7 @@ export type Database = {
           subscription_cancel_at_period_end?: boolean;
           subscription_cancel_requested_at?: string | null;
           portal_user_id?: string | null;
+          preview_secret?: string | null;
         };
         Relationships: [];
       };

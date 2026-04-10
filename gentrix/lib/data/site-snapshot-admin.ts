@@ -4,11 +4,12 @@ export async function getClientRowForSiteOps(subfolderSlug: string): Promise<{
   id: string;
   draft_snapshot_id: string | null;
   published_snapshot_id: string | null;
+  status: "draft" | "active" | "paused" | "archived";
 } | null> {
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("id, draft_snapshot_id, published_snapshot_id")
+    .select("id, draft_snapshot_id, published_snapshot_id, status")
     .eq("subfolder_slug", subfolderSlug)
     .maybeSingle();
   if (error || !data) return null;
@@ -16,6 +17,7 @@ export async function getClientRowForSiteOps(subfolderSlug: string): Promise<{
     id: data.id,
     draft_snapshot_id: data.draft_snapshot_id ?? null,
     published_snapshot_id: data.published_snapshot_id ?? null,
+    status: data.status as "draft" | "active" | "paused" | "archived",
   };
 }
 

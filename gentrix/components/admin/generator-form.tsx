@@ -626,6 +626,7 @@ export function GeneratorForm({
             defaultDescription={description}
             defaultSubfolderSlug={slugFromUrl}
             defaultPublishStatus="draft"
+            generatorMode
           />
           <div className="pt-2">
             <button

@@ -12,6 +12,8 @@ import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-
 import type { Json } from "@/lib/types/database";
 import { mapSnapshotSourceToCreatedBy } from "@/lib/site/snapshot-created-by";
 import type { SiteSnapshotSource } from "@/lib/site/site-project-model";
+import { ensureClientPreviewSecret } from "@/lib/data/ensure-client-preview-secret";
+import { getPublicAppUrl } from "@/lib/site/public-app-url";
 
 const bodySchema = z.object({
   name: z.string().min(1).max(200),
@@ -217,6 +219,13 @@ export async function POST(request: Request) {
 
     if (ptrErr) {
       if (isPostgrestUnknownColumnError(ptrErr, "draft_snapshot_id")) {
+        const preview_secret = await ensureClientPreviewSecret(data.id);
+        const origin = getPublicAppUrl().replace(/\/$/, "");
+        const enc = encodeURIComponent(parsed.data.subfolder_slug);
+        const preview_url =
+          preview_secret && data.status === "draft"
+            ? `${origin}/preview/${enc}?token=${encodeURIComponent(preview_secret)}`
+            : null;
         const kameleon_shop_sync = await syncKameleonShopTenant({
           subfolderSlug: parsed.data.subfolder_slug,
           displayName: parsed.data.name,
@@ -224,7 +233,14 @@ export async function POST(request: Request) {
         });
         return NextResponse.json({
           ok: true,
-          data: { id: data.id, subfolder_slug: data.subfolder_slug, status: data.status, snapshot_id: snapRow.id },
+          data: {
+            id: data.id,
+            subfolder_slug: data.subfolder_slug,
+            status: data.status,
+            snapshot_id: snapRow.id,
+            preview_secret,
+            preview_url,
+          },
           kameleon_shop_sync,
         });
       }
@@ -234,6 +250,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const preview_secret = await ensureClientPreviewSecret(data.id);
+    const origin = getPublicAppUrl().replace(/\/$/, "");
+    const enc = encodeURIComponent(parsed.data.subfolder_slug);
+    const preview_url =
+      preview_secret && data.status === "draft"
+        ? `${origin}/preview/${enc}?token=${encodeURIComponent(preview_secret)}`
+        : null;
+
     const kameleon_shop_sync = await syncKameleonShopTenant({
       subfolderSlug: parsed.data.subfolder_slug,
       displayName: parsed.data.name,
@@ -242,7 +266,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      data: { ...data, snapshot_id: snapRow.id },
+      data: {
+        ...data,
+        snapshot_id: snapRow.id,
+        preview_secret,
+        preview_url,
+      },
       kameleon_shop_sync,
     });
   } catch (e) {

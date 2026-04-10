@@ -69,5 +69,16 @@ export async function POST(request: Request, context: RouteContext) {
 
   await tryMarkLatestGenerationRunOutcome(client.id, "published");
 
-  return NextResponse.json({ ok: true, data: { published_snapshot_id: targetId } });
+  const publiclyVisible = client.status === "active";
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      published_snapshot_id: targetId,
+      is_publicly_visible: publiclyVisible,
+      visibility_hint: publiclyVisible
+        ? null
+        : "De live-inhoud staat klaar, maar /site/… is pas zichtbaar voor iedereen als de klantstatus Actief is (bijv. na betaling). Deel tot die tijd de concept-preview-URL.",
+    },
+  });
 }

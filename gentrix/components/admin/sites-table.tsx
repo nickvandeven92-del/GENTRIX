@@ -5,10 +5,18 @@ import { PromoVideoDownloadButton } from "@/components/admin/promo-video-downloa
 import type { AdminClientRow } from "@/lib/data/list-admin-clients";
 import { cn } from "@/lib/utils";
 
+function siteViewHref(row: AdminClientRow): string {
+  const enc = encodeURIComponent(row.subfolder_slug);
+  if (row.status === "active") {
+    return `/site/${enc}`;
+  }
+  return `/admin/clients/${enc}/preview`;
+}
+
 function statusLabel(status: string) {
   switch (status) {
     case "active":
-      return "Live";
+      return "Actief";
     case "draft":
       return "Concept";
     case "paused":
@@ -79,14 +87,19 @@ export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
                       Editor
                     </a>
                     <a
-                      href={`/site/${r.subfolder_slug}`}
+                      href={siteViewHref(r)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      title={
+                        r.status === "active"
+                          ? "Publieke site (/site/…)"
+                          : "Concept-weergave (admin); live op /site/… na activatie"
+                      }
                       data-tone="neutral"
                       className="sales-os-table-action inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium dark:border-zinc-700"
                     >
                       <ExternalLink className="size-3.5" aria-hidden />
-                      Live
+                      Site
                     </a>
                     <PromoVideoDownloadButton
                       variant="compact"
@@ -97,7 +110,7 @@ export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
                         r.subfolder_slug.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "") || "site"
                       }
                       disabled={r.status !== "active"}
-                      disabledReason="Alleen bij status Live (actieve publieke site)."
+                      disabledReason="Alleen bij status Actief (publieke site)."
                     />
                   </div>
                 </td>

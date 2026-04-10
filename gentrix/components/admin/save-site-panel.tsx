@@ -19,6 +19,11 @@ type SaveSitePanelProps = {
   defaultSubfolderSlug?: string;
   /** Standaard publicatiestatus bij eerste tonen van het paneel. */
   defaultPublishStatus?: "draft" | "active";
+  /**
+   * Site studio: sla altijd op als concept; live op /site/… volgt na betaling (status Actief).
+   * Verbergt de status-dropdown.
+   */
+  generatorMode?: boolean;
 };
 
 export function SaveSitePanel({
@@ -27,6 +32,7 @@ export function SaveSitePanel({
   defaultDescription,
   defaultSubfolderSlug,
   defaultPublishStatus,
+  generatorMode = false,
 }: SaveSitePanelProps) {
   function initialSlug(): string {
     const fromUrl = defaultSubfolderSlug?.trim();
@@ -43,6 +49,8 @@ export function SaveSitePanel({
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  /** Publieke concept-preview (token); alleen bij concept-status. */
+  const [savedPreviewUrl, setSavedPreviewUrl] = useState<string | null>(null);
   const [publishNote, setPublishNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,6 +70,7 @@ export function SaveSitePanel({
   async function save() {
     setError(null);
     setSavedUrl(null);
+    setSavedPreviewUrl(null);
     setPublishNote(null);
     if (!slugOk) {
       setError(
@@ -71,6 +80,7 @@ export function SaveSitePanel({
     }
     setLoading(true);
     try {
+      const effectiveStatus = generatorMode ? "draft" : status;
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,13 +89,20 @@ export function SaveSitePanel({
           description: description || null,
           subfolder_slug: resolvedSlug,
           site_data_json: generatedTailwindPageToSectionsPayload(page),
-          status,
+          status: effectiveStatus,
           generation_package: STUDIO_GENERATION_PACKAGE,
           snapshot_source: "generator",
         }),
       });
       const payload = (await res.json()) as
-        | { ok: true; data: { subfolder_slug: string; status: string } }
+        | {
+            ok: true;
+            data: {
+              subfolder_slug: string;
+              status: string;
+              preview_url?: string | null;
+            };
+          }
         | { ok: false; error: string };
 
       if (!res.ok || !payload.ok) {
@@ -94,8 +111,11 @@ export function SaveSitePanel({
       }
 
       if (typeof window !== "undefined") {
-        const path = `/site/${payload.data.subfolder_slug}`;
-        setSavedUrl(`${window.location.origin}${path}`);
+        if (payload.data.preview_url) {
+          setSavedPreviewUrl(payload.data.preview_url);
+        } else if (payload.data.status === "active") {
+          setSavedUrl(`${window.location.origin}/site/${encodeURIComponent(payload.data.subfolder_slug)}`);
+        }
         setPublishNote(null);
       }
     } catch {
@@ -145,13 +165,22 @@ export function SaveSitePanel({
         </div>
         <div>
           <label className="text-xs font-medium text-slate-600">Klantstatus (commercieel)</label>
-          <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active")}>
-            <option value="draft">Concept — /site/… geblokkeerd</option>
-            <option value="active">Actief — /site/… toegestaan (inhoud = apart publiceren)</option>
-          </select>
-          <p className="mt-1 text-xs text-slate-500">
-            Live <strong>inhoud</strong> zet je met <strong>Publiceren naar live</strong> na opslaan — niet via deze dropdown.
-          </p>
+          {generatorMode ? (
+            <div className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+              <strong>Concept</strong> — opslaan maakt een publieke preview-URL (met token) voor jou en de klant. De
+              definitieve URL op <code className="font-mono">/site/…</code> wordt pas vrij na betaling (status Actief).
+            </div>
+          ) : (
+            <>
+              <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active")}>
+                <option value="draft">Concept — /site/… geblokkeerd; gebruik concept-preview voor de klant</option>
+                <option value="active">Actief — /site/… toegestaan (inhoud = apart publiceren)</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Live <strong>inhoud</strong> zet je met <strong>Publiceren naar live</strong> na opslaan — niet via deze dropdown.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -205,22 +234,27 @@ export function SaveSitePanel({
         </div>
       )}
 
-      {savedUrl && (
+      {(savedUrl || savedPreviewUrl) && (
         <div className="mt-3 space-y-2">
           <p className="flex items-start gap-2 text-sm text-emerald-700">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
               Concept opgeslagen.{" "}
-              {status === "active" ? (
+              {savedPreviewUrl ? (
                 <>
-                  Publieke URL (na publiceren + actieve status):{" "}
+                  <strong>Deel met de klant</strong> (concept, niet geïndexeerd):{" "}
+                  <a href={savedPreviewUrl} className="font-medium break-all underline">
+                    {savedPreviewUrl}
+                  </a>
+                </>
+              ) : savedUrl ? (
+                <>
+                  Publieke live-URL (na <strong>Publiceren naar live</strong>):{" "}
                   <a href={savedUrl} className="font-medium underline">
                     {savedUrl}
                   </a>
                 </>
-              ) : (
-                "Zet klantstatus op Actief voor /site/…; daarna nog ‘Publiceren naar live’ voor inhoud."
-              )}
+              ) : null}
             </span>
           </p>
           <button
@@ -236,12 +270,22 @@ export function SaveSitePanel({
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({}),
                 });
-                const json = (await res.json()) as { ok: boolean; error?: string };
+                const json = (await res.json()) as {
+                  ok: boolean;
+                  error?: string;
+                  data?: { visibility_hint?: string | null; is_publicly_visible?: boolean };
+                };
                 if (!res.ok || !json.ok) {
                   setError(json.error ?? "Publiceren mislukt.");
                   return;
                 }
-                setPublishNote("Live-pointer bijgewerkt naar het huidige concept.");
+                if (json.data?.is_publicly_visible) {
+                  setPublishNote("Live-pointer bijgewerkt — de site staat op /site/… voor bezoekers.");
+                } else if (json.data?.visibility_hint) {
+                  setPublishNote(json.data.visibility_hint);
+                } else {
+                  setPublishNote("Live-pointer bijgewerkt naar het huidige concept.");
+                }
               } catch {
                 setError("Netwerkfout bij publiceren.");
               } finally {

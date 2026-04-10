@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 function statusLabel(status: string) {
   switch (status) {
     case "active":
-      return "Live";
+      return "Actief";
     case "draft":
       return "Concept";
     case "paused":
@@ -93,7 +93,7 @@ export default async function AdminClientsPage({ searchParams }: ClientsPageProp
               <th className="px-4 py-3">Klant</th>
               <th className="px-4 py-3">Signalen</th>
               <th className="px-4 py-3">Slug</th>
-              <th className="px-4 py-3">Live</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Plan</th>
               <th className="px-4 py-3">Betaling</th>
               <th className="px-4 py-3">Fase</th>

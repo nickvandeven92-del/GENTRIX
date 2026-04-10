@@ -11,7 +11,7 @@ type PageProps = { params: Promise<{ slug: string }> };
 function statusLabel(status: string) {
   switch (status) {
     case "active":
-      return "Live";
+      return "Actief";
     case "draft":
       return "Concept";
     case "paused":
@@ -65,9 +65,15 @@ export default async function ClientWebsitesPage({ params }: PageProps) {
           </div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={`/site/${enc}`} target="_blank" rel="noreferrer" className={cn(cardBtn)}>
+          <Link
+            href={row.status === "active" ? `/site/${enc}` : `${base}/preview`}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(cardBtn)}
+            title={row.status === "active" ? "Publieke site" : "Concept (admin-preview)"}
+          >
             <ExternalLink className="size-4 shrink-0" aria-hidden />
-            Live site
+            {row.status === "active" ? "Publieke site" : "Site bekijken"}
           </Link>
           <Link href={`/admin/editor/${enc}`} className={cn(cardBtn, "border-blue-200 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-950/30")}>
             <Code2 className="size-4 shrink-0" aria-hidden />

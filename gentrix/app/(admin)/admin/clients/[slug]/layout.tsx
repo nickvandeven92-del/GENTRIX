@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { ClientDossierShell } from "@/components/admin/client-dossier-shell";
+import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 
@@ -18,14 +19,14 @@ export default async function ClientDossierLayout({ children, params }: LayoutPr
   if (!row) notFound();
 
   const origin = await getRequestOrigin();
-  const enc = encodeURIComponent(row.subfolder_slug);
-  const liveSiteAbsoluteUrl = origin ? `${origin}/site/${enc}` : undefined;
+  const urls = await getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin);
 
   return (
     <ClientDossierShell
       slug={row.subfolder_slug}
       clientName={row.name}
-      liveSiteAbsoluteUrl={liveSiteAbsoluteUrl}
+      liveSiteAbsoluteUrl={urls?.status === "active" ? urls.liveAbsolute : undefined}
+      conceptPreviewAbsoluteUrl={urls?.previewAbsolute ?? null}
       clientStatus={row.status}
     >
       {children}

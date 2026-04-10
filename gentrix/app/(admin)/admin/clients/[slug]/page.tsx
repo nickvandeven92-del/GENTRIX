@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 function statusLabel(status: string) {
   switch (status) {
     case "active":
-      return "Live";
+      return "Actief";
     case "draft":
       return "Concept";
     case "paused":

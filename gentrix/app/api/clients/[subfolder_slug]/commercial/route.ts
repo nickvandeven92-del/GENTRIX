@@ -194,6 +194,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     const supabase = createServiceRoleClient();
     const beforeSnapshot = await loadCommercialPortalSnapshot(supabase, subfolder_slug);
 
+    const { data: beforeActivation } = await supabase
+      .from("clients")
+      .select("payment_status, status")
+      .eq("subfolder_slug", subfolder_slug)
+      .maybeSingle();
+
     const { error } = await supabase.from("clients").update(row).eq("subfolder_slug", subfolder_slug);
 
     if (error) {
@@ -218,6 +224,18 @@ export async function PATCH(request: Request, context: RouteContext) {
         );
       }
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    if (
+      p.payment_status === "paid" &&
+      beforeActivation &&
+      String(beforeActivation.payment_status ?? "none") !== "paid" &&
+      beforeActivation.status === "draft"
+    ) {
+      await supabase
+        .from("clients")
+        .update({ status: "active", updated_at: new Date().toISOString() })
+        .eq("subfolder_slug", subfolder_slug);
     }
 
     const afterSnapshot = await loadCommercialPortalSnapshot(supabase, subfolder_slug);
