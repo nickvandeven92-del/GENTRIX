@@ -19,4 +19,15 @@ describe("theme-lovable-hints", () => {
     expect(block).toContain("Vintage / warm papier");
     expect(block).toContain("Geen dominerende");
   });
+
+  it("buildLovableThemeDirectiveBlock (barbier) noemt luxe licht én luxe donker", () => {
+    const block = buildLovableThemeDirectiveBlock({
+      preserveLayoutUpgrade: false,
+      businessName: "Studio Barbier",
+      description: "Herenkapper premium barbershop Utrecht",
+    });
+    expect(block).toContain("Luxe licht");
+    expect(block).toContain("Luxe donker");
+    expect(block).toContain("geen synoniem voor donker");
+  });
 });

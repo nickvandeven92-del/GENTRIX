@@ -4,9 +4,9 @@
 export const LOVABLE_EXAMPLES_COMPACT = `
 === LOVABLE vs BORING (patterns, not literal copy) ===
 
-**Do:** hierarchy + rhythm (one band breaks the grid); depth on **section** wrappers via preset \`effects.*\` / surfaces; vary radius (\`rounded-none\` / \`2xl\` / \`full\`) with intent; optional one silent hero \`<video muted playsinline autoplay loop https>\`.
+**Do:** hierarchy + rhythm (one band breaks the grid); depth on **section** wrappers via preset \`effects.*\` / surfaces; vary radius (\`rounded-none\` / \`2xl\` / \`full\`) with intent; optional one silent hero \`<video muted playsinline autoplay loop https>\`; **light luxury** (ivory/stone, strong type) is as valid as dark cinematic.
 
-**Don’t:** “Welkom bij …” as hero opener; three equal icon-cards as the only features pattern; border+shadow+round on every block as the only grouping; weak body contrast (\`text-gray-400\` on long dark-section copy).
+**Don’t:** “Welkom bij …” as hero opener; three equal icon-cards as the only features pattern; border+shadow+round on every block as the only grouping; weak body contrast (\`text-gray-400\` on long dark-section copy **or** \`text-gray-400\` on long light-section copy).
 
 **Technical:** exact \`_design_preset\` strings only — no arbitrary bracket Tailwind unless it appears inside a preset string (see PREMIUM CONTRACT).
 `.trim();

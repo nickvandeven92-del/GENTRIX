@@ -50,6 +50,7 @@ Regels:
 - Magazine/blog => content, branding of lead_generation secundair, editorial/minimal.
 - Expliciete stijl ("niet te druk", "premium en rustig") weegt zwaarder dan enkel een branchewoord.
 - Vintage, retro, klassiek, "warm papier", old-school typografie, barbershop-heritage, serif-koppen, magazine-look => **visualTone editorial** (of **luxury** als expliciet high-end goud/chique); **niet** "minimal" tenzij de tekst echt minimalistisch/strak wil.
+- **luxury** visualTone betekent **niet** automatisch donkere achtergronden — lichte editorial (ivoor, veel witruimte) is even geldig tenzij de tekst donker/noir/dark mode expliciet vraagt.
 - Korte prompts: confidence bewust lager houden.`;
 
 export async function extractPromptInterpretationWithClaude(

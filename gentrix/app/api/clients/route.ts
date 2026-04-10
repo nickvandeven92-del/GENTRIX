@@ -303,7 +303,7 @@ export async function POST(request: Request) {
         const enc = encodeURIComponent(parsed.data.subfolder_slug);
         const preview_url =
           preview_secret && data.status === "draft"
-            ? `${origin}/preview/${enc}?token=${encodeURIComponent(preview_secret)}`
+            ? `${origin}/site/${enc}?token=${encodeURIComponent(preview_secret)}`
             : null;
         const kameleon_shop_sync = await syncKameleonShopTenant({
           subfolderSlug: parsed.data.subfolder_slug,
@@ -334,7 +334,7 @@ export async function POST(request: Request) {
     const enc = encodeURIComponent(parsed.data.subfolder_slug);
     const preview_url =
       preview_secret && data.status === "draft"
-        ? `${origin}/preview/${enc}?token=${encodeURIComponent(preview_secret)}`
+        ? `${origin}/site/${enc}?token=${encodeURIComponent(preview_secret)}`
         : null;
 
     const kameleon_shop_sync = await syncKameleonShopTenant({

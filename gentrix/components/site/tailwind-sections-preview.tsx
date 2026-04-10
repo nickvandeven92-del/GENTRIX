@@ -50,6 +50,8 @@ type TailwindSectionsPreviewProps = {
   logoSet?: GeneratedLogoSet | null;
   /** Portaal-links (`__STUDIO_PORTAL_PATH__`) gelijk aan live. */
   publishedSlug?: string;
+  /** Concept: interne `/site/{slug}/…`-navigatie behoudt `?token=` (zelfde routes als live). */
+  draftPublicPreviewToken?: string | null;
   /** Zelfde filtering als `/site/[slug]` — booking/shop alleen als module aan staat. */
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
@@ -71,6 +73,7 @@ export function TailwindSectionsPreview({
   userJs,
   logoSet,
   publishedSlug,
+  draftPublicPreviewToken,
   appointmentsEnabled = true,
   webshopEnabled = true,
   composePlan = null,
@@ -107,6 +110,7 @@ export function TailwindSectionsPreview({
         userJs,
         logoSet,
         publishedSlug: publishedSlug?.trim(),
+        draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
         appointmentsEnabled,
         webshopEnabled,
         previewMatchParentWindowBreakpoints: parentWindowDesktop,
@@ -119,6 +123,7 @@ export function TailwindSectionsPreview({
       userJs,
       logoSet,
       publishedSlug,
+      draftPublicPreviewToken,
       appointmentsEnabled,
       webshopEnabled,
       parentWindowDesktop,

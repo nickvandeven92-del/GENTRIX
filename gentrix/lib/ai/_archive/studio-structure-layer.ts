@@ -18,13 +18,23 @@ import type { SiteIntent } from "@/lib/ai/site-experience-model";
 import type { ValidationIssue } from "@/lib/ai/validate-homepage-plan";
 import type { LayoutArchetype } from "@/types/layoutArchetypes";
 
-/** Voorkomt witte/grijze “tussenband” op verder donkere luxe-sites (korte prompts). */
+/** Bij \`themeMode\` dark/mixed: breekt kille wit/grijs-banden de donkere wereld (korte prompts). */
 function buildDarkThemeCohesionBlock(themeMode: ThemeMode): string {
   if (themeMode !== "dark" && themeMode !== "mixed") return "";
   return `
 === Donkere pagina — samenhang (richting) ===
-- Houd **één warm-donkere wereld**; vermijd brede kille grijs- of witvlakken tussen hoofdstukken — verschuif met preset \`section\`/\`sectionAlt\`, gradient of tint, niet met een halve pagina template-grijs.
+- Houd **één samenhangende donkere wereld** (warm of koel naar preset); vermijd brede kille grijs- of witvlakken tussen hoofdstukken — verschuif met preset \`section\`/\`sectionAlt\`, gradient of tint, niet met een halve pagina template-grijs. Alleen van toepassing als preset/briefing echt donker is — **luxe vereist geen dark mode.**
 - Geen lege placeholder-vierkanten voor iconen; \`data-lucide\` of typografische accenten zijn genoeg.
+`.trim();
+}
+
+/** Bij \`themeMode\` light/mixed: voorkomt “premium = near-black” zonder briefing. */
+function buildLightThemeCohesionBlock(themeMode: ThemeMode): string {
+  if (themeMode !== "light" && themeMode !== "mixed") return "";
+  return `
+=== Lichte pagina — samenhang (richting) ===
+- Houd **één lichte/editoriale wereld** (ivoor, stone, wit); vermijd willekeurige volle \`bg-zinc-950\` / near-black banden tenzij de briefing of referentie dat expliciet wil.
+- Ritme via tint, hairline, zachte gradient — niet door halve pagina’s in template-grijs of contrast voor contrast.
 `.trim();
 }
 
@@ -92,8 +102,14 @@ ${JSON.stringify(params.extractedFromImage, null, 2)}
     conflictDecisions: params.compositionConflictDecisions,
   });
 
-  const darkCohesionBlock = buildDarkThemeCohesionBlock(params.designPreset.themeMode);
-  const darkCohesionSection = darkCohesionBlock ? `\n---\n\n${darkCohesionBlock}\n` : "";
+  const themeCohesionParts: string[] = [];
+  const darkC = buildDarkThemeCohesionBlock(params.designPreset.themeMode);
+  const lightC = buildLightThemeCohesionBlock(params.designPreset.themeMode);
+  if (darkC) themeCohesionParts.push(darkC);
+  if (lightC) themeCohesionParts.push(lightC);
+  const themeCohesionSection = themeCohesionParts.length
+    ? `\n---\n\n${themeCohesionParts.join("\n\n---\n\n")}\n`
+    : "";
 
   const minimal = Boolean(params.minimalVisualGuidance);
   const visualBlock = minimal ? LOVABLE20_VISUAL_PRIORITY_MINIMAL : LOVABLE20_VISUAL_PRIORITY;
@@ -126,7 +142,7 @@ ${buildDesignPresetPromptDigest(params.designPreset)}
 _design_preset (geneste utility-snippets — layout, typography, buttons, surfaces, navigation, effects, sections, colors):
 ${JSON.stringify(params.designPreset, null, 2)}
 ${extractNote}
-${darkCohesionSection}
+${themeCohesionSection}
 ---
 
 ${PREMIUM_DESIGN_SYSTEM_CONTRACT}`;

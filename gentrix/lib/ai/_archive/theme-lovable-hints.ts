@@ -5,6 +5,15 @@
 
 /** Referentie-paletten (barbier/salon); model mag mengen met briefing. */
 export const BARBER_LOVABLE_PRESETS = {
+  /** Licht editorial / high-end — even geldig als donker voor “luxe” barbier. */
+  luxury_light: {
+    primary: "#1c1917",
+    secondary: "#57534e",
+    accent: "#b45309",
+    background: "#faf8f5",
+    textColor: "#1c1917",
+    note: "Ivoor-stone basis, messing of navy als accent; geen near-black als default.",
+  },
   luxury_dark: {
     primary: "#1a1a1a",
     secondary: "#c9a03d",
@@ -93,7 +102,8 @@ export function buildLovableThemeDirectiveBlock(params: {
   if (barber) {
     lines.push(
       "",
-      "**Branche-hint (barbier / salon / knip):** kies bewust **goud, warm hout, diep navy, crème of terracotta** — niet generiek SaaS-grijs. Referentie (mag combineren met briefing):",
+      "**Branche-hint (barbier / salon / knip):** kies bewust **goud, warm hout, diep navy, crème of terracotta** — niet generiek SaaS-grijs. **Luxe is geen synoniem voor donker**; referentie (één hoofdrichting of mix met briefing):",
+      `- Luxe licht — primary \`${BARBER_LOVABLE_PRESETS.luxury_light.primary}\`, secondary \`${BARBER_LOVABLE_PRESETS.luxury_light.secondary}\`, accent \`${BARBER_LOVABLE_PRESETS.luxury_light.accent}\`, background \`${BARBER_LOVABLE_PRESETS.luxury_light.background}\`.`,
       `- Luxe donker — primary \`${BARBER_LOVABLE_PRESETS.luxury_dark.primary}\`, secondary \`${BARBER_LOVABLE_PRESETS.luxury_dark.secondary}\`, accent \`${BARBER_LOVABLE_PRESETS.luxury_dark.accent}\`, background \`${BARBER_LOVABLE_PRESETS.luxury_dark.background}\`.`,
       `- Vintage warm — background \`${BARBER_LOVABLE_PRESETS.vintage_warm.background}\`, tekst \`${BARBER_LOVABLE_PRESETS.vintage_warm.textColor}\`, accent \`${BARBER_LOVABLE_PRESETS.vintage_warm.accent}\`.`,
       `- Modern fris — primary \`${BARBER_LOVABLE_PRESETS.modern_fresh.primary}\`, accent CTA \`${BARBER_LOVABLE_PRESETS.modern_fresh.accent}\`.`,

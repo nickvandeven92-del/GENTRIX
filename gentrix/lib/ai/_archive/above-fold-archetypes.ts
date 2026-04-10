@@ -9,7 +9,7 @@ export const HERO_ARCHETYPES_SPLIT: readonly LayoutArchetype[] = [
 
 /**
  * Één canvas: type-led / bento / gecentreerde editorial — géén klassieke 50/50 product-split.
- * Donkere cinematic varianten horen hier ook (full-bleed / geïntegreerd beeld).
+ * Cinematic varianten (incl. \`hero_*_dark_cinematic\`) zijn **één** pool; lichte full-bleed/editorial hoort evenzeer bij luxe.
  */
 export const HERO_ARCHETYPES_INTEGRATED: readonly LayoutArchetype[] = [
   "hero_centered_editorial",

@@ -54,7 +54,7 @@ Vorm (exact deze keys; personality optioneel):
 {
   "layout": "korte beschrijving, bv. split hero, centered, bento grid",
   "spacing": "compact | balanced | spacious",
-  "colors": ["dominante kleurtermen, bv. dark, blue accent"],
+  "colors": ["dominante kleurtermen, bv. light editorial, navy accent, warm neutrals"],
   "components": ["hero", "features", "cta", ...] — welke blokken herken je ongeveer,
   "style": "één label, bv. modern_saas, luxury_minimal, neubrutalist",
   "personality": "optioneel, één van: bold_industrial | elegant_luxury | playful_creative | minimal_tech | editorial_art | trust_conversion"

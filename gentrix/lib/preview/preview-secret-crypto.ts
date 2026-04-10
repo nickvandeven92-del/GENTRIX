@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 
-/** Genereert een niet-te-raden token voor /preview/{slug}?token= */
+/** Genereert een niet-te-raden token voor `/site/{slug}?token=` (concept). */
 export function generatePreviewSecret(): string {
   return randomBytes(24).toString("hex");
 }

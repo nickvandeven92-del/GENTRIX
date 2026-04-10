@@ -78,8 +78,8 @@ export default async function ClientWebsitesPage({ params }: PageProps) {
             title={
               row.status === "active"
                 ? "Publieke site, volledig scherm"
-                : siteOpenAbsoluteUrl.includes("/preview/")
-                  ? "Concept volledig scherm (zonder Studio-zijbalk)"
+                : siteOpenAbsoluteUrl.includes("token=")
+                  ? "Concept volledig scherm (/site met token; zonder Studio-zijbalk)"
                   : "Concept (admin-preview met zijbalk)"
             }
           >

@@ -5,7 +5,7 @@ import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-
 export type PublicConceptPreviewAccess = "ok" | "not_found" | "redirect_active";
 
 /**
- * Valideert `token` voor `/preview/[slug]` (en subroutes zoals `/contact`).
+ * Valideert `token` voor oude `/preview/[slug]`-routes (redirect naar `/site/...?token=`).
  */
 export async function getPublicConceptPreviewAccess(
   subfolderSlug: string,

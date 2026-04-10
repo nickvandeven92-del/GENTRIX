@@ -68,9 +68,9 @@ Dit is een kapsalon specifiek voor vrouwen. De sfeer is vrouwelijk, verfijnd en 
     vibe: "modern",
     promptHint: `**BRANCHE-INSPIRATIE: ELEKTRONICA / TECH WINKEL**
 Denk aan Apple, Bang & Olufsen, of een premium tech-webshop. Het product is de ster — de website is het podium.
-- **Hero-idee:** één uitgelicht product domineert het beeld op donkere achtergrond. Product "zweeft" visueel. Minimal copy, maximaal visueel.
+- **Hero-idee:** één uitgelicht product centraal — **donkere studio** óf **heldere/minimale lichte** achtergrond (Apple-achtig wit/grijs); kies wat de briefing of referentie het beste ondersteunt. Product "zweeft" visueel. Minimal copy, maximaal visueel.
 - **Shop-idee:** individuele product-showcases als cinematic full-bleed secties (VOLTEX-stijl). Of een strak productgrid. Winkelwagen-icoon in de nav.
-- **Sfeer-richting:** dark mode, minimale typografie, product centraal. Accent in goud of elektrisch blauw. Strak, high-end.
+- **Sfeer-richting:** strak, high-end, minimale typografie, product centraal — **dark mode is één optie**, geen verplichting; licht + diep accent (blauw, teal, zwart-inkt) is even geldig.
 - **Typische elementen:** productcategorieën in nav, USP-rij (verzending, garantie), newsletter.`,
   },
   {
@@ -168,7 +168,7 @@ Denk aan kracht, ambitie, vakmanschap. Grote projecten, betrouwbare handen.
     vibe: "luxury",
     promptHint: `**BRANCHE-INSPIRATIE: HERENKLEDING / HERENMODE**
 Stijl, kwaliteit en mannelijke elegantie. De website is de digitale etalage — elk item moet er uitzien alsof het in een magazine staat.
-- **Hero-idee:** man in stijlvolle outfit, donkere achtergrond met sfeervolle belichting. Of typografisch met bold serif en merk-statement.
+- **Hero-idee:** man in stijlvolle outfit — **licht editorial** (off-white, natuurlijk licht) óf donker met sfeervolle belichting; of typografisch met bold serif en merk-statement.
 - **Producten-idee:** cinematic product-showcases met grote lifestyle-foto's. Categorieën: pakken, overhemden, casual, accessoires. Prijzen in euro's.
 - **Content:** focus op kwaliteit, materialen, pasvorm, tijdloze stijl. Woorden als "vakmanschap", "Italiaans katoen", "slim fit", "maatwerk".
 - **Typische elementen:** collectie-overzicht, merk-filosofie, lookbook-galerij, merkpartners, nieuwsbrief-aanmelding.`,
@@ -224,7 +224,7 @@ Schoenen zijn statement-pieces. De website moet elk paar presenteren als een obj
     vibe: "luxury",
     promptHint: `**BRANCHE-INSPIRATIE: JUWELIER / SIERADEN**
 Luxe, exclusiviteit en emotie. Sieraden markeren momenten — verloving, jubileum, zelfbeloning. De website moet dat gevoel oproepen.
-- **Hero-idee:** close-up van een sieraad met dramatische belichting op donkere achtergrond. Of typografisch met elegant serif en goud-accent.
+- **Hero-idee:** close-up van een sieraad — **fluweel/zwart** óf **licht marmer/porselein/studio-wit** met dramatisch licht; beide zijn luxe. Of typografisch met elegant serif en goud-accent.
 - **Producten-idee:** spotlight-presentatie per categorie: ringen, kettingen, armbanden, horloges, trouwringen. Studio-kwaliteit foto's.
 - **Content:** nadruk op vakmanschap, edelstenen, karaat, handgemaakt, graveerservice. Emotioneel taalgebruik.
 - **Typische elementen:** collectie per categorie, trouwringen-sectie, graveerservice, merkpartners (Rolex, Swarovski?), afspraak-CTA.`,
@@ -612,7 +612,7 @@ Vertrouwen, zekerheid en onafhankelijk advies. De klant wil zich goed verzekerd 
     vibe: "modern",
     promptHint: `**BRANCHE-INSPIRATIE: SPORTSCHOOL / GYM**
 Energie, kracht en motivatie. De website moet activeren — de bezoeker moet zin krijgen om te sporten.
-- **Hero-idee:** atleet in actie in de gym, of krachtige apparatuur. Bold, energiek, donkere achtergrond.
+- **Hero-idee:** atleet in actie in de gym, of krachtige apparatuur. Bold, energiek — **donkere sportschool** óf **heldere moderne gym** met veel licht; geen default naar zwart.
 - **Aanbod-idee:** card-grid: fitness, groepslessen, personal training, sauna, abonnementen.
 - **Content:** faciliteiten, openingstijden, abonnementsprijzen, proefles, trainers. Motiverend en transparant.
 - **Typische elementen:** abonnementsprijzen, lesrooster, faciliteiten-tour, trainers-team, proefles-CTA.`,
@@ -668,7 +668,7 @@ Beweging, expressie en plezier. De website moet de energie van dans overbrengen 
     vibe: "industrial",
     promptHint: `**BRANCHE-INSPIRATIE: VECHTSPORT / MARTIAL ARTS**
 Discipline, kracht en respect. De website moet krachtig zijn maar ook respectvol en uitnodigend voor beginners.
-- **Hero-idee:** vechtsporter in actie, of dojo/gym met donkere sfeer. Krachtig, bold.
+- **Hero-idee:** vechtsporter in actie, of dojo/gym — **donkere dramatische sfeer** óf **licht/open** zaal met natuurlijk licht. Krachtig, bold.
 - **Lessen-idee:** card-grid: kickboxen, MMA, jiu-jitsu, karate, taekwondo, boksen, kids martial arts.
 - **Content:** trainers met credentials, lesniveaus, proefles, competitie-resultaten, filosofie.
 - **Typische elementen:** stijlen-overzicht, trainers, proefles-CTA, wedstrijdresultaten, kinderlessen.`,
@@ -898,7 +898,7 @@ Luxe, prestatie en de droom van een nieuwe auto. De website is de digitale showr
     vibe: "luxury",
     promptHint: `**BRANCHE-INSPIRATIE: AUTOPOETS / DETAILING**
 Perfectie, glans en obsessie voor detail. De website moet de kwaliteit van het werk tonen — elke reflectie telt.
-- **Hero-idee:** glanzende auto in close-up, of detailer aan het werk. Premium, sfeervol, donkere achtergrond.
+- **Hero-idee:** glanzende auto in close-up, of detailer aan het werk. Premium — **donkere studio** óf **witte cyclorama / heldere werkplaats**; reflectie en contrast zijn leidend, niet per se zwart.
 - **Diensten-idee:** prijslijst per pakket: uitwendig, inwendig, compleet, ceramic coating, PPF, velgencoating.
 - **Content:** voor/na foto's, premium producten, werkwijze, haal/breng-service.
 - **Typische elementen:** pakketten + prijzen, voor/na galerij, premium merken (Gyeon, Gtechniq), boekings-CTA.`,

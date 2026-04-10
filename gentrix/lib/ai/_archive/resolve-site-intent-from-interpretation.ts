@@ -71,8 +71,8 @@ export function resolveSiteIntentFromInterpretation(
   }
 
   /**
-   * Barbier/kapper + luxe/donker: korte prompts vielen te vaak op service_leadgen + compact → grijs/wit naast zwart.
-   * Merkverhaal + airy geeft betere sectieritme en samenhang (minimale input).
+   * Barbier/kapper + luxe: korte prompts vielen te vaak op service_leadgen + compact.
+   * Merkverhaal geeft betere sectieritme; **luxe hoeft niet donker** — scores hier impliceren geen dark-only layout.
    */
   if (promptHintsBarberOrGrooming(t)) {
     addScore(s, "brand_storytelling", 6);

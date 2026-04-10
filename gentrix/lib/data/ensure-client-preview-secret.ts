@@ -3,7 +3,7 @@ import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-
 import { generatePreviewSecret } from "@/lib/preview/preview-secret-crypto";
 
 /**
- * Zorgt dat de klant een preview_secret heeft (voor /preview/{slug}?token=).
+ * Zorgt dat de klant een preview_secret heeft (voor `/site/{slug}?token=` conceptweergave).
  * Bestaande waarde blijft behouden.
  */
 export async function ensureClientPreviewSecretBySlug(subfolderSlug: string): Promise<string | null> {

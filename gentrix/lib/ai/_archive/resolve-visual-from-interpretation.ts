@@ -14,6 +14,9 @@ const BARBER_OR_GROOMING_RE =
 const DARK_SURFACE_RE =
   /\b(donker|zwart|antraciet|charcoal|near\s*-?\s*black|deep\s+black|zwartbruin|warm\s+antraciet|dark\s+theme|donkere\s+basis|donker\s+warm|geen\s+brede\s+witte|geen\s+witte\s+secties)\b/;
 
+const LIGHT_SURFACE_RE =
+  /\b(licht|helder|light\s+mode|veel\s+wit|crème|creme|ivoor|off-?white|airy|heldere\s+achtergrond|witte\s+basis|stone-50|warm\s+wit)\b/i;
+
 export function promptHintsBarberOrGrooming(normalizedPrompt: string): boolean {
   const t = normalizedPrompt.trim();
   if (!t) return false;
@@ -26,7 +29,14 @@ export function promptHintsDarkSurface(normalizedPrompt: string): boolean {
   return DARK_SURFACE_RE.test(t);
 }
 
+export function promptHintsLightSurface(normalizedPrompt: string): boolean {
+  const t = normalizedPrompt.trim();
+  if (!t) return false;
+  return LIGHT_SURFACE_RE.test(t);
+}
+
 function shouldPreferMinimalDarkPreset(i: PromptInterpretation, normalizedPrompt: string): boolean {
+  if (promptHintsLightSurface(normalizedPrompt)) return false;
   if (!promptHintsDarkSurface(normalizedPrompt)) return false;
   if (promptHintsBarberOrGrooming(normalizedPrompt)) return true;
   if (i.visualTone === "luxury" || i.visualTone === "editorial") return true;
@@ -137,7 +147,7 @@ export function resolveBrandStyleFromInterpretation(
   if (i.businessModel === "product" && i.primaryGoal === "sales") return "commerce_grid";
   /** Magazine/serif/karakter — niet `minimal_light` (dat is tech-SaaS-achtig licht). */
   if (i.visualTone === "editorial") return "editorial";
-  /** Metaal, bouw, craft: donkere basis + accent (niet standaard wit “SaaS”). */
+  /** Metaal, bouw, craft: vaak donkere basis — **of** licht-beton industrieel als de briefing helder/modern vraagt. */
   if (i.visualTone === "industrial") return "minimal_dark";
 
   const healthOrganic =

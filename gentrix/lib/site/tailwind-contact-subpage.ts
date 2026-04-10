@@ -71,25 +71,25 @@ export type ContactSubpageNavScriptInput = {
   /** Gezet wanneer `view === "marketing"` (huidige subpagina in iframe). */
   activeMarketingSlug?: string;
   /**
-   * Publieke concept-preview: top-navigatie naar `/preview/...?token=` i.p.v. `/site/...`
-   * (draft heeft geen live `/site`-bundle; oude `/site/`-href in HTML wordt hier ook herkend).
+   * Concept met token: top-navigatie gebruikt `/site/...?token=` (zelfde als live).
+   * Oude `/preview/...`-paden in HTML worden nog herkend via `legB`/`legC`.
    */
   draftPublicPreviewToken?: string | null;
 };
 
 /**
- * Vangt klikken af vóór `STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT`: stuurt parent/top naar de andere subpagina
+ * Vangt klikken af vóór `buildStudioSinglePageInternalNavScript`: stuurt parent/top naar de andere subpagina
  * (sandboxed iframe kan niet betrouwbaar `top.location` zetten).
  */
 export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScriptInput): string {
   const encSlug = encodeURIComponent(input.slug);
   const tokenRaw = typeof input.draftPublicPreviewToken === "string" ? input.draftPublicPreviewToken.trim() : "";
-  const usePreview = tokenRaw.length > 0;
-  const tokenQ = usePreview ? `?token=${encodeURIComponent(tokenRaw)}` : "";
-  const basePath = usePreview ? `/preview/${encSlug}` : `/site/${encSlug}`;
+  const tokenQ = tokenRaw.length > 0 ? `?token=${encodeURIComponent(tokenRaw)}` : "";
+  const basePath = `/site/${encSlug}`;
   const contactPath = `${basePath}/contact`;
-  const legB = usePreview ? `/site/${encSlug}` : null;
-  const legC = usePreview ? `${legB}/contact` : null;
+  const prevBase = tokenRaw.length > 0 ? `/preview/${encSlug}` : null;
+  const legB = prevBase;
+  const legC = prevBase ? `${prevBase}/contact` : null;
   const origin = input.pageOrigin.replace(/\/$/, "");
   const baseAbs = `${origin}${basePath}${tokenQ}`;
   const contactAbs = `${origin}${contactPath}${tokenQ}`;
@@ -102,6 +102,7 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
     src: STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
     view: input.view,
     basePath,
+    prevBase,
     baseAbs,
     contactPath,
     contactAbs,
@@ -124,6 +125,10 @@ function isMarketingPath(p){
     var k=CFG.ms[i];
     var mp=CFG.basePath+"/"+k;
     if(p===mp||p===mp+"/")return k;
+    if(CFG.prevBase){
+      var mp2=CFG.prevBase+"/"+k;
+      if(p===mp2||p===mp2+"/")return k;
+    }
   }
   return null;
 }

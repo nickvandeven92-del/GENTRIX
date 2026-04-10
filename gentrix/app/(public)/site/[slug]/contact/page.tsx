@@ -13,29 +13,35 @@ import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type ContactSitePageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ token?: string }>;
 };
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: ContactSitePageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: ContactSitePageProps): Promise<Metadata> {
   try {
     const { slug: raw } = await params;
     const slug = decodeRouteSlugParam(raw);
+    const sp = await searchParams;
+    const previewToken = typeof sp.token === "string" ? sp.token : "";
     if (!slug) {
       return { title: "Contact" };
     }
-    const bundle = await getPublishedSiteBySlug(slug);
+    const bundle = await getPublishedSiteBySlug(slug, previewToken);
     if (!bundle) {
       return { title: "Contact" };
     }
+    const conceptRobots = bundle.isConceptTokenAccess
+      ? ({ robots: { index: false, follow: false } } as const)
+      : ({} as const);
     const row = bundle.payload;
     if (row.kind !== "tailwind") {
       return { title: "Contact" };
     }
     const displayName = row.clientName?.trim() || formatSlugForDisplay(slug);
     const title = `${displayName} · Contact`;
-    const base = { title, description: `Neem contact op met ${displayName}` };
+    const base = { title, description: `Neem contact op met ${displayName}`, ...conceptRobots };
     const fav = row.logoSet?.variants.favicon?.trim() ?? "";
     if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
     return {
@@ -55,16 +61,20 @@ export async function generateMetadata({ params }: ContactSitePageProps): Promis
 }
 
 /** Contact-subpad: zelfde opgeslagen site als de landingspagina; alleen weergave (geen wijziging aan generator-JSON). */
-export default async function PublicClientSiteContactPage({ params }: ContactSitePageProps) {
+export default async function PublicClientSiteContactPage({ params, searchParams }: ContactSitePageProps) {
   const { slug: raw } = await params;
   const slug = decodeRouteSlugParam(raw);
   if (!slug) notFound();
 
-  const bundle = await getPublishedSiteBySlug(slug);
+  const sp = await searchParams;
+  const previewToken = typeof sp.token === "string" ? sp.token : "";
+  const tq = previewToken.trim() ? `?token=${encodeURIComponent(previewToken.trim())}` : "";
+
+  const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
 
   if (bundle.payload.kind !== "tailwind") {
-    redirect(`/site/${encodeURIComponent(slug)}`);
+    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
   }
 
   const sections = composePublicMarketingTailwindSections(
@@ -83,7 +93,7 @@ export default async function PublicClientSiteContactPage({ params }: ContactSit
     bundle.payload.kind === "tailwind" ? bundle.payload.contactSections : undefined,
   );
   if (!hasResolvedPublicContactRoute(contactPlan)) {
-    redirect(`/site/${encodeURIComponent(slug)}`);
+    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
   }
 
   return (
@@ -93,6 +103,7 @@ export default async function PublicClientSiteContactPage({ params }: ContactSit
       appointmentsEnabled={bundle.appointmentsEnabled}
       webshopEnabled={bundle.webshopEnabled}
       publicSiteTailwindPath="contact"
+      draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
     />
   );
 }

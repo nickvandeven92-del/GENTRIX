@@ -21,7 +21,7 @@ type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
   className?: string;
   publishedSlug?: string;
-  /** Publieke concept-preview (`/preview/...?token=`): iframe-links en portaal-placeholders. */
+  /** Concept met geldige token (`/site/...?token=`): iframe interne nav idem als live. */
   draftPublicPreviewToken?: string | null;
   visibility?: "public" | "portal";
   appointmentsEnabled?: boolean;

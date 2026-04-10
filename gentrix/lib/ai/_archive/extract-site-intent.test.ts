@@ -19,7 +19,7 @@ describe("extractSiteIntentFromPrompt", () => {
     expect(intent.designRegime).toBe("hero_mixed");
   });
 
-  it("korte barbier + luxe/donker → brand_storytelling (geen service_leadgen+compact-jacht)", () => {
+  it("korte barbier + luxe → brand_storytelling (geen service_leadgen+compact-jacht; luxe ≠ donker)", () => {
     const intent = extractSiteIntentFromPrompt(
       "Barbershop Goude wikkel, donker luxe met goud",
     );

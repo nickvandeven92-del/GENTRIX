@@ -51,6 +51,8 @@ type SiteHtmlEditorProps = {
   webshopEnabled?: boolean;
   /** Uit concept-snapshot: compose-preview + optioneel opnieuw meesturen bij POST. */
   initialSiteIr?: SiteIrV1 | null;
+  /** Alleen concept: iframe-nav zet `?token=` op `/site/…`-links (zelfde als publieke concept-URL). */
+  draftPublicPreviewToken?: string | null;
 };
 
 export function SiteHtmlEditor({
@@ -67,6 +69,7 @@ export function SiteHtmlEditor({
   appointmentsEnabled = true,
   webshopEnabled = true,
   initialSiteIr = null,
+  draftPublicPreviewToken = null,
 }: SiteHtmlEditorProps) {
   const [hist, dispatch] = useReducer(
     siteHistoryReducer,
@@ -455,6 +458,7 @@ export function SiteHtmlEditor({
                   userJs={customJs}
                   logoSet={initialLogoSet}
                   publishedSlug={subfolderSlug}
+                  draftPublicPreviewToken={draftPublicPreviewToken}
                   appointmentsEnabled={appointmentsEnabled}
                   webshopEnabled={webshopEnabled}
                   composePlan={composePlan}

@@ -20,7 +20,7 @@ export const designPersonalitySchema = z.enum(DESIGN_PERSONALITY_VALUES);
 export const PERSONALITY_RULES: Record<DesignPersonality, string> = {
   bold_industrial: `
 - Sterke koppen (uppercase waar het past bij de toon), monospace voor cijfers/statistieken.
-- Donkere basis + één felle accent (amber / oranje / rood) — geen pastel.
+- Vaak donkere basis + één felle accent (amber / oranje / rood) — **of** licht-beton/industrieel wit met donkere typografie als de briefing helder/modern vraagt; geen pastel-soft tenzij de briefing dat wil.
 - Asymmetrie, overlap, robuuste fotografie (detail, proces, materiaal).
 - Geen zachte verloop-overload; wel harde contrasten en duidelijke rasterbreuk.
 `.trim(),

@@ -88,8 +88,8 @@ function SiteRowActionsCard({ r }: { r: AdminClientRow }) {
         title={
           r.status === "active"
             ? "Publieke site (/site/…), volledig scherm"
-            : r.siteOpenAbsoluteUrl?.includes("/preview/")
-              ? "Concept in volledige weergave (publieke preview); zonder Studio-zijbalk"
+            : r.siteOpenAbsoluteUrl?.includes("token=")
+              ? "Concept in volledige weergave (/site met token); zonder Studio-zijbalk"
               : "Concept in admin-preview (Studio-zijbalk); stel preview_secret in of activeer voor volledig scherm"
         }
         data-tone="neutral"
@@ -149,8 +149,8 @@ function SiteRowActionsTable({ r }: { r: AdminClientRow }) {
         title={
           r.status === "active"
             ? "Publieke site (/site/…), volledig scherm"
-            : r.siteOpenAbsoluteUrl?.includes("/preview/")
-              ? "Concept in volledige weergave (publieke preview); zonder Studio-zijbalk"
+            : r.siteOpenAbsoluteUrl?.includes("token=")
+              ? "Concept in volledige weergave (/site met token); zonder Studio-zijbalk"
               : "Concept in admin-preview (Studio-zijbalk); stel preview_secret in of activeer voor volledig scherm"
         }
         data-tone="neutral"

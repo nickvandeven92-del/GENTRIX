@@ -7,30 +7,36 @@ import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type MarketingSitePageProps = {
   params: Promise<{ slug: string; marketingSlug: string }>;
+  searchParams: Promise<{ token?: string }>;
 };
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: MarketingSitePageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: MarketingSitePageProps): Promise<Metadata> {
   try {
     const { slug: raw, marketingSlug: rawSeg } = await params;
     const slug = decodeRouteSlugParam(raw);
     const seg = decodeRouteSlugParam(rawSeg);
+    const sp = await searchParams;
+    const previewToken = typeof sp.token === "string" ? sp.token : "";
     if (!slug || !seg) {
       return { title: "Pagina" };
     }
-    const bundle = await getPublishedSiteBySlug(slug);
+    const bundle = await getPublishedSiteBySlug(slug, previewToken);
     if (!bundle || bundle.payload.kind !== "tailwind") {
       return { title: "Pagina" };
     }
+    const conceptRobots = bundle.isConceptTokenAccess
+      ? ({ robots: { index: false, follow: false } } as const)
+      : ({} as const);
     const pages = bundle.payload.marketingPages;
     if (!pages?.[seg]) {
       return { title: "Pagina" };
     }
     const displayName = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
     const title = `${displayName} · ${formatSlugForDisplay(seg)}`;
-    const base = { title, description: `${displayName} — ${formatSlugForDisplay(seg)}` };
+    const base = { title, description: `${displayName} — ${formatSlugForDisplay(seg)}`, ...conceptRobots };
     const fav = bundle.payload.logoSet?.variants.favicon?.trim() ?? "";
     if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
     return {
@@ -50,22 +56,26 @@ export async function generateMetadata({ params }: MarketingSitePageProps): Prom
 }
 
 /** Marketing-subroute: HTML uit `marketingPages` in site_data_json. */
-export default async function PublicClientSiteMarketingSubPage({ params }: MarketingSitePageProps) {
+export default async function PublicClientSiteMarketingSubPage({ params, searchParams }: MarketingSitePageProps) {
   const { slug: raw, marketingSlug: rawSeg } = await params;
   const slug = decodeRouteSlugParam(raw);
   const seg = decodeRouteSlugParam(rawSeg);
   if (!slug || !seg) notFound();
 
-  const bundle = await getPublishedSiteBySlug(slug);
+  const sp = await searchParams;
+  const previewToken = typeof sp.token === "string" ? sp.token : "";
+  const tq = previewToken.trim() ? `?token=${encodeURIComponent(previewToken.trim())}` : "";
+
+  const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
 
   if (bundle.payload.kind !== "tailwind") {
-    redirect(`/site/${encodeURIComponent(slug)}`);
+    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
   }
 
   const pages = bundle.payload.marketingPages;
   if (!pages?.[seg]?.length) {
-    redirect(`/site/${encodeURIComponent(slug)}`);
+    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
   }
 
   return (
@@ -75,6 +85,7 @@ export default async function PublicClientSiteMarketingSubPage({ params }: Marke
       appointmentsEnabled={bundle.appointmentsEnabled}
       webshopEnabled={bundle.webshopEnabled}
       marketingSubpageKey={seg}
+      draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
     />
   );
 }

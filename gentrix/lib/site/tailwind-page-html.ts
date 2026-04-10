@@ -786,10 +786,54 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
  * Next-route — dan `navigateTop` (postMessage naar parent / top) i.p.v. scrollen in de iframe.
  * Links naar app-shell (`/portal/*`, `/admin`, `/login`, `/home`, `/dashboard`) moeten **top** navigeren,
  * anders blijft de adresbalk op `/` en zie je o.a. kale login in de iframe.
+ *
+ * **Concept + token:** zorg dat interne `/site/{slug}/…`-links de `token`-query behouden (en oude `/preview/…`-links naar `/site/…` normaliseren).
  */
-export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
+export function buildStudioSinglePageInternalNavScript(
+  draftSiteNavRewrite: { slug: string; token: string } | null,
+): string {
+  const draftJson =
+    draftSiteNavRewrite != null &&
+    typeof draftSiteNavRewrite.slug === "string" &&
+    draftSiteNavRewrite.slug.trim() !== "" &&
+    typeof draftSiteNavRewrite.token === "string" &&
+    draftSiteNavRewrite.token.trim() !== ""
+      ? JSON.stringify({
+          slug: draftSiteNavRewrite.slug.trim(),
+          token: draftSiteNavRewrite.token.trim(),
+        })
+      : "null";
+  return `<script>
 (function(){
   var STUDIO_NAV=${JSON.stringify(STUDIO_PUBLIC_NAV_MESSAGE_SOURCE)};
+  var DRAFT_SITE_NAV_REWRITE=${draftJson};
+  function rewriteDraftSiteNavUrl(absUrl){
+    if(!DRAFT_SITE_NAV_REWRITE)return absUrl;
+    try{
+      var u=new URL(absUrl);
+      var slug=DRAFT_SITE_NAV_REWRITE.slug;
+      var tok=DRAFT_SITE_NAV_REWRITE.token;
+      var path=u.pathname||"";
+      var prefSite="/site/"+slug;
+      var prefPrev="/preview/"+slug;
+      function mergeQuery(out){
+        out.hash=u.hash;
+        out.searchParams.set("token",tok);
+        u.searchParams.forEach(function(v,k){
+          if(k!=="token"&&v!=null&&String(v).length)out.searchParams.set(k,v);
+        });
+        return out.toString();
+      }
+      if(path===prefPrev||path.indexOf(prefPrev+"/")===0){
+        var tailPrev=path.slice(prefPrev.length);
+        var outP=new URL(u.origin+prefSite+tailPrev);
+        return mergeQuery(outP);
+      }
+      if(path!==prefSite&&path.indexOf(prefSite+"/")!==0)return absUrl;
+      var outS=new URL(u.toString());
+      return mergeQuery(outS);
+    }catch(_){return absUrl;}
+  }
   function splitHashQuery(s){
     var hash="";
     var hi=s.indexOf("#");
@@ -809,7 +853,7 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
   }
   function navigateTop(e,a){
     e.preventDefault();
-    var url=a.href;
+    var url=rewriteDraftSiteNavUrl(a.href);
     if(window.top!==window){
       try{window.top.location.assign(url);return;}catch(_){}
       try{
@@ -825,7 +869,7 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
   function slugifyNavKey(s){
     return (s||"").toString().toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   }
-  /** Aantal padsegmenten vanaf root; `/site/a` → 2, `/site/a/b` → 3 (subroute = marketing/contact). */
+  /* sitePublicPathDepth: pathname onder /site/ — twee segmenten = landing, drie = contact of marketing */
   function sitePublicPathDepth(pathname){
     var p=pathname||"";
     if(p.indexOf("/site/")!==0)return 0;
@@ -943,6 +987,7 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
   },true);
 })();
 </script>`;
+}
 
 export type BuildTailwindIframeSrcDocOptions = {
   /** Stuurt ready + documenthoogte naar parent via postMessage (alleen zinvol in iframe). */
@@ -1068,6 +1113,11 @@ export function buildTailwindIframeSrcDoc(
       ? buildContactSubpageCaptureNavScript(contactSubpageNav)
       : "";
 
+  const draftTok = options?.draftPublicPreviewToken?.trim() ?? "";
+  const draftSlug = options?.publishedSlug?.trim() ?? "";
+  const draftSiteNavRewrite =
+    draftTok.length > 0 && draftSlug.length > 0 ? { slug: draftSlug, token: draftTok } : null;
+
   const viewportContent = options?.previewMatchParentWindowBreakpoints
     ? "width=1280, initial-scale=1"
     : "width=device-width, initial-scale=1";
@@ -1097,7 +1147,7 @@ ${twLoadingScript}${body}
 ${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${scrollRevealScript}
 ${contactSubpageScript}
-${STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT}
+${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
 ${buildLucideRuntimeScriptBlock()}
 ${bridge}
 ${userJsBlock}

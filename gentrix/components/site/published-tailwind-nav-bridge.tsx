@@ -9,7 +9,8 @@ import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-m
 export function PublishedTailwindNavBridge({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return;
+      /* srcDoc-iframe zonder allow-same-origin: sommige browsers melden origin als de string "null". */
+      if (ev.origin !== window.location.origin && ev.origin !== "null") return;
       const d = ev.data as { source?: string; href?: string };
       if (!d || d.source !== STUDIO_PUBLIC_NAV_MESSAGE_SOURCE || typeof d.href !== "string") return;
       try {

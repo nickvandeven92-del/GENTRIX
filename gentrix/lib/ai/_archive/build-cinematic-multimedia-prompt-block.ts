@@ -35,7 +35,7 @@ function buildHeroRequirementParagraph(mandatoryVideo: boolean): string {
    - \`<video class="absolute inset-0 h-full w-full object-cover" muted playsinline autoplay loop preload="metadata" poster="https://images.unsplash.com/…">\` met een **werkende** MP4-URL op \`https://\` (bijv. \`videos.pexels.com\`), **én** een \`poster\` (Unsplash \`photo-\` id). **Verboden:** hero zonder video in deze modus; geen tweede autoplay-video elders; geen slap effen vlak zonder bewegend beeld.`;
   }
   return `1. **Hero (eerste sectie \`hero\`):** Dominant **beeld of video** over minimaal **~60–100vh** — \`relative overflow-hidden\` met een **achtergrondlaag**:
-   - Voorkeur: \`<video class="absolute inset-0 h-full w-full object-cover" muted playsinline autoplay loop preload="metadata" poster="https://images.unsplash.com/…">\` met een **werkende** MP4-URL op \`https://\` (bijv. \`videos.pexels.com\` of vergelijkbaar stock), **én** een \`poster\` (Unsplash \`photo-\` id) voor eerste frame; **of** alleen een sterk full-bleed Unsplash-beeld met donkere lees-overlay — **niet** een effen kleurvlak zonder media.`;
+   - Voorkeur: \`<video class="absolute inset-0 h-full w-full object-cover" muted playsinline autoplay loop preload="metadata" poster="https://images.unsplash.com/…">\` met een **werkende** MP4-URL op \`https://\` (bijv. \`videos.pexels.com\` of vergelijkbaar stock), **én** een \`poster\` (Unsplash \`photo-\` id) voor eerste frame; **of** alleen een sterk full-bleed Unsplash-beeld met **lichte tot middel** lees-overlay óf donkere overlay **alleen** als contrast dat nodig heeft — **niet** een effen kleurvlak zonder media.`;
 }
 
 export function buildCinematicMultimediaPromptBlock(description: string): string {
@@ -60,7 +60,7 @@ ${heroPara}
 3. **Sectie \`portfolio\`:** alleen invullen als \`portfolio\` **daadwerkelijk** in \`_site_config.sections\` staat (die id wordt alleen gepland bij expliciete multimedia-/showreel-briefing). Dan: **breed formaat** (16:9 / 21:9), full-bleed strip, horizontale scroll of editorial collage — minstens **twee** verschillende Unsplash-stills met echte \`photo-\` id’s. Staat \`portfolio\` **niet** in die lijst: geen aparte portfoliosectie maken.
 4. **Sectie \`story\` / \`about\`:** Korte, strakke copy; liefst **één** sterke kolom of split met **groot** beeld — geen opsomming van “diensten als productfeatures”.
 5. **CTA:** Aanwezig maar ingetogen (outline of kleine tekstlink), geen schreeuwerige deal-knoppen.
-6. **Nav (cinematic):** Logo + links **in** de hero, bovenop video/beeld — gebruik \`fixed top-0 inset-x-0 z-50\` **of** \`sticky top-0 z-50\` met **transparante donkere** glasstrook (zelfde tokens als \`navigation.wrapper\` waar mogelijk) zodat de balk **bij scroll zichtbaar blijft** — **verboden:** losse vol-breedte \`bg-white\` header **boven** een donkere fullscreen hero (dat oogt als mislukte template, niet als Lovable/cinematic).
+6. **Nav (cinematic):** Logo + links **in** de hero, bovenop video/beeld — gebruik \`fixed top-0 inset-x-0 z-50\` **of** \`sticky top-0 z-50\` met **glazen** strook (donker **of** licht frosted — kies wat leesbaarheid op het beeld vraagt; zelfde tokens als \`navigation.wrapper\` waar mogelijk) zodat de balk **bij scroll zichtbaar blijft** — **verboden:** losse vol-breedte \`bg-white\` header **boven** een donkere fullscreen hero (dat oogt als mislukte template, niet als Lovable/cinematic).
 
 **Verboden:** testimonials, prijstabellen, FAQ en “trust badges” **tenzij** de gebruikersbriefing die expliciet vraagt.`;
 }

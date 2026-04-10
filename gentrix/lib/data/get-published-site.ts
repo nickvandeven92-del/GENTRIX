@@ -2,8 +2,9 @@ import { cache } from "react";
 import { createAnonServerClient } from "@/lib/supabase/anon-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
-import { resolvePublishedSitePayloadJson } from "@/lib/data/resolve-site-payload-json";
+import { resolveDraftSitePayloadJson, resolvePublishedSitePayloadJson } from "@/lib/data/resolve-site-payload-json";
 import { ensureTailwindCompiledCssOnPublishedPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { previewSecretsEqual } from "@/lib/preview/preview-secret-crypto";
 import {
   publishedPayloadFromSiteJson,
   type PublishedSitePayload,
@@ -25,9 +26,195 @@ type ActiveClientRow = {
   name: string;
   generation_package?: string | null;
   published_snapshot_id?: string | null;
+  draft_snapshot_id?: string | null;
   appointments_enabled?: boolean;
   webshop_enabled?: boolean;
 };
+
+type ClientRowWithPreviewMeta = ActiveClientRow & {
+  preview_secret?: string | null;
+  status?: string;
+};
+
+/**
+ * Concept-site (`status = draft`) alleen met geldig `preview_secret` — zelfde kolommen als actieve site voor payload.
+ */
+async function fetchConceptDraftSiteRow(
+  slug: string,
+  previewToken: string,
+): Promise<{ data: ActiveClientRow | null; error: { message: string } | null }> {
+  const trimmed = previewToken.trim();
+  if (!trimmed) return { data: null, error: null };
+
+  try {
+    const supabase = createServiceRoleClient();
+    const fullSel =
+      "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, appointments_enabled, webshop_enabled, preview_secret, status";
+    const { data, error } = await supabase
+      .from("clients")
+      .select(fullSel)
+      .eq("subfolder_slug", slug)
+      .eq("status", "draft")
+      .maybeSingle();
+
+    if (error && isPostgrestUnknownColumnError(error, "preview_secret")) {
+      return { data: null, error: null };
+    }
+
+    if (error && isPostgrestUnknownColumnError(error, "draft_snapshot_id")) {
+      const second = await supabase
+        .from("clients")
+        .select(
+          "site_data_json, name, generation_package, published_snapshot_id, appointments_enabled, webshop_enabled, preview_secret, status",
+        )
+        .eq("subfolder_slug", slug)
+        .eq("status", "draft")
+        .maybeSingle();
+      if (second.error || !second.data) {
+        return { data: null, error: second.error ?? { message: "Onbekende fout." } };
+      }
+      const row = second.data as ClientRowWithPreviewMeta;
+      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+        return { data: null, error: null };
+      }
+      const { preview_secret: _ps0, status: _st0, ...rest0 } = row;
+      return { data: rest0 as ActiveClientRow, error: null };
+    }
+
+    if (error && isPostgrestUnknownColumnError(error, "webshop_enabled")) {
+      const second = await supabase
+        .from("clients")
+        .select(
+          "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, appointments_enabled, preview_secret, status",
+        )
+        .eq("subfolder_slug", slug)
+        .eq("status", "draft")
+        .maybeSingle();
+      if (second.error || !second.data) {
+        return { data: null, error: second.error ?? { message: "Onbekende fout." } };
+      }
+      const row = second.data as ClientRowWithPreviewMeta;
+      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+        return { data: null, error: null };
+      }
+      const { preview_secret: _ps, status: _st, ...rest } = row;
+      return {
+        data: { ...(rest as ActiveClientRow), webshop_enabled: false },
+        error: null,
+      };
+    }
+
+    if (error && isPostgrestUnknownColumnError(error, "appointments_enabled")) {
+      let second = await supabase
+        .from("clients")
+        .select(
+          "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, webshop_enabled, preview_secret, status",
+        )
+        .eq("subfolder_slug", slug)
+        .eq("status", "draft")
+        .maybeSingle();
+      if (second.error && isPostgrestUnknownColumnError(second.error, "webshop_enabled")) {
+        second = await supabase
+          .from("clients")
+          .select("site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, preview_secret, status")
+          .eq("subfolder_slug", slug)
+          .eq("status", "draft")
+          .maybeSingle();
+      }
+      if (second.error || !second.data) {
+        return { data: null, error: second.error ?? { message: "Onbekende fout." } };
+      }
+      const row = second.data as ClientRowWithPreviewMeta & { webshop_enabled?: boolean };
+      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+        return { data: null, error: null };
+      }
+      const { preview_secret: _ps2, status: _st2, ...rest2 } = row;
+      return {
+        data: {
+          ...(rest2 as ActiveClientRow),
+          appointments_enabled: false,
+          webshop_enabled: Boolean(row.webshop_enabled),
+        },
+        error: null,
+      };
+    }
+
+    if (error && isPostgrestUnknownColumnError(error, "published_snapshot_id")) {
+      const second = await supabase
+        .from("clients")
+        .select("site_data_json, name, generation_package, draft_snapshot_id, preview_secret, status")
+        .eq("subfolder_slug", slug)
+        .eq("status", "draft")
+        .maybeSingle();
+      if (second.error || !second.data) {
+        return { data: null, error: second.error ?? { message: "Onbekende fout." } };
+      }
+      const row = second.data as ClientRowWithPreviewMeta;
+      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+        return { data: null, error: null };
+      }
+      const { preview_secret: _ps3, status: _st3, ...rest3 } = row;
+      return {
+        data: {
+          ...(rest3 as ActiveClientRow),
+          published_snapshot_id: null,
+          appointments_enabled: false,
+          webshop_enabled: false,
+        },
+        error: null,
+      };
+    }
+
+    if (error && isPostgrestUnknownColumnError(error, "generation_package")) {
+      let second = await supabase
+        .from("clients")
+        .select("site_data_json, name, draft_snapshot_id, preview_secret, status")
+        .eq("subfolder_slug", slug)
+        .eq("status", "draft")
+        .maybeSingle();
+      if (second.error && isPostgrestUnknownColumnError(second.error, "draft_snapshot_id")) {
+        second = await supabase
+          .from("clients")
+          .select("site_data_json, name, preview_secret, status")
+          .eq("subfolder_slug", slug)
+          .eq("status", "draft")
+          .maybeSingle();
+      }
+      if (second.error || !second.data) {
+        return { data: null, error: second.error ?? { message: "Onbekende fout." } };
+      }
+      const row = second.data as ClientRowWithPreviewMeta;
+      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+        return { data: null, error: null };
+      }
+      const { preview_secret: _ps4, status: _st4, ...rest4 } = row;
+      return {
+        data: {
+          ...(rest4 as ActiveClientRow),
+          generation_package: null,
+          published_snapshot_id: null,
+          draft_snapshot_id: (rest4 as ActiveClientRow).draft_snapshot_id ?? null,
+          appointments_enabled: false,
+          webshop_enabled: false,
+        },
+        error: null,
+      };
+    }
+
+    if (error || !data) {
+      return { data: null, error: error ?? null };
+    }
+
+    const row = data as ClientRowWithPreviewMeta;
+    if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+      return { data: null, error: null };
+    }
+    const { preview_secret: _ps5, status: _st5, ...rest5 } = row;
+    return { data: rest5 as ActiveClientRow, error: null };
+  } catch {
+    return { data: null, error: null };
+  }
+}
 
 async function fetchActiveClientRow(
   slug: string,
@@ -229,8 +416,8 @@ async function fetchActiveClientRow(
 }
 
 /**
- * Gepubliceerde site (`status = active`). Server-side met service role zodat RLS anon-policies
- * niet vereist zijn; fallback anon als key ontbreekt.
+ * Publieke site (`status = active`) óf **concept** met geldige `?token=` (zelfde routes als live, niet indexeerbaar).
+ * Server-side met service role; fallback anon als key ontbreekt.
  *
  * Wrapped in `cache()` zodat `generateMetadata` + page in dezelfde request **één** Supabase-roundtrip doen.
  */
@@ -240,13 +427,31 @@ export type PublishedSiteBundle = {
   appointmentsEnabled: boolean;
   /** `false` = webshop-links en shop-sectie worden op `/site/{slug}` verborgen. */
   webshopEnabled: boolean;
+  /** `true` wanneer geladen via concept-token (`?token=`); iframe krijgt dezelfde token voor subnav. */
+  isConceptTokenAccess?: boolean;
+  conceptPreviewToken?: string | null;
 };
 
 export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlug(
   slug: string,
+  previewToken?: string | null,
 ): Promise<PublishedSiteBundle | null> {
   try {
-    const { data, error } = await fetchActiveClientRow(slug);
+    const activeRow = await fetchActiveClientRow(slug);
+    let data = activeRow.data;
+    const { error } = activeRow;
+
+    let conceptAccess = false;
+    let conceptTokenOut: string | null = null;
+
+    if (!error && !data && previewToken?.trim()) {
+      const draft = await fetchConceptDraftSiteRow(slug, previewToken);
+      if (!draft.error && draft.data) {
+        data = draft.data;
+        conceptAccess = true;
+        conceptTokenOut = previewToken.trim();
+      }
+    }
 
     if (error) {
       devLogPublishedSite(
@@ -260,16 +465,24 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
     if (!data) {
       devLogPublishedSite(
         slug,
-        "Geen actieve rij: slug, status 'active', en schema (na migratie) controleren.",
+        previewToken?.trim()
+          ? "Geen actieve of geldige concept-site voor deze slug/token."
+          : "Geen actieve rij: slug, status 'active', en schema (na migratie) controleren.",
       );
       return null;
     }
 
-    const siteJson = await resolvePublishedSitePayloadJson({
-      site_data_json: data.site_data_json,
-      draft_snapshot_id: null,
-      published_snapshot_id: data.published_snapshot_id ?? null,
-    });
+    const siteJson = conceptAccess
+      ? await resolveDraftSitePayloadJson({
+          site_data_json: data.site_data_json,
+          draft_snapshot_id: data.draft_snapshot_id ?? null,
+          published_snapshot_id: data.published_snapshot_id ?? null,
+        })
+      : await resolvePublishedSitePayloadJson({
+          site_data_json: data.site_data_json,
+          draft_snapshot_id: null,
+          published_snapshot_id: data.published_snapshot_id ?? null,
+        });
 
     let payload = publishedPayloadFromSiteJson(siteJson, data.name, data.generation_package);
     if (!payload) {
@@ -297,7 +510,14 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
     }
     const appointmentsEnabled = Boolean(data.appointments_enabled);
     const webshopEnabled = Boolean(data.webshop_enabled);
-    return { payload, appointmentsEnabled, webshopEnabled };
+    return {
+      payload,
+      appointmentsEnabled,
+      webshopEnabled,
+      ...(conceptAccess
+        ? { isConceptTokenAccess: true as const, conceptPreviewToken: conceptTokenOut }
+        : {}),
+    };
   } catch {
     return null;
   }

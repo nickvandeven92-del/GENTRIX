@@ -100,7 +100,7 @@ ${JSON.stringify(map, null, 2)}
 **Navbar + hero (when \`data-layout\` starts with \`hero_nav_\`):**
 
 - First slot is \`navigation\`. Pick **one** distinctive pattern (centered under wordmark, floating pill, two-row bar, split stack) — align with user **§0A** nav mandate for this run.
-- **Dark / video / full-bleed:** nav **on** the media with dark glass + light links — **not** a separate solid **white** bar above the hero (**§0A2** + **LOVABLE 2.0** point 6).
+- **Video / full-bleed / high contrast:** nav **on** the media with a **glass** strip (dark **or** light frosted + contrasting links) — **not** a separate solid **white** bar stacked above a dark fullscreen hero that reads as a broken template (**§0A2** + **LOVABLE 2.0** point 6).
 - Avoid default “logo left + links + CTA right” unless content truly demands it.
 - **\`hero_nav_split_product\`:** after \`navigation\`, \`media\` and \`content\` must sit **side-by-side from \`md:\`** (inner \`grid md:grid-cols-2\` or flex row); on mobile stack with media first or second per best UX.
 

@@ -52,6 +52,7 @@ const HERO_NAV_LIGHT: readonly LayoutArchetype[] = [
   "hero_nav_asymmetric_bento",
 ];
 
+/** Optionele cinematic helden — geen verplichting; \`elegant_luxury\` gebruikt vaak lichte splits/editorial. */
 const HERO_DARK: readonly LayoutArchetype[] = ["hero_dark_cinematic", "hero_nav_dark_cinematic"];
 
 function heroPoolForTheme(themeMode: ThemeMode | undefined): readonly LayoutArchetype[] {
@@ -362,7 +363,7 @@ const FOOTER_POOL = [
 ] as const satisfies readonly LayoutArchetype[];
 
 export type StudioPromptLayoutMapsOptions = {
-  /** Uit design-preset: bepaalt of donkere cinematic hero’s in de pool zitten. */
+  /** Uit design-preset: voegt donkere cinematic hero’s **optioneel** toe (dark/mixed); light blijft editorial-first. */
   themeMode?: ThemeMode;
   /** Override; default = `config.personality` */
   personality?: DesignPersonality;

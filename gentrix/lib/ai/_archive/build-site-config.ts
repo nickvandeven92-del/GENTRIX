@@ -258,8 +258,14 @@ export async function buildSiteConfig(
   const fromIntent = applySiteIntentToSiteConfigFields(pipe.siteIntent, homepagePlan);
 
   const { normalized: normBrief } = preparePromptForInterpretation(prompt);
+  /** Briefing expliciet licht/ivoor: geen extra “barber+luxe”-heuristiek die impliciet donker suggereert. */
+  const briefAskedLightSurface =
+    /\b(licht|helder|light\s+mode|veel\s+wit|crème|creme|ivoor|off-?white|airy|heldere\s+achtergrond)\b/i.test(
+      normBrief,
+    );
   const barberLuxeCohesive =
     promptHintsBarberOrGrooming(normBrief) &&
+    !briefAskedLightSurface &&
     (promptHintsDarkSurface(normBrief) || /\b(luxe|premium|goud|gold|high-?end|elegant)\b/.test(normBrief));
 
   return {

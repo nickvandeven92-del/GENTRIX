@@ -40,7 +40,7 @@ describe("page compactness", () => {
     expect(p.pageLengthTarget).not.toBe("extended");
   });
 
-  it("resolvePageCompactness: spacious + luxury in brand_style → extended", () => {
+  it("resolvePageCompactness: spacious + luxury_dark brand_style → extended (licht/luxe varianten zijn apart; geen dark-only vereiste)", () => {
     const cfg = createDefaultSiteConfig({
       layout_density: "spacious",
       brand_style: "luxury_dark",

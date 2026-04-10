@@ -330,7 +330,8 @@ Levendige kleuren: paars, koraal, turquoise, lime. Durf te combineren. Gradient-
 - **Cards/nav:** pill of afgeronde rechthoeken; **geen** zware skeuomorfe schaduwen — het contrast is glas vs. achtergrond.
 - **Contrast:** tekst op glas altijd leesbaar (donkere overlay onder tekst of sterkere blur).`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
-Zachte multi-stop gradients (\`from-violet-600/20 via-fuchsia-500/15 to-cyan-500/20\`) of donkerblauw/paars diepte; glas in neutraal wit/transparant; één helder accent (cyan, magenta, amber) voor knoppen.`,
+**Licht:** pastel of off-white basis (\`bg-slate-50\`, \`bg-violet-50/30\`) met zachte multi-stop gradients op de achtergrond; frosted panels in wit/transparant; één helder accent voor knoppen.
+**Diep:** zachte multi-stop gradients (\`from-violet-600/20 via-fuchsia-500/15 to-cyan-500/20\`) of donkerblauw/paars diepte achter het glas — kies **één** dominant (licht vs. diep), niet beide half.`,
   },
   {
     id: "neumorphism",

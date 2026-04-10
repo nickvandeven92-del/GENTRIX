@@ -29,7 +29,7 @@ PAGINA-OMVANG:
 - Het aantal secties wordt bepaald door de gedetecteerde sectie-\`id\`'s in het user-bericht. Als de briefing branche-specifieke secties vraagt (shop, galerij, team, merken): maak die aan met de instructies uit het user-bericht. Voeg geen extra secties toe die niet in de sectielijst staan.
 
 VISUELE & COMPOSITIE-BAR:
-- Gebruik **STUDIO STRUCTUUR** + **LOVABLE 2.0** als richting; technische kaders (\`data-layout\`/\`data-slot\`, toegankelijkheid) waar genoemd in het user-bericht. **Geen vaste design-preset** die utilities voorschrijft — kies Tailwind en compositie die het beste bij de briefing passen (premium, niet generiek).
+- Gebruik **STUDIO STRUCTUUR** + **LOVABLE 2.0** als richting; technische kaders (\`data-layout\`/\`data-slot\`, toegankelijkheid) waar genoemd in het user-bericht. **Geen vaste design-preset** die utilities voorschrijft — kies Tailwind en compositie die het beste bij de briefing passen (premium, niet generiek). **Premium of luxe betekent niet automatisch een donker site-thema** — lichte, editoriale of gemixte sites zijn even geldig als donkere.
 
 BIJ CONFLICT:
 - Geldige JSON > alles; renderbaarheid > experiment; professionele kwaliteit > letterlijke maar schadelijke invulling.

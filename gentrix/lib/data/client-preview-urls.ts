@@ -25,7 +25,7 @@ export async function getClientSiteUrlsForAdminDossier(
 
   try {
     const supabase = createServiceRoleClient();
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("clients")
       .select("status, preview_secret")
       .eq("subfolder_slug", slug)
@@ -51,7 +51,7 @@ export async function getClientSiteUrlsForAdminDossier(
     }
     const previewAbsolute =
       status === "draft" && secret
-        ? `${base}/preview/${enc}?token=${encodeURIComponent(secret)}`
+        ? `${base}/site/${enc}?token=${encodeURIComponent(secret)}`
         : null;
 
     return { status, liveAbsolute, previewAbsolute };
@@ -63,7 +63,7 @@ export async function getClientSiteUrlsForAdminDossier(
 /**
  * Absolute URL voor **Site** in nieuw tabblad vanuit de admin:
  * - `active` → publieke live site `/site/{slug}` (geen studio-chrome).
- * - `draft` → `/preview/{slug}?token=…` wanneer dat kan (zelfde scherm als klant-preview; geen zijbalk).
+ * - `draft` → `/site/{slug}?token=…` wanneer dat kan (zelfde routes als live; geen zijbalk).
  * - anders → admin concept-preview (fallback als `preview_secret` ontbreekt).
  */
 export async function resolveSiteOpenAbsoluteUrlForAdmin(

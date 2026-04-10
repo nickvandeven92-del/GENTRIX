@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
+import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
 import { getParsedSiteDraftBySlug } from "@/lib/data/client-draft-site";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
+import { getRequestOrigin } from "@/lib/site/request-origin";
 import { formatSlugForDisplay } from "@/lib/slug";
 
 type EditorPageProps = {
@@ -31,6 +33,17 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
   const webshopEnabled = commercial?.webshop_enabled ?? false;
 
   const parsed = await getParsedSiteDraftBySlug(slug);
+
+  const origin = await getRequestOrigin();
+  const siteUrls = await getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin);
+  let draftPublicPreviewToken: string | null = null;
+  if (siteUrls?.previewAbsolute) {
+    try {
+      draftPublicPreviewToken = new URL(siteUrls.previewAbsolute).searchParams.get("token");
+    } catch {
+      draftPublicPreviewToken = null;
+    }
+  }
 
   if (parsed?.kind === "react") {
     return (
@@ -79,6 +92,7 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
         appointmentsEnabled={appointmentsEnabled}
         webshopEnabled={webshopEnabled}
         initialSiteIr={parsed.siteIr ?? null}
+        draftPublicPreviewToken={draftPublicPreviewToken}
       />
     );
   }
