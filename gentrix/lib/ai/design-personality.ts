@@ -26,7 +26,7 @@ export const PERSONALITY_RULES: Record<DesignPersonality, string> = {
 `.trim(),
   elegant_luxury: `
 - **Typografie:** serif op **displaykoppen**, sans op **body** (zoals preset \`typography.heading\` vs \`body\`) — dat is je luxe-signaal; niet alles in dezelfde geometrische sans.
-- **Kleur:** gedempt messing/amber/brons op donker — vermijd plat **safety-oranje** en koud neon; warm off-white voor lange tekst i.p.v. hard wit overal.
+- **Kleur:** gedempt messing/amber/brons als accent op **licht** (ivoor/stone) **of** op donker — kies wat de briefing/referentie het beste ondersteunt; vermijd plat **safety-oranje** en koud neon; warm off-white voor lange tekst i.p.v. hard wit overal.
 - **Randen & ritme:** wissel **niet** overal dezelfde \`rounded-2xl\`-kaart; combineer hairline (\`ring\`/\`border\` met lage opacity), één scherp(er) kader, of beeld dat uit het kader loopt. Editorial = contrast in **vorm**, niet alleen in tekstgrootte.
 - Italic/spacing voor tagline of pull-quote; royale lucht. Subtiele schaduw/glow alleen waar het dramatisch helpt.
 `.trim(),

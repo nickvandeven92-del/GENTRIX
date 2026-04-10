@@ -16,7 +16,7 @@ De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-int
 - **Nooit** twee \`class="…"\` op dezelfde tag.
 - Vaste Tailwind-utilities in **één** \`class="…"\`; dynamische klassen via \`:class="…"\` / \`x-bind:class\`.
 
-**Menu’s / header:** **één** primaire site-nav voor de hele pagina — **geen** tweede menu met dezelfde \`href="#…"\`-links (geen verticale dubbele lijst naast de topbar). Vorm verder **vrij** (sticky balk, pill, \`fixed\` overlay, minimaal). Hamburger/overlay = dezelfde nav, geen kopie. Mobiel uitklapmenu: **sluiten** na linkklik en bij klik buiten waar logisch (\`@click.outside\`).
+**Menu’s / header:** **één** primaire site-nav voor de hele pagina — **geen** tweede menu met dezelfde \`href="#…"\`-links (geen verticale dubbele lijst naast de topbar). Vorm verder **vrij** (sticky balk, pill, \`fixed\` overlay, minimaal). Hamburger/overlay = dezelfde nav, geen kopie. Mobiel uitklapmenu: **sluiten** na linkklik en bij klik buiten waar logisch (\`@click.outside\`). **Z-index:** als de top-nav \`fixed\` is met \`z-50\` (of vergelijkbaar), moet het **mobiele menu** (backdrop \`fixed inset-0\`, sheet \`fixed … h-full\`, enz.) **strikt hogere** \`z-*\` hebben (bijv. backdrop \`z-[60]\`, sheet \`z-[70]\`) zodat overlay en sluitknop **boven** de balk liggen — anders blijft de navbar zichtbaar “door” het open menu.
 
 **Leesbaarheid:** transparante of glass header over wisselende achtergronden: zorg **functioneel** voor contrast (bijv. \`:class\` op scroll, \`@scroll.window\`) — **geen** verplichte nav-stijl.
 

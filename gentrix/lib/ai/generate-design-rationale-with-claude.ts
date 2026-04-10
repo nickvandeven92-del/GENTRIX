@@ -9,7 +9,7 @@ Schrijf **4 tot 6 korte alinea's** (elk 1–3 zinnen), geen koppen met #, geen J
 
 Behandel in volgorde:
 1. **Branche & sfeer** — welk beeld (bijv. transport → beweging, betrouwbaarheid, kracht) lees je uit de tekst?
-2. **Designkeuzes** — welke visuele richting (kleuren, stijl, toon) zou goed bij deze branche passen en waarom?
+2. **Designkeuzes** — welke visuele richting (kleuren, stijl, toon) zou goed bij deze branche passen en waarom? **Luxe, premium of exclusief is geen reden om automatisch een donker thema te verkiezen** — noem expliciet lichte én donkere opties als beide passend zijn, en volg een **lichte** referentie of briefing als die dat impliceert.
 3. **Pagina-opbouw** — waarom deze **sectievolgorde** (bv. vertrouwen → diensten → CTA)? Noem kort dat de **hero het eerste gezicht** is en wat je daarvoor zou sturen (beeld, toon, belofte). Als \`referenceStyle\` in de JSON staat: noem kort of de referentiesite-URL is ingelezen of mislukt en wat dat voor de stijl betekent.
 4. **Fine-tunen** — één concrete tip: welk woord of welke zin in de briefing zou je toevoegen of aanpassen om de richting te verschuiven (kleur, toon, meer B2B, **sterkere hero** …)?
 

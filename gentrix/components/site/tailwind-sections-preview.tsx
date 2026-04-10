@@ -8,6 +8,7 @@ import {
   type ComposePublicMarketingPlan,
 } from "@/lib/site/public-site-composition";
 import { isStudioPreviewPostMessage } from "@/lib/site/preview-post-message";
+import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 import { cn } from "@/lib/utils";
 
@@ -177,22 +178,24 @@ export function TailwindSectionsPreview({
       : null;
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "flex flex-col rounded-b-xl bg-white",
-        documentHeightMode === "full" ? "overflow-visible" : "min-h-0 overflow-hidden",
-        className,
-      )}
-    >
-      <iframe
-        ref={iframeRef}
-        title={title}
-        className={cn("w-full border-0 bg-white", frameClassName ?? "h-[min(72vh,800px)]")}
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-        srcDoc={srcDoc}
-        style={autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : undefined}
-      />
-    </div>
+    <PublishedTailwindNavBridge>
+      <div
+        ref={containerRef}
+        className={cn(
+          "flex flex-col rounded-b-xl bg-white",
+          documentHeightMode === "full" ? "overflow-visible" : "min-h-0 overflow-hidden",
+          className,
+        )}
+      >
+        <iframe
+          ref={iframeRef}
+          title={title}
+          className={cn("w-full border-0 bg-white", frameClassName ?? "h-[min(72vh,800px)]")}
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+          srcDoc={srcDoc}
+          style={autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : undefined}
+        />
+      </div>
+    </PublishedTailwindNavBridge>
   );
 }

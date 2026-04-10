@@ -18,6 +18,11 @@ export type AdminClientRow = {
   custom_domain: string | null;
   /** Ontbreekt op oudere callers die een deelselectie doorgeven. */
   client_number?: string | null;
+  /**
+   * Gezet op de server (Sites-overzicht): beste URL voor Site in nieuw tabblad — live of publieke
+   * concept-preview zonder admin-layout.
+   */
+  siteOpenAbsoluteUrl?: string;
 };
 
 const SEL_PKG_NUM =

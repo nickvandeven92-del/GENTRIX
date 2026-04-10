@@ -44,6 +44,25 @@ html.tw-ready body { visibility: visible; }
 export const STUDIO_ALPINE_X_CLOAK_CSS = `[x-cloak]{display:none!important}`;
 
 /**
+ * Veel templates: vaste primary nav `fixed … z-50`, mobiel menu-backdrop `fixed inset-0 z-40`.
+ * Dan blijft de balk en hamburger zichtbaar boven het open menu (iframe + smalle viewport).
+ * Deze fix verhoogt typische full-screen / full-height menu-lagen op kleine viewports — alleen in srcDoc.
+ */
+export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
+  body .fixed.inset-0 {
+    z-index: 200 !important;
+  }
+  body .fixed.top-0.bottom-0.right-0,
+  body .fixed.top-0.bottom-0.left-0,
+  body .fixed.top-0.right-0.h-full,
+  body .fixed.top-0.left-0.h-full,
+  body .fixed.top-0.right-0.min-h-screen,
+  body .fixed.top-0.left-0.min-h-screen {
+    z-index: 201 !important;
+  }
+}`;
+
+/**
  * CSS voor `data-animation` (fade-up, slide-in-*, scale-in).
  * Animaties starten **pas** als `.studio-in-view` gezet wordt (scroll-reveal script) — zo voelt de pagina
  * “levend” zoals bij Lovable: hero bij binnenkomst, diensten-blokken bij scroll.
@@ -763,7 +782,8 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
  * Gegenereerde one-pagers gebruiken vaak `href="/diensten"` of **absolute** `https://host/site/slug#x`
  * i.p.v. `#sectie`. In een `srcDoc`-iframe laadt dat de **hele Next-pagina opnieuw in de iframe**
  * (geneste iframe → miniatuur in de hoek). Vang dat af: zelfde-document scroll op hash/`data-section`,
- * of blokkeer host-navigatie.
+ * of blokkeer host-navigatie. **Uitzondering:** `/site/{slug}/{subroute}` (contact, marketingpagina) is een echte
+ * Next-route — dan `navigateTop` (postMessage naar parent / top) i.p.v. scrollen in de iframe.
  * Links naar app-shell (`/portal/*`, `/admin`, `/login`, `/home`, `/dashboard`) moeten **top** navigeren,
  * anders blijft de adresbalk op `/` en zie je o.a. kale login in de iframe.
  */
@@ -804,6 +824,12 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
   }
   function slugifyNavKey(s){
     return (s||"").toString().toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  }
+  /** Aantal padsegmenten vanaf root; `/site/a` → 2, `/site/a/b` → 3 (subroute = marketing/contact). */
+  function sitePublicPathDepth(pathname){
+    var p=pathname||"";
+    if(p.indexOf("/site/")!==0)return 0;
+    return p.split("/").filter(Boolean).length;
   }
   function tryScroll(e,id){
     if(!id)return false;
@@ -853,6 +879,10 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
         if(isAppShellPath(pn)){navigateTop(e,a);return;}
         if(pn.indexOf("/site/")===0){
           e.preventDefault();
+          if(sitePublicPathDepth(pn)>2){
+            navigateTop(e,a);
+            return;
+          }
           var ah=href.indexOf("#");
           var siteHash=ah>=0?href.slice(ah+1):"";
           if(tryScroll(e,siteHash))return;
@@ -889,6 +919,10 @@ export const STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT = `<script>
     var hash=pq.hash;
     if(path.indexOf("/site/")===0){
       e.preventDefault();
+      if(sitePublicPathDepth(path)>2){
+        navigateTop(e,a);
+        return;
+      }
       if(tryScroll(e,hash))return;
       window.scrollTo({top:0,behavior:"smooth"});
       return;
@@ -1054,6 +1088,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     body { font-family: ${fontStack}; }
     ${rootCss}
     ${animationCss}
+    ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
 ${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 </head>

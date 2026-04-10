@@ -110,9 +110,9 @@ Denk B2B, professioneel, betrouwbaar. De klant is een bedrijf dat een partner zo
     vibe: "luxury",
     promptHint: `**BRANCHE-INSPIRATIE: MAKELAAR / VASTGOED**
 Denk aan luxe, aspiratie, droomhuizen. De website moet de levensstijl verkopen, niet alleen het huis.
-- **Hero-idee:** luxe woning bij avondlicht, of stijlvol interieur. Premium, aspirationeel. Of een typografische hero met "Vind uw droomwoning" in groot serif-font.
+- **Hero-idee:** luxe woning (daglicht of avond — beide kunnen), stijlvol licht interieur, of architectuur in neutrale tonen. Premium, aspirationeel. Of een typografische hero met "Vind uw droomwoning" in groot serif op **licht** canvas.
 - **Woningen-idee:** spotlight-cards met grote foto, locatie, prijs, m². Of een uitgelichte woning als cinematic full-bleed sectie.
-- **Sfeer-richting:** luxe, donkergroen of navy + goud, crème achtergronden, serif-koppen. Sleutel/huis SVG's.
+- **Sfeer-richting:** luxe met **crème/stone/wit** als dominante basis; navy of donkergroen als accent of voor typografie — **niet** verplicht een donker hoogtepunt in elke sectie. Serif-koppen. Sleutel/huis SVG's.
 - **Typische elementen:** woning-galerij, team met portretfoto's, lokale expertise, bezichtiging-CTA.`,
   },
   {
@@ -126,7 +126,7 @@ Denk aan luxe, aspiratie, droomhuizen. De website moet de levensstijl verkopen, 
 Denk aan een uitnodiging om te komen eten. Warmte, smaak, sfeer. De website is de eerste gang.
 - **Hero-idee:** sfeervolle gerechten, warm verlicht interieur, of chef aan het werk. Of een typografische hero met restaurantnaam in elegant serif.
 - **Menu-idee:** een elegante verticale lijst (\`divide-y\`) per gang werkt vaak editorial. Maar een visueel menu met foto's per gerecht kan ook sterk zijn.
-- **Sfeer-richting:** warm, donkere achtergronden met crème/beige lichte secties, goud/koper accent, serif-typografie. Vork/mes als decoratie.
+- **Sfeer-richting:** warm — wissel **lichte** crème/beige secties met rijke donkere accenten **als** dat past; goud/koper accent, serif-typografie. Vork/mes als decoratie.
 - **Typische elementen:** menu/kaart, sfeergalerij, verhaal van de chef, reserveer-CTA, openingstijden.`,
   },
   {

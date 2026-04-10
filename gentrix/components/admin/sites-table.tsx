@@ -7,6 +7,9 @@ import type { AdminClientRow } from "@/lib/data/list-admin-clients";
 import { cn } from "@/lib/utils";
 
 function siteViewHref(row: AdminClientRow): string {
+  if (row.siteOpenAbsoluteUrl && row.siteOpenAbsoluteUrl.trim() !== "") {
+    return row.siteOpenAbsoluteUrl.trim();
+  }
   const enc = encodeURIComponent(row.subfolder_slug);
   if (row.status === "active") {
     return `/site/${enc}`;
@@ -84,8 +87,10 @@ function SiteRowActionsCard({ r }: { r: AdminClientRow }) {
         rel="noopener noreferrer"
         title={
           r.status === "active"
-            ? "Publieke site (/site/…)"
-            : "Concept-weergave (admin); live op /site/… na activatie"
+            ? "Publieke site (/site/…), volledig scherm"
+            : r.siteOpenAbsoluteUrl?.includes("/preview/")
+              ? "Concept in volledige weergave (publieke preview); zonder Studio-zijbalk"
+              : "Concept in admin-preview (Studio-zijbalk); stel preview_secret in of activeer voor volledig scherm"
         }
         data-tone="neutral"
         className={cn(cardActionClass, "border-zinc-200 text-zinc-800 dark:border-zinc-700 dark:text-zinc-200")}
@@ -143,8 +148,10 @@ function SiteRowActionsTable({ r }: { r: AdminClientRow }) {
         rel="noopener noreferrer"
         title={
           r.status === "active"
-            ? "Publieke site (/site/…)"
-            : "Concept-weergave (admin); live op /site/… na activatie"
+            ? "Publieke site (/site/…), volledig scherm"
+            : r.siteOpenAbsoluteUrl?.includes("/preview/")
+              ? "Concept in volledige weergave (publieke preview); zonder Studio-zijbalk"
+              : "Concept in admin-preview (Studio-zijbalk); stel preview_secret in of activeer voor volledig scherm"
         }
         data-tone="neutral"
         className={cn(tableActionClass, "border-zinc-200 dark:border-zinc-700")}

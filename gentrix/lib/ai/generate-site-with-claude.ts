@@ -235,7 +235,7 @@ const STYLE_PROFILES: StyleProfile[] = [
 - **Sfeer:** nostalgie, vakmanschap, erfgoed. De site voelt als een ambachtelijke menukaart of tijdschrift uit de jaren '50-'70.
 - **Decoratie:** ornamentele lijn-dividers, ster-symbolen (★) als scheiders, vintage branche-iconen. SVG-decoratie in dunne lijnstijl.
 - **Spacing:** genereuze padding (\`py-20 md:py-28\`), content niet te breed (\`max-w-4xl\` voor tekst).
-- **Hero:** bij voorkeur typografisch met groot \`text-6xl md:text-7xl font-serif italic\` op donkere achtergrond, OF cinematic foto met warme tonen en overlay.
+- **Hero:** typografisch met groot \`text-6xl md:text-7xl font-serif italic\` op **warm licht** (crème/stone) **of** op donker, OF cinematic foto met warme tonen — overlay alleen als de briefing of beeld dat vraagt (geen verplicht donker vlak).
 - **Secties:** wissel donkere en warme lichte banden; liever warme off-white/stone i.p.v. koud klinisch wit als het past bij de briefing.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Aardekleuren als basis: warm bruin (\`bg-[#2c1810]\`, \`bg-amber-950\`) voor donkere secties, crème (\`bg-[#f5f0e8]\`, \`bg-stone-100\`) voor lichte secties, goud/amber als accent.`,
@@ -250,7 +250,7 @@ Aardekleuren als basis: warm bruin (\`bg-[#2c1810]\`, \`bg-amber-950\`) voor don
 - **Decoratie:** GEEN of minimaal — hoogstens één subtiele geometrische lijn. Geen branche-symbolen tenzij heel abstract. Geen ornamentele dividers.
 - **Spacing:** strakke spacing, consistent grid. \`gap-8\` niet \`gap-12\`. Compacter voelt moderner.
 - **Hero:** één strakke foto met hoog contrast, of typografisch met oversized sans — gebruik \`font-light\` of \`font-medium\`, **niet** \`font-black\` + lange subtekst. **Uitzondering — barbershop / salon / spa / hotel in de briefing:** gebruik in de hero **serif** + weinig woorden (high-end editorial), geen "fastfood"-layout met twee volle knoppen en een paragraaf.
-- **Secties:** scherp contrast tussen secties. Geen zachte overgangen. \`bg-white\` → \`bg-zinc-950\` → \`bg-white\`.`,
+- **Secties:** scherp contrast tussen secties; wissel rustige neutrale vlakken (\`bg-white\`, \`bg-stone-50\`, \`bg-zinc-100\`) — **geen** vaste donkere band als signatuur tenzij de briefing donker vraagt.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Zwart/wit basis met één krachtig accent (emerald, electric blue, of felrood). Minimaal kleurgebruik — de kracht zit in contrast.`,
   },
@@ -264,15 +264,19 @@ Zwart/wit basis met één krachtig accent (emerald, electric blue, of felrood). 
 - **Decoratie:** MINIMAAL en verfijnd — dunne lijnen (\`border-[0.5px]\`), subtiele dividers, geen drukke patronen. Geen emoji's. Geen speelse elementen.
 - **Cards/lijsten:** geen standaard rounded kaarten met schaduw. Gebruik \`border-[0.5px]\` met \`hover:bg-[kleur]/5\` transities. Of helemaal geen cards — een elegante \`divide-y\` lijst is luxueuzer.
 - **Knoppen:** minimalistisch — \`border\` met \`uppercase tracking-widest text-xs\` tekst. Geen grote ronde gekleurde knoppen. Subtiel, niet schreeuwerig.
-- **Hero:** twee sterke opties — kies afhankelijk van de branche:
-  - **Optie 1 (visuele branches):** cinematic foto-hero met donkere overlay + **korte** oversized serif-kop (weinig woorden). **Geen** lange paragraaf in de hero — detailcopy in de volgende sectie. Grote beeldhoogte (\`min-h-[72vh] md:min-h-[80vh]\` of vergelijkbaar).
-  - **Optie 2 (abstracte/zakelijke branches):** puur typografisch — donkere achtergrond + oversized serif. Maar dan WEL met visuele elementen: gradient-overlay (\`bg-gradient-to-br\`), subtiele SVG-decoratie, of een split-layout met een sfeerbeeld aan één kant. Ook hier: **minimale** tekst in de hero.
+- **Hero:** minstens **twee** evenwaardige families — kies wat de briefing het beste draagt (inclusief referentiebeeld/site als die licht is); **luxe ≠ donker**:
+  - **Optie A (licht / editorial):** veel witruimte, \`bg-stone-50\` / \`bg-[#faf8f5]\` / off-white, donkere serif-kop (\`text-stone-900\`), dunne hairlines, eventueel **lichte** split met sfeerfoto — **minimale** copy in de hero.
+  - **Optie B (foto-gedreven):** cinematic full-bleed met **lichte tot middel** overlay óf donkere overlay **alleen** als het beeld dat nodig heeft voor contrast; **korte** oversized serif-kop. Grote beeldhoogte (\`min-h-[72vh] md:min-h-[80vh]\` of vergelijkbaar).
+  - **Optie C (typografisch donker):** mag, maar niet de default — alleen als de briefing of referentie expliciet donker/minimal noir vraagt; combineer met gradient, textuur of split-beeld zodat het geen kaal zwart vlak wordt.
+  - **Vermijd:** standaard iedere luxe-site op near-black te zetten "omdat het premium oogt".
   - **Vermijd:** kale effen hero zonder enige laag (foto, gradient of subtiele textuur) tenzij de briefing expliciet minimalistisch wil.
   - **Vermijd:** lange alinea + twee grote knoppen in de hero — meestal werkt rustiger beter.
-- **Secties:** contrast donker/licht helpt; lichte secties in zacht neutraal (\`bg-neutral-50\`, \`bg-stone-50\`) mag ook \`bg-white\` als de briefing helder/minimaal is.
+- **Secties:** ritme licht/donker is **vrijwillig**; veel high-end sites zijn overwegend **licht** met één donker accentblok. Lichte secties: \`bg-white\`, \`bg-neutral-50\`, \`bg-stone-50\`.
 - **Prijzen/diensten:** lijst met dividers of een bewust ander patroon — niet standaard overal dezelfde productkaarten.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
-Donkere basis (\`bg-zinc-950\`, \`bg-[#0a0a0a]\`) met goud (\`text-amber-500\`, \`border-amber-600/30\`) of champagne als accent. Geen felle of primaire kleuren.`,
+**Standaard:** begin bij een **licht, rustig** palet — warm wit / steen / zand (\`bg-stone-50\`, \`bg-[#faf8f5]\`, \`bg-neutral-100\`) met diepe tekst (\`text-stone-900\`) en **één** rijk accent (champagne-goud, brons, navy, wijnrood). Dat voelt minstens zo luxe als zwart+goud.
+**Alternatief (alleen als briefing of referentie duidelijk noir/donker wil):** donkere basis (\`bg-zinc-950\`, \`bg-[#0a0a0a]\`) met goud of champagne als accent.
+**Vermijd:** automatisch near-black kiezen bij woorden als "luxe" of "exclusief". Geen felle primaire kleuren tenzij de briefing dat vraagt.`,
   },
   {
     id: "warm_cozy",
@@ -398,7 +402,7 @@ Zwart/donkerblauw basis; neon-accenten (cyan \`#22d3ee\`, magenta \`#e879f9\`, l
 - **Luxe:** veel negatieve ruimte, geen drukke kaart-rasters; prijzen/diensten als elegante lijst of één spotlight.
 - **Verschil met algemeen “luxe” preset:** hier ligt nadruk op **editorial ritme en typografie**, niet alleen donker+goud.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
-Zwart/ivoor/wit of diep navy + crème; accent: goud/brons **of** diep wijnrood — één rijke signatuurkleur.`,
+Ivoor/warm wit + crème of diep navy + crème; accent: goud/brons **of** diep wijnrood — één rijke signatuurkleur. Hoog-contrast zwart/wit is **een** optie, geen verplichting — luxe-editorial is vaak **licht** met sterke typografie.`,
   },
   {
     id: "skeuomorphism",
@@ -1248,7 +1252,7 @@ ${clientImagesBlock}${referenceSiteBlock}
 
 Let op woorden als vintage, modern, strak, warm, luxe, beige, donker, speels — én expliciete stijlen zoals **glassmorphism**, **neumorphism**, **flat/minimal**, **gradients**, **brutalism**, **cyberpunk/futuristisch**, **editorial**, **skeuomorphism** — vertaal ze naar kleur, typografie en beeld **als de briefing dat impliceert**.
 
-- **Kleur:** als de briefing een palet noemt, volg dat. Anders: kies een coherent palet dat bij branche en toon past (warm, koel, contrastrijk, minimal, …).
+- **Kleur:** als de briefing een palet noemt, volg dat. Anders: kies een coherent palet dat bij branche en toon past (warm, koel, contrastrijk, minimal, …). Woorden als **luxe, premium, exclusief** zijn **geen** mandaat voor een donker site-thema — veel high-end merken zijn overwegend licht of gemixed.
 - **Typografie en beeld:** serif vs. sans, schaduwen, foto vs. typografie — laat de briefing leidend zijn; geen verplichte "premium barber"-formule.
 - **Branche ≠ één look:** dezelfde branche kan rustiek, luxe, urban of minimal — kies wat het beste aansluit op de **tekst** van de klant.
 - **Stijlen mixen:** meerdere trefwoorden in de briefing betekenen **niet** automatisch “alles erin”. Zie het blok **MEERDERE STIJL-SIGNALEN** hieronder: **alleen combineren wat esthetisch samenhangt**; anders **één** dominante stijl (zoals gedetecteerd) en de rest laten vallen.

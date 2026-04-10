@@ -12,6 +12,7 @@ import {
   STUDIO_LASER_LINE_CSS,
   STUDIO_MARQUEE_CSS,
   STUDIO_ALPINE_X_CLOAK_CSS,
+  STUDIO_MOBILE_MENU_STACKING_FIX_CSS,
   STUDIO_SCROLL_REVEAL_SCRIPT,
 } from "@/lib/site/tailwind-page-html";
 import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
@@ -137,6 +138,7 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_DATA_ANIMATION_CSS}
     ${STUDIO_MARQUEE_CSS}
     ${STUDIO_LASER_LINE_CSS}
+    ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
   </style>
   ${userCssBlock}</head>
 <body class="min-h-screen antialiased text-slate-900${radiusClass}">

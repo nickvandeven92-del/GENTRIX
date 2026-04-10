@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Code2, ExternalLink, FolderOpen, PanelTop } from "lucide-react";
+import { resolveSiteOpenAbsoluteUrlForAdmin } from "@/lib/data/client-preview-urls";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { getWebsiteOpsByClientId } from "@/lib/data/website-ops";
+import { getRequestOrigin } from "@/lib/site/request-origin";
 import { ClientWebsitesMarketingBlocks } from "@/components/admin/client-websites-marketing-blocks";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +44,8 @@ export default async function ClientWebsitesPage({ params }: PageProps) {
   const ops = await getWebsiteOpsByClientId(row.id);
   const enc = encodeURIComponent(row.subfolder_slug);
   const base = `/admin/clients/${enc}`;
+  const origin = await getRequestOrigin();
+  const siteOpenAbsoluteUrl = await resolveSiteOpenAbsoluteUrlForAdmin(row.subfolder_slug, row.status, origin);
 
   const cardBtn =
     "inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-900";
@@ -66,16 +70,22 @@ export default async function ClientWebsitesPage({ params }: PageProps) {
           </div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href={row.status === "active" ? `/site/${enc}` : `${base}/preview`}
+          <a
+            href={siteOpenAbsoluteUrl}
             target="_blank"
             rel="noreferrer"
             className={cn(cardBtn)}
-            title={row.status === "active" ? "Publieke site" : "Concept (admin-preview)"}
+            title={
+              row.status === "active"
+                ? "Publieke site, volledig scherm"
+                : siteOpenAbsoluteUrl.includes("/preview/")
+                  ? "Concept volledig scherm (zonder Studio-zijbalk)"
+                  : "Concept (admin-preview met zijbalk)"
+            }
           >
             <ExternalLink className="size-4 shrink-0" aria-hidden />
             {row.status === "active" ? "Publieke site" : "Site bekijken"}
-          </Link>
+          </a>
           <Link href={`/admin/editor/${enc}`} className={cn(cardBtn, "border-blue-200 bg-blue-50/80 dark:border-blue-900/50 dark:bg-blue-950/30")}>
             <Code2 className="size-4 shrink-0" aria-hidden />
             HTML-editor

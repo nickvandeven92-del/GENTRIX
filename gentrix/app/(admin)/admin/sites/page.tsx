@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
 import { AdminSitesTable } from "@/components/admin/sites-table";
-import { listAdminClients } from "@/lib/data/list-admin-clients";
+import { resolveSiteOpenAbsoluteUrlForAdmin } from "@/lib/data/client-preview-urls";
+import { listAdminClients, type AdminClientRow } from "@/lib/data/list-admin-clients";
+import { getRequestOrigin } from "@/lib/site/request-origin";
 
 export const metadata: Metadata = {
   title: "Sites",
 };
 
 export default async function AdminSitesPage() {
-  const rows = await listAdminClients();
+  const origin = await getRequestOrigin();
+  const baseRows = await listAdminClients();
+  const rows: AdminClientRow[] = await Promise.all(
+    baseRows.map(async (r) => ({
+      ...r,
+      siteOpenAbsoluteUrl: await resolveSiteOpenAbsoluteUrlForAdmin(r.subfolder_slug, r.status, origin),
+    })),
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
