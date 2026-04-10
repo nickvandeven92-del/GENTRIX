@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
+import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 import {
   filterSectionsForPortalOnly,
@@ -80,6 +81,9 @@ export function PublicPublishedTailwind({
         webshopEnabled,
         disableScrollRevealAnimations: true,
       });
+      if (typeof window !== "undefined") {
+        doc = rewriteStudioDevOriginsInHtml(doc, window.location.origin);
+      }
       if (doc.length > MAX_SRC_DOC_CHARS) {
         doc = fallbackSrcDoc(
           documentTitle,
