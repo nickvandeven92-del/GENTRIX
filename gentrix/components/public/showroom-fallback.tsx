@@ -4,7 +4,7 @@ import { ArrowUpRight, Cpu, LayoutDashboard } from "lucide-react";
 import { PUBLIC_BRAND, PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-/** Eén aanbod — bewerk hier; of zet `LANDING_SITE_ROOT_SLUG` in .env om `/` naar `/site/{slug}` te laten herschrijven. */
+/** Eén aanbod — bewerk hier. Op het primaire studio-domein herschrijft middleware standaard `/` naar `/site/home` (generator-slug); zie `LANDING_SITE_ROOT_SLUG` / `off` in `.env.example`. */
 const SHOWROOM_SINGLE_OFFER = {
   name: "Studio-pakket",
   line: "Website, beheer in overleg, klantportaal",

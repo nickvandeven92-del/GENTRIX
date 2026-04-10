@@ -25,3 +25,19 @@ export function shouldResolveCustomDomain(host: string): boolean {
 
   return true;
 }
+
+/** True op het geconfigureerde studio-primaire domein (of alias); gebruikt voor o.a. standaard `/` → `/site/home`. */
+export function isPrimaryStudioHost(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  if (!h) return false;
+
+  const primary = process.env.NEXT_PUBLIC_PRIMARY_HOST?.trim().toLowerCase();
+  if (!primary) return false;
+  if (h === primary) return true;
+
+  const aliases = (process.env.NEXT_PUBLIC_PRIMARY_HOST_ALIASES ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return aliases.includes(h);
+}

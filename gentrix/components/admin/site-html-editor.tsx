@@ -11,7 +11,6 @@ import {
   Loader2,
   Redo2,
   RefreshCw,
-  Rocket,
   Save,
   Undo2,
 } from "lucide-react";
@@ -84,6 +83,8 @@ export function SiteHtmlEditor({
   const [activeIndex, setActiveIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  /** Na concept-opslag: waar je de opgeslagen site volledig kunt bekijken (los van de editor-preview). */
+  const [postSaveDraftView, setPostSaveDraftView] = useState<{ clientPreviewTokenUrl: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [codePanelOpen, setCodePanelOpen] = useState(false);
@@ -92,8 +93,6 @@ export function SiteHtmlEditor({
   const [customJs, setCustomJs] = useState(() => initialCustomJs);
   const [assetsPanelOpen, setAssetsPanelOpen] = useState(false);
   const [pageType, setPageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
-  const [publishing, setPublishing] = useState(false);
-  const [publishMsg, setPublishMsg] = useState<string | null>(null);
   const snapshotSourceRef = useRef<"editor" | "ai_command">("editor");
 
   useEffect(() => {
@@ -175,34 +174,11 @@ export function SiteHtmlEditor({
     setPreviewKey((k) => k + 1);
   }
 
-  async function publishLive() {
-    setPublishing(true);
-    setSaveError(null);
-    setPublishMsg(null);
-    try {
-      const res = await fetch(`/api/clients/${encodeURIComponent(subfolderSlug)}/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = (await res.json()) as { ok: boolean; error?: string };
-      if (!res.ok || !data.ok) {
-        setSaveError(data.error ?? "Publiceren mislukt.");
-        return;
-      }
-      setPublishMsg("Live bijgewerkt met het huidige concept.");
-    } catch {
-      setSaveError("Netwerkfout bij publiceren.");
-    } finally {
-      setPublishing(false);
-    }
-  }
-
   async function save() {
     setSaving(true);
     setSaveError(null);
     setSaveMsg(null);
-    setPublishMsg(null);
+    setPostSaveDraftView(null);
     try {
       const res = await fetch("/api/clients", {
         method: "POST",
@@ -228,13 +204,28 @@ export function SiteHtmlEditor({
             : {}),
         }),
       });
-      const data = (await res.json()) as { ok: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        data?: { preview_url?: string | null; status?: string };
+      };
       if (!res.ok || !data.ok) {
         setSaveError(data.error ?? "Opslaan mislukt.");
         return;
       }
       snapshotSourceRef.current = "editor";
-      setSaveMsg("Opgeslagen.");
+      if (status === "draft") {
+        setSaveMsg("Concept opgeslagen — volledige site staat in de database (werkversie / draft).");
+        setPostSaveDraftView({
+          clientPreviewTokenUrl:
+            typeof data.data?.preview_url === "string" && data.data.preview_url.length > 0
+              ? data.data.preview_url
+              : null,
+        });
+      } else {
+        setSaveMsg("Opgeslagen.");
+        setPostSaveDraftView(null);
+      }
       setPreviewKey((k) => k + 1);
     } catch {
       setSaveError("Netwerkfout.");
@@ -329,6 +320,7 @@ export function SiteHtmlEditor({
               onChange={(e) => {
                 setStatus(e.target.value as typeof status);
                 setSaveMsg(null);
+                setPostSaveDraftView(null);
               }}
               className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             >
@@ -370,20 +362,6 @@ export function SiteHtmlEditor({
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
             Concept opslaan
           </button>
-          <button
-            type="button"
-            disabled={publishing || saving}
-            onClick={() => void publishLive()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-60 dark:bg-emerald-700 dark:hover:bg-emerald-800"
-            title="Zet live site op het huidige concept (published_snapshot_id)"
-          >
-            {publishing ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Rocket className="size-4" aria-hidden />
-            )}
-            Publiceren naar live
-          </button>
         </div>
       </div>
 
@@ -420,15 +398,45 @@ export function SiteHtmlEditor({
           {saveMsg}
         </p>
       )}
-      {publishMsg && (
-        <p className="flex items-center gap-1.5 text-sm text-emerald-800 dark:text-emerald-300">
-          <Rocket className="size-4" aria-hidden />
-          {publishMsg}
-        </p>
+      {postSaveDraftView && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/95 px-3 py-2.5 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-50">
+          <p className="font-medium text-emerald-950 dark:text-emerald-100">Volledige pagina bekijken (concept)</p>
+          <ul className="mt-2 space-y-2 text-xs leading-relaxed text-emerald-900 dark:text-emerald-100/95">
+            <li>
+              <strong>Admin</strong> — zelfde werkversie als in de editor:{" "}
+              <Link
+                href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/preview`}
+                className="font-medium underline underline-offset-2 hover:text-emerald-950 dark:hover:text-white"
+              >
+                Concept-preview openen
+              </Link>
+              .
+            </li>
+            {postSaveDraftView.clientPreviewTokenUrl ? (
+              <li>
+                <strong>Deel met klant</strong> (niet geïndexeerd, met token):{" "}
+                <a
+                  href={postSaveDraftView.clientPreviewTokenUrl}
+                  className="font-medium break-all underline underline-offset-2 hover:text-emerald-950 dark:hover:text-white"
+                >
+                  {postSaveDraftView.clientPreviewTokenUrl}
+                </a>
+              </li>
+            ) : (
+              <li className="text-emerald-800/90 dark:text-emerald-200/85">
+                Geen publieke token-link (controleer of <code className="rounded bg-emerald-200/60 px-1 font-mono text-[11px] dark:bg-emerald-900/60">preview_secret</code>{" "}
+                in Supabase staat voor deze klant).
+              </li>
+            )}
+          </ul>
+          <p className="mt-2 text-[11px] text-emerald-800/90 dark:text-emerald-200/85">
+            Openbare <code className="rounded bg-emerald-200/50 px-1 font-mono dark:bg-emerald-900/50">/site/…</code> voor
+            iedereen blijft uit zolang de klantstatus <strong>Concept</strong> is.
+          </p>
+        </div>
       )}
-
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
-        <aside className="flex w-full min-h-0 flex-col gap-2 lg:max-w-[min(100%,440px)] lg:flex-shrink-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:flex-row lg:items-start">
+        <aside className="flex w-full min-h-0 flex-col gap-2 lg:sticky lg:top-0 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:max-w-[min(100%,440px)] lg:flex-shrink-0 lg:overflow-y-auto">
           <div className="rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/50">
             <label htmlFor="page-type-select" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Paginatype (opslag)
@@ -460,7 +468,7 @@ export function SiteHtmlEditor({
             </p>
           </div>
           <SiteAiChatPanel
-            className="min-h-[min(520px,55vh)] flex-1 lg:min-h-0"
+            className="flex min-h-[min(420px,50dvh)] flex-1 flex-col lg:min-h-[min(480px,55dvh)]"
             subfolderSlug={subfolderSlug}
             sections={sections}
             config={config}
@@ -482,7 +490,7 @@ export function SiteHtmlEditor({
           />
         </aside>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 lg:min-h-0 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:overflow-y-auto">
           <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
           <div className="min-w-0 flex-1 sm:max-w-xs">
             <label htmlFor="section-select" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -625,28 +633,30 @@ export function SiteHtmlEditor({
           )}
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
             Live preview
           </div>
-          <TailwindSectionsPreview
-            key={previewKey}
-            sections={sections}
-            pageConfig={config}
-            userCss={customCss}
-            userJs={customJs}
-            logoSet={initialLogoSet}
-            publishedSlug={subfolderSlug}
-            appointmentsEnabled={appointmentsEnabled}
-            webshopEnabled={webshopEnabled}
-            composePlan={composePlan}
-            title={`Preview ${subfolderSlug}`}
-            className="w-full shrink-0 rounded-none border-0 bg-white"
-            frameClassName="min-h-[320px] w-full"
-            autoResizeFromPostMessage
-            documentHeightMode="full"
-            maxMeasuredHeight={100_000}
-          />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <TailwindSectionsPreview
+              key={previewKey}
+              sections={sections}
+              pageConfig={config}
+              userCss={customCss}
+              userJs={customJs}
+              logoSet={initialLogoSet}
+              publishedSlug={subfolderSlug}
+              appointmentsEnabled={appointmentsEnabled}
+              webshopEnabled={webshopEnabled}
+              composePlan={composePlan}
+              title={`Preview ${subfolderSlug}`}
+              className="h-full min-h-0 w-full rounded-none border-0 bg-white"
+              frameClassName="h-full min-h-[280px] w-full"
+              autoResizeFromPostMessage
+              documentHeightMode="panel"
+              maxMeasuredHeight={3200}
+            />
+          </div>
         </div>
         </div>
       </div>

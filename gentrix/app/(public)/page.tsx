@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: PUBLIC_BRAND,
 };
 
-/** Publieke homepage: vaste hypermoderne bureau-landingspagina (geen gepubliceerde `home`-site meer op `/`). */
+/** Publieke homepage: vaste showroom (alleen zichtbaar als middleware `/` niet naar `/site/{slug}` herschrijft). */
 export default function PublicHomePage() {
   return <ShowroomFallback />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Database, Loader2, Rocket, Save } from "lucide-react";
+import { CheckCircle2, Database, Loader2, Save } from "lucide-react";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import {
   generatedTailwindPageToSectionsPayload,
@@ -52,12 +52,10 @@ export function SaveSitePanel({
   const [subfolderSlug, setSubfolderSlug] = useState(initialSlug);
   const [status, setStatus] = useState<"draft" | "active">(() => defaultPublishStatus ?? "draft");
   const [loading, setLoading] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   /** Publieke concept-preview (token); alleen bij concept-status. */
   const [savedPreviewUrl, setSavedPreviewUrl] = useState<string | null>(null);
-  const [publishNote, setPublishNote] = useState<string | null>(null);
   /** Altijd tonen na geslaagde POST (ook zonder preview-token of live-link). */
   const [lastSaveMessage, setLastSaveMessage] = useState<string | null>(null);
 
@@ -79,7 +77,6 @@ export function SaveSitePanel({
     setError(null);
     setSavedUrl(null);
     setSavedPreviewUrl(null);
-    setPublishNote(null);
     setLastSaveMessage(null);
     if (!slugOk) {
       setError(
@@ -140,7 +137,6 @@ export function SaveSitePanel({
         } else if (payload.data.status === "active") {
           setSavedUrl(`${window.location.origin}/site/${encodeURIComponent(payload.data.subfolder_slug)}`);
         }
-        setPublishNote(null);
       }
     } catch {
       setError("Netwerkfout.");
@@ -207,10 +203,11 @@ export function SaveSitePanel({
             <>
               <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active")}>
                 <option value="draft">Concept — /site/… geblokkeerd; gebruik concept-preview voor de klant</option>
-                <option value="active">Actief — /site/… toegestaan (inhoud = apart publiceren)</option>
+                <option value="active">Actief — /site/… toegestaan voor bezoekers</option>
               </select>
               <p className="mt-1 text-xs text-slate-500">
-                Live <strong>inhoud</strong> zet je met <strong>Publiceren naar live</strong> na opslaan — niet via deze dropdown.
+                Concept staat op je laatste opslag. Live-inhoud voor bezoekers stem je af via de HTML-editor of snapshots
+                in het dossier.
               </p>
             </>
           )}
@@ -294,7 +291,7 @@ export function SaveSitePanel({
                     </>
                   ) : (
                     <>
-                      Publieke live-URL (na <strong>Publiceren naar live</strong>):{" "}
+                      Publieke live-URL (zichtbaar als de klant <strong>Actief</strong> is):{" "}
                       <a href={savedUrl} className="font-medium underline">
                         {savedUrl}
                       </a>
@@ -304,50 +301,6 @@ export function SaveSitePanel({
               ) : null}
             </p>
           )}
-          <button
-            type="button"
-            disabled={publishing || loading}
-            onClick={async () => {
-              setPublishing(true);
-              setPublishNote(null);
-              setError(null);
-              try {
-                const res = await fetch(`/api/clients/${encodeURIComponent(resolvedSlug)}/publish`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({}),
-                });
-                const json = (await res.json()) as {
-                  ok: boolean;
-                  error?: string;
-                  data?: { visibility_hint?: string | null; is_publicly_visible?: boolean };
-                };
-                if (!res.ok || !json.ok) {
-                  setError(json.error ?? "Publiceren mislukt.");
-                  return;
-                }
-                if (json.data?.is_publicly_visible) {
-                  setPublishNote("Live-pointer bijgewerkt — de site staat op /site/… voor bezoekers.");
-                } else if (json.data?.visibility_hint) {
-                  setPublishNote(json.data.visibility_hint);
-                } else {
-                  setPublishNote("Live-pointer bijgewerkt naar het huidige concept.");
-                }
-              } catch {
-                setError("Netwerkfout bij publiceren.");
-              } finally {
-                setPublishing(false);
-              }
-            }}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm",
-              "hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60",
-            )}
-          >
-            {publishing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Rocket className="size-4" aria-hidden />}
-            {publishing ? "Publiceren…" : "Publiceren naar live"}
-          </button>
-          {publishNote && <p className="text-sm text-emerald-700">{publishNote}</p>}
         </div>
       )}
     </div>
