@@ -1,3 +1,15 @@
+/**
+ * `[slug]` uit de URL; veilig `decodeURIComponent` (kapotte `%`-sequenties geven geen URIError).
+ */
+export function decodeRouteSlugParam(raw: string | undefined): string {
+  if (raw == null || typeof raw !== "string") return "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 /** Normaliseert naar subfolder_slug volgens DB-constraint: lowercase, 2–64 chars, alleen a-z, 0-9, koppeltekens. */
 export function slugify(input: string): string {
   const s = input
@@ -20,7 +32,13 @@ export function isValidSubfolderSlug(s: string): boolean {
  * `staal-kunstenaar` → "Staal Kunstenaar"; `staalkunstenaar` → "Staalkunstenaar".
  */
 export function formatSlugForDisplay(slug: string): string {
-  const s = decodeURIComponent(slug).trim().toLowerCase();
+  let decoded = slug;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch {
+    decoded = slug;
+  }
+  const s = decoded.trim().toLowerCase();
   if (!s) return "";
   return s
     .split(/-+/g)

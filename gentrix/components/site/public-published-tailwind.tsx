@@ -9,6 +9,10 @@ import { PublishedTailwindAssets } from "@/components/site/published-tailwind-as
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { cn } from "@/lib/utils";
 
+function escapeHtmlForSrcDocTitle(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 type PublicPublishedTailwindProps = {
   sections: TailwindSection[];
   pageConfig?: TailwindPageConfig | null;
@@ -53,16 +57,23 @@ export function PublicPublishedTailwind({
       ? filterSectionsForPortalOnly(sections)
       : filterSectionsForPublicSite(sections);
 
-  const srcDoc = buildTailwindIframeSrcDoc(filtered, pageConfig, {
-    previewPostMessageBridge: false,
-    userCss,
-    userJs,
-    logoSet,
-    publishedSlug: publishedSlug?.trim(),
-    appointmentsEnabled,
-    webshopEnabled,
-    disableScrollRevealAnimations: true,
-  });
+  let srcDoc: string;
+  try {
+    srcDoc = buildTailwindIframeSrcDoc(filtered, pageConfig, {
+      previewPostMessageBridge: false,
+      userCss,
+      userJs,
+      logoSet,
+      publishedSlug: publishedSlug?.trim(),
+      appointmentsEnabled,
+      webshopEnabled,
+      disableScrollRevealAnimations: true,
+    });
+  } catch {
+    srcDoc = `<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"/><title>${escapeHtmlForSrcDocTitle(
+      documentTitle,
+    )}</title></head><body style="font-family:system-ui;padding:1.5rem">Deze site kan tijdelijk niet worden opgebouwd. Vernieuw de pagina of neem contact op met de beheerder.</body></html>`;
+  }
 
   const iframeStyle: React.CSSProperties = embedded
     ? {

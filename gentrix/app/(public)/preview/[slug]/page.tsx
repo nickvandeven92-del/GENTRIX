@@ -4,7 +4,7 @@ import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getDraftPublishedSitePayloadBySlug } from "@/lib/data/client-draft-site";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { previewSecretsEqual } from "@/lib/preview/preview-secret-crypto";
-import { formatSlugForDisplay } from "@/lib/slug";
+import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 
@@ -15,7 +15,7 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const decoded = decodeURIComponent(slug ?? "");
+  const decoded = decodeRouteSlugParam(slug);
   const label = formatSlugForDisplay(decoded);
   return {
     title: `Concept · ${label}`,
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PublicConceptPreviewPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const sp = await searchParams;
-  const decoded = decodeURIComponent(slug ?? "");
+  const decoded = decodeRouteSlugParam(slug);
   if (!decoded) notFound();
 
   const token = typeof sp.token === "string" ? sp.token : "";

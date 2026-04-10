@@ -6,15 +6,20 @@ export type ClientPayloadPointersRow = {
 };
 
 async function fetchPayloadJsonBySnapshotId(snapshotId: string): Promise<unknown | null> {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from("site_snapshots")
-    .select("payload_json")
-    .eq("id", snapshotId)
-    .maybeSingle();
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("site_snapshots")
+      .select("payload_json")
+      .eq("id", snapshotId)
+      .maybeSingle();
 
-  if (error || !data) return null;
-  return data.payload_json as unknown;
+    if (error || !data) return null;
+    return data.payload_json as unknown;
+  } catch {
+    /* Ontbrekende service role, RLS, of netwerk: val terug op site_data_json. */
+    return null;
+  }
 }
 
 /**
