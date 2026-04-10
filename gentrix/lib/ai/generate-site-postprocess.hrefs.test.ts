@@ -33,6 +33,12 @@ describe("repairSamePagePathHrefsInHtml", () => {
     expect(repairSamePagePathHrefsInHtml(html, valid)).toContain('href="#diensten"');
   });
 
+  it("rewrites single-segment path when id matches after slug-normalize (case / spacing)", () => {
+    const valid = new Set(["over-ons", "hero", "top"]);
+    expect(repairSamePagePathHrefsInHtml(`<a href="/Over-Ons">Over ons</a>`, valid)).toContain('href="#over-ons"');
+    expect(repairSamePagePathHrefsInHtml(`<a href="/over%20ons">Over ons</a>`, valid)).toContain('href="#over-ons"');
+  });
+
   it("does not rewrite /portal/ links", () => {
     const valid = new Set(["hero", "top"]);
     const html = `<a href="/portal/gentrix">Portaal</a>`;

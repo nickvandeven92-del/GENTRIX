@@ -22,7 +22,7 @@ import {
 import type { GeneratedLogoSet } from "@/types/logo";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { SiteAiChatPanel } from "@/components/admin/site-ai-chat-panel";
-import { SNAPSHOT_PAGE_TYPES, type SnapshotPageType } from "@/lib/site/snapshot-page-type";
+import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
 import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
 import type { ComposePublicMarketingPlan } from "@/lib/site/public-site-composition";
 import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
@@ -93,7 +93,7 @@ export function SiteHtmlEditor({
   const [customCss, setCustomCss] = useState(() => initialCustomCss);
   const [customJs, setCustomJs] = useState(() => initialCustomJs);
   const [assetsPanelOpen, setAssetsPanelOpen] = useState(false);
-  const [pageType, setPageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
+  const [pageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
   const snapshotSourceRef = useRef<"editor" | "ai_command">("editor");
 
   useEffect(() => {
@@ -236,7 +236,8 @@ export function SiteHtmlEditor({
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-900">
+      <div className="shrink-0 space-y-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 md:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <Link
@@ -439,44 +440,18 @@ export function SiteHtmlEditor({
           </p>
         </div>
       )}
+      </div>
+
       <ResizableEditorPanels
+        className="flex-1 min-h-0"
         defaultSidebarPx={400}
         minSidebarPx={280}
         maxSidebarPx={560}
+        minMainPx={768}
         sidebar={
           <>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/50">
-              <label htmlFor="page-type-select" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                Paginatype (opslag)
-              </label>
-              <select
-                id="page-type-select"
-                value={pageType}
-                onChange={(e) => {
-                  setPageType(e.target.value as SnapshotPageType);
-                  setSaveMsg(null);
-                  snapshotSourceRef.current = "editor";
-                }}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-              >
-                {SNAPSHOT_PAGE_TYPES.map((pt) => (
-                  <option key={pt} value={pt}>
-                    {pt === "landing"
-                      ? "Landing / marketing"
-                      : pt === "legal"
-                        ? "Juridisch / policy"
-                        : pt === "article"
-                          ? "Artikel / longread"
-                          : "Overig"}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                Wordt mee opgeslagen in site-data; helpt bij context voor AI en kwaliteitschecks.
-              </p>
-            </div>
             <SiteAiChatPanel
-              className="flex min-h-[min(420px,50dvh)] flex-1 flex-col lg:min-h-[min(480px,55dvh)]"
+              className="flex min-h-[min(420px,50dvh)] flex-1 flex-col min-h-0 lg:min-h-0"
               subfolderSlug={subfolderSlug}
               sections={sections}
               config={config}
@@ -499,7 +474,7 @@ export function SiteHtmlEditor({
           </>
         }
         main={
-          <>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
           <div className="min-w-0 flex-1 sm:max-w-xs">
             <label htmlFor="section-select" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -642,11 +617,11 @@ export function SiteHtmlEditor({
           )}
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 lg:min-h-[200px]">
           <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
             Live preview
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
             <TailwindSectionsPreview
               key={previewKey}
               sections={sections}
@@ -667,7 +642,7 @@ export function SiteHtmlEditor({
             />
           </div>
         </div>
-          </>
+          </div>
         }
       />
     </div>

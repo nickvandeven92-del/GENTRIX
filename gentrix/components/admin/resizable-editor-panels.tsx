@@ -1,9 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "gentrix-site-editor-sidebar-px";
+/** Ruimte voor de sleepbalk (Tailwind `w-2`). */
+const SPLITTER_PX = 8;
 
 type ResizableEditorPanelsProps = {
   sidebar: ReactNode;
@@ -12,8 +22,32 @@ type ResizableEditorPanelsProps = {
   defaultSidebarPx?: number;
   minSidebarPx?: number;
   maxSidebarPx?: number;
+  /**
+   * Minimale breedte van het rechterpaneel (preview + tools) op `lg+`.
+   * De sidebar wordt begrensd zodat dit paneel niet smaller wordt (geen horizontale scrollbar).
+   */
+  minMainPx?: number;
   className?: string;
 };
+
+function boundsForHost(
+  hostWidth: number,
+  minSidebarPx: number,
+  maxSidebarPx: number,
+  minMainPx: number,
+  /** Alleen op `lg+` (twee kolommen); op smalle schermen geen `minMainPx` om state niet “dicht te knijpen”. */
+  enforceMinMain: boolean,
+) {
+  if (!enforceMinMain || !Number.isFinite(hostWidth) || hostWidth <= 0) {
+    return { min: minSidebarPx, max: maxSidebarPx };
+  }
+  const room = hostWidth - SPLITTER_PX - minMainPx;
+  const maxS = Math.min(maxSidebarPx, Math.max(0, room));
+  const effMin = Math.min(minSidebarPx, maxS);
+  const minS = maxS < 1 ? 0 : effMin;
+  const maxClamped = Math.max(minS, maxS);
+  return { min: minS, max: maxClamped };
+}
 
 export function ResizableEditorPanels({
   sidebar,
@@ -21,41 +55,79 @@ export function ResizableEditorPanels({
   defaultSidebarPx = 400,
   minSidebarPx = 260,
   maxSidebarPx = 640,
+  minMainPx = 768,
   className,
 }: ResizableEditorPanelsProps) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const storageHydrated = useRef(false);
+  const [hostWidth, setHostWidth] = useState(0);
+  const [splitLayout, setSplitLayout] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarPx);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setSplitLayout(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setHostWidth(el.getBoundingClientRect().width);
+    });
+    ro.observe(el);
+    setHostWidth(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+
+  const clamp = useCallback(
+    (w: number, widthOverride?: number) => {
+      const hw = widthOverride ?? hostWidth;
+      const { min, max } = boundsForHost(hw, minSidebarPx, maxSidebarPx, minMainPx, splitLayout);
+      if (max < min) return min;
+      return Math.min(max, Math.max(min, w));
+    },
+    [hostWidth, minSidebarPx, maxSidebarPx, minMainPx, splitLayout],
+  );
+
+  useEffect(() => {
+    if (hostWidth <= 0) return;
+    setSidebarWidth((w) => (w === clamp(w) ? w : clamp(w)));
+  }, [hostWidth, clamp]);
+
+  useEffect(() => {
+    if (hostWidth <= 0 || storageHydrated.current) return;
+    storageHydrated.current = true;
     if (typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw == null) return;
       const n = Number.parseInt(raw, 10);
       if (!Number.isFinite(n)) return;
-      const cap = Math.min(maxSidebarPx, Math.max(minSidebarPx, n));
-      setSidebarWidth(cap);
+      setSidebarWidth(clamp(n, hostWidth));
     } catch {
       /* ignore */
     }
-  }, [minSidebarPx, maxSidebarPx]);
+  }, [hostWidth, clamp]);
 
-  const clamp = useCallback(
-    (w: number) => {
-      const max = Math.min(maxSidebarPx, typeof window !== "undefined" ? window.innerWidth * 0.62 : maxSidebarPx);
-      return Math.min(max, Math.max(minSidebarPx, w));
-    },
-    [minSidebarPx, maxSidebarPx],
-  );
+  const persist = useCallback((w: number) => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, String(Math.round(w)));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
-  const persist = useCallback(
-    (w: number) => {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, String(Math.round(w)));
-      } catch {
-        /* ignore */
-      }
-    },
-    [],
+  const { min: effMinSidebar, max: effMaxSidebar } = boundsForHost(
+    hostWidth,
+    minSidebarPx,
+    maxSidebarPx,
+    minMainPx,
+    splitLayout,
   );
 
   const onSplitterPointerDown = useCallback(
@@ -65,9 +137,10 @@ export function ResizableEditorPanels({
       el.setPointerCapture(e.pointerId);
       const startX = e.clientX;
       const startW = sidebarWidth;
+      const hw = hostRef.current?.getBoundingClientRect().width ?? hostWidth;
 
       const onMove = (ev: PointerEvent) => {
-        const next = clamp(startW + (ev.clientX - startX));
+        const next = clamp(startW + (ev.clientX - startX), hw);
         setSidebarWidth(next);
       };
 
@@ -76,7 +149,8 @@ export function ResizableEditorPanels({
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
         document.removeEventListener("pointercancel", onUp);
-        const next = clamp(startW + (ev.clientX - startX));
+        const hwUp = hostRef.current?.getBoundingClientRect().width ?? hostWidth;
+        const next = clamp(startW + (ev.clientX - startX), hwUp);
         setSidebarWidth(next);
         persist(next);
         document.body.style.removeProperty("cursor");
@@ -89,19 +163,20 @@ export function ResizableEditorPanels({
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
     },
-    [clamp, persist, sidebarWidth],
+    [clamp, persist, sidebarWidth, hostWidth],
   );
 
   return (
     <div
+      ref={hostRef}
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-4 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:flex-row lg:items-stretch",
+        "flex min-h-0 flex-1 flex-col gap-0 lg:flex-row lg:items-stretch lg:overflow-hidden",
         className,
       )}
     >
       <aside
         className={cn(
-          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:sticky lg:top-0 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:w-[var(--editor-sidebar-px)] lg:shrink-0 lg:overflow-y-auto",
+          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:max-h-full lg:w-[var(--editor-sidebar-px)] lg:shrink-0 lg:overflow-y-auto lg:pl-4 lg:pt-3 lg:pr-1",
         )}
         style={
           {
@@ -112,13 +187,12 @@ export function ResizableEditorPanels({
         {sidebar}
       </aside>
 
-      {/* Splitter: alleen desktop; mobiel blijft gestapeld zonder sleepbalk */}
       <div
         role="separator"
         aria-orientation="vertical"
         aria-valuenow={Math.round(sidebarWidth)}
-        aria-valuemin={minSidebarPx}
-        aria-valuemax={maxSidebarPx}
+        aria-valuemin={Math.round(effMinSidebar)}
+        aria-valuemax={Math.round(effMaxSidebar)}
         tabIndex={0}
         className={cn(
           "hidden shrink-0 cursor-col-resize self-stretch select-none lg:flex lg:w-2 lg:items-center lg:justify-center",
@@ -128,19 +202,20 @@ export function ResizableEditorPanels({
         onPointerDown={onSplitterPointerDown}
         onKeyDown={(e) => {
           const step = e.shiftKey ? 40 : 12;
+          const hw = hostRef.current?.getBoundingClientRect().width ?? hostWidth;
           if (e.key === "ArrowLeft") {
             e.preventDefault();
-            const next = clamp(sidebarWidth - step);
+            const next = clamp(sidebarWidth - step, hw);
             setSidebarWidth(next);
             persist(next);
           } else if (e.key === "ArrowRight") {
             e.preventDefault();
-            const next = clamp(sidebarWidth + step);
+            const next = clamp(sidebarWidth + step, hw);
             setSidebarWidth(next);
             persist(next);
           }
         }}
-        title="Sleep om chat- en instelpaneel breder of smaller te maken"
+        title="Sleep om chat- en instelpaneel breder of smaller te maken (preview houdt minimale breedte)"
       >
         <span
           className="block h-full min-h-[min(480px,calc(100dvh-12rem))] w-px rounded-full bg-zinc-300 dark:bg-zinc-600"
@@ -148,7 +223,7 @@ export function ResizableEditorPanels({
         />
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 lg:min-h-0 lg:max-h-[min(calc(100dvh-9rem),1400px)] lg:overflow-y-auto">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden lg:h-full lg:max-h-full lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden lg:pt-3 lg:pr-4">
         {main}
       </div>
     </div>

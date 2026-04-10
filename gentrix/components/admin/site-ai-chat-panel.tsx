@@ -1,13 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy, Film, ImagePlus, Loader2, MessageCircle, RotateCcw, Send, X } from "lucide-react";
+import { ArrowUp, Copy, Film, Loader2, MessageCircle, X } from "lucide-react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { SiteChatTurn } from "@/lib/ai/site-chat-with-claude";
 import { STUDIO_DEFAULT_SILENT_HERO_MP4_URLS } from "@/lib/site/studio-default-hero-videos";
 import { cn } from "@/lib/utils";
 
 type ChatRow = { id: string; role: "user" | "assistant"; content: string };
+
+const ACCEPT_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+]);
+
+function fileIsAccepted(file: File): boolean {
+  if (file.type && ACCEPT_MIME.has(file.type)) return true;
+  return /\.(png|jpe?g|webp|svg|gif|mp4|webm)$/i.test(file.name);
+}
 
 /** Korte startsuggesties (zelfde intent als de oude snelle commando’s, nu via gesprek). */
 const CHAT_STARTER_PROMPTS = [
@@ -49,9 +64,10 @@ export function SiteAiChatPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedHeroUrlIndex, setCopiedHeroUrlIndex] = useState<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileDragOver, setFileDragOver] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   const copyHeroStockUrl = useCallback(async (url: string, index: number) => {
     try {
@@ -71,6 +87,10 @@ export function SiteAiChatPanel({
 
   const uploadFile = useCallback(
     async (file: File) => {
+      if (!fileIsAccepted(file)) {
+        setError("Alleen afbeelding (PNG, JPG, WebP, SVG, GIF) of video (MP4, WebM).");
+        return;
+      }
       setUploading(true);
       setError(null);
       try {
@@ -88,19 +108,28 @@ export function SiteAiChatPanel({
         setError("Netwerkfout bij upload.");
       } finally {
         setUploading(false);
-        if (fileRef.current) fileRef.current.value = "";
       }
     },
     [subfolderSlug],
   );
 
-  function clearConversation() {
-    setRows([]);
-    setAttachmentUrls([]);
-    setError(null);
-    setInput("");
-    inputRef.current?.focus();
-  }
+  const onDropFiles = useCallback(
+    (files: FileList | File[]) => {
+      const list = Array.from(files);
+      const ok = list.filter(fileIsAccepted);
+      if (ok.length === 0 && list.length > 0) {
+        setError("Alleen afbeelding (PNG, JPG, WebP, SVG, GIF) of video (MP4, WebM).");
+        return;
+      }
+      if (ok.length === 0) return;
+      void (async () => {
+        for (const f of ok) {
+          await uploadFile(f);
+        }
+      })();
+    },
+    [uploadFile],
+  );
 
   async function send() {
     const text = input.trim();
@@ -168,57 +197,26 @@ export function SiteAiChatPanel({
   return (
     <section
       className={cn(
-        "flex min-h-0 flex-col rounded-xl border border-violet-200 bg-violet-50/80 dark:border-violet-900/50 dark:bg-violet-950/30",
+        "flex min-h-0 flex-col rounded-xl border border-zinc-200/90 bg-zinc-50/90 dark:border-zinc-700/80 dark:bg-zinc-900/50",
         className,
       )}
       aria-label="Site-assistent"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-violet-200/80 px-4 py-3 dark:border-violet-800/50">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="size-5 shrink-0 text-violet-700 dark:text-violet-400" aria-hidden />
-            <h2 className="text-sm font-semibold text-violet-950 dark:text-violet-100">Site-assistent</h2>
+      <div className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-700/60">
+        <div className="flex items-start gap-2">
+          <MessageCircle className="mt-0.5 size-4 shrink-0 text-zinc-600 dark:text-zinc-400" aria-hidden />
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Site-assistent</h2>
+            <p className="mt-1 text-[11px] leading-snug text-zinc-600 dark:text-zinc-400">
+              Praat met Claude over feedback en aanpassingen. Sleep logo of video naar het invoerveld om te uploaden.{" "}
+              <strong>Ongedaan</strong> / <strong>Stappen</strong> bovenaan om terug te gaan.
+            </p>
           </div>
-          <p className="mt-1 text-[11px] leading-snug text-violet-800/90 dark:text-violet-300/90">
-            Praat met Claude over feedback en aanpassingen — antwoord eerst, daarna wijzigingen waar nodig. Gebruik{" "}
-            <strong>Ongedaan</strong> / <strong>Stappen</strong> bovenaan om terug te gaan.
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif,video/mp4,video/webm"
-            className="sr-only"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void uploadFile(f);
-            }}
-          />
-          <button
-            type="button"
-            disabled={disabled || uploading}
-            onClick={() => fileRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-medium text-violet-900 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-700 dark:bg-zinc-900 dark:text-violet-100 dark:hover:bg-violet-950"
-          >
-            {uploading ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <ImagePlus className="size-3.5" aria-hidden />}
-            Logo / media
-          </button>
-          <button
-            type="button"
-            disabled={loading || (rows.length === 0 && attachmentUrls.length === 0)}
-            onClick={clearConversation}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-violet-900 hover:bg-violet-100 disabled:opacity-40 dark:border-violet-800 dark:bg-zinc-900 dark:text-violet-100 dark:hover:bg-violet-950"
-            title="Wis berichten en bijlagen (concept blijft staan)"
-          >
-            <RotateCcw className="size-3.5" aria-hidden />
-            Wis chat
-          </button>
         </div>
       </div>
 
-      <details className="mx-4 mt-2 text-xs text-violet-900/90 dark:text-violet-200/85">
-        <summary className="cursor-pointer select-none font-medium text-violet-800 hover:text-violet-950 dark:text-violet-300 dark:hover:text-violet-100">
+      <details className="mx-4 mt-2 text-xs text-zinc-700 dark:text-zinc-300">
+        <summary className="cursor-pointer select-none font-medium text-zinc-800 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100">
           Tips: hero-video, logo en technische grenzen
         </summary>
         <div className="mt-2 space-y-2 rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-3 py-2.5 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-50">
@@ -231,23 +229,23 @@ export function SiteAiChatPanel({
             Voorbeeld: “Zet in de hero een stille achtergrondvideo met donkere overlay zodat de kop leesbaar blijft.”
           </p>
           <p className="text-emerald-900/90 dark:text-emerald-100/90">
-            Eigen logo of MP4/WebM: upload via <strong>Logo / media</strong>, daarna in de chat verwijzen naar die URL.
+            Eigen logo of MP4/WebM: <strong>sleep het bestand naar het tekstvak</strong> hieronder; daarna in de chat naar die URL verwijzen.
           </p>
         </div>
       </details>
 
-      <details className="mx-4 mt-1 text-xs text-violet-900/90 dark:text-violet-200/85">
-        <summary className="cursor-pointer select-none font-medium text-violet-800 hover:text-violet-950 dark:text-violet-300 dark:hover:text-violet-100">
+      <details className="mx-4 mt-1 text-xs text-zinc-700 dark:text-zinc-300">
+        <summary className="cursor-pointer select-none font-medium text-zinc-800 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100">
           Standaard video-links (alleen nodig om handmatig te plakken)
         </summary>
-        <ul className="mt-2 space-y-2 border-t border-violet-200/70 pt-2 dark:border-violet-800/50">
+        <ul className="mt-2 space-y-2 border-t border-zinc-200/70 pt-2 dark:border-zinc-700/50">
           {STUDIO_DEFAULT_SILENT_HERO_MP4_URLS.map((url, i) => (
             <li key={url} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
               <span className="min-w-0 break-all font-mono text-[10px] text-zinc-600 dark:text-zinc-400">{url}</span>
               <button
                 type="button"
                 onClick={() => void copyHeroStockUrl(url, i)}
-                className="inline-flex shrink-0 items-center gap-1 rounded border border-violet-300 bg-white px-2 py-1 text-[10px] font-medium text-violet-900 hover:bg-violet-50 dark:border-violet-700 dark:bg-zinc-900 dark:text-violet-100 dark:hover:bg-violet-950"
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-1 text-[10px] font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
               >
                 <Copy className="size-3" aria-hidden />
                 {copiedHeroUrlIndex === i ? "Gekopieerd" : "Kopieer"}
@@ -262,11 +260,11 @@ export function SiteAiChatPanel({
           {attachmentUrls.map((url) => (
             <li
               key={url}
-              className="flex items-center gap-1 rounded-full border border-violet-200 bg-white pl-2 text-xs dark:border-violet-800 dark:bg-zinc-900"
+              className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white pl-2 text-xs dark:border-zinc-700 dark:bg-zinc-900"
             >
               {/\.(mp4|webm)(\?|$)/i.test(url) ? (
                 <span
-                  className="flex size-6 shrink-0 items-center justify-center rounded bg-violet-200 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200"
+                  className="flex size-6 shrink-0 items-center justify-center rounded bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                   aria-hidden
                 >
                   <Film className="size-3.5" />
@@ -291,14 +289,14 @@ export function SiteAiChatPanel({
 
       <div
         ref={listRef}
-        className="mx-4 mt-3 flex min-h-[200px] flex-1 flex-col space-y-3 overflow-y-auto rounded-lg border border-violet-100 bg-white/90 p-3 dark:border-violet-900/40 dark:bg-zinc-950/80 lg:min-h-[280px] lg:max-h-[min(52vh,560px)]"
+        className="mx-4 mt-3 flex min-h-[min(160px,28dvh)] flex-1 flex-col space-y-3 overflow-y-auto rounded-lg border border-zinc-200/80 bg-white p-3 dark:border-zinc-700/60 dark:bg-zinc-950/80"
       >
         {rows.length === 0 && !loading && (
           <div className="flex flex-1 flex-col justify-center gap-3 py-2">
-            <p className="text-center text-sm text-zinc-600 dark:text-zinc-300">
-              Stel een vraag, vraag om feedback, of tik op een voorstel om te beginnen.
+            <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+              Stel een vraag of kies een voorstel.
             </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+            <div className="flex flex-col gap-2">
               {CHAT_STARTER_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
@@ -309,7 +307,7 @@ export function SiteAiChatPanel({
                     setError(null);
                     requestAnimationFrame(() => inputRef.current?.focus());
                   }}
-                  className="rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2 text-left text-xs font-medium leading-snug text-violet-950 transition hover:bg-violet-100 disabled:opacity-50 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/50"
+                  className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-medium leading-snug text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                 >
                   {prompt}
                 </button>
@@ -323,8 +321,8 @@ export function SiteAiChatPanel({
             className={cn(
               "rounded-lg px-3 py-2 text-sm",
               r.role === "user"
-                ? "ml-6 bg-violet-100 text-violet-950 dark:bg-violet-900/40 dark:text-violet-50"
-                : "mr-6 bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100",
+                ? "ml-4 bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                : "mr-4 bg-zinc-50 text-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-100",
             )}
           >
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -334,7 +332,7 @@ export function SiteAiChatPanel({
           </div>
         ))}
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-violet-800 dark:text-violet-200">
+          <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
             <Loader2 className="size-4 animate-spin" aria-hidden />
             Claude denkt na…
           </div>
@@ -347,35 +345,89 @@ export function SiteAiChatPanel({
         </p>
       )}
 
-      <div className="mt-auto flex gap-2 p-4 pt-2">
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+      <div className="mt-auto p-3 pt-2">
+        <div
+          ref={composerRef}
+          className={cn(
+            "relative rounded-2xl border bg-white transition-shadow dark:bg-zinc-950",
+            fileDragOver
+              ? "border-blue-500 ring-2 ring-blue-500/25 dark:border-blue-500"
+              : "border-zinc-200 dark:border-zinc-700",
+            uploading && "opacity-80",
+          )}
+          onDragEnter={(e) => {
+            if ([...e.dataTransfer.types].includes("Files")) {
               e.preventDefault();
-              if (!loading && !disabled) void send();
+              setFileDragOver(true);
             }
           }}
-          rows={3}
-          disabled={loading || disabled}
-          placeholder="Bijv.: Wat vind je van de hiërarchie boven de vouw? / Maak de FAQ compacter. (Shift+Enter voor nieuwe regel)"
-          className={cn(
-            "min-h-[44px] flex-1 resize-y rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm",
-            "focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-400/30",
-            "disabled:opacity-60 dark:border-violet-800 dark:bg-zinc-950 dark:text-zinc-100",
-          )}
-        />
-        <button
-          type="button"
-          disabled={loading || disabled || sections.length === 0}
-          onClick={() => void send()}
-          className="inline-flex shrink-0 items-center gap-2 self-end rounded-lg bg-violet-800 px-4 py-2 text-sm font-medium text-white hover:bg-violet-900 disabled:opacity-50 dark:bg-violet-700 dark:hover:bg-violet-600"
+          onDragOver={(e) => {
+            if ([...e.dataTransfer.types].includes("Files")) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+              setFileDragOver(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            if (composerRef.current && !composerRef.current.contains(e.relatedTarget as Node)) {
+              setFileDragOver(false);
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setFileDragOver(false);
+            if (disabled) return;
+            const { files } = e.dataTransfer;
+            if (files?.length) onDropFiles(files);
+          }}
         >
-          {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
-          Verstuur
-        </button>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!loading && !disabled) void send();
+              }
+            }}
+            rows={2}
+            disabled={loading || disabled || uploading}
+            placeholder="Vraag of instructie… (sleep bestanden hierheen)"
+            className={cn(
+              "max-h-[min(200px,40dvh)] min-h-[44px] w-full resize-none rounded-2xl border-0 bg-transparent px-3 pb-11 pt-2.5 text-sm leading-relaxed",
+              "text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0",
+              "disabled:opacity-60 dark:text-zinc-100 dark:placeholder:text-zinc-500",
+            )}
+          />
+          <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-2">
+            {uploading ? (
+              <span className="pointer-events-auto flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900">
+                <Loader2 className="size-4 animate-spin text-zinc-600 dark:text-zinc-300" aria-hidden />
+              </span>
+            ) : null}
+            <button
+              type="button"
+              disabled={loading || disabled || sections.length === 0 || uploading}
+              onClick={() => void send()}
+              className={cn(
+                "pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
+                "border-zinc-200 bg-zinc-900 text-white hover:bg-zinc-800",
+                "disabled:pointer-events-none disabled:opacity-35",
+                "dark:border-zinc-600 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
+              )}
+              title="Verstuur"
+              aria-label="Verstuur bericht"
+            >
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <ArrowUp className="size-4" aria-hidden strokeWidth={2.25} />
+              )}
+            </button>
+          </div>
+        </div>
+        <p className="mt-1.5 text-center text-[10px] text-zinc-500 dark:text-zinc-500">Shift+Enter voor nieuwe regel</p>
       </div>
     </section>
   );

@@ -234,6 +234,10 @@ function pathOrAbsoluteSiteHrefToHash(raw: string, validIds: Set<string>): strin
     const seg = safeDecodeFragment(segments[0]!);
     if (RESERVED_SINGLE_SEGMENT_PATHS.has(seg.toLowerCase())) return null;
     if (seg === "top" || validIds.has(seg)) return `#${seg}`;
+    const segKey = slugifyIdSegment(seg);
+    for (const vid of validIds) {
+      if (slugifyIdSegment(vid) === segKey) return `#${vid}`;
+    }
     return null;
   }
 
