@@ -82,7 +82,8 @@ export function PublicPublishedTailwind({
         publishedSlug: publishedSlug?.trim(),
         appointmentsEnabled,
         webshopEnabled,
-        disableScrollRevealAnimations: true,
+        /* Scroll-reveal aan: `data-animation` + STUDIO_SCROLL_REVEAL_SCRIPT (zie tailwind-page-html).
+         * Hero + eerste secties hebben CSS-vrijstelling; 2,2s fallback voorkomt stuck opacity in iframes. */
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
       });
       if (typeof window !== "undefined") {

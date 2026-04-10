@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ChevronRight, Code2, ImagePlus, Loader2, Monitor, Send, X } from "lucide-react";
 import { StudioThemeStylesHint } from "@/components/admin/studio-theme-styles-hint";
+import { DutchSpellcheckPanel } from "@/components/admin/dutch-spellcheck-panel";
 import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-panel";
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { PublishedSiteView } from "@/components/site/published-site-view";
@@ -633,6 +634,9 @@ export function GeneratorForm({
               publishedSlug={slugFromUrl}
             />
           </div>
+          <DutchSpellcheckPanel
+            sections={generatedTailwind.sections.map((s) => ({ id: s.id, html: s.html }))}
+          />
           <SaveSitePanel
             page={generatedTailwind}
             defaultName={businessName}

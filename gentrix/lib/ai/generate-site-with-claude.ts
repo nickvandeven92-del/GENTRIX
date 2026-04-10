@@ -1516,6 +1516,7 @@ export async function generateSiteWithClaude(
 
 export type GenerateSiteStreamNdjsonEvent =
   | { type: "status"; message: string }
+  | { type: "keepalive" }
   | { type: "generation_meta"; feedback: GenerationPipelineFeedback }
   | { type: "design_rationale"; text: string | null; skipReason?: string }
   | { type: "self_review"; ran: boolean; refined: boolean }
@@ -1524,6 +1525,23 @@ export type GenerateSiteStreamNdjsonEvent =
   | { type: "complete"; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage }
   | { type: "complete"; outputFormat: "react_sections"; data: ReactSiteDocument }
   | { type: "error"; message: string; rawText?: string };
+
+/** Tijdens stille server-stappen (o.a. zelfreview) bytes blijven sturen zodat proxies geen idle-timeout geven. */
+const NDJSON_SILENT_WORK_KEEPALIVE_MS = 10_000;
+
+function startNdjsonKeepaliveForSilentWork(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  send: (c: ReadableStreamDefaultController<Uint8Array>, e: GenerateSiteStreamNdjsonEvent) => void,
+): () => void {
+  const timer = setInterval(() => {
+    try {
+      send(controller, { type: "keepalive" });
+    } catch {
+      /* stream gesloten of enqueue geweigerd */
+    }
+  }, NDJSON_SILENT_WORK_KEEPALIVE_MS);
+  return () => clearInterval(timer);
+}
 
 export type CreateGenerateSiteReadableStreamOptions = {
   onSuccess?: (data: GeneratedTailwindPage) => Promise<void>;
@@ -1563,11 +1581,17 @@ export function createGenerateSiteReadableStream(
         send(controller, { type: "generation_meta", feedback: p.pipelineFeedback });
 
         send(controller, { type: "status", message: "Denklijn uitschrijven (interpretatie → woorden)…" });
-        const rationale = await generateDesignRationaleWithClaude(p.client, p.supportModel, {
-          businessName,
-          description,
-          feedback: p.pipelineFeedback,
-        });
+        const stopRationaleKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        let rationale: Awaited<ReturnType<typeof generateDesignRationaleWithClaude>>;
+        try {
+          rationale = await generateDesignRationaleWithClaude(p.client, p.supportModel, {
+            businessName,
+            description,
+            feedback: p.pipelineFeedback,
+          });
+        } finally {
+          stopRationaleKeepalive();
+        }
         if (rationale.ok) {
           send(controller, { type: "design_rationale", text: rationale.text });
         } else {
@@ -1633,16 +1657,22 @@ export function createGenerateSiteReadableStream(
           type: "status",
           message: "Kwaliteitscontrole: concept nalopen en zo nodig verbeteren (zelfreview)…",
         });
-        const reviewed = await applySelfReviewToGeneratedPage({
-          client: p.client,
-          model: p.supportModel,
-          businessName,
-          description,
-          draft: data,
-          homepagePlan: p.homepagePlan,
-          preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
-          pipelineInterpreted: p.pipelineFeedback.interpreted,
-        });
+        const stopSelfReviewKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        let reviewed: Awaited<ReturnType<typeof applySelfReviewToGeneratedPage>>;
+        try {
+          reviewed = await applySelfReviewToGeneratedPage({
+            client: p.client,
+            model: p.supportModel,
+            businessName,
+            description,
+            draft: data,
+            homepagePlan: p.homepagePlan,
+            preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+            pipelineInterpreted: p.pipelineFeedback.interpreted,
+          });
+        } finally {
+          stopSelfReviewKeepalive();
+        }
         data = reviewed.data;
         send(controller, { type: "self_review", ran: reviewed.ran, refined: reviewed.usedRefined });
         send(controller, {
@@ -1660,12 +1690,19 @@ export function createGenerateSiteReadableStream(
             message: "Afbeeldingen matchen via Unsplash…",
           });
         }
-        data = {
-          ...data,
-          sections: await replaceUnsplashImagesInSections(
+        const stopUnsplashKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        let sectionsAfterUnsplash: typeof data.sections;
+        try {
+          sectionsAfterUnsplash = await replaceUnsplashImagesInSections(
             data.sections,
             process.env.UNSPLASH_ACCESS_KEY,
-          ),
+          );
+        } finally {
+          stopUnsplashKeepalive();
+        }
+        data = {
+          ...data,
+          sections: sectionsAfterUnsplash,
         };
 
         data = {

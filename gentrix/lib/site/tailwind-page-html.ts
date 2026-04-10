@@ -103,10 +103,10 @@ export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-pre
 @keyframes studio-scale-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }`;
 
 /**
- * Voor live `/site/…` en portaal-iframe: geen paused keyframes / IO — voorkomt “wit scherm” na interne links of hash-scroll.
- * Studio-editor preview: STUDIO_DATA_ANIMATION_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS + STUDIO_SCROLL_REVEAL_SCRIPT.
+ * Nood-CSS als `disableScrollRevealAnimations` expliciet aan staat: geen paused keyframes / IO.
+ * Normale weergave: STUDIO_DATA_ANIMATION_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS + STUDIO_SCROLL_REVEAL_SCRIPT.
  */
-export const STUDIO_DATA_ANIMATION_DISABLED_CSS = `/* Publieke weergave: altijd zichtbaar (geen scroll-reveal in srcDoc-iframe) */
+export const STUDIO_DATA_ANIMATION_DISABLED_CSS = `/* Geen scroll-reveal: inhoud met data-animation direct zichtbaar */
 [data-animation] {
   animation: none !important;
   opacity: 1 !important;
@@ -894,8 +894,8 @@ export type BuildTailwindIframeSrcDocOptions = {
   /** `false` wanneer webshop-module uit: geen `/winkel/`-links uit placeholder. */
   webshopEnabled?: boolean;
   /**
-   * `true` op `/site` + portaal-marketing-iframe: geen scroll-reveal (voorkomt onzichtbare content na link/hash).
-   * `false` in studio Live preview — daar blijven animaties aan.
+   * `true`: schakel scroll-reveal uit (statische `data-animation`, geen IO-script) — alleen nuttig bij
+   * tijdelijke debugging; standaard **uit** laten zodat `/site` en studio-preview gelijk lopen aan ZIP-export.
    */
   disableScrollRevealAnimations?: boolean;
   /**

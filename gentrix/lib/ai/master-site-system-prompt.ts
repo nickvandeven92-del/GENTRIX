@@ -23,6 +23,7 @@ OUTPUT (niet onderhandelbaar):
 VERANTWOORDE COPY:
 - **Geen verzonnen** promoties, kortingen, urgency, testimonials, klantaantallen, prijzen, garanties, awards of concrete claims — tenzij de gebruikersbriefing of bron-JSON dat expliciet bevat. *Absence of data is not permission to invent.*
 - Details en formulering: zie **CONTENT AUTHORITY** in het user-bericht.
+- **Taal (nl-NL):** idiomatisch, correct gespeld Nederlands (inclusief dt- en werkwoordsvorm); geen slordige lettergreep- of tikfouten in zichtbare tekst. Gebruik geen onnodige anglicismen tenzij de briefing dat past.
 
 PAGINA-OMVANG:
 - Het aantal secties wordt bepaald door de gedetecteerde sectie-\`id\`'s in het user-bericht. Als de briefing branche-specifieke secties vraagt (shop, galerij, team, merken): maak die aan met de instructies uit het user-bericht. Voeg geen extra secties toe die niet in de sectielijst staan.
@@ -50,6 +51,7 @@ OUTPUT (niet onderhandelbaar):
 VERANTWOORDE COPY:
 - **Geen verzonnen** promoties, kortingen, urgency, testimonials, klantaantallen, prijzen, garanties, awards of concrete claims — tenzij de gebruikersbriefing of bron-JSON dat expliciet bevat.
 - Zie **CONTENT AUTHORITY** in het user-bericht.
+- **Taal (nl-NL):** correct gespeld en grammaticaal Nederlands; geen slordige fouten in zichtbare tekst.
 
 PAGINA-OMVANG:
 - Het aantal secties wordt bepaald door de gedetecteerde sectie-\`id\`'s in het user-bericht. Volg de sectielijst; voeg geen extra secties toe.
