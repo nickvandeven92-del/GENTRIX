@@ -1,11 +1,15 @@
 "use client";
 
+type PublishedTailwindAssetsProps = {
+  /** `false` wanneer de iframe al gecompileerde Tailwind-CSS gebruikt (geen Play CDN). */
+  preconnectTailwindPlayCdn?: boolean;
+};
+
 /**
- * Preconnects voor gepubliceerde Tailwind-sites.
- * Tailwind Play CDN: synchroon direct ná sectie-HTML (zelfde als iframe-preview). Alpine blijft `defer`.
- * Hier alleen vroege DNS/TCP-hints.
+ * Preconnects voor gepubliceerde Tailwind-sites (Alpine/Lucide/fonts).
+ * Tailwind Play CDN-preconnect alleen als de iframe nog JIT via cdn.tailwindcss.com laadt.
  */
-export function PublishedTailwindAssets() {
+export function PublishedTailwindAssets({ preconnectTailwindPlayCdn = true }: PublishedTailwindAssetsProps) {
   return (
     <div
       aria-hidden
@@ -20,7 +24,7 @@ export function PublishedTailwindAssets() {
         padding: 0,
       }}
     >
-      <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+      {preconnectTailwindPlayCdn ? <link rel="preconnect" href="https://cdn.tailwindcss.com" /> : null}
       <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

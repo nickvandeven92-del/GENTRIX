@@ -37,6 +37,9 @@ function escapeHtmlText(s: string): string {
 
 export type StandaloneExportStyleMode = "tailwind_cdn" | "local_css";
 
+/** Standaard voor export/CLI-scan: geen Play CDN (productie en `@source`-build). */
+const DEFAULT_STANDALONE_EXPORT_STYLE: StandaloneExportStyleMode = "local_css";
+
 export type StandaloneExportUserAssets = {
   css?: string;
   js?: string;
@@ -55,8 +58,8 @@ export type StandaloneExportUserAssets = {
 };
 
 /**
- * Volledige HTML voor ZIP-export. `local_css`: link naar styles.css (FTP-bundle);
- * `tailwind_cdn`: Tailwind Play CDN (alleen geschikt met live internet).
+ * Volledige HTML voor ZIP-export. `local_css`: link naar styles.css (FTP-bundle, aanbevolen);
+ * `tailwind_cdn`: Tailwind Play CDN (alleen prototyping / offline demo met internet).
  *
  * Zie ook ZIP/FTP-build (`build-ftp-website-zip.ts`) voor Tailwind-JIT export van secties.
  */
@@ -64,7 +67,7 @@ export function buildStandaloneExportHtmlDocument(
   sections: TailwindSection[],
   pageConfig: TailwindPageConfig | null | undefined,
   docTitle: string,
-  styleMode: StandaloneExportStyleMode = "tailwind_cdn",
+  styleMode: StandaloneExportStyleMode = DEFAULT_STANDALONE_EXPORT_STYLE,
   userAssets?: StandaloneExportUserAssets,
 ): string {
   const publicOnly = filterSectionsForPublicSite(sections);

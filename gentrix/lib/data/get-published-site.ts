@@ -3,6 +3,7 @@ import { createAnonServerClient } from "@/lib/supabase/anon-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { resolvePublishedSitePayloadJson } from "@/lib/data/resolve-site-payload-json";
+import { ensureTailwindCompiledCssOnPublishedPayload } from "@/lib/data/tailwind-compiled-css-attach";
 import {
   publishedPayloadFromSiteJson,
   type PublishedSitePayload,
@@ -270,13 +271,29 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
       published_snapshot_id: data.published_snapshot_id ?? null,
     });
 
-    const payload = publishedPayloadFromSiteJson(siteJson, data.name, data.generation_package);
+    let payload = publishedPayloadFromSiteJson(siteJson, data.name, data.generation_package);
     if (!payload) {
       devLogPublishedSite(
         slug,
         "Site-payload is leeg of ongeldig (tailwind_sections, react_sections of legacy JSON).",
       );
       return null;
+    }
+    const beforeEnsure =
+      payload.kind === "tailwind" &&
+      (payload.tailwindCompiledCss == null || payload.tailwindCompiledCss.trim() === "");
+    payload = await ensureTailwindCompiledCssOnPublishedPayload(payload, data.name);
+    if (
+      process.env.NODE_ENV === "development" &&
+      beforeEnsure &&
+      payload.kind === "tailwind" &&
+      payload.tailwindCompiledCss != null &&
+      payload.tailwindCompiledCss.trim() !== ""
+    ) {
+      devLogPublishedSite(
+        slug,
+        "tailwindCompiledCss ontbrak in DB; server-build toegevoegd voor deze request (opslaan in studio schrijft voortaan mee).",
+      );
     }
     const appointmentsEnabled = Boolean(data.appointments_enabled);
     const webshopEnabled = Boolean(data.webshop_enabled);

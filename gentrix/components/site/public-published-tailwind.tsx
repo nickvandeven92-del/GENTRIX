@@ -157,7 +157,7 @@ export function PublicPublishedTailwind({
           )}
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
-          <PublishedTailwindAssets />
+          <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
           <span className="mt-4">Site laden…</span>
         </div>
       </PublishedTailwindNavBridge>
@@ -170,7 +170,7 @@ export function PublicPublishedTailwind({
         className={cn("flex min-h-0 w-full flex-1 flex-col bg-white", className)}
         style={{ width: "100%", height: embedded ? undefined : "100%" }}
       >
-        <PublishedTailwindAssets />
+        <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
         <iframe
           title={documentTitle}
           style={iframeStyle}

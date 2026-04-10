@@ -1,6 +1,7 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { resolveDraftSitePayloadJson } from "@/lib/data/resolve-site-payload-json";
+import { ensureTailwindCompiledCssOnPublishedPayload } from "@/lib/data/tailwind-compiled-css-attach";
 import {
   publishedPayloadFromSiteJson,
   type PublishedSitePayload,
@@ -113,7 +114,9 @@ export async function getDraftPublishedSitePayloadBySlug(slug: string): Promise<
       draft_snapshot_id: row.draft_snapshot_id,
       published_snapshot_id: row.published_snapshot_id,
     });
-    return publishedPayloadFromSiteJson(raw, row.name, row.generation_package);
+    const payload = publishedPayloadFromSiteJson(raw, row.name, row.generation_package);
+    if (!payload) return null;
+    return ensureTailwindCompiledCssOnPublishedPayload(payload, row.name);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) return null;
