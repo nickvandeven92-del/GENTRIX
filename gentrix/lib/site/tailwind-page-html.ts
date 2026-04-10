@@ -11,7 +11,11 @@ import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 import { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
 import { STUDIO_TAILWIND_PLAY_CDN_SRC } from "@/lib/site/studio-tailwind-cdn";
 import { applyBrandLogoFallbackToSections } from "@/lib/site/brand-logo-inject";
-import { applyStudioPublishedPathPlaceholders } from "@/lib/site/studio-section-visibility";
+import {
+  applyStudioPublishedPathPlaceholders,
+  neutralizeStudioPathPlaceholdersWithoutSlug,
+  stripLeakedStudioPlaceholderTokens,
+} from "@/lib/site/studio-section-visibility";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import type { GeneratedLogoSet } from "@/types/logo";
@@ -881,13 +885,18 @@ export function buildTailwindIframeSrcDoc(
   let body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {
     logoSet: options?.logoSet,
   });
-  if (options?.publishedSlug?.trim()) {
-    const appt = options.appointmentsEnabled;
-    const shop = options.webshopEnabled;
-    body = applyStudioPublishedPathPlaceholders(body, options.publishedSlug.trim(), {
+  const slug = options?.publishedSlug?.trim();
+  if (slug) {
+    const appt = options?.appointmentsEnabled;
+    const shop = options?.webshopEnabled;
+    body = applyStudioPublishedPathPlaceholders(body, slug, {
       includeBooking: appt !== false,
       includeShop: shop !== false,
     });
+    body = stripLeakedStudioPlaceholderTokens(body);
+  } else {
+    body = neutralizeStudioPathPlaceholdersWithoutSlug(body);
+    body = stripLeakedStudioPlaceholderTokens(body);
   }
   const { fontLink, fontStack, rootCss, radiusClass } = buildRootCssVarsForTailwindPage(pageConfig ?? null);
   const themeMeta =

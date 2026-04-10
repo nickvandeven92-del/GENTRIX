@@ -4,7 +4,7 @@ import { ArrowUpRight, Cpu, LayoutDashboard } from "lucide-react";
 import { PUBLIC_BRAND, PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-/** Eén aanbod — bewerk hier of publiceer later opnieuw als `home` voor een gegenereerde variant. */
+/** Eén aanbod — bewerk hier; of zet `LANDING_SITE_ROOT_SLUG` in .env om `/` naar `/site/{slug}` te laten herschrijven. */
 const SHOWROOM_SINGLE_OFFER = {
   name: "Studio-pakket",
   line: "Website, beheer in overleg, klantportaal",

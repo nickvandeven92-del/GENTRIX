@@ -36,7 +36,7 @@ import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
-import { ensureCanonicalBookingSectionInTailwindSections } from "@/lib/site/append-booking-section-to-payload";
+import { ensureCanonicalBookingAndShopSectionsInTailwindSections } from "@/lib/site/append-booking-section-to-payload";
 import { STUDIO_SHOP_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
 import { INDUSTRY_KEYWORDS, INDUSTRY_PROFILES } from "@/lib/ai/site-generation-industry-data";
 import type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
@@ -175,9 +175,10 @@ export function analyzeBriefingForSections(description: string): string[] {
 export function buildSectionIdsFromBriefing(description: string, explicitIds?: string[]): string[] {
   if (explicitIds?.length) {
     const extra = analyzeBriefingForSections(description);
-    const merged = new Set(explicitIds.filter((id) => id !== "booking"));
+    const merged = new Set(explicitIds.filter((id) => id !== "booking" && id !== "shop"));
     for (const id of extra) merged.add(id);
     merged.delete("booking");
+    merged.delete("shop");
     return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id));
   }
 
@@ -187,6 +188,7 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
   const merged = new Set(baseSections);
   for (const id of extra) merged.add(id);
   merged.delete("booking");
+  merged.delete("shop");
   return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id));
 }
 
@@ -709,7 +711,7 @@ function buildUpgradeMergeSection(): string {
 - Output = **één** geldig JSON-object met \`config\` + \`sections\` zoals in §5.
 - **config:** kopieer van de bestaande site (zie JSON hieronder of briefing) **zonder** esthetische wijziging.
 - **sections:** de bron-JSON bevat per rij \`id\` (stabiele slug), \`sectionName\` (label) en \`html\`. Behoud **exact** dezelfde \`id\`'s en **dezelfde** \`html\` voor die rijen, in **dezelfde volgorde**; voeg daartussen of aan het eind (logisch) **nieuwe** secties toe volgens briefing / §0B.
-- Nieuwe secties: unieke \`id\` (bijv. \`portal\`, \`client_dashboard\`); **geen** sectie \`id: "booking"\` — die injecteert de studio server-side. Inhoud en Tailwind-stijl moeten **visueel aansluiten** op de bestaande secties.
+- Nieuwe secties: unieke \`id\` (bijv. \`portal\`, \`client_dashboard\`); **geen** sectie \`id: "booking"\` of \`id: "shop"\` — die injecteert de studio server-side. Inhoud en Tailwind-stijl moeten **visueel aansluiten** op de bestaande secties.
 - Als er **geen** bestaande JSON in de prompt staat: bouw de marketingpagina compact volgens de briefing, maar **zonder** "alles opnieuw verzinnen" — focus op **toevoegen** van gevraagde secties; varieer niet gratuit t.o.v. de beschreven huidige site.`;
 }
 
@@ -721,11 +723,10 @@ function buildBrancheSectionPromptBlocks(sectionIds: Set<string>): string {
   const blocks: string[] = [];
 
   if (sectionIds.has("shop")) {
-    blocks.push(`**=== SHOP (id: "shop") ===**
-Doel: producten of diensten met prijs/CTA duidelijk tonen. Kies zelf layout (spotlight, grid, rij) die bij het **aantal** items en de briefing past — niet per se hetzelfde als andere sites.
-- Geen verzonnen prijzen; zonder briefing: "Prijs op aanvraag" of geen prijsveld.
-- **Online winkel:** minstens één duidelijke knop of link met **exact** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (naar de studio-webshop-route); extra CTA naar \`#contact\` of \`https://wa.me/…\` als nummer bekend.
-- Nav/footer: bij webshop-signaal ook een link met \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (bv. icoon \`data-lucide="ShoppingBag"\`).`);
+    blocks.push(`**=== SHOP — niet zelf bouwen ===**
+Het publieke \`id: "shop"\`-blok (vier producttegels + webshop-CTA) injecteert de studio **server-side** na generatie — lever **geen** sectie \`id: "shop"\` in je JSON.
+- **Nav/footer:** zet minstens één link met **exact** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (bv. “Webshop”, icoon \`data-lucide="ShoppingBag"\`) als de briefing retail/online verkoop raakt.
+- Geen tweede shop-sectie of dubbele \`id: "shop"\`.`);
   }
 
   if (sectionIds.has("gallery")) {
@@ -973,6 +974,7 @@ function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTail
 - **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum, geen lege placeholders) — **maar** geen **verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (zie **CONTENT AUTHORITY** hierboven). Headlines en USP's: alleen claims die uit de **briefing** volgen; ontbreken die feiten → neutrale, bescheiden copy zonder fake social proof of prijzen. FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands (geen kromme woorden of verkeerde werkwoordsvormen zoals "Productic" i.p.v. "Productie").
 - **Sectie-ankers:** Het **buitenste** element van elke sectie-\`html\` (eerste tag, meestal \`<section>\`) heeft \`id="…"\` dat **exact gelijk** is aan de JSON-\`id\` van die sectie (bijv. \`"id": "faq"\` → \`<section id="faq" class="…">\`). Zo werkt elke interne link.
 - **Interne links (\`#…\`):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#…">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen — plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).
+- **One-pager menu & CTA's (strikt):** Voor springen **binnen deze pagina** gebruik je **alleen** \`href="#<sectie-id>"\` (zelfde id als op het buitenste element van die sectie). **Verboden** voor interne secties: dezelfde canonieke URL op elk item (\`href="/site/jouwe-slug"\`, \`https://…/site/jouwe-slug\` **zonder** hash), of losse paden als \`/diensten\` / \`/contact\` — in de live viewer lijken die “werkend” maar landen ze praktisch allemaal op dezelfde plek. Elk menu-item krijgt **een eigen** geldig anker naar **inhoud die je ook echt in een sectie met die \`id\` uitwerkt** (bv. \`#diensten\`, \`#over-ons\`, \`#klanten\`, \`#faq\`, \`#contact\`). Uitzonderingen: echte externe \`https://\` (social, kaarten), \`mailto:\`, \`tel:\`, en studio-placeholders \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\` volgens de portal-/module-instructies.
 - **Contact:** Zonder e-mail/telefoon in de briefing: gebruik **werkende** \`mailto:\`/\`tel:\` met **plausible** adressen afgeleid van de bedrijfsnaam (bijv. \`mailto:info@<kortenaam-zonder-spaties>.nl\`, \`tel:+3185…\` als fictief maar **geldig formaat**) **of** link naar \`#contact\` / \`#footer\` waar een duidelijk contactblok staat — geen dode knoppen.
 - **WhatsApp:** Alleen \`https://wa.me/…\` als een nummer in de briefing staat; anders CTA naar \`#contact\` met copy "Neem contact op".
 - **Extern (https):** Alleen \`https://\` URL's; gebruik **bestaande** patronen (Google Maps-zoeklink, officiële social templates) of vermijd de link en gebruik intern \`#contact\`. Geen \`http://\` zonder TLS.
@@ -1133,6 +1135,8 @@ export function buildWebsiteGenerationUserPrompt(
   const detectedSections = new Set(
     options?.sectionIdsHint ?? buildSectionIdsFromBriefing(description),
   );
+  /** Shop-sectie zelf is server-side; instructies voor nav/footer moeten wél in de prompt. */
+  detectedSections.add("shop");
   const brancheSectionBlocks = buildBrancheSectionPromptBlocks(detectedSections);
   const industryHint = buildIndustryPromptHint(description);
 
@@ -1482,7 +1486,7 @@ export async function generateSiteWithClaude(
 
   data = {
     ...data,
-    sections: ensureCanonicalBookingSectionInTailwindSections(data.sections),
+    sections: ensureCanonicalBookingAndShopSectionsInTailwindSections(data.sections),
   };
 
   if (process.env.NODE_ENV === "development") {
@@ -1652,7 +1656,7 @@ export function createGenerateSiteReadableStream(
 
         data = {
           ...data,
-          sections: ensureCanonicalBookingSectionInTailwindSections(data.sections),
+          sections: ensureCanonicalBookingAndShopSectionsInTailwindSections(data.sections),
         };
 
         if (process.env.NODE_ENV === "development") {

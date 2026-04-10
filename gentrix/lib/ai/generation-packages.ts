@@ -63,12 +63,13 @@ const PORTAL_MARKUP_RULES = `=== ZAKELIJK PORTAAL — MARKERING (verplicht) ===
 - Knoppen en nav-links naar het echte portaal (achter login op deze app): gebruik **exact** \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — géén \`#\` of verzonnen URL voor het portaal-pad.
 - Blijft **statische** mock; geen \`<script>\`, geen echte login-flow in HTML.`;
 
-const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties), \`mailto:\`, \`tel:\`, \`https://…\`, of de studio-placeholders: portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\`, publiek boeken \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`, **webshop** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` — **geen** \`href="#"\` of lege links voor die doelen.
+const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties), \`mailto:\`, \`tel:\`, \`https://…\`, of de **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\`, publiek boeken \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`, webshop \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` — **geen** \`href="#"\` of lege links voor die doelen.
 - **Verboden op publieke marketing:** login, registratie, wachtwoordvelden, “mijn account” als werkende app — wel mag je **naar** het portaal linken met het portaal-placeholder.
-- **Boeken-sectie:** lever **geen** sectie met \`id: "booking"\` in je JSON — die wordt **altijd** server-side toegevoegd (één vast blok met \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`). Dubbel = verboden.
-- **Online afspraak (bezoeker):** als de briefing afspraken / online boeken noemt, zet **exact** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` op één of twee plekken in **nav en/of footer** (tekstlink of knop). **Niet** in de hero verplicht; geen aparte booking-sectie bouwen; niet verwarren met het portaal-placeholder.
-- **Webshop / online winkel:** als de briefing producten, webshop, winkel, bestellen of catalogus noemt (of sectie \`shop\` in de structuur staat): zet **minstens één** duidelijke link in **nav en/of footer** met **exact** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (bv. “Webshop”, “Winkel”, “Bestellen”). In sectie \`id: "shop"\`: primaire koop-CTA’s gebruiken **hetzelfde** placeholder (naast \`#contact\` / WhatsApp waar passend).
-- **Copy:** professioneel en menselijk; **vermijd** woorden als “AI”, “gegenereerd”, “prompt” of “chatbot-engine” in zichtbare tekst voor bezoekers.`;
+- **Boeken-sectie:** lever **geen** sectie met \`id: "booking"\` in je JSON — die wordt **altijd** server-side toegevoegd. Dubbel = verboden.
+- **Shop-sectie:** lever **geen** sectie met \`id: "shop"\` in je JSON — de studio voegt **vier producttegels** + webshop-CTA server-side toe. Dubbel = verboden.
+- **Online afspraak (bezoeker):** als de briefing afspraken / online boeken noemt, zet het boekings-placeholder op één of twee plekken in **nav en/of footer**. Geen aparte booking-sectie bouwen; niet verwarren met het portaal-placeholder.
+- **Webshop / online winkel:** bij retail-, product- of webshop-signalen in de briefing: **minstens één** link in **nav en/of footer** met het webshop-placeholder (bv. “Webshop”). Zonder duidelijk verkoopsignaal mag je die link weglaten.
+- **Copy:** professioneel en menselijk; **vermijd** woorden als “AI”, “gegenereerd”, “prompt” of “chatbot-engine” in zichtbare tekst voor bezoekers — en **nooit** de ruwe placeholder-tokens als leesbare tekst op de pagina.`;
 
 /** Vrije generatie: sectielijst in STUDIO STRUCTUUR is exhaustief. */
 const MARKETING_CORE_FREE = `**SITE STUDIO (één product — geen tier-pakketten)**

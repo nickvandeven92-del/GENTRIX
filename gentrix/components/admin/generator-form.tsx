@@ -314,39 +314,21 @@ export function GeneratorForm({
               </ol>
             </section>
             <section>
-              <h3 className="text-sm font-semibold text-slate-900">Pad-placeholders in de HTML</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Slimme links (geen lelijke codes op de site)</h3>
               <p className="mt-2 text-xs text-slate-600">
-                Het model gebruikt vaste teksten in <code className="font-mono">href</code>
-                -s; die vervangt het platform automatisch per klant-slug in preview en op de live site:
+                In de <code className="font-mono">href</code> van knoppen en menu&apos;s staan interne vaste tokens die het
+                platform automatisch omzet naar het juiste pad per klant. In preview en live zie je dus normale URL&apos;s
+                zoals <code className="font-mono text-[11px]">/portal/…</code>, <code className="font-mono text-[11px]">/boek/…</code>{" "}
+                en <code className="font-mono text-[11px]">/winkel/…</code> — of een <code className="font-mono text-[11px]">#</code>{" "}
+                als de bijbehorende module nog uit staat.
               </p>
-              <ul className="mt-2 space-y-2 text-xs">
-                <li>
-                  <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-800 shadow-sm ring-1 ring-slate-200">
-                    __STUDIO_PORTAL_PATH__
-                  </code>{" "}
-                  → klantportaal (MFA), bv. <code className="font-mono text-[11px]">/portal/…</code>
-                </li>
-                <li>
-                  <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-800 shadow-sm ring-1 ring-slate-200">
-                    __STUDIO_BOOKING_PATH__
-                  </code>{" "}
-                  → online boeken, bv. <code className="font-mono text-[11px]">/boek/…</code> (als boeken aan staat; anders
-                  vaak een niet-werkende anker of <code className="font-mono text-[11px]">#</code>)
-                </li>
-                <li>
-                  <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-800 shadow-sm ring-1 ring-slate-200">
-                    __STUDIO_SHOP_PATH__
-                  </code>{" "}
-                  → webshop-route, bv. <code className="font-mono text-[11px]">/winkel/…</code> (idem als module uit staat)
-                </li>
-              </ul>
             </section>
             <section>
               <h3 className="text-sm font-semibold text-slate-900">Wat doe jij ermee in de editor?</h3>
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs text-slate-600">
                 <li>
-                  <strong>Laat placeholders staan</strong> als je wilt dat portaal-, boek- en shoplinks automatisch naar de
-                  juiste URL voor <em>deze</em> klant blijven wijzen.
+                  <strong>Laat slimme links staan</strong> in de editor als je wilt dat portaal-, boek- en winkellinks
+                  automatisch naar de juiste URL voor <em>deze</em> klant blijven wijzen.
                 </li>
                 <li>
                   Alleen handmatig vervangen door concrete paden als je bewust één vaste link wilt; let op dat je dan geen

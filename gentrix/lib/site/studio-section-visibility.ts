@@ -71,6 +71,27 @@ export function applyStudioPublishedPathPlaceholders(
   return h;
 }
 
+/**
+ * Verwijdert overgebleven studio-tokens (bijv. per ongeluk in zichtbare tekst door het model).
+ * Roep aan **nadat** `applyStudioPublishedPathPlaceholders` alle `href`-tokens heeft vervangen.
+ */
+export function stripLeakedStudioPlaceholderTokens(html: string): string {
+  return html
+    .split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("")
+    .split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("")
+    .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("");
+}
+
+/**
+ * Zonder gepubliceerde slug: geen ruwe `__STUDIO_*__`-strings in preview/HTML — vervang door `#` op alle plekken.
+ */
+export function neutralizeStudioPathPlaceholdersWithoutSlug(html: string): string {
+  return html
+    .split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
+    .split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#")
+    .split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
+}
+
 /** Enkele `href` (React-secties) — zelfde placeholder als in HTML-secties. */
 export function resolveStudioPortalHref(href: string, publishedSlug?: string | null): string {
   const slug = publishedSlug?.trim();

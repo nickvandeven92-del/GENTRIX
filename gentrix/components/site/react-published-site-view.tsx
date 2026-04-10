@@ -7,7 +7,11 @@ import {
 } from "@/lib/site/react-section-visibility";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import { classForFixedNavOverlap, siteHasFixedNavOverlay } from "@/lib/site/react-fixed-nav-inset";
-import { applyStudioPublishedPathPlaceholders } from "@/lib/site/studio-section-visibility";
+import {
+  applyStudioPublishedPathPlaceholders,
+  neutralizeStudioPathPlaceholdersWithoutSlug,
+  stripLeakedStudioPlaceholderTokens,
+} from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 const ACCENT_CSS_VAR = "--site-accent";
@@ -44,11 +48,13 @@ export function ReactPublishedSiteView({
 
   const resolveHref = (href: string) => {
     const slug = publishedSlug?.trim();
-    if (!slug) return href;
-    return applyStudioPublishedPathPlaceholders(href, slug, {
-      includeBooking: appointmentsEnabled,
-      includeShop: webshopEnabled,
-    });
+    if (!slug) return neutralizeStudioPathPlaceholdersWithoutSlug(href);
+    return stripLeakedStudioPlaceholderTokens(
+      applyStudioPublishedPathPlaceholders(href, slug, {
+        includeBooking: appointmentsEnabled,
+        includeShop: webshopEnabled,
+      }),
+    );
   };
 
   const sans = doc.theme.fontSans?.trim();

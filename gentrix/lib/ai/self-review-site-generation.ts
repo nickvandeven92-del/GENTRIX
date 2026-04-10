@@ -40,7 +40,7 @@ Je krijgt de briefing, een **concept**-JSON, en **automatische checks** (validat
 ${buildContentAuthorityPolicyBlock()}
 
 === VISUEEL / UX ===
-- Ontbrekende \`<h1>\`, kapotte interne \`href="#…"\`, of zichtbare placeholder-copy: **repareren**.
+- Ontbrekende \`<h1>\`, kapotte interne \`href="#…"\`, identieke canonieke \`/site/…\` of \`https://…/site/…\` **zonder** passend \`#\` op meerdere menu-items, of zichtbare placeholder-copy: **repareren** (zet interne navigatie op \`#<sectie-id>\` die in de markup bestaat).
 - Verminder **onnodige lengte** binnen secties: dubbele stats/testimonial/CTA-banen samenvatten of één rustig blok maken **zonder** secties te droppen.
 - Behoud \`data-animation\` en root-\`id\` op sectie waar geldig. Marquee: \`studio-marquee\` / \`studio-marquee-track\` alleen met dubbele set items (anders hapert de loop). **Laser:** als \`studio-laser-*\` staat op een **generieke** (niet-cyber) briefing zonder expliciete neon/sci-fi-wens → **verwijder** (te veel “template-decoratie”). Als wél passend: max. één rail in hero; \`relative\` parent; geen twee lasers genest op hetzelfde element.
 - Sterkere typografie/contrast als het concept botst met de **briefing** (bijv. gevraagd warm/donker maar alles koud wit) — binnen Tailwind-utilities.

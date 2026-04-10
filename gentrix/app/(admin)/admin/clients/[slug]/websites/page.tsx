@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Code2, ExternalLink, FolderOpen, PanelTop } from "lucide-react";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { getWebsiteOpsByClientId } from "@/lib/data/website-ops";
+import { ClientWebsitesMarketingBlocks } from "@/components/admin/client-websites-marketing-blocks";
 import { cn } from "@/lib/utils";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -95,6 +96,8 @@ export default async function ClientWebsitesPage({ params }: PageProps) {
           </Link>
         </div>
       </section>
+
+      <ClientWebsitesMarketingBlocks subfolderSlug={row.subfolder_slug} clientOverviewHref={base} />
 
       <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Operatie (levering)</h3>

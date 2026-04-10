@@ -36,6 +36,7 @@ export function ClientPortalModulesCard({
   const router = useRouter();
   const [busy, setBusy] = useState<ModuleKey | null>(null);
   const [bookingAppendBusy, setBookingAppendBusy] = useState<"add" | "replace" | null>(null);
+  const [shopAppendBusy, setShopAppendBusy] = useState<"add" | "replace" | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   async function patch(field: ModuleKey, value: boolean) {
@@ -82,6 +83,28 @@ export function ClientPortalModulesCard({
     }
   }
 
+  async function appendShopSection(replaceExisting: boolean) {
+    setShopAppendBusy(replaceExisting ? "replace" : "add");
+    setErr(null);
+    try {
+      const res = await fetch(`/api/clients/${encodeURIComponent(subfolderSlug)}/append-shop-section`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replace_existing: replaceExisting }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; code?: string };
+      if (!res.ok || !json.ok) {
+        setErr(json.error ?? "Webshop-sectie toevoegen mislukt.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setErr("Netwerkfout.");
+    } finally {
+      setShopAppendBusy(null);
+    }
+  }
+
   const encSlug = encodeURIComponent(subfolderSlug);
   const studioPresetHref = `/admin/ops/studio?slug=${encSlug}&preset=${STUDIO_WORKFLOW_PRESET_ADD_BOOKING}`;
 
@@ -101,13 +124,13 @@ export function ClientPortalModulesCard({
     {
       field: "appointments_enabled",
       label: "Afspraken",
-      hint: "Aan: portaal-tabs, /boek, marketinglinks naar __STUDIO_BOOKING_PATH__ worden /boek/{slug}. Uit: booking-sectie en placeholders verborgen op /site.",
+      hint: "Aan: portaal-tabs en publieke boekpagina; boekingslinks op de site wijzen naar /boek/{slug}. Uit: booking-blok en boek-links verborgen op /site.",
       checked: appointments_enabled,
     },
     {
       field: "webshop_enabled",
       label: "Webshop (marketing)",
-      hint: "Aan: /winkel/{slug} live, links naar __STUDIO_SHOP_PATH__ actief op /site. Uit: shop-sectie en webshop-placeholders verborgen.",
+      hint: "Aan: route /winkel/{slug} en webshop-links op de marketingpagina actief. Uit: shop-sectie en winkel-links verborgen.",
       checked: webshop_enabled,
     },
   ];
@@ -143,7 +166,7 @@ export function ClientPortalModulesCard({
                 <input
                   type="checkbox"
                   checked={r.checked}
-                  disabled={busy !== null || bookingAppendBusy !== null}
+                  disabled={busy !== null || bookingAppendBusy !== null || shopAppendBusy !== null}
                   onChange={(e) => void patch(r.field, e.target.checked)}
                   className="size-5 rounded border-zinc-300 accent-violet-700 disabled:opacity-50 dark:border-zinc-600"
                 />
@@ -162,8 +185,8 @@ export function ClientPortalModulesCard({
             <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> het model bouwt{" "}
             <strong className="text-zinc-800 dark:text-zinc-200">geen</strong> eigen booking-sectie (geen dubbel); na
             generatie voegt de studio automatisch het vaste blok{" "}
-            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">booking</code> met{" "}
-            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">__STUDIO_BOOKING_PATH__</code> toe.
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">booking</code> met werkende
+            boekingslink toe (geen dubbele sectie).
           </li>
           <li>
             Zet <strong className="text-zinc-800 dark:text-zinc-200">“Afspraken”</strong> aan om portaal + boekpagina +
@@ -187,7 +210,7 @@ export function ClientPortalModulesCard({
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={busy !== null || bookingAppendBusy !== null}
+            disabled={busy !== null || bookingAppendBusy !== null || shopAppendBusy !== null}
             onClick={() => void appendBookingSection(false)}
             className="inline-flex items-center gap-1 rounded-lg bg-violet-700 px-3 py-2 text-xs font-medium text-white hover:bg-violet-800 disabled:opacity-60 dark:bg-violet-600 dark:hover:bg-violet-500"
           >
@@ -198,7 +221,7 @@ export function ClientPortalModulesCard({
           </button>
           <button
             type="button"
-            disabled={busy !== null || bookingAppendBusy !== null}
+            disabled={busy !== null || bookingAppendBusy !== null || shopAppendBusy !== null}
             onClick={() => void appendBookingSection(true)}
             className="inline-flex items-center gap-1 rounded-lg border border-violet-400 bg-white px-3 py-2 text-xs font-medium text-violet-900 hover:bg-violet-50 disabled:opacity-60 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/40"
           >
@@ -243,15 +266,51 @@ export function ClientPortalModulesCard({
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
           Webshop op de marketingpagina
         </p>
-        <p className="mt-2 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Tijdens generatie zet het model bij retail/webshop-signalen links met{" "}
-          <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">__STUDIO_SHOP_PATH__</code>. Zet{" "}
-          <strong className="text-zinc-800 dark:text-zinc-200">Webshop</strong> hier aan om die links naar{" "}
-          <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/winkel/…</code> te laten wijzen en
-          de shop-sectie zichtbaar te houden. Optioneel: embed je externe catalogus via{" "}
-          <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">NEXT_PUBLIC_WEBSHOP_IFRAME_SRC_TEMPLATE</code>{" "}
-          in <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">.env</code>.
-        </p>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <li>
+            <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> na generatie staat een vast
+            blok met <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">shop</code> — vier
+            producttegels + link naar de webshop-route (geen dubbele sectie door het model).
+          </li>
+          <li>
+            Zet <strong className="text-zinc-800 dark:text-zinc-200">Webshop</strong> aan om{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/winkel/…</code> en de shop-sectie
+            op <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/site/…</code> zichtbaar te
+            maken.
+          </li>
+          <li>
+            Ontbreekt het blok: knop hieronder <strong className="text-zinc-800 dark:text-zinc-200">Standaard
+            webshop-sectie</strong> (geen AI).
+          </li>
+          <li>
+            Optioneel: externe catalogus via env{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">NEXT_PUBLIC_WEBSHOP_IFRAME_SRC_TEMPLATE</code>.
+          </li>
+        </ol>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy !== null || bookingAppendBusy !== null || shopAppendBusy !== null}
+            onClick={() => void appendShopSection(false)}
+            className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+          >
+            {shopAppendBusy === "add" ? (
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            ) : null}
+            Standaard webshop-sectie (geen AI)
+          </button>
+          <button
+            type="button"
+            disabled={busy !== null || bookingAppendBusy !== null || shopAppendBusy !== null}
+            onClick={() => void appendShopSection(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-emerald-400 bg-white px-3 py-2 text-xs font-medium text-emerald-900 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/30"
+          >
+            {shopAppendBusy === "replace" ? (
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            ) : null}
+            Vervang bestaande shop-sectie
+          </button>
+        </div>
         {webshop_enabled ? (
           <details className="mt-3 rounded-md border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
             <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">

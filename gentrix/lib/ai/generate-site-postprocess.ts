@@ -130,6 +130,124 @@ function pickFallbackFragment(validIds: Set<string>): string {
   return first ?? "footer";
 }
 
+/** Alle `id="…"` in markup — nav mag naar nested ankers wijzen, niet alleen naar JSON-sectie-id's. */
+export function collectHtmlElementIds(html: string): Set<string> {
+  const out = new Set<string>();
+  const re = /\bid\s*=\s*(["'])([^"']*)\1/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const v = m[2]?.trim();
+    if (v) out.add(v);
+  }
+  return out;
+}
+
+const RESERVED_SINGLE_SEGMENT_PATHS = new Set(
+  ["portal", "boek", "winkel", "admin", "api", "login", "home", "dashboard", "site", "_next"].map((s) =>
+    s.toLowerCase(),
+  ),
+);
+
+/**
+ * Modellen zetten vaak `href="/site/slug"` of `https://…/site/slug` (zonder `#`) op elk menu-item.
+ * In de srcDoc-iframe scrollt dat telkens naar boven → alle links voelen identiek. Zet om naar `#…`.
+ * Ook `/diensten` → `#diensten` als die id bestaat.
+ */
+export function repairSamePagePathHrefsInHtml(html: string, validIds: Set<string>): string {
+  return html.replace(/href\s*=\s*(["'])([^"']*)\1/gi, (full, quote: string, inner: string) => {
+    const next = pathOrAbsoluteSiteHrefToHash(inner, validIds);
+    if (next == null) return full;
+    return `href=${quote}${next}${quote}`;
+  });
+}
+
+function pathOrAbsoluteSiteHrefToHash(raw: string, validIds: Set<string>): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.startsWith("#") || /^mailto:|^tel:|^javascript:/i.test(trimmed)) return null;
+  if (trimmed.includes("__STUDIO_")) return null;
+
+  let pathname = "";
+  let hash = "";
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const u = new URL(trimmed);
+      pathname = u.pathname || "";
+      hash = u.hash && u.hash.length > 1 ? safeDecodeFragment(u.hash.slice(1)) : "";
+    } catch {
+      return null;
+    }
+    if (!pathname.toLowerCase().startsWith("/site/")) return null;
+  } else {
+    const hashIdx = trimmed.indexOf("#");
+    let pathPart = trimmed;
+    if (hashIdx >= 0) {
+      hash = safeDecodeFragment(trimmed.slice(hashIdx + 1));
+      pathPart = trimmed.slice(0, hashIdx);
+    }
+    pathname = (pathPart.split("?")[0] ?? "").trim();
+    if (!pathname.startsWith("/")) return null;
+  }
+
+  const pl = pathname.toLowerCase();
+  if (
+    pl.startsWith("/portal") ||
+    pl.startsWith("/boek") ||
+    pl.startsWith("/winkel") ||
+    pl.startsWith("/admin") ||
+    pl.startsWith("/api") ||
+    pl.startsWith("/_next") ||
+    pl === "/login" ||
+    pl.startsWith("/login/") ||
+    pl === "/home" ||
+    pl === "/dashboard"
+  ) {
+    return null;
+  }
+
+  const fb = pickFallbackFragment(validIds);
+
+  if (pl === "/site" || pl === "/site/") {
+    if (hash) {
+      if (hash === "top" || validIds.has(hash)) return `#${hash}`;
+      return `#${fb}`;
+    }
+    return validIds.has("top") ? `#top` : `#${fb}`;
+  }
+
+  if (pl.startsWith("/site/")) {
+    const rest = pathname.slice("/site/".length).split("/").filter(Boolean);
+    if (rest.length > 1) return null;
+    if (hash) {
+      if (hash === "top" || validIds.has(hash)) return `#${hash}`;
+      return `#${fb}`;
+    }
+    return validIds.has("top") ? `#top` : `#${fb}`;
+  }
+
+  if (pathname === "/" || pathname === "") {
+    return validIds.has("top") ? `#top` : `#${fb}`;
+  }
+
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 1) {
+    const seg = safeDecodeFragment(segments[0]!);
+    if (RESERVED_SINGLE_SEGMENT_PATHS.has(seg.toLowerCase())) return null;
+    if (seg === "top" || validIds.has(seg)) return `#${seg}`;
+    return null;
+  }
+
+  return null;
+}
+
+function safeDecodeFragment(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
 /**
  * Vervangt `href="#onbekend"` door een geldige anker-id uit de pagina.
  */
@@ -190,12 +308,18 @@ export function ensureHeroRootMinViewportClass(html: string): string {
  */
 export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): ClaudeTailwindPageOutput {
   const withIds = ensureUniqueSectionIds(page.sections);
+  const combined = withIds.map((row) => withRootIdOnSectionHtml(row.html, row.id)).join("\n");
+
   const validIds = new Set(withIds.map((s) => s.id));
   validIds.add("top");
+  for (const id of collectHtmlElementIds(combined)) {
+    validIds.add(id);
+  }
 
   const sectionsLinked = withIds.map((row) => {
     const html0 = withRootIdOnSectionHtml(row.html, row.id);
-    const html1 = repairInternalLinksInHtml(html0, validIds);
+    const html0b = repairSamePagePathHrefsInHtml(html0, validIds);
+    const html1 = repairInternalLinksInHtml(html0b, validIds);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2) : html2;
     return { ...row, html: html3 };
