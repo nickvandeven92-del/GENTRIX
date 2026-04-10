@@ -1,5 +1,7 @@
 import type { SectionSemanticRole } from "@/lib/ai/tailwind-sections-schema";
 import type { ProjectSnapshot } from "@/lib/site/project-snapshot-schema";
+import { getSiteIrSnapshotSyncErrors } from "@/lib/site/site-ir-compose-validation";
+import { getSiteBlueprintDefinition } from "@/lib/site/site-blueprint-registry";
 
 export type InvariantResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -63,6 +65,14 @@ export function assertProjectSnapshotInvariants(snapshot: ProjectSnapshot): Inva
   if (heroIdx >= 0 && heroIdx !== 0) {
     errors.push('Als semanticRole "hero" voorkomt, moet die op index 0 staan (eerste content-sectie).');
   }
+
+  if (snapshot.siteIr != null) {
+    if (!getSiteBlueprintDefinition(snapshot.siteIr.blueprintId)) {
+      errors.push(`siteIr.blueprintId is onbekend in het blueprint-register: "${snapshot.siteIr.blueprintId}".`);
+    }
+  }
+
+  errors.push(...getSiteIrSnapshotSyncErrors(snapshot));
 
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true };

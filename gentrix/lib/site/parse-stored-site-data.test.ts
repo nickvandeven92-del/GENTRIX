@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PROJECT_SNAPSHOT_FORMAT } from "@/lib/site/project-snapshot-schema";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 
 describe("parseStoredSiteData", () => {
   it("legacy generatedSite → kind legacy", () => {
@@ -79,5 +80,35 @@ describe("parseStoredSiteData", () => {
       // geen geldige sections / composition
     };
     expect(parseStoredSiteData(corrupt)).toBeNull();
+  });
+
+  it("project_snapshot_v1 (geldig) → tailwind met sectionIdsOrdered en siteIr", () => {
+    const nowIso = "2026-04-04T12:00:00.000Z";
+    const snap = {
+      format: PROJECT_SNAPSHOT_FORMAT,
+      meta: {
+        schemaVersion: 1 as const,
+        documentTitle: "Test",
+        createdByKind: "import" as const,
+        createdAt: nowIso,
+        lastModifiedAt: nowIso,
+      },
+      siteConfig: {},
+      composition: { sectionIdsOrdered: ["hero"], layoutPresetId: "default" as const },
+      sections: [{ id: "hero", sectionName: "Hero", html: "<section></section>" }],
+      theme: { tokenOverrides: {} },
+      assets: {},
+      editor: {},
+      generation: { source: "import" as const },
+      siteIr: buildSiteIrV1({ detectedIndustryId: "horeca", sectionIdsOrdered: ["hero"] }),
+    };
+    const p = parseStoredSiteData(snap);
+    expect(p?.kind).toBe("tailwind");
+    if (p?.kind === "tailwind") {
+      expect(p.sectionIdsOrdered).toEqual(["hero"]);
+      expect(p.siteIr?.schemaVersion).toBe(1);
+      expect(p.siteIr?.detectedIndustryId).toBe("horeca");
+      expect(p.siteIr?.blueprintId?.length).toBeGreaterThan(0);
+    }
   });
 });

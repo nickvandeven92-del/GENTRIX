@@ -10,6 +10,7 @@ import {
   type GenerationContext,
   type ProjectSnapshot,
 } from "@/lib/site/project-snapshot-schema";
+import { buildSiteIrV1, safeParseSiteIrV1, siteIrV1Schema } from "@/lib/site/site-ir-schema";
 import { LAYOUT_PRESET_IDS } from "@/lib/site/project-snapshot-layout";
 import { CONTENT_DENSITY_VALUES } from "@/lib/site/project-snapshot-layout";
 import { SNAPSHOT_PAGE_TYPES } from "@/lib/site/snapshot-page-type";
@@ -134,6 +135,16 @@ export function upgradeLooseProjectSnapshotV1(
   const editor = { ...((raw.editor as object) ?? {}) };
   const generation = { ...genIn };
 
+  const compOrdered = composition.sectionIdsOrdered as string[];
+  let siteIr = safeParseSiteIrV1(raw.siteIr) ?? buildSiteIrV1();
+  if (
+    (!siteIr.sectionIdsOrdered || siteIr.sectionIdsOrdered.length === 0) &&
+    compOrdered.length > 0 &&
+    compOrdered.length === sections.length
+  ) {
+    siteIr = siteIrV1Schema.parse({ ...siteIr, sectionIdsOrdered: [...compOrdered] });
+  }
+
   return {
     format,
     meta,
@@ -144,6 +155,7 @@ export function upgradeLooseProjectSnapshotV1(
     assets,
     editor,
     generation,
+    siteIr,
   };
 }
 

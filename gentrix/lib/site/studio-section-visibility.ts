@@ -49,6 +49,11 @@ export type ApplyStudioPathsOptions = {
   includeBooking?: boolean;
   /** `false` = webshop-placeholder wordt `#` (geen `/winkel/`-link). */
   includeShop?: boolean;
+  /**
+   * `false` = portaal-placeholder wordt `#` (statische export / eigen host zonder Studio-portaal-route).
+   * Standaard `true`: live preview en `/site` op hetzelfde domein als de app.
+   */
+  resolvePortalPath?: boolean;
 };
 
 /** Portaal-, boekings- en webshop-placeholders (live preview + gepubliceerde site op hetzelfde domein). */
@@ -57,7 +62,10 @@ export function applyStudioPublishedPathPlaceholders(
   subfolderSlug: string,
   opts?: ApplyStudioPathsOptions,
 ): string {
-  let h = applyStudioPortalPathPlaceholder(html, subfolderSlug);
+  let h =
+    opts?.resolvePortalPath === false
+      ? html.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
+      : applyStudioPortalPathPlaceholder(html, subfolderSlug);
   if (opts?.includeBooking === false) {
     h = h.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#");
   } else {

@@ -86,21 +86,44 @@ function buildClaudeMessages(
   return out;
 }
 
-function buildChatSystemPrompt(legacy: boolean): string {
+export type SiteChatStudioModuleFlags = {
+  appointmentsEnabled?: boolean;
+  webshopEnabled?: boolean;
+};
+
+function buildStudioModulePromptBlock(flags: SiteChatStudioModuleFlags | undefined): string {
+  if (
+    flags == null ||
+    (flags.appointmentsEnabled === undefined && flags.webshopEnabled === undefined)
+  ) {
+    return "";
+  }
+  const apptOn = flags.appointmentsEnabled !== false;
+  const shopOn = flags.webshopEnabled !== false;
+  return `=== STUDIO-MODULES (dit klantdossier) ===
+- **Online boeken/afspraken:** ${apptOn ? "module **aan** — booking-sectie en boek-placeholders mogen in de site blijven zoals ze zijn, tenzij de gebruiker wijzigingen vraagt." : "module **uit** op de live site — voeg **geen** nieuwe plan-/boek-CTA’s, afspraak-blokken of studio-boekingspad-placeholders toe (ook niet in nav/footer). Herschrijf of verwijder de bestaande canonieke booking-sectie (buitenste id booking) niet zonder **expliciet** verzoek."}
+- **Webshop / productmarketing:** ${shopOn ? "module **aan**." : "module **uit** op de live site — voeg **geen** nieuwe product-/winkel-CTA’s of studio-webshoppad-placeholders toe. Herschrijf of verwijder de canonieke shop-sectie (buitenste id shop) niet zonder **expliciet** verzoek."}`;
+}
+
+function buildChatSystemPrompt(legacy: boolean, studioModuleFlags?: SiteChatStudioModuleFlags): string {
   const configRule = legacy
     ? `Als je \`sections\` wijzigt: geen \`config\` in je antwoord (legacy-site).`
     : `Als de gebruiker kleuren/thema wil: je mag \`config\` (master: style, theme, font) meesturen. Anders weglaten.`;
 
+  const moduleBlock = buildStudioModulePromptBlock(studioModuleFlags);
+  const moduleSection = moduleBlock ? `\n\n${moduleBlock}\n` : "";
+
   return `Je bent een vriendelijke Nederlandstalige assistent die een bestaande Tailwind-landingspagina helpt aanpassen.
 
 ${getAlpineInteractivityPromptBlock()}
-
+${moduleSection}
 GEDRAG:
 - Beantwoord eerst helder in \`reply\` (markdown toegestaan in plain text).
 - Wijzig de site **alleen** als de gebruiker dat expliciet vraagt of het duidelijk nodig is voor het verzoek. Als een puur inhoudelijke vraag zonder wijziging: laat \`sectionUpdates\` en \`config\` weg.
 - Als je HTML wijzigt: gebruik \`sectionUpdates\`: alleen objecten voor secties die **echt** veranderen, elk met \`index\` (zoals in de JSON) en volledige nieuwe \`html\` voor die sectie. Voorbeeld: alleen navbar → één update; alleen footer → één update. **Nooit** ongewijzigde secties opnieuw uitschrijven.
 - HTML-regels: geen \`<script>\`/\`<style>\` in fragmenten, geen klassieke inline handlers, geen javascript:-links; Alpine (\`x-*\`, \`@\`, \`:\`) volgens het blok hierboven. Alleen https voor afbeeldingen.
 - Gebruik geüploade logo-URL's waar de gebruiker om vraagt.
+- **Standaard uit tot toggle:** vraagt de gebruiker om iets dat **eerst onzichtbaar of inactief** moet blijven tot een knop/schakelaar: gebruik Alpine met startwaarde **false** (bv. \`x-data="{ open: false }"\`), inhoud met \`x-show="open"\` of \`hidden\` + \`:class\`, en eventueel vaste ruimte met \`min-h-*\` + \`invisible\` / \`opacity-0 pointer-events-none\` zolang \`open\` false is. Geen automatisch startende video, modal of agressieve animatie zonder expliciete gebruikersactie, tenzij de gebruiker dat zo wil.
 
 OUTPUT: uitsluitend **één** JSON-object, geen markdown-fences eromheen:
 {
@@ -115,6 +138,7 @@ export async function siteChatWithClaude(
   sections: TailwindSection[],
   config: TailwindPageConfig | null | undefined,
   attachmentUrls: string[],
+  studioModuleFlags?: SiteChatStudioModuleFlags,
 ): Promise<SiteChatResult> {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) {
@@ -130,7 +154,7 @@ export async function siteChatWithClaude(
   const legacy = config != null && isLegacyTailwindPageConfig(config);
   const currentPayload = buildSitePayload(sections, config);
   const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
-  const system = [knowledge, buildChatSystemPrompt(legacy)].filter(Boolean).join("\n\n---\n\n");
+  const system = [knowledge, buildChatSystemPrompt(legacy, studioModuleFlags)].filter(Boolean).join("\n\n---\n\n");
   const claudeMessages = buildClaudeMessages(messages, currentPayload, attachmentUrls, userPrefixBlocks);
 
   const message = await client.messages.create({

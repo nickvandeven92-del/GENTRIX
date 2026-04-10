@@ -15,11 +15,17 @@ import {
   Save,
   Undo2,
 } from "lucide-react";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import {
+  slugifyToSectionId,
+  type TailwindPageConfig,
+  type TailwindSection,
+} from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { SiteAiChatPanel } from "@/components/admin/site-ai-chat-panel";
 import { SNAPSHOT_PAGE_TYPES, type SnapshotPageType } from "@/lib/site/snapshot-page-type";
 import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
+import type { ComposePublicMarketingPlan } from "@/lib/site/public-site-composition";
+import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
 import {
   createInitialSiteHistory,
   getCurrentSnapshot,
@@ -42,6 +48,11 @@ type SiteHtmlEditorProps = {
   initialCustomJs?: string;
   /** Bewaard bij opslaan (premium logo-pipeline). */
   initialLogoSet?: GeneratedLogoSet;
+  /** Klantmodules: preview en site-chat houden rekening met live `/site`-gedrag. */
+  appointmentsEnabled?: boolean;
+  webshopEnabled?: boolean;
+  /** Uit concept-snapshot: compose-preview + optioneel opnieuw meesturen bij POST. */
+  initialSiteIr?: SiteIrV1 | null;
 };
 
 export function SiteHtmlEditor({
@@ -55,6 +66,9 @@ export function SiteHtmlEditor({
   initialCustomCss = "",
   initialCustomJs = "",
   initialLogoSet,
+  appointmentsEnabled = true,
+  webshopEnabled = true,
+  initialSiteIr = null,
 }: SiteHtmlEditorProps) {
   const [hist, dispatch] = useReducer(
     siteHistoryReducer,
@@ -124,6 +138,14 @@ export function SiteHtmlEditor({
     [sections, config, customCss, customJs, initialLogoSet, pageType],
   );
 
+  const composePlan: ComposePublicMarketingPlan | null = useMemo(() => {
+    const sectionIdsOrdered = sections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
+    if (initialSiteIr != null) {
+      return { siteIr: { ...initialSiteIr, sectionIdsOrdered } };
+    }
+    return { sectionIdsOrdered };
+  }, [sections, initialSiteIr]);
+
   const canUndo = hist.index > 0;
   const canRedo = hist.index < hist.entries.length - 1;
 
@@ -192,6 +214,18 @@ export function SiteHtmlEditor({
           site_data_json: payload,
           status,
           snapshot_source: snapshotSourceRef.current,
+          ...(initialSiteIr?.detectedIndustryId != null || initialSiteIr?.blueprintId != null
+            ? {
+                site_ir_hints: {
+                  ...(initialSiteIr.detectedIndustryId != null && initialSiteIr.detectedIndustryId !== ""
+                    ? { detected_industry_id: initialSiteIr.detectedIndustryId }
+                    : {}),
+                  ...(initialSiteIr.blueprintId != null && initialSiteIr.blueprintId !== ""
+                    ? { blueprint_id: initialSiteIr.blueprintId }
+                    : {}),
+                },
+              }
+            : {}),
         }),
       });
       const data = (await res.json()) as { ok: boolean; error?: string };
@@ -430,6 +464,8 @@ export function SiteHtmlEditor({
             subfolderSlug={subfolderSlug}
             sections={sections}
             config={config}
+            appointmentsEnabled={appointmentsEnabled}
+            webshopEnabled={webshopEnabled}
             disabled={sections.length === 0}
             onApplyAi={({ sections: nextSections, config: nextConfig, label }) => {
               snapshotSourceRef.current = "ai_command";
@@ -601,6 +637,9 @@ export function SiteHtmlEditor({
             userJs={customJs}
             logoSet={initialLogoSet}
             publishedSlug={subfolderSlug}
+            appointmentsEnabled={appointmentsEnabled}
+            webshopEnabled={webshopEnabled}
+            composePlan={composePlan}
             title={`Preview ${subfolderSlug}`}
             className="min-h-0 flex-1 rounded-none border-0 bg-white"
             frameClassName="min-h-[min(85vh,920px)] w-full flex-1 sm:min-h-[calc(100vh-11rem)]"

@@ -14,8 +14,11 @@ import {
   STUDIO_SCROLL_REVEAL_SCRIPT,
 } from "@/lib/site/tailwind-page-html";
 import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
+import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
 import {
+  applyStudioPublishedPathPlaceholders,
   filterSectionsForPublicSite,
+  stripLeakedStudioPlaceholderTokens,
   STUDIO_BOOKING_PATH_PLACEHOLDER,
   STUDIO_PORTAL_PATH_PLACEHOLDER,
   STUDIO_SHOP_PATH_PLACEHOLDER,
@@ -33,6 +36,23 @@ function escapeHtmlText(s: string): string {
 
 export type StandaloneExportStyleMode = "tailwind_cdn" | "local_css";
 
+export type StandaloneExportUserAssets = {
+  css?: string;
+  js?: string;
+  logoSet?: GeneratedLogoSet | null;
+  /**
+   * `true`: alle publieke marketingsecties (incl. booking/shop-blokken) blijven in de DOM voor
+   * `@source`-Tailwind-build; placeholders → `#`. Gebruik alleen voor CSS-compilatie, niet voor index.html.
+   */
+  forTailwindClassScan?: boolean;
+  /** Live parity: CRM-toggles + slug; portaal-placeholder blijft `#` (eigen hosting). */
+  exportPublish?: {
+    subfolderSlug: string;
+    appointmentsEnabled: boolean;
+    webshopEnabled: boolean;
+  };
+};
+
 /**
  * Volledige HTML voor ZIP-export. `local_css`: link naar styles.css (FTP-bundle);
  * `tailwind_cdn`: Tailwind Play CDN (alleen geschikt met live internet).
@@ -44,15 +64,36 @@ export function buildStandaloneExportHtmlDocument(
   pageConfig: TailwindPageConfig | null | undefined,
   docTitle: string,
   styleMode: StandaloneExportStyleMode = "tailwind_cdn",
-  userAssets?: { css?: string; js?: string; logoSet?: GeneratedLogoSet | null },
+  userAssets?: StandaloneExportUserAssets,
 ): string {
-  const filtered = filterSectionsForPublicSite(sections);
-  let bodyInner = buildTailwindSectionsBodyInnerHtml(filtered, pageConfig, {
+  const publicOnly = filterSectionsForPublicSite(sections);
+  const forScan = userAssets?.forTailwindClassScan === true;
+  const publish = userAssets?.exportPublish;
+  const sectionSource =
+    !forScan && publish
+      ? composePublicMarketingTailwindSections(publicOnly, {
+          appointmentsEnabled: publish.appointmentsEnabled,
+          webshopEnabled: publish.webshopEnabled,
+        })
+      : publicOnly;
+
+  let bodyInner = buildTailwindSectionsBodyInnerHtml(sectionSource, pageConfig, {
     logoSet: userAssets?.logoSet,
   });
-  bodyInner = bodyInner.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#");
-  bodyInner = bodyInner.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#");
-  bodyInner = bodyInner.split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
+
+  if (!forScan && publish && publish.subfolderSlug.trim()) {
+    const slug = publish.subfolderSlug.trim();
+    bodyInner = applyStudioPublishedPathPlaceholders(bodyInner, slug, {
+      includeBooking: publish.appointmentsEnabled,
+      includeShop: publish.webshopEnabled,
+      resolvePortalPath: false,
+    });
+    bodyInner = stripLeakedStudioPlaceholderTokens(bodyInner);
+  } else {
+    bodyInner = bodyInner.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#");
+    bodyInner = bodyInner.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#");
+    bodyInner = bodyInner.split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
+  }
 
   const { fontLink, fontStack, rootCss, radiusClass } = buildRootCssVarsForTailwindPage(pageConfig ?? null);
   const themeMeta =

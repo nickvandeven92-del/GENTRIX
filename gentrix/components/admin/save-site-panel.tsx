@@ -7,12 +7,17 @@ import {
   generatedTailwindPageToSectionsPayload,
   type GeneratedTailwindPage,
 } from "@/lib/ai/tailwind-sections-schema";
-import { isValidSubfolderSlug, slugify } from "@/lib/slug";
+import { isValidSubfolderSlug, slugify, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
 type SaveSitePanelProps = {
   /** Gegenereerde Tailwind-pagina (wordt naar `tailwind_sections` genormaliseerd). */
   page: GeneratedTailwindPage;
+  /** Optioneel: voor `siteIr` in canonieke project-snapshot (branche/blueprint). */
+  siteIrHints?: {
+    detectedIndustryId?: string;
+    blueprintId?: string;
+  };
   defaultName: string;
   defaultDescription: string;
   /** Uit URL bij bewerken; anders leeg tot de gebruiker een slug invult of uit de klantnaam volgt. */
@@ -28,6 +33,7 @@ type SaveSitePanelProps = {
 
 export function SaveSitePanel({
   page,
+  siteIrHints,
   defaultName,
   defaultDescription,
   defaultSubfolderSlug,
@@ -52,6 +58,8 @@ export function SaveSitePanel({
   /** Publieke concept-preview (token); alleen bij concept-status. */
   const [savedPreviewUrl, setSavedPreviewUrl] = useState<string | null>(null);
   const [publishNote, setPublishNote] = useState<string | null>(null);
+  /** Altijd tonen na geslaagde POST (ook zonder preview-token of live-link). */
+  const [lastSaveMessage, setLastSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setName(defaultName);
@@ -72,6 +80,7 @@ export function SaveSitePanel({
     setSavedUrl(null);
     setSavedPreviewUrl(null);
     setPublishNote(null);
+    setLastSaveMessage(null);
     if (!slugOk) {
       setError(
         "Vul een geldige URL-slug in (2–64 tekens: kleine letters, cijfers, koppeltekens), of een klantnaam die daarnaar leidt.",
@@ -80,7 +89,11 @@ export function SaveSitePanel({
     }
     setLoading(true);
     try {
-      const effectiveStatus = generatorMode ? "draft" : status;
+      const effectiveStatus = generatorMode
+        ? resolvedSlug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG
+          ? "active"
+          : "draft"
+        : status;
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,6 +105,16 @@ export function SaveSitePanel({
           status: effectiveStatus,
           generation_package: STUDIO_GENERATION_PACKAGE,
           snapshot_source: "generator",
+          ...(siteIrHints?.detectedIndustryId || siteIrHints?.blueprintId
+            ? {
+                site_ir_hints: {
+                  ...(siteIrHints.detectedIndustryId
+                    ? { detected_industry_id: siteIrHints.detectedIndustryId }
+                    : {}),
+                  ...(siteIrHints.blueprintId ? { blueprint_id: siteIrHints.blueprintId } : {}),
+                },
+              }
+            : {}),
         }),
       });
       const payload = (await res.json()) as
@@ -110,6 +133,7 @@ export function SaveSitePanel({
         return;
       }
 
+      setLastSaveMessage("Opgeslagen / bijgewerkt.");
       if (typeof window !== "undefined") {
         if (payload.data.preview_url) {
           setSavedPreviewUrl(payload.data.preview_url);
@@ -166,10 +190,19 @@ export function SaveSitePanel({
         <div>
           <label className="text-xs font-medium text-slate-600">Klantstatus (commercieel)</label>
           {generatorMode ? (
-            <div className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-              <strong>Concept</strong> — opslaan maakt een publieke preview-URL (met token) voor jou en de klant. De
-              definitieve URL op <code className="font-mono">/site/…</code> wordt pas vrij na betaling (status Actief).
-            </div>
+            resolvedSlug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG ? (
+              <div className="mt-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
+                <strong>Homepage</strong> — slug <code className="font-mono">{STUDIO_HOMEPAGE_SUBFOLDER_SLUG}</code>{" "}
+                wordt opgeslagen als <strong>Actief</strong> en direct live gezet op{" "}
+                <code className="font-mono">/site/{STUDIO_HOMEPAGE_SUBFOLDER_SLUG}</code> (eigen site; geen
+                concept-token of betalingscheck).
+              </div>
+            ) : (
+              <div className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                <strong>Concept</strong> — opslaan maakt een publieke preview-URL (met token) voor jou en de klant. De
+                definitieve URL op <code className="font-mono">/site/…</code> wordt pas vrij na betaling (status Actief).
+              </div>
+            )
           ) : (
             <>
               <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active")}>
@@ -234,12 +267,14 @@ export function SaveSitePanel({
         </div>
       )}
 
-      {(savedUrl || savedPreviewUrl) && (
+      {lastSaveMessage && (
         <div className="mt-3 space-y-2">
           <p className="flex items-start gap-2 text-sm text-emerald-700">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>
-              Concept opgeslagen.{" "}
+            <span>{lastSaveMessage}</span>
+          </p>
+          {(savedPreviewUrl || savedUrl) && (
+            <p className="text-sm text-emerald-800">
               {savedPreviewUrl ? (
                 <>
                   <strong>Deel met de klant</strong> (concept, niet geïndexeerd):{" "}
@@ -249,14 +284,26 @@ export function SaveSitePanel({
                 </>
               ) : savedUrl ? (
                 <>
-                  Publieke live-URL (na <strong>Publiceren naar live</strong>):{" "}
-                  <a href={savedUrl} className="font-medium underline">
-                    {savedUrl}
-                  </a>
+                  {resolvedSlug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG ? (
+                    <>
+                      Publieke homepage:{" "}
+                      <a href={savedUrl} className="font-medium underline">
+                        {savedUrl}
+                      </a>{" "}
+                      (inhoud is bij opslaan al live gezet).
+                    </>
+                  ) : (
+                    <>
+                      Publieke live-URL (na <strong>Publiceren naar live</strong>):{" "}
+                      <a href={savedUrl} className="font-medium underline">
+                        {savedUrl}
+                      </a>
+                    </>
+                  )}
                 </>
               ) : null}
-            </span>
-          </p>
+            </p>
+          )}
           <button
             type="button"
             disabled={publishing || loading}

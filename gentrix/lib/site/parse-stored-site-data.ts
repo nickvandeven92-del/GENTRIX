@@ -14,6 +14,7 @@ import {
 import { generatedLogoSetSchema, type GeneratedLogoSet } from "@/types/logo";
 import { snapshotPageTypeSchema } from "@/lib/site/snapshot-page-type";
 import { SNAPSHOT_TAILWIND_COMPILED_CSS_MAX } from "@/lib/site/project-snapshot-constants";
+import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
 import { z } from "zod";
 
 export type ParsedStoredSite =
@@ -29,6 +30,9 @@ export type ParsedStoredSite =
       logoSet?: GeneratedLogoSet;
       /** Server-build Tailwind CSS (minified); live zonder Play CDN. */
       tailwindCompiledCss?: string;
+      /** Afkomstig uit `project_snapshot_v1.composition` — alleen voor compose-volgorde. */
+      sectionIdsOrdered?: string[];
+      siteIr?: SiteIrV1;
     };
 
 /** Secties + optionele config zonder `format: "tailwind_sections"` (sommige handmatige exports). */
@@ -46,6 +50,13 @@ function tailwindParsedFromSnapshotFlow(input: unknown): ParsedStoredSite | null
   const latest = parseAnyStoredProjectDataToLatestSnapshot(input, {});
   if (!latest.ok) return null;
   const tw = projectSnapshotToTailwindSectionsPayload(latest.snapshot);
+  const snap = latest.snapshot;
+  const orderFromIr =
+    snap.siteIr?.sectionIdsOrdered != null &&
+    snap.siteIr.sectionIdsOrdered.length === snap.sections.length
+      ? [...snap.siteIr.sectionIdsOrdered]
+      : [...snap.composition.sectionIdsOrdered];
+
   return {
     kind: "tailwind",
     sections: tw.sections,
@@ -57,6 +68,8 @@ function tailwindParsedFromSnapshotFlow(input: unknown): ParsedStoredSite | null
     ...(tw.tailwindCompiledCss != null && tw.tailwindCompiledCss.trim() !== ""
       ? { tailwindCompiledCss: tw.tailwindCompiledCss }
       : {}),
+    sectionIdsOrdered: orderFromIr,
+    ...(snap.siteIr != null ? { siteIr: snap.siteIr } : {}),
   };
 }
 

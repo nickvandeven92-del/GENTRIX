@@ -1,18 +1,18 @@
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
-import { STUDIO_BOOKING_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
+import { filterTailwindSectionsForInactivePublicModules } from "@/lib/site/filter-tailwind-public-modules";
+import { PUBLIC_SITE_MODULE_APPOINTMENTS } from "@/lib/site/public-site-modules-registry";
 
 /**
  * Publieke site: als afspraken-module uit staat, geen booking-sectie en geen werkende boek-placeholders.
+ * (Wrapper om het centrale module-register — bestaande call-sites blijven werken.)
  */
 export function filterTailwindSectionsForAppointments(
   sections: TailwindSection[],
   appointmentsEnabled: boolean,
 ): TailwindSection[] {
   if (appointmentsEnabled) return sections;
-  return sections
-    .filter((s) => s.id !== "booking")
-    .map((s) => ({
-      ...s,
-      html: s.html.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#"),
-    }));
+  return filterTailwindSectionsForInactivePublicModules(
+    sections,
+    new Set([PUBLIC_SITE_MODULE_APPOINTMENTS]),
+  );
 }

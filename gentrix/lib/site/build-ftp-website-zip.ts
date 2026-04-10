@@ -17,18 +17,43 @@ export async function buildFtpWebsiteZipBuffer(options: {
   customCss?: string;
   customJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  subfolderSlug: string;
+  appointmentsEnabled: boolean;
+  webshopEnabled: boolean;
 }): Promise<Buffer> {
-  const { projectRoot, sections, config, docTitle, customCss, customJs, logoSet } = options;
+  const {
+    projectRoot,
+    sections,
+    config,
+    docTitle,
+    customCss,
+    customJs,
+    logoSet,
+    subfolderSlug,
+    appointmentsEnabled,
+    webshopEnabled,
+  } = options;
+
+  const scanHtml = buildStandaloneExportHtmlDocument(sections, config, docTitle, "local_css", {
+    css: customCss,
+    js: customJs,
+    logoSet,
+    forTailwindClassScan: true,
+  });
+  const stylesCss = await buildTailwindCompiledCssFromIndexHtml(projectRoot, scanHtml);
 
   let html = buildStandaloneExportHtmlDocument(sections, config, docTitle, "local_css", {
     css: customCss,
     js: customJs,
     logoSet,
+    exportPublish: {
+      subfolderSlug,
+      appointmentsEnabled,
+      webshopEnabled,
+    },
   });
   const bundled = await bundleRemoteImagesForExport(html);
   html = bundled.html;
-
-  const stylesCss = await buildTailwindCompiledCssFromIndexHtml(projectRoot, html);
 
   const zip = new JSZip();
   zip.file("index.html", html);

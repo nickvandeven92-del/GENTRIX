@@ -27,6 +27,9 @@ export function isValidSubfolderSlug(s: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) && s.length >= 2 && s.length <= 64;
 }
 
+/** Site-studio homepage op `/site/home`: altijd actief + live snapshot (geen concept-/betalingsmuur). */
+export const STUDIO_HOMEPAGE_SUBFOLDER_SLUG = "home";
+
 /**
  * Leesbare titel voor UI (tab, editor-kop) i.p.v. kale slug.
  * `staal-kunstenaar` → "Staal Kunstenaar"; `staalkunstenaar` → "Staalkunstenaar".

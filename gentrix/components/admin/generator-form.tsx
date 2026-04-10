@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ChevronRight, Code2, ImagePlus, Loader2, Monitor, Send, X } from "lucide-react";
 import { StudioThemeStylesHint } from "@/components/admin/studio-theme-styles-hint";
 import { DutchSpellcheckPanel } from "@/components/admin/dutch-spellcheck-panel";
@@ -18,6 +18,7 @@ import {
   tryExtractStreamingTailwindConfig,
 } from "@/lib/ai/stream-json-section-extractor";
 import { publishedPayloadFromParsed } from "@/lib/site/project-published-payload";
+import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
 import type { GenerateSiteStreamNdjsonEvent } from "@/lib/ai/generate-site-with-claude";
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
@@ -66,6 +67,51 @@ export function GeneratorForm({
   const streamJsonBufferRef = useRef("");
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
+
+  const detectedIndustryId = pipelineFeedback?.interpreted?.detectedIndustryId;
+
+  const streamingLivePreviewPayload = useMemo(() => {
+    if (streamingSections.length === 0) return null;
+    const sectionIdsOrdered = streamingSections.map((s, i) =>
+      s.id ?? slugifyToSectionId(s.sectionName, i),
+    );
+    return publishedPayloadFromParsed(
+      {
+        kind: "tailwind",
+        sections: streamingSections,
+        ...(streamingConfig ? { config: streamingConfig } : {}),
+        sectionIdsOrdered,
+        siteIr: buildSiteIrV1({
+          detectedIndustryId: detectedIndustryId ?? undefined,
+          sectionIdsOrdered,
+        }),
+      },
+      businessName.trim() || "Website",
+      STUDIO_GENERATION_PACKAGE,
+    );
+  }, [streamingSections, streamingConfig, businessName, detectedIndustryId]);
+
+  const completedGeneratorPreviewPayload = useMemo(() => {
+    if (!generatedTailwind) return null;
+    const sectionIdsOrdered = generatedTailwind.sections.map((s, i) =>
+      s.id ?? slugifyToSectionId(s.sectionName, i),
+    );
+    return publishedPayloadFromParsed(
+      {
+        kind: "tailwind",
+        sections: generatedTailwind.sections,
+        config: generatedTailwind.config,
+        ...(generatedTailwind.logoSet != null ? { logoSet: generatedTailwind.logoSet } : {}),
+        sectionIdsOrdered,
+        siteIr: buildSiteIrV1({
+          detectedIndustryId: detectedIndustryId ?? undefined,
+          sectionIdsOrdered,
+        }),
+      },
+      businessName.trim() || "Website",
+      STUDIO_GENERATION_PACKAGE,
+    );
+  }, [generatedTailwind, businessName, detectedIndustryId]);
 
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
@@ -550,17 +596,7 @@ export function GeneratorForm({
           </p>
           <div className="sales-os-glass-panel overflow-hidden rounded-xl border border-indigo-200 bg-white shadow-sm ring-1 ring-indigo-500/10">
             <PublishedSiteView
-              payload={
-                publishedPayloadFromParsed(
-                  {
-                    kind: "tailwind",
-                    sections: streamingSections,
-                    ...(streamingConfig ? { config: streamingConfig } : {}),
-                  },
-                  businessName.trim() || "Website",
-                  STUDIO_GENERATION_PACKAGE,
-                )!
-              }
+              payload={streamingLivePreviewPayload!}
               className="min-h-[min(70vh,800px)]"
               publishedSlug={slugFromUrl}
             />
@@ -623,18 +659,7 @@ export function GeneratorForm({
           </p>
           <div className="sales-os-glass-panel overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <PublishedSiteView
-              payload={
-                publishedPayloadFromParsed(
-                  {
-                    kind: "tailwind",
-                    sections: generatedTailwind.sections,
-                    config: generatedTailwind.config,
-                    ...(generatedTailwind.logoSet != null ? { logoSet: generatedTailwind.logoSet } : {}),
-                  },
-                  businessName.trim() || "Website",
-                  STUDIO_GENERATION_PACKAGE,
-                )!
-              }
+              payload={completedGeneratorPreviewPayload!}
               className="min-h-[min(85vh,900px)]"
               publishedSlug={slugFromUrl}
             />
@@ -647,6 +672,9 @@ export function GeneratorForm({
           />
           <SaveSitePanel
             page={generatedTailwind}
+            siteIrHints={
+              detectedIndustryId ? { detectedIndustryId } : undefined
+            }
             defaultName={businessName}
             defaultDescription={description}
             defaultSubfolderSlug={slugFromUrl}

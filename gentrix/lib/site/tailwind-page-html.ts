@@ -16,6 +16,10 @@ import {
   neutralizeStudioPathPlaceholdersWithoutSlug,
   stripLeakedStudioPlaceholderTokens,
 } from "@/lib/site/studio-section-visibility";
+import {
+  buildContactSubpageCaptureNavScript,
+  type ContactSubpageNavScriptInput,
+} from "@/lib/site/tailwind-contact-subpage";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
@@ -902,6 +906,16 @@ export type BuildTailwindIframeSrcDocOptions = {
    * Server-gecompileerde Tailwind (minified). Gezet → geen Play CDN / FOUC-wacht.
    */
   compiledTailwindCss?: string | null;
+  /**
+   * Optioneel: `/site/[slug]` ↔ `/site/[slug]/contact` zonder generator-output te wijzigen.
+   * Vereist `pageOrigin` (typisch `window.location.origin` in de client-build van `srcDoc`).
+   */
+  contactSubpageNav?: ContactSubpageNavScriptInput;
+  /**
+   * Studio iframe-preview: `width=device-width` in een smal paneel triggert mobiele Tailwind-breakpoints.
+   * Zet dit aan om de layout te laten aansluiten op het **browservenster** (desktop vs mobiel), niet op de iframewidth.
+   */
+  previewMatchParentWindowBreakpoints?: boolean;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -971,12 +985,24 @@ export function buildTailwindIframeSrcDoc(
 <script>setTimeout(function(){var e=document.documentElement;if(e.classList.contains("tw-loading")){e.classList.remove("tw-loading");e.classList.add("tw-ready")}},4500)</script>
 `;
 
+  const contactSubpageNav = options?.contactSubpageNav;
+  const contactSubpageScript =
+    contactSubpageNav?.pageOrigin?.trim().length &&
+    contactSubpageNav.slug?.trim().length &&
+    contactSubpageNav.landingSectionIds?.length
+      ? buildContactSubpageCaptureNavScript(contactSubpageNav)
+      : "";
+
+  const viewportContent = options?.previewMatchParentWindowBreakpoints
+    ? "width=1280, initial-scale=1"
+    : "width=device-width, initial-scale=1";
+
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
 ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="${fontLink}" rel="stylesheet"/>
@@ -993,6 +1019,7 @@ ${foucCssBlock}  </style>
 ${twLoadingScript}${body}
 ${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${scrollRevealScript}
+${contactSubpageScript}
 ${STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT}
 ${buildLucideRuntimeScriptBlock()}
 ${bridge}

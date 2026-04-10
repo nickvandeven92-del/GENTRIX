@@ -55,6 +55,9 @@ export async function GET(_request: Request, context: RouteContext) {
       customCss: parsed.customCss,
       customJs: parsed.customJs,
       logoSet: parsed.logoSet,
+      subfolderSlug: subfolder_slug,
+      appointmentsEnabled: row.appointments_enabled ?? false,
+      webshopEnabled: row.webshop_enabled ?? false,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Onbekende fout bij ZIP-export.";

@@ -16,6 +16,8 @@ const bodySchema = z.object({
   sections: tailwindSectionsArraySchema,
   config: tailwindPageConfigSchema.optional().nullable(),
   attachmentUrls: z.array(z.string().url()).max(12).optional(),
+  appointmentsEnabled: z.boolean().optional(),
+  webshopEnabled: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -45,6 +47,10 @@ export async function POST(request: Request) {
       parsed.data.sections,
       parsed.data.config ?? undefined,
       parsed.data.attachmentUrls ?? [],
+      {
+        appointmentsEnabled: parsed.data.appointmentsEnabled,
+        webshopEnabled: parsed.data.webshopEnabled,
+      },
     );
     if (!result.ok) {
       return NextResponse.json(

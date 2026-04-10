@@ -7,6 +7,7 @@ import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sect
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { parseStoredSiteData, type ParsedStoredSite } from "@/lib/site/parse-stored-site-data";
+import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
 
 /** Publieke weergave — zelfde union als `get-published-site` (render- en export-paden). */
 export type PublishedSitePayload =
@@ -26,6 +27,10 @@ export type PublishedSitePayload =
       customJs?: string;
       logoSet?: GeneratedLogoSet;
       tailwindCompiledCss?: string;
+      /** Snapshot-compositie: permutatie van sectie-`id`'s voor compose (geen ontwerp-lock). */
+      sectionIdsOrdered?: string[];
+      /** Site IR v1 wanneer bron `project_snapshot_v1` was. */
+      siteIr?: SiteIrV1;
     }
   | {
       kind: "react";
@@ -68,6 +73,10 @@ export function publishedPayloadFromParsed(
       ...(parsed.tailwindCompiledCss != null && parsed.tailwindCompiledCss.trim() !== ""
         ? { tailwindCompiledCss: parsed.tailwindCompiledCss }
         : {}),
+      ...(parsed.sectionIdsOrdered != null && parsed.sectionIdsOrdered.length > 0
+        ? { sectionIdsOrdered: [...parsed.sectionIdsOrdered] }
+        : {}),
+      ...(parsed.siteIr != null ? { siteIr: parsed.siteIr } : {}),
     };
   }
   if (parsed.kind === "react") {

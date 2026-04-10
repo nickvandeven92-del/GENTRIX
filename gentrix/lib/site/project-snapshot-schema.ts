@@ -27,6 +27,7 @@ import {
   tokenOverridesRecordSchema,
   type TokenOverrideKey,
 } from "@/lib/site/project-snapshot-tokens";
+import { buildSiteIrV1, siteIrV1Schema } from "@/lib/site/site-ir-schema";
 
 // Re-export voor consumers
 export { TOKEN_OVERRIDE_KEYS, tokenOverrideKeySchema, type TokenOverrideKey } from "@/lib/site/project-snapshot-tokens";
@@ -174,6 +175,8 @@ export const projectSnapshotSchema = z
     assets: projectAssetsSchema,
     editor: editorStateSchema,
     generation: generationContextSchema,
+    /** Site IR v1: blueprint + primaire pagina + module-slots + canonieke volgorde (gesynchroniseerd met `composition`). */
+    siteIr: siteIrV1Schema.optional(),
   })
   .strict();
 
@@ -186,6 +189,18 @@ export type ProjectAssets = z.infer<typeof projectAssetsSchema>;
 export type EditorState = z.infer<typeof editorStateSchema>;
 export type GenerationContext = z.infer<typeof generationContextSchema>;
 export type SnapshotSection = z.infer<typeof snapshotSectionSchema>;
+
+export type { SiteIrV1 } from "@/lib/site/site-ir-schema";
+
+export type ProjectSnapshotFromTailwindOptions = {
+  generationSource?: GenerationContext["source"];
+  documentTitle?: string;
+  createdByKind?: z.infer<typeof snapshotCreatedByKindSchema>;
+  siteIrHints?: {
+    blueprintId?: string | null;
+    detectedIndustryId?: string | null;
+  };
+};
 
 export type ProjectSnapshotParseResult =
   | { ok: true; data: ProjectSnapshot }
@@ -239,11 +254,7 @@ export function filterTokenOverrideRecord(
  */
 export function tailwindSectionsPayloadToProjectSnapshot(
   payload: TailwindSectionsPayload,
-  options?: {
-    generationSource?: GenerationContext["source"];
-    documentTitle?: string;
-    createdByKind?: z.infer<typeof snapshotCreatedByKindSchema>;
-  },
+  options?: ProjectSnapshotFromTailwindOptions,
 ): ProjectSnapshot {
   const now = new Date().toISOString();
   const sections: SnapshotSection[] = payload.sections.map((s, i) => {
@@ -296,6 +307,11 @@ export function tailwindSectionsPayloadToProjectSnapshot(
     generation: {
       source: options?.generationSource ?? "import",
     },
+    siteIr: buildSiteIrV1({
+      blueprintId: options?.siteIrHints?.blueprintId ?? undefined,
+      detectedIndustryId: options?.siteIrHints?.detectedIndustryId ?? undefined,
+      sectionIdsOrdered,
+    }),
   });
 }
 

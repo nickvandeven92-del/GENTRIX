@@ -7,6 +7,7 @@ import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema"
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { appendDefaultBookingSectionToSections } from "@/lib/site/append-booking-section-to-payload";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import { siteIrHintsFromTailwindParsed } from "@/lib/site/site-ir-hints-from-parsed";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type RouteContext = { params: Promise<{ subfolder_slug: string }> };
@@ -54,7 +55,7 @@ export async function POST(request: Request, context: RouteContext) {
     const { data: clientRow, error: fetchErr } = await supabase
       .from("clients")
       .select(
-        "id, name, description, subfolder_slug, status, site_data_json, draft_snapshot_id, client_number, generation_package",
+        "id, name, description, subfolder_slug, status, site_data_json, draft_snapshot_id, client_number, generation_package, appointments_enabled, webshop_enabled",
       )
       .eq("subfolder_slug", subfolder_slug)
       .maybeSingle();
@@ -128,6 +129,11 @@ export async function POST(request: Request, context: RouteContext) {
         snapshotSource: "editor",
         snapshotLabel: merged.replaced ? "Booking-sectie vervangen (standaard)" : "Booking-sectie toegevoegd (standaard)",
         snapshotNotes: "Zonder AI — vast sjabloon met __STUDIO_BOOKING_PATH__",
+        siteIrHints: siteIrHintsFromTailwindParsed(siteParsed),
+        moduleFlags: {
+          appointmentsEnabled: Boolean(clientRow.appointments_enabled),
+          webshopEnabled: Boolean(clientRow.webshop_enabled),
+        },
       },
     );
 

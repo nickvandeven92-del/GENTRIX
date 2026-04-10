@@ -7,6 +7,7 @@ import {
   projectSnapshotToTailwindSectionsPayload,
   type GenerationContext,
   type ProjectSnapshot,
+  type ProjectSnapshotFromTailwindOptions,
 } from "@/lib/site/project-snapshot-schema";
 
 export type NormalizeToProjectSnapshotResult =
@@ -18,7 +19,7 @@ export type NormalizeToProjectSnapshotResult =
  */
 export function normalizeUnknownToProjectSnapshot(
   input: unknown,
-  options?: { generationSource?: GenerationContext["source"]; documentTitle?: string },
+  options?: Pick<ProjectSnapshotFromTailwindOptions, "generationSource" | "documentTitle" | "siteIrHints">,
 ): NormalizeToProjectSnapshotResult {
   const r = parseAnyStoredProjectDataToLatestSnapshot(input, {
     generationSource: options?.generationSource,
@@ -35,7 +36,7 @@ export function projectSnapshotToJson(snapshot: ProjectSnapshot): unknown {
 
 export function projectSnapshotFromTailwindPayload(
   payload: TailwindSectionsPayload,
-  options?: { generationSource?: GenerationContext["source"]; documentTitle?: string },
+  options?: ProjectSnapshotFromTailwindOptions,
 ): ProjectSnapshot {
   const raw = tailwindSectionsPayloadToProjectSnapshot(payload, options);
   return projectSnapshotSchema.parse(raw);

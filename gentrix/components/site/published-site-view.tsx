@@ -1,9 +1,17 @@
 import type { PublishedSitePayload } from "@/lib/site/project-published-payload";
 import { ReactPublishedSiteView } from "@/components/site/react-published-site-view";
-import { filterTailwindSectionsForAppointments } from "@/lib/site/filter-tailwind-booking";
-import { filterTailwindSectionsForWebshop } from "@/lib/site/filter-tailwind-webshop";
+import {
+  composePublicMarketingTailwindSections,
+  type ComposePublicMarketingPlan,
+} from "@/lib/site/public-site-composition";
+import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { PublicPublishedTailwind } from "@/components/site/public-published-tailwind";
 import { SiteRenderer } from "@/components/site/site-renderer";
+import {
+  detectTailwindContactSubpagePlan,
+  landingSectionIdsForContactSubpage,
+  selectTailwindSectionsForContactSubpageView,
+} from "@/lib/site/tailwind-contact-subpage";
 import { cn } from "@/lib/utils";
 
 type PublishedSiteViewProps = {
@@ -13,6 +21,11 @@ type PublishedSiteViewProps = {
   visibility?: "public" | "portal";
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
+  /**
+   * Publieke Tailwind: `contact` = weergave voor `/site/[slug]/contact` (zelfde JSON, andere sectieselectie).
+   * Alleen actief met `SITE_CONTACT_SUBPAGE=1` en een gedetecteerde contact-sectie met formulier.
+   */
+  publicSiteTailwindPath?: "landing" | "contact";
   /**
    * Admin-routes (concept-preview): `nav_overlay` gebruikt `position:fixed` — zonder dit kleef je aan de hele viewport.
    */
@@ -27,6 +40,7 @@ export function PublishedSiteView({
   visibility = "public",
   appointmentsEnabled = true,
   webshopEnabled = true,
+  publicSiteTailwindPath = "landing",
   embedReactInChrome = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
@@ -48,13 +62,36 @@ export function PublishedSiteView({
   if (payload.kind === "tailwind") {
     const docTitle = payload.clientName?.trim() || "Website";
     const isFullPage = visibility !== "portal";
+    const composePlan: ComposePublicMarketingPlan | undefined =
+      visibility === "public"
+        ? {
+            sectionIdsOrdered: payload.sectionIdsOrdered,
+            siteIr: payload.siteIr,
+          }
+        : undefined;
+
     const sections =
       visibility === "public"
-        ? filterTailwindSectionsForWebshop(
-            filterTailwindSectionsForAppointments(payload.sections, appointmentsEnabled),
-            webshopEnabled,
+        ? composePublicMarketingTailwindSections(
+            filterSectionsForPublicSite(payload.sections),
+            {
+              appointmentsEnabled,
+              webshopEnabled,
+            },
+            composePlan,
           )
         : payload.sections;
+    const contactPlan = visibility === "public" ? detectTailwindContactSubpagePlan(sections) : null;
+    const twSections =
+      contactPlan != null
+        ? selectTailwindSectionsForContactSubpageView(
+            sections,
+            publicSiteTailwindPath === "contact" ? "contact" : "landing",
+            contactPlan,
+          )
+        : sections;
+    const iframeTitle =
+      publicSiteTailwindPath === "contact" && contactPlan != null ? `${docTitle} · Contact` : docTitle;
     return (
       <div
         className={cn(
@@ -63,7 +100,7 @@ export function PublishedSiteView({
         )}
       >
         <PublicPublishedTailwind
-          sections={sections}
+          sections={twSections}
           pageConfig={payload.config}
           className={cn("min-h-0 flex flex-1 flex-col", className)}
           visibility={visibility}
@@ -72,10 +109,20 @@ export function PublishedSiteView({
           userJs={payload.customJs}
           logoSet={payload.logoSet}
           compiledTailwindCss={payload.tailwindCompiledCss}
-          documentTitle={docTitle}
+          documentTitle={iframeTitle}
           embedded={visibility === "portal"}
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
+          contactSubpageNavBase={
+            contactPlan && publishedSlug?.trim() && visibility === "public"
+              ? {
+                  slug: publishedSlug.trim(),
+                  view: publicSiteTailwindPath === "contact" ? "contact" : "landing",
+                  contactSectionId: contactPlan.contactSectionId,
+                  landingSectionIds: landingSectionIdsForContactSubpage(sections, contactPlan),
+                }
+              : null
+          }
         />
       </div>
     );

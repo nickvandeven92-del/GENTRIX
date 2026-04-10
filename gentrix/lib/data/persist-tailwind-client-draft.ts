@@ -6,6 +6,9 @@ import {
   projectSnapshotFromTailwindPayload,
   projectSnapshotToJson,
 } from "@/lib/site/project-snapshot-io";
+import { getPersistSiteValidationErrors } from "@/lib/site/site-ir-compose-validation";
+import type { PublicSiteModuleFlags } from "@/lib/site/public-site-modules-registry";
+import type { ProjectSnapshotFromTailwindOptions } from "@/lib/site/project-snapshot-schema";
 import { mapSnapshotSourceToCreatedBy } from "@/lib/site/snapshot-created-by";
 import type { SiteSnapshotSource } from "@/lib/site/site-project-model";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
@@ -41,6 +44,10 @@ export async function persistTailwindDraftForExistingClient(
     snapshotLabel?: string | null;
     snapshotNotes?: string | null;
     documentTitle?: string;
+    /** Optioneel: blueprint / branche voor `siteIr` in project_snapshot_v1. */
+    siteIrHints?: ProjectSnapshotFromTailwindOptions["siteIrHints"];
+    /** Optioneel: voorkomt extra DB-read; gebruikt voor IR/CRM-compose-validatie. */
+    moduleFlags?: PublicSiteModuleFlags;
   },
 ): Promise<PersistTailwindDraftResult> {
   const generationSource =
@@ -55,7 +62,27 @@ export async function persistTailwindDraftForExistingClient(
   const snapshot = projectSnapshotFromTailwindPayload(withCss, {
     generationSource,
     documentTitle: docTitle,
+    ...(options.siteIrHints != null ? { siteIrHints: options.siteIrHints } : {}),
   });
+
+  let flags: PublicSiteModuleFlags =
+    options.moduleFlags ?? { appointmentsEnabled: false, webshopEnabled: false };
+  if (!options.moduleFlags) {
+    const { data: modRow } = await supabase
+      .from("clients")
+      .select("appointments_enabled, webshop_enabled")
+      .eq("subfolder_slug", existing.subfolder_slug)
+      .maybeSingle();
+    flags = {
+      appointmentsEnabled: Boolean((modRow as { appointments_enabled?: boolean } | null)?.appointments_enabled),
+      webshopEnabled: Boolean((modRow as { webshop_enabled?: boolean } | null)?.webshop_enabled),
+    };
+  }
+  const persistErrors = getPersistSiteValidationErrors(snapshot, flags);
+  if (persistErrors.length > 0) {
+    return { ok: false, error: persistErrors.join(" "), status: 422 };
+  }
+
   const jsonToStore = projectSnapshotToJson(snapshot) as Json;
 
   const { data: existingForNumber, error: exNumErr } = await supabase

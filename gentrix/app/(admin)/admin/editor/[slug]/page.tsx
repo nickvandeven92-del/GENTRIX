@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
 import { getParsedSiteDraftBySlug } from "@/lib/data/client-draft-site";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
+import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { formatSlugForDisplay } from "@/lib/slug";
 
 type EditorPageProps = {
@@ -24,6 +25,10 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
 
   const row = await getAdminClientBySlug(slug);
   if (!row) notFound();
+
+  const commercial = await getClientCommercialBySlug(slug);
+  const appointmentsEnabled = commercial?.appointments_enabled ?? false;
+  const webshopEnabled = commercial?.webshop_enabled ?? false;
 
   const parsed = await getParsedSiteDraftBySlug(slug);
 
@@ -71,6 +76,9 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
         initialCustomCss={parsed.customCss}
         initialCustomJs={parsed.customJs}
         initialLogoSet={parsed.logoSet}
+        appointmentsEnabled={appointmentsEnabled}
+        webshopEnabled={webshopEnabled}
+        initialSiteIr={parsed.siteIr ?? null}
       />
     );
   }

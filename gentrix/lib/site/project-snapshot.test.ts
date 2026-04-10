@@ -9,6 +9,7 @@ import {
   safeParseProjectSnapshot,
   tailwindSectionsPayloadToProjectSnapshot,
 } from "@/lib/site/project-snapshot-schema";
+import { SITE_BLUEPRINT_STUDIO_MARKETING_SINGLE_PAGE } from "@/lib/site/site-blueprint-registry";
 
 const now = "2026-04-04T12:00:00.000Z";
 
@@ -80,6 +81,7 @@ describe("project_snapshot_v1", () => {
     if (r.ok) {
       expect(r.snapshot.meta.createdByKind).toBe("editor");
       expect(r.snapshot.meta.createdAt).toBe(now);
+      expect(r.snapshot.siteIr?.schemaVersion).toBe(1);
     }
   });
 
@@ -90,6 +92,9 @@ describe("project_snapshot_v1", () => {
     };
     const r = parseAnyStoredProjectDataToLatestSnapshot(tw, { nowIso: now });
     expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.snapshot.siteIr?.blueprintId).toBe(SITE_BLUEPRINT_STUDIO_MARKETING_SINGLE_PAGE);
+    }
   });
 
   it("canonical: twee keer hetzelfde JSON", () => {

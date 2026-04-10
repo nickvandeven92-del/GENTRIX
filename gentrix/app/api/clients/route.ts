@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
-import { isValidSubfolderSlug } from "@/lib/slug";
+import { isValidSubfolderSlug, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
@@ -13,8 +13,12 @@ import type { Json } from "@/lib/types/database";
 import { mapSnapshotSourceToCreatedBy } from "@/lib/site/snapshot-created-by";
 import type { SiteSnapshotSource } from "@/lib/site/site-project-model";
 import { ensureClientPreviewSecret } from "@/lib/data/ensure-client-preview-secret";
+import { tryMarkLatestGenerationRunOutcome } from "@/lib/data/log-site-generation-run";
 import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
+import { projectSnapshotFromTailwindPayload, projectSnapshotToJson } from "@/lib/site/project-snapshot-io";
+import type { ProjectSnapshot } from "@/lib/site/project-snapshot-schema";
+import { getPersistSiteValidationErrors } from "@/lib/site/site-ir-compose-validation";
 
 /** Tailwind CLI-build bij opslaan kan enkele seconden duren (Vercel/serverless). */
 export const maxDuration = 60;
@@ -29,6 +33,12 @@ const bodySchema = z.object({
   /** Fase 4: optionele metadata op de snapshot-rij. */
   snapshot_label: z.string().max(200).optional().nullable(),
   snapshot_notes: z.string().max(4000).optional().nullable(),
+  site_ir_hints: z
+    .object({
+      detected_industry_id: z.string().max(64).optional(),
+      blueprint_id: z.string().max(64).optional(),
+    })
+    .optional(),
 });
 
 export async function POST(request: Request) {
@@ -76,6 +86,7 @@ export async function POST(request: Request) {
   }
 
   let jsonToStore: Json;
+  let persistedTailwindSnapshot: ProjectSnapshot | null = null;
   if (siteParsed.kind === "react") {
     jsonToStore = siteParsed.doc as unknown as Json;
   } else if (siteParsed.kind === "tailwind") {
@@ -103,13 +114,46 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    jsonToStore = twStored.data as unknown as Json;
+    const generationSource =
+      parsed.data.snapshot_source === "generator"
+        ? "generator"
+        : parsed.data.snapshot_source === "ai_command"
+          ? "ai_command"
+          : "editor";
+    const snapshot = projectSnapshotFromTailwindPayload(twStored.data, {
+      generationSource,
+      documentTitle: docTitle,
+      siteIrHints: {
+        detectedIndustryId: parsed.data.site_ir_hints?.detected_industry_id ?? undefined,
+        blueprintId: parsed.data.site_ir_hints?.blueprint_id ?? undefined,
+      },
+    });
+    persistedTailwindSnapshot = snapshot;
+    jsonToStore = projectSnapshotToJson(snapshot) as Json;
   } else {
     jsonToStore = siteParsed.site as unknown as Json;
   }
 
   try {
     const supabase = createServiceRoleClient();
+
+    if (persistedTailwindSnapshot) {
+      const { data: modRow } = await supabase
+        .from("clients")
+        .select("appointments_enabled, webshop_enabled")
+        .eq("subfolder_slug", parsed.data.subfolder_slug)
+        .maybeSingle();
+      const flags = {
+        appointmentsEnabled: Boolean(
+          (modRow as { appointments_enabled?: boolean } | null)?.appointments_enabled,
+        ),
+        webshopEnabled: Boolean((modRow as { webshop_enabled?: boolean } | null)?.webshop_enabled),
+      };
+      const persistErrors = getPersistSiteValidationErrors(persistedTailwindSnapshot, flags);
+      if (persistErrors.length > 0) {
+        return NextResponse.json({ ok: false, error: persistErrors.join(" ") }, { status: 422 });
+      }
+    }
 
     const { data: existingForNumber, error: exNumErr } = await supabase
       .from("clients")
@@ -138,12 +182,17 @@ export async function POST(request: Request) {
       }
     }
 
+    const studioHomepageLive =
+      parsed.data.subfolder_slug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG &&
+      parsed.data.snapshot_source === "generator";
+    const resolvedClientStatus = studioHomepageLive ? "active" : (parsed.data.status ?? "draft");
+
     const row = {
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       subfolder_slug: parsed.data.subfolder_slug,
       site_data_json: jsonToStore,
-      status: parsed.data.status ?? "draft",
+      status: resolvedClientStatus,
       generation_package: STUDIO_GENERATION_PACKAGE,
       ...clientNumberPayload,
     };
@@ -229,6 +278,23 @@ export async function POST(request: Request) {
     const pointerUpdate = { draft_snapshot_id: snapRow.id };
 
     const { error: ptrErr } = await supabase.from("clients").update(pointerUpdate).eq("id", data.id);
+
+    if (!ptrErr && studioHomepageLive) {
+      const { error: livePtrErr } = await supabase
+        .from("clients")
+        .update({
+          published_snapshot_id: snapRow.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", data.id);
+      if (livePtrErr) {
+        return NextResponse.json(
+          { ok: false, error: `Homepage live zetten mislukt: ${livePtrErr.message}` },
+          { status: 500 },
+        );
+      }
+      await tryMarkLatestGenerationRunOutcome(data.id, "published");
+    }
 
     if (ptrErr) {
       if (isPostgrestUnknownColumnError(ptrErr, "draft_snapshot_id")) {

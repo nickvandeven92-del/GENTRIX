@@ -20,6 +20,9 @@ type SiteAiChatPanelProps = {
   subfolderSlug: string;
   sections: TailwindSection[];
   config: TailwindPageConfig | null | undefined;
+  /** Zelfde als klantdossier; stuurt mee naar API voor prompt-context. */
+  appointmentsEnabled?: boolean;
+  webshopEnabled?: boolean;
   disabled?: boolean;
   className?: string;
   onApplyAi: (next: {
@@ -33,6 +36,8 @@ export function SiteAiChatPanel({
   subfolderSlug,
   sections,
   config,
+  appointmentsEnabled = true,
+  webshopEnabled = true,
   disabled,
   className,
   onApplyAi,
@@ -121,6 +126,8 @@ export function SiteAiChatPanel({
           sections,
           config: config ?? null,
           attachmentUrls,
+          appointmentsEnabled,
+          webshopEnabled,
         }),
       });
       const payload = (await res.json()) as

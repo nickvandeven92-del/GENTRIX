@@ -1,4 +1,12 @@
 import {
+  PUBLIC_SITE_MODULE_APPOINTMENTS,
+  PUBLIC_SITE_MODULE_WEBSHOP,
+  STUDIO_DATA_ATTR_FEATURE_ZONE,
+  STUDIO_DATA_ATTR_MODULE,
+  STUDIO_DATA_ATTR_MODULE_CTA,
+  STUDIO_DATA_ATTR_NAV_MODULE,
+} from "@/lib/site/public-site-modules-registry";
+import {
   STUDIO_BOOKING_PATH_PLACEHOLDER,
   STUDIO_PORTAL_PATH_PLACEHOLDER,
   STUDIO_SHOP_PATH_PLACEHOLDER,
@@ -63,7 +71,10 @@ const PORTAL_MARKUP_RULES = `=== ZAKELIJK PORTAAL — MARKERING (verplicht) ===
 - Knoppen en nav-links naar het echte portaal (achter login op deze app): gebruik **exact** \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — géén \`#\` of verzonnen URL voor het portaal-pad.
 - Blijft **statische** mock; geen \`<script>\`, geen echte login-flow in HTML.`;
 
-const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties), \`mailto:\`, \`tel:\`, \`https://…\`, of de **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\`, publiek boeken \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`, webshop \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` — **geen** \`href="#"\` of lege links voor die doelen.
+const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties), \`mailto:\`, \`tel:\`, \`https://…\`, of de **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\`, publiek boeken \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` **met** \`${STUDIO_DATA_ATTR_MODULE}="${PUBLIC_SITE_MODULE_APPOINTMENTS}"\` op dezelfde openende \`<a>\`-tag (legacy \`data-studio-module-link\` mag, maar verkies \`${STUDIO_DATA_ATTR_MODULE}\`), webshop \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` **met** \`${STUDIO_DATA_ATTR_MODULE}="${PUBLIC_SITE_MODULE_WEBSHOP}"\` — **geen** \`href="#"\` of lege links voor die doelen.
+- **Module-zones (optioneel, voor uitbreidbare layouts):** een blok dat **volledig** verdwijnt als een module later uit staat, wikkel je in bv. \`<div ${STUDIO_DATA_ATTR_FEATURE_ZONE}="${PUBLIC_SITE_MODULE_APPOINTMENTS}">…</div>\` (zelfde \`id\`-string als module-id). Alleen gebruiken als de inhoud echt module-specifiek is — geen algemene marketing erin.
+- **Nav alleen voor een module:** zet op de openende \`<a>\` bv. \`${STUDIO_DATA_ATTR_NAV_MODULE}="${PUBLIC_SITE_MODULE_WEBSHOP}"\` naast de placeholder-\`href\`.
+- **CTA-knop (niet altijd een link):** op \`<button>\` of \`<a>\` die vooral een module activeert, gebruik \`${STUDIO_DATA_ATTR_MODULE_CTA}="${PUBLIC_SITE_MODULE_APPOINTMENTS}"\` (of de juiste module-id).
 - **Verboden op publieke marketing:** login, registratie, wachtwoordvelden, “mijn account” als werkende app — wel mag je **naar** het portaal linken met het portaal-placeholder.
 - **Boeken-sectie:** lever **geen** sectie met \`id: "booking"\` in je JSON — die wordt **altijd** server-side toegevoegd. Dubbel = verboden.
 - **Shop-sectie:** lever **geen** sectie met \`id: "shop"\` in je JSON — de studio voegt **vier producttegels** + webshop-CTA server-side toe. Dubbel = verboden.
@@ -116,6 +127,10 @@ export type GetGenerationPackagePromptBlockOptions = {
 };
 
 /** Volledige §0B-blok voor Claude (voorheen samengevoegd uit alle pakketten). */
+const SITE_IR_VISUAL_SCOPE_NOTE = `=== Structuur vs. vormgeving (geen “visuele gevangenis”) ===
+- De studio kan een **interne** site-IR (blueprint, module-slots, toggles) gebruiken voor **data en validatie** — dat is **geen** voorschrift voor jouw visuele ontwerp: typografie, spacing, kleuren, fotostijl en layout blijven afgeleid uit de briefing.
+- **Markers en placeholders** (module-links, portaal-paden, zones) zijn technische verplichtingen waar de briefing om vraagt — geen kant-en-klare layout-template.`;
+
 export function getGenerationPackagePromptBlock(
   _id?: GenerationPackageId,
   options?: GetGenerationPackagePromptBlockOptions,
@@ -127,6 +142,8 @@ export function getGenerationPackagePromptBlock(
 
 ${PORTAL_AND_MOCKS}
 
-${briefing}`;
+${briefing}
+
+${SITE_IR_VISUAL_SCOPE_NOTE}`;
 }
 

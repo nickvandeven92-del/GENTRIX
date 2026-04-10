@@ -12,10 +12,12 @@ export type AdminClientFullRow = {
   site_data_json: unknown;
   updated_at: string;
   generation_package: GenerationPackageId | null;
+  appointments_enabled: boolean;
+  webshop_enabled: boolean;
 };
 
 const ADMIN_FULL_WITH_PKG =
-  "id, name, description, subfolder_slug, status, site_data_json, updated_at, generation_package";
+  "id, name, description, subfolder_slug, status, site_data_json, updated_at, generation_package, appointments_enabled, webshop_enabled";
 const ADMIN_FULL_WITHOUT_PKG =
   "id, name, description, subfolder_slug, status, site_data_json, updated_at";
 
@@ -35,8 +37,13 @@ export async function getAdminClientBySlug(slug: string): Promise<AdminClientFul
       .maybeSingle();
     if (second.error || !second.data) return null;
     return {
-      ...(second.data as unknown as Omit<AdminClientFullRow, "generation_package">),
+      ...(second.data as unknown as Omit<
+        AdminClientFullRow,
+        "generation_package" | "appointments_enabled" | "webshop_enabled"
+      >),
       generation_package: null,
+      appointments_enabled: false,
+      webshop_enabled: false,
     };
   }
 

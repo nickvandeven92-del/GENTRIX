@@ -4,8 +4,8 @@ import { PublicWebshopLanding } from "@/components/public/public-webshop-landing
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { resolveActiveClientWebshopBySlug } from "@/lib/portal/resolve-portal-client";
-import { filterTailwindSectionsForAppointments } from "@/lib/site/filter-tailwind-booking";
-import { filterTailwindSectionsForWebshop } from "@/lib/site/filter-tailwind-webshop";
+import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
+import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import {
   appendShopCatalogEmbedSection,
@@ -45,9 +45,15 @@ export default async function PublicWebshopPage({ params }: Props) {
   const bundle = await getPublishedSiteBySlug(slug);
 
   if (bundle?.payload.kind === "tailwind") {
-    const filtered = filterTailwindSectionsForWebshop(
-      filterTailwindSectionsForAppointments(bundle.payload.sections, bundle.appointmentsEnabled),
-      true,
+    const filtered = composePublicMarketingTailwindSections(
+      filterSectionsForPublicSite(bundle.payload.sections),
+      {
+        appointmentsEnabled: bundle.appointmentsEnabled,
+        webshopEnabled: true,
+      },
+      bundle.payload.kind === "tailwind"
+        ? { sectionIdsOrdered: bundle.payload.sectionIdsOrdered, siteIr: bundle.payload.siteIr }
+        : undefined,
     );
     const sections = appendShopCatalogEmbedSection(buildWebshopPageSections(filtered), embedTemplate, slug);
 

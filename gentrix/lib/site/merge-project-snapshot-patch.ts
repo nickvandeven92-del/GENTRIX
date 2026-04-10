@@ -6,6 +6,7 @@ import {
   type ProjectSnapshot,
   type SnapshotSection,
 } from "@/lib/site/project-snapshot-schema";
+import { siteIrV1Schema } from "@/lib/site/site-ir-schema";
 
 function mergeSectionRow(
   base: SnapshotSection,
@@ -145,6 +146,13 @@ export function mergeProjectSnapshotPatch(
   updatedFields.push("generation.source");
   if (options?.generationModel != null) {
     updatedFields.push("generation.lastModel");
+  }
+
+  if (next.siteIr != null) {
+    next.siteIr = siteIrV1Schema.parse({
+      ...next.siteIr,
+      sectionIdsOrdered: [...next.composition.sectionIdsOrdered],
+    });
   }
 
   const validated = projectSnapshotSchema.safeParse(next);

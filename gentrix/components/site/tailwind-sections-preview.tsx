@@ -1,11 +1,28 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
+import {
+  composePublicMarketingTailwindSections,
+  type ComposePublicMarketingPlan,
+} from "@/lib/site/public-site-composition";
 import { isStudioPreviewPostMessage } from "@/lib/site/preview-post-message";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 import { cn } from "@/lib/utils";
+
+const STUDIO_PREVIEW_DESKTOP_MQ = "(min-width: 768px)";
+
+function subscribeStudioPreviewDesktopMq(onChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const mq = window.matchMedia(STUDIO_PREVIEW_DESKTOP_MQ);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+function getStudioPreviewDesktopSnapshot(): boolean {
+  return typeof window !== "undefined" && window.matchMedia(STUDIO_PREVIEW_DESKTOP_MQ).matches;
+}
 
 export { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 
@@ -27,6 +44,11 @@ type TailwindSectionsPreviewProps = {
   logoSet?: GeneratedLogoSet | null;
   /** Portaal-links (`__STUDIO_PORTAL_PATH__`) gelijk aan live. */
   publishedSlug?: string;
+  /** Zelfde filtering als `/site/[slug]` — booking/shop alleen als module aan staat. */
+  appointmentsEnabled?: boolean;
+  webshopEnabled?: boolean;
+  /** Optioneel: snapshot-volgorde + Site IR (editor/live-parity); geen layout-presets. */
+  composePlan?: ComposePublicMarketingPlan | null;
 };
 
 export function TailwindSectionsPreview({
@@ -42,22 +64,58 @@ export function TailwindSectionsPreview({
   userJs,
   logoSet,
   publishedSlug,
+  appointmentsEnabled = true,
+  webshopEnabled = true,
+  composePlan = null,
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const [panelClipPx, setPanelClipPx] = useState<number | null>(null);
 
+  const parentWindowDesktop = useSyncExternalStore(
+    subscribeStudioPreviewDesktopMq,
+    getStudioPreviewDesktopSnapshot,
+    () => false,
+  );
+
+  const previewSections = useMemo(
+    () =>
+      composePublicMarketingTailwindSections(
+        sections,
+        {
+          appointmentsEnabled,
+          webshopEnabled,
+        },
+        composePlan ?? undefined,
+      ),
+    [sections, appointmentsEnabled, webshopEnabled, composePlan],
+  );
+
   const srcDoc = useMemo(
     () =>
-      buildTailwindIframeSrcDoc(sections, pageConfig, {
+      buildTailwindIframeSrcDoc(previewSections, pageConfig, {
         previewPostMessageBridge,
         userCss,
         userJs,
         logoSet,
         publishedSlug: publishedSlug?.trim(),
+        appointmentsEnabled,
+        webshopEnabled,
+        previewMatchParentWindowBreakpoints: parentWindowDesktop,
       }),
-    [sections, pageConfig, previewPostMessageBridge, userCss, userJs, logoSet, publishedSlug],
+    [
+      previewSections,
+      pageConfig,
+      previewPostMessageBridge,
+      userCss,
+      userJs,
+      logoSet,
+      publishedSlug,
+      appointmentsEnabled,
+      webshopEnabled,
+      parentWindowDesktop,
+    ],
   );
 
   useEffect(() => {
