@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Preconnects voor gepubliceerde Tailwind-sites.
  * Tailwind Play CDN: synchroon direct ná sectie-HTML (zelfde als iframe-preview). Alpine blijft `defer`.
