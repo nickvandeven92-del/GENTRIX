@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type SitePageProps = {
@@ -12,9 +13,6 @@ type SitePageProps = {
 export const maxDuration = 60;
 
 export const dynamic = "force-dynamic";
-
-/** Te grote data-URL’s in metadata kunnen SSR op Vercel laten falen. */
-const MAX_METADATA_FAVICON_CHARS = 12_000;
 
 export async function generateMetadata({ params }: SitePageProps): Promise<Metadata> {
   try {
@@ -34,9 +32,22 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
     const displayName = row.clientName?.trim() || formatSlugForDisplay(slug);
     if (row.kind === "react") {
       const title = row.doc.documentTitle?.trim() || displayName;
-      return {
+      const base = {
         title,
         description: `Website van ${displayName}`,
+      };
+      const fav = row.doc.logoSet?.variants.favicon?.trim() ?? "";
+      if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
+      return {
+        ...base,
+        icons: {
+          icon: [
+            {
+              url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`,
+              type: "image/svg+xml",
+            },
+          ],
+        },
       };
     }
     const base = {
@@ -44,7 +55,7 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
       description: `Website van ${displayName}`,
     };
     const fav = row.logoSet?.variants.favicon?.trim() ?? "";
-    if (!fav || fav.length > MAX_METADATA_FAVICON_CHARS) return base;
+    if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
     return {
       ...base,
       icons: {

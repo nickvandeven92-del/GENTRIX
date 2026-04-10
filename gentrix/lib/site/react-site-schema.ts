@@ -1,3 +1,4 @@
+import { generatedLogoSetSchema } from "@/types/logo";
 import { z } from "zod";
 
 const hex = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Verwacht #RRGGBB");
@@ -440,6 +441,8 @@ export const reactSiteDocumentSchema = z
     format: z.literal("react_sections"),
     schemaVersion: z.literal(1),
     documentTitle: z.string().min(1).max(120).optional(),
+    /** Optioneel; zelfde pipeline als tailwind (`renderFinalLogoSet`) — o.a. favicon in metadata. */
+    logoSet: generatedLogoSetSchema.optional(),
     theme: z.object({
       primary: hex,
       accent: hex,

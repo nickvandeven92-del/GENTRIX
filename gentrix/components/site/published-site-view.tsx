@@ -71,6 +71,7 @@ export function PublishedSiteView({
           userCss={payload.customCss}
           userJs={payload.customJs}
           logoSet={payload.logoSet}
+          compiledTailwindCss={payload.tailwindCompiledCss}
           documentTitle={docTitle}
           embedded={visibility === "portal"}
           appointmentsEnabled={appointmentsEnabled}

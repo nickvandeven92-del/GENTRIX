@@ -6,6 +6,7 @@ import {
 import {
   buildLucideRuntimeScriptBlock,
   buildRootCssVarsForTailwindPage,
+  buildFaviconLinkTagForLogoSet,
   buildTailwindSectionsBodyInnerHtml,
   STUDIO_DATA_ANIMATION_CSS,
   STUDIO_LASER_LINE_CSS,
@@ -73,6 +74,7 @@ export function buildStandaloneExportHtmlDocument(
   const uJs = userAssets?.js?.trim() ?? "";
   const userCssBlock = uCss ? `<style id="studio-user-css">\n${sanitizeUserSiteCss(uCss)}\n</style>\n  ` : "";
   const userJsBlock = uJs ? `\n${buildUserScriptTagForHtmlDocument(uJs)}` : "";
+  const faviconLink = buildFaviconLinkTagForLogoSet(userAssets?.logoSet);
 
   return `<!DOCTYPE html>
 <html lang="nl">
@@ -80,7 +82,7 @@ export function buildStandaloneExportHtmlDocument(
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${escapeHtmlText(docTitle)}</title>
-  ${themeMeta}${styleBlock}<link rel="preconnect" href="https://fonts.googleapis.com"/>
+  ${faviconLink ? `  ${faviconLink}\n  ` : ""}${themeMeta}${styleBlock}<link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="${fontLink}" rel="stylesheet"/>
   <style>

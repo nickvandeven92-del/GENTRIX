@@ -13,7 +13,11 @@ import type { Json } from "@/lib/types/database";
 import { mapSnapshotSourceToCreatedBy } from "@/lib/site/snapshot-created-by";
 import type { SiteSnapshotSource } from "@/lib/site/site-project-model";
 import { ensureClientPreviewSecret } from "@/lib/data/ensure-client-preview-secret";
+import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
+
+/** Tailwind CLI-build bij opslaan kan enkele seconden duren (Vercel/serverless). */
+export const maxDuration = 60;
 
 const bodySchema = z.object({
   name: z.string().min(1).max(200),
@@ -90,7 +94,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    jsonToStore = twParsed.data as unknown as Json;
+    const docTitle = parsed.data.name?.trim() || "Website";
+    const withCss = await attachCompiledTailwindCssToPayload(twParsed.data, docTitle);
+    const twStored = tailwindSectionsPayloadSchema.safeParse(withCss);
+    if (!twStored.success) {
+      return NextResponse.json(
+        { ok: false, error: `tailwind_sections na CSS-build ongeldig: ${twStored.error.message}` },
+        { status: 400 },
+      );
+    }
+    jsonToStore = twStored.data as unknown as Json;
   } else {
     jsonToStore = siteParsed.site as unknown as Json;
   }

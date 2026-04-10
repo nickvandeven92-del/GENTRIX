@@ -115,6 +115,20 @@ const EXTRA_SECTION_KEYWORDS: Record<string, { keywords: RegExp; weight: number 
       /\b(webshop|webwinkel|winkel|e-?commerce|winkelwagen|winkelmand|(?:online|in\s+de\s+webshop)\s+bestellen|haarproducten|parfums|verzorgingsproducten)\b/i,
     weight: 10,
   },
+  testimonials: {
+    keywords:
+      /\b(testimonials?|reviews?|beoordelingen|klantbeoordeling|klanten\s+zeggen|ervaringen|referenties|aanbevelingen|wat\s+klanten)\b/i,
+    weight: 7,
+  },
+  pricing: {
+    keywords:
+      /\b(prijzen|tarieven|prijslijst|pakketten|abonnement|tarief|vanaf\s*€|transparante\s+prijzen|kosten|offerte)\b/i,
+    weight: 6,
+  },
+  faq: {
+    keywords: /\b(faq|veelgestelde\s+vragen|veel\s+gestelde|vragen\s+en\s+antwoorden|help\s*center|helpcentrum)\b/i,
+    weight: 5,
+  },
   gallery: {
     keywords:
       /\b(galerij|gallery|foto['']?s|instagram|werkplaats|impressie|portfolio|showroom|sfeerbeelden|beelden)\b/i,
@@ -849,7 +863,8 @@ export function serializeExistingSiteForUpgradePrompt(siteData: unknown): Serial
   return { ok: false, reason: "too_large" };
 }
 
-const DEFAULT_SECTIONS = ["hero", "features", "testimonials", "pricing", "faq", "footer"] as const;
+/** Fallback als er geen branche-match is: geen vaste “SaaS-landing” (testimonials/pricing/faq) — die komen via keywords of industry-profiel. */
+const DEFAULT_SECTIONS = ["hero", "features", "about", "contact", "footer"] as const;
 
 /** Minimale HomepagePlan voor self-review / validate. */
 function buildMinimalHomepagePlan(sectionIds?: string[]): HomepagePlan {
@@ -916,7 +931,7 @@ function buildOperationalNavParts(
   const requiredIdsLine =
     sectionIdsHint && sectionIdsHint.length > 0
       ? sectionIdsHint.map((s) => `\`${s}\``).join(", ")
-      : "`hero`, `features`, `testimonials`, `pricing`, `faq`, `footer`";
+      : "`hero`, `features`, `about`, `contact`, `footer` (uitbreiding via briefing/branche; geen vaste testimonials/pricing/faq)";
   return { section4Nav, section5IdsNote, requiredIdsLine };
 }
 
@@ -1337,10 +1352,7 @@ async function prepareGenerateSiteClaudeCall(
   );
   const mainUserPrompt = corePrompt;
 
-  const maxTokensRaw = Number.parseInt(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS ?? "", 10);
-  const max_tokens = Number.isFinite(maxTokensRaw) && maxTokensRaw >= 4096
-    ? Math.min(maxTokensRaw, 64_000)
-    : DEFAULT_MAX_OUTPUT_TOKENS;
+  const max_tokens = DEFAULT_MAX_OUTPUT_TOKENS;
 
   const userContent: string | ContentBlockParam[] =
     userPrefixBlocks.length > 0
@@ -1387,7 +1399,7 @@ function finalizeGenerateSiteFromClaudeText(
   if (!parsedResult.ok) {
     const truncated =
       stop_reason === "max_tokens"
-        ? " Het antwoord werd afgekapt (max_tokens). Verhoog ANTHROPIC_MAX_OUTPUT_TOKENS of verkort de briefing."
+        ? " Het antwoord werd afgekapt (model outputlimiet). Probeer een kortere briefing of minder secties in één run."
         : "";
     return {
       ok: false,

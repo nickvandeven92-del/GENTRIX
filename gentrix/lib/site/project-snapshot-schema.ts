@@ -13,6 +13,7 @@ import {
   SNAPSHOT_BRIEF_FINGERPRINT_MAX,
   SNAPSHOT_CUSTOM_CSS_MAX,
   SNAPSHOT_CUSTOM_JS_MAX,
+  SNAPSHOT_TAILWIND_COMPILED_CSS_MAX,
   SNAPSHOT_DESCRIPTION_MAX,
   SNAPSHOT_DOCUMENT_TITLE_MAX,
   SNAPSHOT_EDITOR_NOTES_MAX,
@@ -119,6 +120,8 @@ export const projectAssetsSchema = z
     logoSet: generatedLogoSetSchema.optional(),
     customCss: z.string().max(SNAPSHOT_CUSTOM_CSS_MAX).optional(),
     customJs: z.string().max(SNAPSHOT_CUSTOM_JS_MAX).optional(),
+    /** Server-build Tailwind v4 (JIT → CSS); live/preview gebruikt dit i.p.v. cdn.tailwindcss.com. */
+    tailwindCompiledCss: z.string().max(SNAPSHOT_TAILWIND_COMPILED_CSS_MAX).optional(),
   })
   .strict();
 
@@ -285,6 +288,9 @@ export function tailwindSectionsPayloadToProjectSnapshot(
       ...(payload.customJs != null && payload.customJs !== ""
         ? { customJs: payload.customJs.slice(0, SNAPSHOT_CUSTOM_JS_MAX) }
         : {}),
+      ...(payload.tailwindCompiledCss != null && payload.tailwindCompiledCss.trim() !== ""
+        ? { tailwindCompiledCss: payload.tailwindCompiledCss.slice(0, SNAPSHOT_TAILWIND_COMPILED_CSS_MAX) }
+        : {}),
     },
     editor: {},
     generation: {
@@ -335,5 +341,8 @@ export function projectSnapshotToTailwindSectionsPayload(snapshot: ProjectSnapsh
       ? { customJs: snapshot.assets.customJs }
       : {}),
     ...(snapshot.assets.logoSet != null ? { logoSet: snapshot.assets.logoSet as GeneratedLogoSet } : {}),
+    ...(snapshot.assets.tailwindCompiledCss != null && snapshot.assets.tailwindCompiledCss.trim() !== ""
+      ? { tailwindCompiledCss: snapshot.assets.tailwindCompiledCss }
+      : {}),
   };
 }

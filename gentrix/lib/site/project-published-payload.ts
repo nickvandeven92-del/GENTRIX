@@ -25,6 +25,7 @@ export type PublishedSitePayload =
       customCss?: string;
       customJs?: string;
       logoSet?: GeneratedLogoSet;
+      tailwindCompiledCss?: string;
     }
   | {
       kind: "react";
@@ -64,6 +65,9 @@ export function publishedPayloadFromParsed(
       ...(parsed.customCss != null && parsed.customCss !== "" ? { customCss: parsed.customCss } : {}),
       ...(parsed.customJs != null && parsed.customJs !== "" ? { customJs: parsed.customJs } : {}),
       ...(parsed.logoSet != null ? { logoSet: parsed.logoSet } : {}),
+      ...(parsed.tailwindCompiledCss != null && parsed.tailwindCompiledCss.trim() !== ""
+        ? { tailwindCompiledCss: parsed.tailwindCompiledCss }
+        : {}),
     };
   }
   if (parsed.kind === "react") {

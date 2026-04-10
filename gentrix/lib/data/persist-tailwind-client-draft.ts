@@ -1,6 +1,7 @@
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
+import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
 import {
   projectSnapshotFromTailwindPayload,
   projectSnapshotToJson,
@@ -49,9 +50,11 @@ export async function persistTailwindDraftForExistingClient(
         ? "ai_command"
         : "editor";
 
-  const snapshot = projectSnapshotFromTailwindPayload(tailwindPayload, {
+  const docTitle = options.documentTitle?.trim() || existing.name?.trim() || "Website";
+  const withCss = await attachCompiledTailwindCssToPayload(tailwindPayload, docTitle);
+  const snapshot = projectSnapshotFromTailwindPayload(withCss, {
     generationSource,
-    documentTitle: options.documentTitle?.trim() || existing.name?.trim(),
+    documentTitle: docTitle,
   });
   const jsonToStore = projectSnapshotToJson(snapshot) as Json;
 

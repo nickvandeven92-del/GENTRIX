@@ -24,14 +24,16 @@ describe("self-review-site-generation", () => {
     ]);
   });
 
-  it("isSiteSelfReviewEnabled standaard uit; ENABLE=1 zet aan; DISABLE=1 wint", () => {
+  it("isSiteSelfReviewEnabled standaard aan; ENABLE=0 zet uit; DISABLE=1 wint", () => {
     const prevD = process.env.DISABLE_SITE_SELF_REVIEW;
     const prevE = process.env.ENABLE_SITE_SELF_REVIEW;
     try {
       delete process.env.DISABLE_SITE_SELF_REVIEW;
       delete process.env.ENABLE_SITE_SELF_REVIEW;
+      expect(isSiteSelfReviewEnabled()).toBe(true);
+      process.env.ENABLE_SITE_SELF_REVIEW = "0";
       expect(isSiteSelfReviewEnabled()).toBe(false);
-      process.env.ENABLE_SITE_SELF_REVIEW = "1";
+      delete process.env.ENABLE_SITE_SELF_REVIEW;
       expect(isSiteSelfReviewEnabled()).toBe(true);
       process.env.DISABLE_SITE_SELF_REVIEW = "1";
       expect(isSiteSelfReviewEnabled()).toBe(false);

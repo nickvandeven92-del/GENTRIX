@@ -17,11 +17,21 @@ import {
   stripLeakedStudioPlaceholderTokens,
 } from "@/lib/site/studio-section-visibility";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
+import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 export { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 export { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
+
+/**
+ * Tailwind Play CDN staat onderaan de body: zonder guard kan de browser kort ongestyleerde HTML tonen (FOUC).
+ * `tw-loading` verbergt de body tot de CDN geladen is; daarna `tw-ready`.
+ */
+export const STUDIO_TAILWIND_FOUC_HEAD_CSS = `/* FOUC: wacht op Tailwind JIT */
+html.tw-loading body { visibility: hidden; }
+html.tw-ready body { visibility: visible; }
+`;
 
 /**
  * CSS voor `data-animation` (fade-up, slide-in-*, scale-in).
@@ -690,6 +700,19 @@ export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig |
   };
 }
 
+/** Zelfde limiet als `generateMetadata` op `/site/[slug]` (te grote data-URL’s breken SSR). */
+export const MAX_FAVICON_DATA_URL_CHARS = 12_000;
+
+/**
+ * `<link rel="icon">` voor geëxporteerde HTML en iframe-srcDoc wanneer er een merk-favicon is.
+ * De live Next-route zet parallel `metadata.icons` (zie `app/(public)/site/[slug]/page.tsx`).
+ */
+export function buildFaviconLinkTagForLogoSet(logoSet?: GeneratedLogoSet | null): string {
+  const fav = logoSet?.variants?.favicon?.trim() ?? "";
+  if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return "";
+  return `<link rel="icon" href="data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}" type="image/svg+xml"/>`;
+}
+
 export type BuildTailwindSectionsBodyOptions = {
   logoSet?: GeneratedLogoSet | null;
 };
@@ -875,6 +898,10 @@ export type BuildTailwindIframeSrcDocOptions = {
    * `false` in studio Live preview — daar blijven animaties aan.
    */
   disableScrollRevealAnimations?: boolean;
+  /**
+   * Server-gecompileerde Tailwind (minified). Gezet → geen Play CDN / FOUC-wacht.
+   */
+  compiledTailwindCss?: string | null;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -923,17 +950,34 @@ export function buildTailwindIframeSrcDoc(
     "\n" +
     STUDIO_LASER_LINE_CSS;
   const scrollRevealScript = options?.disableScrollRevealAnimations ? "" : STUDIO_SCROLL_REVEAL_SCRIPT;
+  const faviconLink = buildFaviconLinkTagForLogoSet(options?.logoSet);
+  const headMetaExtras = [faviconLink && `  ${faviconLink}`, themeMeta && `  ${themeMeta}`]
+    .filter(Boolean)
+    .join("\n");
 
-  // Tailwind Play CDN moet **ná** alle sectie-HTML in de body staan (DOM moet bestaan voor JIT).
-  // In `srcDoc`-iframes worden `defer`-scripts soms niet betrouwbaar uitgevoerd → **geen** defer op Tailwind.
-  // Sync script aan het *einde* van body: parseert eerst HTML erboven, laadt dan Tailwind en scant de DOM.
+  const compiledRaw = options?.compiledTailwindCss?.trim() ?? "";
+  const useCompiledTailwind = compiledRaw.length > 0;
+  const compiledStyleBlock = useCompiledTailwind
+    ? `<style id="studio-compiled-tailwind">\n${sanitizeCompiledTailwindCssForStyleTag(compiledRaw)}\n</style>\n`
+    : "";
+  const tailwindPreloadLine = useCompiledTailwind
+    ? ""
+    : `  <link rel="preload" href="${STUDIO_TAILWIND_PLAY_CDN_SRC}" as="script"/>\n`;
+  const foucCssBlock = useCompiledTailwind ? "" : `    ${STUDIO_TAILWIND_FOUC_HEAD_CSS}\n`;
+  const twLoadingScript = useCompiledTailwind ? "" : `<script>document.documentElement.classList.add("tw-loading")</script>\n`;
+  const tailwindCdnScripts = useCompiledTailwind
+    ? ""
+    : `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}" onload="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)" onerror="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)"></script>
+<script>setTimeout(function(){var e=document.documentElement;if(e.classList.contains("tw-loading")){e.classList.remove("tw-loading");e.classList.add("tw-ready")}},4500)</script>
+`;
+
+  // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  ${themeMeta}
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
@@ -942,13 +986,12 @@ export function buildTailwindIframeSrcDoc(
     body { font-family: ${fontStack}; }
     ${rootCss}
     ${animationCss}
-  </style>
-  ${userCssBlock}
+${foucCssBlock}  </style>
+  ${compiledStyleBlock}${userCssBlock}
 </head>
 <body class="antialiased text-slate-900${radiusClass}">
-${body}
-<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}"></script>
-<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
+${twLoadingScript}${body}
+${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${scrollRevealScript}
 ${STUDIO_SINGLE_PAGE_INTERNAL_NAV_SCRIPT}
 ${buildLucideRuntimeScriptBlock()}

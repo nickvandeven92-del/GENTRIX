@@ -2,6 +2,16 @@
  * Tweede LLM-pass na eerste generatie: “eigen kwaliteitscontrole” op basis van briefing,
  * gejoinde HTML en programmatische checks (validate + claim diagnostics).
  * Geen echte screenshot/vision — het model “ziet” de pagina via structuur + markup (zoals Lovable-interne review).
+ *
+ * **Wat doet dit?** Een tweede Claude-call leest je concept-JSON en mag vooral `html` bijschaven:
+ * betere contrasten, dubbele navigatie weg, laser-decoratie alleen als de briefing dat rechtvaardigt,
+ * kortere dubbele trust-blokken, hero wat vullen als die te kaal is — zonder secties te verwijderen of `id`’s te wijzigen.
+ *
+ * **Standaard aan:** tweede pass draait tenzij je het uitzet (zie hieronder).
+ * **Uitzetten:** `DISABLE_SITE_SELF_REVIEW=1` in `.env.local` (wint altijd), of `ENABLE_SITE_SELF_REVIEW=0` / `false` / `no`.
+ * Na wijziging: dev-server herstarten.
+ *
+ * **Trade-off:** kan output **uniformer** maken (één coherente stijl, minder experiment) — bewust zo bedoeld voor QA.
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
@@ -55,14 +65,14 @@ ${buildContentAuthorityPolicyBlock()}
 - Vraagt de briefing **vintage / warm papier / old-school**: breng diensten-, trust- en testimonial-secties visueel in **dezelfde warme papierwereld** (crème/zand/stone-warm sectie-achtergronden); vervang dominerend \`bg-white\` op brede banden door passende warme tinten; geen willekeurige off-topic full-bleed beelden (bijv. verf/klus) tenzij de briefing dat zo noemt.`;
 
 /**
- * Tweede LLM-pass staat **standaard uit** (latency, kosten, soms tegenstrijdige wijzigingen).
- * Aanzetten: `ENABLE_SITE_SELF_REVIEW=1` (of `true` / `yes`).
- * Harde uitzetten wint altijd: `DISABLE_SITE_SELF_REVIEW=1`.
+ * Tweede LLM-pass staat **standaard aan** (dubbele kwaliteitscheck).
+ * Uitzetten: `DISABLE_SITE_SELF_REVIEW=1` (wint altijd), of `ENABLE_SITE_SELF_REVIEW=0` / `false` / `no`.
  */
 export function isSiteSelfReviewEnabled(): boolean {
   if (process.env.DISABLE_SITE_SELF_REVIEW === "1") return false;
   const v = process.env.ENABLE_SITE_SELF_REVIEW?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+  if (v === "0" || v === "false" || v === "no") return false;
+  return true;
 }
 
 export function generatedTailwindPageToClaudeOutput(page: GeneratedTailwindPage): ClaudeTailwindPageOutput {

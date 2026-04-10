@@ -8,6 +8,8 @@ export const SNAPSHOT_COPY_INTENT_MIN_MEANINGFUL = 3;
 /** Schema-hard max (grote legacy sites); lint waarschuwt lager. */
 export const SNAPSHOT_CUSTOM_CSS_MAX = 48_000;
 export const SNAPSHOT_CUSTOM_JS_MAX = 48_000;
+/** Gegenereerde Tailwind-build (minified) voor live/preview zonder Play CDN — harde bovengrens voor JSON/DB. */
+export const SNAPSHOT_TAILWIND_COMPILED_CSS_MAX = 600_000;
 export const SNAPSHOT_LINT_CSS_SOFT_WARN = 20_000;
 export const SNAPSHOT_LINT_JS_SOFT_WARN = 20_000;
 export const SNAPSHOT_PROMPT_HASH_MAX = 128;

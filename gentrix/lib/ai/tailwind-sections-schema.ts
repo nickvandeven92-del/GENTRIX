@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { designPersonalitySchema } from "@/lib/ai/design-personality";
 import { snapshotPageTypeSchema } from "@/lib/site/snapshot-page-type";
+import { SNAPSHOT_TAILWIND_COMPILED_CSS_MAX } from "@/lib/site/project-snapshot-constants";
 import type { ContentClaimDiagnosticsReport } from "@/lib/ai/content-claim-diagnostics";
 import { generatedLogoSetSchema, type GeneratedLogoSet } from "@/types/logo";
 
@@ -315,6 +316,8 @@ const tailwindPayloadStrictObjectSchema = z
     customJs: z.string().max(48_000).optional(),
     /** SVG-first merkset (premium logo-pipeline). */
     logoSet: generatedLogoSetSchema.optional(),
+    /** Optioneel: server-gecompileerde utilities (geen Tailwind Play CDN op live/preview). */
+    tailwindCompiledCss: z.string().max(SNAPSHOT_TAILWIND_COMPILED_CSS_MAX).optional(),
   })
   .strict();
 
@@ -337,6 +340,7 @@ export function stripUnknownTailwindPayloadKeys(input: unknown): unknown {
   if ("customCss" in o && o.customCss !== undefined) next.customCss = o.customCss;
   if ("customJs" in o && o.customJs !== undefined) next.customJs = o.customJs;
   if ("logoSet" in o && o.logoSet !== undefined) next.logoSet = o.logoSet;
+  if ("tailwindCompiledCss" in o && o.tailwindCompiledCss !== undefined) next.tailwindCompiledCss = o.tailwindCompiledCss;
   return next;
 }
 

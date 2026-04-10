@@ -28,6 +28,8 @@ type PublicPublishedTailwindProps = {
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  /** Minified Tailwind v4 — geen Play CDN (sneller, geen FOUC). */
+  compiledTailwindCss?: string | null;
   documentTitle?: string;
   embedded?: boolean;
   appointmentsEnabled?: boolean;
@@ -53,6 +55,7 @@ export function PublicPublishedTailwind({
   userCss,
   userJs,
   logoSet,
+  compiledTailwindCss,
   documentTitle = "Website",
   embedded = false,
   appointmentsEnabled = true,
@@ -80,6 +83,7 @@ export function PublicPublishedTailwind({
         appointmentsEnabled,
         webshopEnabled,
         disableScrollRevealAnimations: true,
+        compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
       });
       if (typeof window !== "undefined") {
         doc = rewriteStudioDevOriginsInHtml(doc, window.location.origin);
@@ -114,6 +118,7 @@ export function PublicPublishedTailwind({
     appointmentsEnabled,
     webshopEnabled,
     documentTitle,
+    compiledTailwindCss,
   ]);
 
   const iframeStyle: CSSProperties = embedded

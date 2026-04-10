@@ -1,20 +1,10 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { randomUUID } from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import JSZip from "jszip";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildStandaloneExportHtmlDocument, STANDALONE_EXPORT_README_NL } from "@/lib/site/build-standalone-export-html";
+import { buildTailwindCompiledCssFromIndexHtml } from "@/lib/site/build-tailwind-compiled-css";
 import { EXPORT_INTEGRATION_GUIDE_NL } from "@/lib/site/export-integration-guide-nl";
 import { bundleRemoteImagesForExport } from "@/lib/site/bundle-export-remote-images";
-
-const execFileAsync = promisify(execFile);
-
-const TW_INPUT = `@import "tailwindcss";
-@source "./index.html";
-`;
 
 /**
  * ZIP met index.html + styles.css (Tailwind build) + images/* voor FTP-upload zonder CDN.
@@ -38,38 +28,22 @@ export async function buildFtpWebsiteZipBuffer(options: {
   const bundled = await bundleRemoteImagesForExport(html);
   html = bundled.html;
 
-  const workDir = path.join(projectRoot, ".tmp", `studio-export-${randomUUID()}`);
-  await fs.mkdir(workDir, { recursive: true });
+  const stylesCss = await buildTailwindCompiledCssFromIndexHtml(projectRoot, html);
 
-  try {
-    await fs.writeFile(path.join(workDir, "index.html"), html, "utf8");
-    await fs.writeFile(path.join(workDir, "tw-input.css"), TW_INPUT, "utf8");
+  const zip = new JSZip();
+  zip.file("index.html", html);
+  zip.file("styles.css", stylesCss);
+  zip.file("LEES-MIJ.txt", STANDALONE_EXPORT_README_NL);
+  zip.file("INTEGRATIE-backend-en-AB.txt", EXPORT_INTEGRATION_GUIDE_NL);
 
-    const cliJs = path.join(projectRoot, "node_modules", "@tailwindcss", "cli", "dist", "index.mjs");
-    await execFileAsync(process.execPath, [cliJs, "build", "-i", "tw-input.css", "-o", "styles.css", "-m"], {
-      cwd: workDir,
-      env: { ...process.env },
-    });
-
-    const stylesCss = await fs.readFile(path.join(workDir, "styles.css"));
-
-    const zip = new JSZip();
-    zip.file("index.html", html);
-    zip.file("styles.css", stylesCss);
-    zip.file("LEES-MIJ.txt", STANDALONE_EXPORT_README_NL);
-    zip.file("INTEGRATIE-backend-en-AB.txt", EXPORT_INTEGRATION_GUIDE_NL);
-
-    for (const img of bundled.images) {
-      zip.file(img.zipPath, img.data);
-    }
-
-    const nodeBuffer = await zip.generateAsync({
-      type: "nodebuffer",
-      compression: "DEFLATE",
-      compressionOptions: { level: 6 },
-    });
-    return Buffer.from(nodeBuffer);
-  } finally {
-    await fs.rm(workDir, { recursive: true, force: true });
+  for (const img of bundled.images) {
+    zip.file(img.zipPath, img.data);
   }
+
+  const nodeBuffer = await zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+  return Buffer.from(nodeBuffer);
 }
