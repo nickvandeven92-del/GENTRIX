@@ -1,3 +1,8 @@
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import {
+  pickBestUnsplashResult,
+  type UnsplashPageIntent,
+} from "@/lib/ai/image-relevance-policy";
 import type { TailwindSection } from "./tailwind-sections-schema";
 
 // ---------------------------------------------------------------------------
@@ -74,6 +79,7 @@ function enrichQueryWithTheme(baseQuery: string, themeContext?: string): string 
 interface UnsplashSearchResult {
   urls: { regular: string; small: string; raw: string };
   alt_description: string | null;
+  description?: string | null;
 }
 
 async function searchUnsplash(
@@ -125,11 +131,16 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * - Uniqueness: picks different photos from the result set for the same query.
  * - Respects rate limits with inter-request delays and a total timeout.
  * @param themeContext Optioneel: korte bedrijfsbeschrijving; wordt gemengd in de zoekterm voor betere branche-match.
+ * @param relevance Optioneel: deterministische relevantie (gates + score) op Unsplash-resultaten — raakt generator-layout/copy niet.
  */
 export async function replaceUnsplashImagesInSections(
   sections: TailwindSection[],
   accessKey?: string,
   themeContext?: string,
+  relevance?: {
+    designContract?: DesignGenerationContract | null;
+    pageIntent?: UnsplashPageIntent;
+  },
 ): Promise<TailwindSection[]> {
   if (!accessKey) return sections;
 
@@ -138,6 +149,8 @@ export async function replaceUnsplashImagesInSections(
     url: string;
     query: string;
     sectionIdx: number;
+    sectionId: string;
+    sectionName: string;
   };
 
   const entries: UrlEntry[] = [];
@@ -151,7 +164,13 @@ export async function replaceUnsplashImagesInSections(
       const rawQuery = alt ?? sec.sectionName ?? "professional business";
       const base = cleanQuery(rawQuery) || "professional business";
       const query = enrichQueryWithTheme(base, themeContext);
-      entries.push({ url, query, sectionIdx: si });
+      entries.push({
+        url,
+        query,
+        sectionIdx: si,
+        sectionId: sec.id,
+        sectionName: sec.sectionName ?? sec.id,
+      });
     }
   }
 
@@ -182,6 +201,9 @@ export async function replaceUnsplashImagesInSections(
   // 3. Build a replacement map: old URL → new URL.
   const replacements = new Map<string, string>();
 
+  const pageIntent: UnsplashPageIntent = relevance?.pageIntent ?? "home";
+  const designContract = relevance?.designContract;
+
   for (const entry of entries) {
     if (replacements.has(entry.url)) continue;
 
@@ -189,9 +211,18 @@ export async function replaceUnsplashImagesInSections(
     if (!results || results.length === 0) continue;
 
     const pickIdx = queryPickIndex.get(entry.query) ?? 0;
-    const photo = results[pickIdx % results.length];
     queryPickIndex.set(entry.query, pickIdx + 1);
 
+    const theme = themeContext ?? "";
+    const picked = pickBestUnsplashResult(results, {
+      themeContext: theme,
+      sectionId: entry.sectionId,
+      sectionName: entry.sectionName,
+      pageIntent,
+      designContract,
+      pickOffset: pickIdx,
+    });
+    const photo = picked?.photo ?? results[pickIdx % results.length];
     const newUrl = photo.urls.regular;
     if (newUrl) {
       replacements.set(entry.url, newUrl);

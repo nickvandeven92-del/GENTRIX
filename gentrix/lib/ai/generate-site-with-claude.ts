@@ -1711,6 +1711,7 @@ export async function generateSiteWithClaude(
       data.sections,
       process.env.UNSPLASH_ACCESS_KEY,
       unsplashTheme,
+      { designContract, pageIntent: "home" },
     ),
     ...(data.contactSections != null && data.contactSections.length > 0
       ? {
@@ -1718,6 +1719,7 @@ export async function generateSiteWithClaude(
             data.contactSections,
             process.env.UNSPLASH_ACCESS_KEY,
             unsplashTheme,
+            { designContract, pageIntent: "contact" },
           ),
         }
       : {}),
@@ -1727,7 +1729,10 @@ export async function generateSiteWithClaude(
             await Promise.all(
               Object.entries(data.marketingPages).map(async ([k, secs]) => [
                 k,
-                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme),
+                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme, {
+                  designContract,
+                  pageIntent: "marketing",
+                }),
               ]),
             ),
           ),
@@ -2027,6 +2032,7 @@ export function createGenerateSiteReadableStream(
             data.sections,
             process.env.UNSPLASH_ACCESS_KEY,
             unsplashTheme,
+            { designContract, pageIntent: "home" },
           );
           contactAfterUnsplash =
             data.contactSections != null && data.contactSections.length > 0
@@ -2034,6 +2040,7 @@ export function createGenerateSiteReadableStream(
                   data.contactSections,
                   process.env.UNSPLASH_ACCESS_KEY,
                   unsplashTheme,
+                  { designContract, pageIntent: "contact" },
                 )
               : undefined;
           marketingAfterUnsplash =
@@ -2042,7 +2049,10 @@ export function createGenerateSiteReadableStream(
                   await Promise.all(
                     Object.entries(data.marketingPages).map(async ([k, secs]) => [
                       k,
-                      await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme),
+                      await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme, {
+                        designContract,
+                        pageIntent: "marketing",
+                      }),
                     ]),
                   ),
                 )
