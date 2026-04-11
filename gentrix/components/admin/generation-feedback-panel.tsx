@@ -219,12 +219,6 @@ export function GenerationFeedbackPanel({
                       : "—"}
               </dd>
             </div>
-            <div>
-              <dt className="text-xs text-slate-500">Agency mode</dt>
-              <dd className="text-xs font-medium text-slate-800">
-                {interpreted.agencyMode ? "Aan (prompt + hogere max_tokens)" : "Uit"}
-              </dd>
-            </div>
             {interpreted.referenceStyle ? (
               <div className="sm:col-span-2">
                 <dt className="text-xs text-slate-500">Referentiesite-URL</dt>

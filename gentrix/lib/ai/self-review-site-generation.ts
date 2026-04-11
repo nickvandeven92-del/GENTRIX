@@ -234,7 +234,7 @@ Dit is **niet** een tweede meningsvorming: de eerste generatie is gebouwd met de
 - **Stijl (id):** ${pi.detectedStyleId ?? "—"}
 - **Stijl-bron:** ${styleSourceNl(pi.styleDetectionSource)}
 ${pi.referenceStyle ? `- **Referentiesite:** ${pi.referenceStyle.requestedUrl} — ${pi.referenceStyle.status === "ingested" ? `ingelezen (${pi.referenceStyle.excerptChars ?? "?"} tekens, final: ${pi.referenceStyle.finalUrl ?? "—"})` : `ophalen mislukt: ${pi.referenceStyle.error ?? "onbekend"}`}` : ""}
-${pi.agencyMode ? `\n- **Agency mode:** **actief** — revisie mag het concept **niet** terugtrekken naar timide/generiek; alleen echte fouten, claims of briefing-schendingen herstellen.\n` : ""}
+- **Kwaliteit:** trek het concept **niet** terug naar timide/generiek tenzij dat nodig is voor echte fouten, claims of briefing-schendingen.
 Als de markup **duidelijk** afwijkt van deze stijl (bijv. luxe flyer i.p.v. industrieel, of omgekeerd), **corrigeer** dan binnen dezelfde sectie-\`id\`'s en JSON-structuur. Bij twijfel: briefing + dit blok samen lezen.
 
 `
@@ -308,9 +308,7 @@ export async function applySelfReviewToGeneratedPage(options: {
   }
 
   const joined = draft.sections.map((s) => s.html).join("\n");
-  const validation = validateGeneratedPageHtml(joined, homepagePlan, {
-    agencyMode: pipelineInterpreted?.agencyMode === true,
-  });
+  const validation = validateGeneratedPageHtml(joined, homepagePlan);
   const contactJoined =
     draft.contactSections != null && draft.contactSections.length > 0
       ? draft.contactSections.map((s) => s.html).join("\n")

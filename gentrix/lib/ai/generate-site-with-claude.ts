@@ -86,16 +86,13 @@ export type GenerationPipelineFeedback = {
     };
     /** `true` bij SITE_GENERATION_MINIMAL_PROMPT of `minimalPrompt` in options. */
     minimalPrompt?: boolean;
-    /** Agency mode: sterkere visuele instructies + hogere output-limiet (env of API). */
-    agencyMode?: boolean;
   };
 };
 
 const DEFAULT_GENERATE_MODEL = "claude-sonnet-4-6";
 const DEFAULT_SUPPORT_MODEL = "claude-sonnet-4-6";
-const DEFAULT_MAX_OUTPUT_TOKENS = 24_576;
-/** Agency mode: langere JSON (meer secties/HTML) binnen modelplafond. */
-const AGENCY_MAX_OUTPUT_TOKENS = 30_720;
+/** Streaming site-build: ruim genoeg voor marketing multi-page + zware secties (binnen model/stream-limiet). */
+const DEFAULT_MAX_OUTPUT_TOKENS = 30_720;
 
 
 /**
@@ -825,37 +822,7 @@ export type GenerateSitePromptOptions = {
   referenceStyleUrl?: string;
   /** Snapshot na fetch — wordt in de user-prompt ingevoegd. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
-  /**
-   * Agency mode (of env `SITE_GENERATION_AGENCY_MODE=1`): sterkere visuele/compositie-prompt,
-   * ruimere validator-waarschuwingen, hogere `max_tokens`.
-   */
-  agencyMode?: boolean;
 };
-
-/**
- * `SITE_GENERATION_AGENCY_MODE=1|true|yes` — agency mode voor server-generaties zonder API-flag.
- */
-export function isSiteGenerationAgencyModeFromEnv(): boolean {
-  const v = process.env.SITE_GENERATION_AGENCY_MODE?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
-}
-
-/** Agency mode aan als API `agencyMode: true` **of** env. */
-export function resolveAgencyMode(options?: GenerateSitePromptOptions): boolean {
-  return Boolean(options?.agencyMode) || isSiteGenerationAgencyModeFromEnv();
-}
-
-function buildAgencyModeUserPromptBlock(enabled: boolean): string {
-  if (!enabled) return "";
-  return `
-
-=== AGENCY MODE (actief) ===
-De studio draait **agency mode**: maximum **visueel en compositioneel onderscheid** binnen het JSON+Tailwind-contract (geen eigen \`<script>\` in secties).
-- **Layout:** durf **editorial**, **asymmetrie**, **full-bleed**, type-led splits of contrasterende banden — **niet** automatisch de veiligste drie gelijke kolommen tenzij de briefing dat is.
-- **Typografie:** display-schaal (\`text-6xl\`+) waar het past; timide alles-\`text-base\` is **niet** het doel.
-- **Motion:** bij motion in briefing: \`data-animation\`, \`studio-border-reveal\`, \`studio-marquee\` (zie §3).
-- **Kleur:** één **karaktervol** palet in \`theme\` **en** in de markup — geen anonieme grijs-blauwe default.`;
-}
 
 const UPGRADE_PROMPT_JSON_MAX = 150_000;
 
@@ -1249,7 +1216,7 @@ ${clientImagesBlock}${referenceSiteBlock}
 
 ${sectorRouterMin}
 
-${upgrade0A}${contentAuthorityBlock}${buildAgencyModeUserPromptBlock(resolveAgencyMode(options))}
+${upgrade0A}${contentAuthorityBlock}
 
 === 0B. SITE STUDIO — PRODUCTINSTRUCTIES ===
 
@@ -1350,7 +1317,7 @@ Let op woorden als vintage, modern, strak, warm, luxe, beige, donker, speels —
 
 ${variance}
 ${industryHint}
-${contentAuthorityBlock}${buildAgencyModeUserPromptBlock(resolveAgencyMode(options))}
+${contentAuthorityBlock}
 
 === 0B. SITE STUDIO — PRODUCTINSTRUCTIES (gaat boven algemene uitbreiding) ===
 
@@ -1438,7 +1405,6 @@ type PreparedGenerateSiteClaudeCall = {
   pipelineFeedback: GenerationPipelineFeedback;
   /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
   useMarketingMultiPage: boolean;
-  agencyMode: boolean;
   /** Zelfde excerpt als in de bouw-prompt — voor Denklijn + zelfreview. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
 };
@@ -1466,10 +1432,8 @@ async function prepareGenerateSiteClaudeCall(
   const { systemText: knowledgeSystem, userPrefixBlocks } = await getKnowledgeContextForClaude();
 
   const preserveLayout = Boolean(promptOptions?.preserveLayoutUpgrade);
-  const agencyMode = resolveAgencyMode(promptOptions);
   const mergedPromptOptions: GenerateSitePromptOptions = {
     ...promptOptions,
-    agencyMode,
     varianceNonce: promptOptions?.varianceNonce ?? randomUUID(),
   };
 
@@ -1524,7 +1488,6 @@ async function prepareGenerateSiteClaudeCall(
       styleDetectionSource: styleResolved.source,
       ...(referenceStyleField ? { referenceStyle: referenceStyleField } : {}),
       minimalPrompt,
-      agencyMode,
     },
   };
 
@@ -1542,7 +1505,7 @@ async function prepareGenerateSiteClaudeCall(
   );
   const mainUserPrompt = corePrompt;
 
-  const max_tokens = agencyMode ? AGENCY_MAX_OUTPUT_TOKENS : DEFAULT_MAX_OUTPUT_TOKENS;
+  const max_tokens = DEFAULT_MAX_OUTPUT_TOKENS;
 
   const userContent: string | ContentBlockParam[] =
     userPrefixBlocks.length > 0
@@ -1567,7 +1530,6 @@ async function prepareGenerateSiteClaudeCall(
     homepagePlan,
     pipelineFeedback,
     useMarketingMultiPage: !preserveLayout,
-    agencyMode,
     ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
   };
 }
@@ -1780,7 +1742,7 @@ export async function generateSiteWithClaude(
 
   if (process.env.NODE_ENV === "development") {
     const joined = data.sections.map((s) => s.html).join("\n");
-    const v = validateGeneratedPageHtml(joined, p.homepagePlan, { agencyMode: p.agencyMode });
+    const v = validateGeneratedPageHtml(joined, p.homepagePlan);
     if (v.errors.length > 0 || v.warnings.length > 0) {
       console.warn("[validateGeneratedPageHtml]", v);
     }
@@ -2104,7 +2066,7 @@ export function createGenerateSiteReadableStream(
 
         if (process.env.NODE_ENV === "development") {
           const joined = data.sections.map((s) => s.html).join("\n");
-          const v = validateGeneratedPageHtml(joined, p.homepagePlan, { agencyMode: p.agencyMode });
+          const v = validateGeneratedPageHtml(joined, p.homepagePlan);
           if (v.errors.length > 0 || v.warnings.length > 0) {
             console.warn("[validateGeneratedPageHtml]", v);
           }

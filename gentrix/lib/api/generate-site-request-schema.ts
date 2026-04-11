@@ -17,11 +17,6 @@ export const generateSiteRequestBodySchema = z.object({
   /** Observability / kwaliteit (fase 5): optioneel meesturen vanuit studio. */
   generation_preset_ids: z.array(z.string().min(1).max(120)).max(24).optional(),
   layout_archetypes: z.array(z.string().min(1).max(120)).max(24).optional(),
-  /**
-   * Agency mode: sterkere visuele/compositie-instructies, ruimere validator-waarschuwingen, hogere output-limiet.
-   * Ook: zet `SITE_GENERATION_AGENCY_MODE=1` in `.env` voor alle runs.
-   */
-  agency_mode: z.boolean().optional(),
   /** Optioneel: publieke http(s)-URL; server haalt HTML op als stijl-/structuurhint (geen pixel-perfect kopie). */
   reference_style_url: z.preprocess((v) => {
     if (v == null) return undefined;

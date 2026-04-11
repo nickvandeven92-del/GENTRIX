@@ -89,10 +89,10 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
       "SITE_GENERATION_MINIMAL_PROMPT=1 of options.minimalPrompt — buildMinimalWebsiteGenerationUserPrompt: geen volledige branche-/stijl-/variatieblokken; wél sector-router + anti-template; MASTER_SITE_SYSTEM_PROMPT_MINIMAL + §3B–§5-contract.",
   },
   {
-    label: "Agency mode (env / API)",
+    label: "Site-generatie output-limiet (streaming)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:
-      "SITE_GENERATION_AGENCY_MODE=1 of options.agencyMode / body agency_mode — extra user-blok (compositie, distinctief ontwerp), hogere max_tokens, zelfreview + validator met agencyMode-opties; CONTENT AUTHORITY ongewijzigd.",
+      "prepareGenerateSiteClaudeCall: vaste max_tokens (DEFAULT_MAX_OUTPUT_TOKENS) voor de hoofd-stream — ruim genoeg voor marketing multi-page + zware secties; geen aparte agency-toggle meer.",
   },
   {
     label: "System-bericht (optioneel)",

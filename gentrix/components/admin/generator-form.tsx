@@ -128,8 +128,6 @@ export function GeneratorForm({
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
-  /** Sterkere visuele instructies + hogere output-limiet; geen losse feiten. */
-  const [agencyMode, setAgencyMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = useCallback(
@@ -225,9 +223,6 @@ export function GeneratorForm({
       const refTrim = referenceStyleUrl.trim();
       if (refTrim.length > 0) {
         body.reference_style_url = refTrim;
-      }
-      if (agencyMode) {
-        body.agency_mode = true;
       }
 
       const res = await fetch("/api/generate-site/stream", {
@@ -539,25 +534,6 @@ export function GeneratorForm({
             onChange={(e) => setReferenceStyleUrl(e.target.value)}
             placeholder="https://…"
           />
-        </div>
-        <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5">
-          <input
-            id="agencyMode"
-            name="agencyMode"
-            type="checkbox"
-            checked={agencyMode}
-            onChange={(e) => setAgencyMode(e.target.checked)}
-            disabled={descriptionLocked}
-            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
-          />
-          <label htmlFor="agencyMode" className="text-sm leading-snug text-slate-700">
-            <span className="font-medium text-slate-900">Agency mode</span>
-            <span className="block text-xs font-normal text-slate-600">
-              Sterkere compositie- en stijlrichting, ruimere JSON-output en mildere validator-waarschuwingen.{" "}
-              <strong className="font-medium text-slate-700">CONTENT AUTHORITY</strong> blijft van kracht (geen
-              verzonnen feiten).
-            </span>
-          </label>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">
