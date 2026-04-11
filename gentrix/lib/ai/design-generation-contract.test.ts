@@ -83,6 +83,20 @@ describe("designGenerationContractSchema", () => {
     }
   });
 
+  it("normaliseert motionLevel-synoniemen (bv. high → strong)", () => {
+    const raw = {
+      heroVisualSubject: "12345678",
+      paletteMode: "either" as const,
+      imageryMustReflect: ["zwemparadijs"],
+      motionLevel: "HIGH",
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.motionLevel).toBe("strong");
+    }
+  });
+
   it("coëert getal naar imagery-strings (model levert soms JSON-number)", () => {
     const raw = {
       heroVisualSubject: "12345678",

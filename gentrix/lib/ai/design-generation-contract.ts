@@ -49,6 +49,32 @@ function normalizeHeroImageSearchHints(val: unknown): string | undefined {
 
 const IMAGERY_LIST_MAX = 12;
 
+const MOTION_LEVEL_ENUM = ["none", "subtle", "moderate", "strong"] as const;
+
+/**
+ * LLM’s gebruiken soms natuurlijke synoniemen (“high”, “medium”) i.p.v. de vaste enum.
+ * Mappen naar canonieke waarden zodat het designcontract niet ongeldig wordt.
+ */
+function normalizeMotionLevel(val: unknown): unknown {
+  if (val == null) return val;
+  const s = String(val).trim().toLowerCase();
+  if (!s) return val;
+  if ((MOTION_LEVEL_ENUM as readonly string[]).includes(s)) return s;
+  if (["high", "higher", "heavy", "intense", "expressive", "maximum", "max"].includes(s)) {
+    return "strong";
+  }
+  if (["low", "light", "little", "minimal"].includes(s)) {
+    return "subtle";
+  }
+  if (["medium", "mid", "average"].includes(s)) {
+    return "moderate";
+  }
+  if (["off", "zero", "disabled"].includes(s)) {
+    return "none";
+  }
+  return val;
+}
+
 /**
  * Model + legacy payloads leveren soms één CSV-string i.p.v. JSON-array (prompt noemde eerder “zoals hints”).
  * Splitsen op komma/puntkomma/pipe/regeleinde; trimmen; max. IMAGERY_LIST_MAX items.
@@ -100,7 +126,7 @@ export const designGenerationContractSchema = z.object({
   primaryPaletteNotes: z.string().max(400).optional(),
   imageryMustReflect: imageryMustReflectFieldSchema,
   imageryAvoid: imageryAvoidFieldSchema,
-  motionLevel: z.enum(["none", "subtle", "moderate", "strong"]),
+  motionLevel: z.preprocess(normalizeMotionLevel, z.enum(MOTION_LEVEL_ENUM)),
   toneSummary: z.string().max(500).optional(),
   /** Alleen vullen wanneer er een referentie-excerpt in de Denklijn-run zat; anders weglaten. */
   referenceVisualAxes: referenceVisualAxesSchema.optional(),

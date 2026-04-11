@@ -33,6 +33,7 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 
 === contract — basisvelden ===
 - \`heroVisualSubject\`, \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
+- \`motionLevel\` — **exact één** van deze strings (geen synoniemen zoals "high"): \`"none"\` | \`"subtle"\` | \`"moderate"\` | \`"strong"\`. Hoge bewegingswens uit briefing → meestal \`"strong"\`; spaarzaam → \`"subtle"\`.
 - \`heroImageSearchHints\` (optioneel) — **één string** met komma’s of puntkomma’s (geen JSON-array), of een string-array die server-side wordt samengevoegd.
 - \`imageryMustReflect\` — **JSON-array** van 1–12 korte strings (bv. \`["sector","lifestyle"]\`). Liever **geen** enkele doorlopende CSV-string; als je toch één string gebruikt: splits met komma’s of puntkomma’s (max. 12 onderdelen).
 - \`imageryAvoid\` (optioneel) — **JSON-array** van max. 12 strings (zelfde stijl als \`imageryMustReflect\`), of leeg weglaten.
