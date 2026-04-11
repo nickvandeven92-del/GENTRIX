@@ -55,6 +55,9 @@ const IMAGERY_LIST_MAX = 12;
  */
 function splitImageryPhraseList(val: unknown): string[] {
   if (val == null) return [];
+  if (typeof val === "number" || typeof val === "boolean") {
+    return splitImageryPhraseList(String(val));
+  }
   if (Array.isArray(val)) {
     return val
       .map((x) => String(x).trim())
@@ -71,14 +74,17 @@ function splitImageryPhraseList(val: unknown): string[] {
   return [];
 }
 
-function normalizeImageryMustReflect(val: unknown): unknown {
-  return splitImageryPhraseList(val);
-}
+/** `z.preprocess` + inner `z.array` geeft in Zod 4 soms dubbele fouten (string vs array + verkeerde max). */
+const imageryMustReflectFieldSchema = z
+  .unknown()
+  .transform((val) => splitImageryPhraseList(val))
+  .pipe(z.array(z.string().min(1)).min(1).max(IMAGERY_LIST_MAX));
 
-function normalizeImageryAvoid(val: unknown): unknown {
-  if (val == null) return [];
-  return splitImageryPhraseList(val);
-}
+const imageryAvoidFieldSchema = z
+  .unknown()
+  .optional()
+  .transform((val) => splitImageryPhraseList(val))
+  .pipe(z.array(z.string()).max(IMAGERY_LIST_MAX));
 
 /**
  * Machine-leesbaar “designcontract” uit de Denklijn-fase: gaat de generator- en zelfreview-prompt in
@@ -92,14 +98,8 @@ export const designGenerationContractSchema = z.object({
   ),
   paletteMode: z.enum(["light", "dark", "either"]),
   primaryPaletteNotes: z.string().max(400).optional(),
-  imageryMustReflect: z.preprocess(
-    normalizeImageryMustReflect,
-    z.array(z.string().min(1)).min(1).max(IMAGERY_LIST_MAX),
-  ),
-  imageryAvoid: z.preprocess(
-    normalizeImageryAvoid,
-    z.array(z.string()).max(IMAGERY_LIST_MAX).default([]),
-  ),
+  imageryMustReflect: imageryMustReflectFieldSchema,
+  imageryAvoid: imageryAvoidFieldSchema,
   motionLevel: z.enum(["none", "subtle", "moderate", "strong"]),
   toneSummary: z.string().max(500).optional(),
   /** Alleen vullen wanneer er een referentie-excerpt in de Denklijn-run zat; anders weglaten. */

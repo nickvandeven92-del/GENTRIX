@@ -82,6 +82,20 @@ describe("designGenerationContractSchema", () => {
       expect(r.data.imageryAvoid).toEqual(["stock kantoor", "generieke handdruk"]);
     }
   });
+
+  it("coëert getal naar imagery-strings (model levert soms JSON-number)", () => {
+    const raw = {
+      heroVisualSubject: "12345678",
+      paletteMode: "either" as const,
+      imageryMustReflect: 42,
+      motionLevel: "none" as const,
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.imageryMustReflect).toEqual(["42"]);
+    }
+  });
 });
 
 describe("buildDesignContractPromptInjection", () => {
