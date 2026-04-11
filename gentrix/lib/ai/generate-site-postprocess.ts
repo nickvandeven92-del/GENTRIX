@@ -436,6 +436,65 @@ export function buildDefaultClaudeMarketingContactSectionRow(primary: string, ac
   };
 }
 
+function isPlainJsonObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * Modellen nesten soms per ongeluk sectie-arrays (bv. FAQ-items als `[[{…}], …]`).
+ * Maakt één vlakke lijst van rijen; diepe nesting wordt recursief uitgeklapt.
+ */
+function flattenClaudeSectionRowArray(input: unknown): unknown[] {
+  if (!Array.isArray(input)) return [];
+  const out: unknown[] = [];
+  for (const item of input) {
+    if (Array.isArray(item)) {
+      out.push(...flattenClaudeSectionRowArray(item));
+    } else {
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+function filterRowsWithIdAndHtml(rows: unknown[]): unknown[] {
+  return rows.filter((row) => {
+    if (!isPlainJsonObject(row)) return false;
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const html = typeof row.html === "string" ? row.html.trim() : "";
+    return id.length > 0 && html.length > 0;
+  });
+}
+
+/**
+ * Normaliseert `sections`, `contactSections` en elke `marketingPages[*]` vóór Zod-parse:
+ * geneste arrays worden platgeslagen; rijen zonder `id`+`html` vallen weg.
+ */
+export function normalizeClaudeSectionArraysInParsedJson(parsed: unknown): unknown {
+  if (!isPlainJsonObject(parsed)) {
+    return parsed;
+  }
+  const o = { ...parsed };
+
+  if (Array.isArray(o.sections)) {
+    o.sections = filterRowsWithIdAndHtml(flattenClaudeSectionRowArray(o.sections));
+  }
+  if (Array.isArray(o.contactSections)) {
+    o.contactSections = filterRowsWithIdAndHtml(flattenClaudeSectionRowArray(o.contactSections));
+  }
+  if (o.marketingPages != null && isPlainJsonObject(o.marketingPages)) {
+    const mp = o.marketingPages as Record<string, unknown>;
+    const next: Record<string, unknown> = { ...mp };
+    for (const [k, v] of Object.entries(mp)) {
+      if (Array.isArray(v)) {
+        next[k] = filterRowsWithIdAndHtml(flattenClaudeSectionRowArray(v));
+      }
+    }
+    o.marketingPages = next;
+  }
+  return o;
+}
+
 function marketingContactSectionsArrayLooksValid(raw: unknown): boolean {
   if (!Array.isArray(raw) || raw.length === 0) return false;
   return raw.every((row) => {

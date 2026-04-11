@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   collectHtmlElementIds,
   ensureClaudeMarketingSiteJsonHasContactSections,
+  normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindPage,
   repairSamePagePathHrefsInHtml,
 } from "@/lib/ai/generate-site-postprocess";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
-import { claudeTailwindMarketingSiteOutputSchema, mapClaudeOutputToSections } from "@/lib/ai/tailwind-sections-schema";
+import {
+  claudeTailwindMarketingSiteOutputSchema,
+  claudeTailwindPageOutputSchema,
+  mapClaudeOutputToSections,
+} from "@/lib/ai/tailwind-sections-schema";
 import type { ClaudeTailwindPageOutput } from "@/lib/ai/tailwind-sections-schema";
 
 describe("repairSamePagePathHrefsInHtml", () => {
@@ -139,5 +144,58 @@ describe("ensureClaudeMarketingSiteJsonHasContactSections", () => {
     const patched = ensureClaudeMarketingSiteJsonHasContactSections(raw) as Record<string, unknown>;
     const cs = patched.contactSections as { html: string }[];
     expect(cs[0]?.html).toMatch(/<form\b/i);
+  });
+});
+
+describe("normalizeClaudeSectionArraysInParsedJson", () => {
+  const minimalConfig = {
+    style: "Professioneel, rustig",
+    theme: { primary: "#1e3a2f", accent: "#c4a574" },
+    font: "system-ui, sans-serif",
+  };
+
+  it("flattens nested marketingPages.faq rows and drops invalid objects before schema parse", () => {
+    const raw = {
+      config: minimalConfig,
+      sections: [{ id: "hero", html: '<section id="hero" class="min-h-[72vh] md:min-h-[80vh] p-8">H</section>' }],
+      contactSections: [
+        {
+          id: "contact",
+          html: '<section id="contact"><form method="post"><input name="x"/></form></section>',
+        },
+      ],
+      marketingPages: {
+        faq: [
+          { id: "faq-a", html: '<section id="faq-a">A</section>' },
+          [
+            { id: "faq-b", html: '<section id="faq-b">B</section>' },
+            { id: "faq-c", html: '<section id="faq-c">C</section>' },
+          ],
+          { id: "faq-d", html: '<section id="faq-d">D</section>' },
+          {},
+        ],
+      },
+    };
+    const normalized = normalizeClaudeSectionArraysInParsedJson(raw) as Record<string, unknown>;
+    const faq = (normalized.marketingPages as Record<string, { id: string }[]>).faq;
+    expect(faq.map((r) => r.id)).toEqual(["faq-a", "faq-b", "faq-c", "faq-d"]);
+
+    const patched = ensureClaudeMarketingSiteJsonHasContactSections(normalized);
+    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(patched);
+    expect(validated.success).toBe(true);
+  });
+
+  it("flattens nested landing sections for one-pager schema", () => {
+    const raw = {
+      config: minimalConfig,
+      sections: [
+        { id: "hero", html: "<section id=\"hero\">H</section>" },
+        [{ id: "mid", html: "<section id=\"mid\">M</section>" }],
+      ],
+    };
+    const normalized = normalizeClaudeSectionArraysInParsedJson(raw) as { sections: { id: string }[] };
+    expect(normalized.sections.map((s) => s.id)).toEqual(["hero", "mid"]);
+    const validated = claudeTailwindPageOutputSchema.safeParse(normalized);
+    expect(validated.success).toBe(true);
   });
 });

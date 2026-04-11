@@ -27,6 +27,7 @@ import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-prompt";
 import {
   ensureClaudeMarketingSiteJsonHasContactSections,
+  normalizeClaudeSectionArraysInParsedJson,
   normalizeHtmlWhitespaceForUpgradePrompt,
   postProcessClaudeTailwindMarketingSite,
   postProcessClaudeTailwindPage,
@@ -1526,7 +1527,9 @@ function finalizeGenerateSiteFromClaudeText(
 
   if (options.useMarketingMultiPage) {
     const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(
-      ensureClaudeMarketingSiteJsonHasContactSections(parsedResult.value),
+      ensureClaudeMarketingSiteJsonHasContactSections(
+        normalizeClaudeSectionArraysInParsedJson(parsedResult.value),
+      ),
     );
     if (!validated.success) {
       return {
@@ -1552,7 +1555,9 @@ function finalizeGenerateSiteFromClaudeText(
     return { ok: true, data: mapped };
   }
 
-  const validated = claudeTailwindPageOutputSchema.safeParse(parsedResult.value);
+  const validated = claudeTailwindPageOutputSchema.safeParse(
+    normalizeClaudeSectionArraysInParsedJson(parsedResult.value),
+  );
   if (!validated.success) {
     return {
       ok: false,

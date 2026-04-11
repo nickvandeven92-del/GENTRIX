@@ -25,6 +25,7 @@ import {
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import {
   ensureClaudeMarketingSiteJsonHasContactSections,
+  normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindMarketingSite,
   postProcessClaudeTailwindPage,
 } from "@/lib/ai/generate-site-postprocess";
@@ -291,7 +292,9 @@ export async function applySelfReviewToGeneratedPage(options: {
 
   if (marketingMulti) {
     const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(
-      ensureClaudeMarketingSiteJsonHasContactSections(parsedResult.value),
+      ensureClaudeMarketingSiteJsonHasContactSections(
+        normalizeClaudeSectionArraysInParsedJson(parsedResult.value),
+      ),
     );
     if (!validated.success) {
       console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);
@@ -373,7 +376,9 @@ export async function applySelfReviewToGeneratedPage(options: {
     };
   }
 
-  const validated = claudeTailwindPageOutputSchema.safeParse(parsedResult.value);
+  const validated = claudeTailwindPageOutputSchema.safeParse(
+    normalizeClaudeSectionArraysInParsedJson(parsedResult.value),
+  );
   if (!validated.success) {
     console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);
     return { data: draft, ran: true, usedRefined: false };
