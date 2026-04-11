@@ -1,5 +1,8 @@
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
 import { createGenerateSiteReadableStream } from "@/lib/ai/generate-site-with-claude";
+
+/** Langere runs: eerste model + design rationale + zelfreview + Unsplash. Zonder dit breekt Vercel de stream vaak af vóór `complete`. */
+export const maxDuration = 300;
 import {
   buildJournalFactsGenerateSite,
   tryAppendClaudeActivityJournal,

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+
+/** Zelfde plafond als stream-endpoint (Claude + zelfreview + Unsplash). */
+export const maxDuration = 300;
 import { generateSiteWithClaude } from "@/lib/ai/generate-site-with-claude";
 import {
   buildJournalFactsGenerateSite,
