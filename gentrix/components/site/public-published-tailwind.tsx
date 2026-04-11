@@ -95,7 +95,7 @@ export function PublicPublishedTailwind({
         appointmentsEnabled,
         webshopEnabled,
         /* Scroll-reveal: `data-animation` + `.studio-border-reveal` + STUDIO_SCROLL_REVEAL_SCRIPT (tailwind-page-html).
-         * Hero + eerste secties: CSS-vrijstelling; 2,2s fallback voorkomt stuck states in iframes. */
+         * Hero + eerste secties: CSS-vrijstelling; ~1,6s IO-fallback voorkomt stuck states in iframes. */
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
         ...(contactSubpageNav ? { contactSubpageNav } : {}),
       });

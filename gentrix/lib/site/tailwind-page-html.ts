@@ -65,66 +65,125 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
 
 /**
  * CSS voor `data-animation` (fade-up, slide-in-*, scale-in).
- * Animaties starten **pas** als `.studio-in-view` gezet wordt (scroll-reveal script) — zo voelt de pagina
- * “levend” zoals bij Lovable: hero bij binnenkomst, diensten-blokken bij scroll.
+ * Onder de vouw: **CSS transitions** i.p.v. `animation-play-state: paused` + keyframes — die combinatie laat
+ * content op keyframe 0% (opacity:0) hangen als IntersectionObserver in een iframe traag uitblijft, waardoor
+ * sites “niet bewegen” of leeg lijken. `.studio-in-view` triggert de transitie; fallback-script zet die klasse
+ * alsnog na timeout.
+ * Hero + eerste secties: **keyframes** blijven voor een duidelijke load-animatie (zelfde timing als vroeger).
  */
 export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-preference) {
   [data-animation="fade-up"] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1);
+    transition-delay: var(--studio-stagger, 0ms);
+  }
+  [data-animation="fade-up"].studio-in-view {
+    opacity: 1;
+    transform: none;
+  }
+  [data-animation="fade-in"] {
+    opacity: 0;
+    transition: opacity 0.85s cubic-bezier(0.22,1,0.36,1);
+    transition-delay: var(--studio-stagger, 0ms);
+  }
+  [data-animation="fade-in"].studio-in-view {
+    opacity: 1;
+  }
+  [data-animation="slide-in-left"] {
+    opacity: 0;
+    transform: translateX(-32px);
+    transition: opacity 0.85s cubic-bezier(0.22,1,0.36,1), transform 0.85s cubic-bezier(0.22,1,0.36,1);
+    transition-delay: var(--studio-stagger, 0ms);
+  }
+  [data-animation="slide-in-left"].studio-in-view {
+    opacity: 1;
+    transform: none;
+  }
+  [data-animation="slide-in-right"] {
+    opacity: 0;
+    transform: translateX(32px);
+    transition: opacity 0.85s cubic-bezier(0.22,1,0.36,1), transform 0.85s cubic-bezier(0.22,1,0.36,1);
+    transition-delay: var(--studio-stagger, 0ms);
+  }
+  [data-animation="slide-in-right"].studio-in-view {
+    opacity: 1;
+    transform: none;
+  }
+  [data-animation="scale-in"] {
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1);
+    transition-delay: var(--studio-stagger, 0ms);
+  }
+  [data-animation="scale-in"].studio-in-view {
+    opacity: 1;
+    transform: none;
+  }
+  /* Boven de vouw: keyframes lopen direct (geen afhankelijkheid van IO in iframe). */
+  section#hero [data-animation="fade-up"],
+  body > section.w-full:nth-of-type(-n+3) [data-animation="fade-up"] {
     animation: studio-fade-up 0.9s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
-    animation-play-state: paused;
+    transition: none;
   }
-  [data-animation="fade-up"].studio-in-view { animation-play-state: running; }
-  [data-animation="fade-in"] {
+  section#hero [data-animation="fade-in"],
+  body > section.w-full:nth-of-type(-n+3) [data-animation="fade-in"] {
     animation: studio-fade-in 0.85s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
-    animation-play-state: paused;
+    transition: none;
   }
-  [data-animation="fade-in"].studio-in-view { animation-play-state: running; }
-  [data-animation="slide-in-left"] {
+  section#hero [data-animation="slide-in-left"],
+  body > section.w-full:nth-of-type(-n+3) [data-animation="slide-in-left"] {
     animation: studio-slide-left 0.85s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
-    animation-play-state: paused;
+    transition: none;
   }
-  [data-animation="slide-in-left"].studio-in-view { animation-play-state: running; }
-  [data-animation="slide-in-right"] {
+  section#hero [data-animation="slide-in-right"],
+  body > section.w-full:nth-of-type(-n+3) [data-animation="slide-in-right"] {
     animation: studio-slide-right 0.85s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
-    animation-play-state: paused;
+    transition: none;
   }
-  [data-animation="slide-in-right"].studio-in-view { animation-play-state: running; }
-  [data-animation="scale-in"] {
+  section#hero [data-animation="scale-in"],
+  body > section.w-full:nth-of-type(-n+3) [data-animation="scale-in"] {
     animation: studio-scale-in 0.7s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
-    animation-play-state: paused;
+    transition: none;
   }
-  [data-animation="scale-in"].studio-in-view { animation-play-state: running; }
-  /*
-   * Hero / bovenkant: met paused + opacity:0 in keyframes blijft content onzichtbaar tot IntersectionObserver
-   * vuurt. In srcDoc-iframes (/site, preview) faalt of vertraagt dat vaak → hele pagina "wit" onder de nav.
-   * Vrijstellingen: echte section#hero, #hero op willekeurig element (model gebruikt vaak div#hero), en de
-   * eerste paar studio-sectiewrappers (nav + hero als aparte secties).
-   */
-  section#hero [data-animation="fade-up"],
-  section#hero [data-animation="fade-in"],
-  section#hero [data-animation="slide-in-left"],
-  section#hero [data-animation="slide-in-right"],
-  section#hero [data-animation="scale-in"],
-  #hero [data-animation="fade-up"],
-  #hero [data-animation="fade-in"],
-  #hero [data-animation="slide-in-left"],
-  #hero [data-animation="slide-in-right"],
-  #hero [data-animation="scale-in"],
-  body > section.w-full:nth-of-type(-n+3) [data-animation="fade-up"],
-  body > section.w-full:nth-of-type(-n+3) [data-animation="fade-in"],
-  body > section.w-full:nth-of-type(-n+3) [data-animation="slide-in-left"],
-  body > section.w-full:nth-of-type(-n+3) [data-animation="slide-in-right"],
-  body > section.w-full:nth-of-type(-n+3) [data-animation="scale-in"] {
-    animation-play-state: running;
+  #hero [data-animation="fade-up"] {
+    animation: studio-fade-up 0.9s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: var(--studio-stagger, 0ms);
+    transition: none;
+  }
+  #hero [data-animation="fade-in"] {
+    animation: studio-fade-in 0.85s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: var(--studio-stagger, 0ms);
+    transition: none;
+  }
+  #hero [data-animation="slide-in-left"] {
+    animation: studio-slide-left 0.85s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: var(--studio-stagger, 0ms);
+    transition: none;
+  }
+  #hero [data-animation="slide-in-right"] {
+    animation: studio-slide-right 0.85s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: var(--studio-stagger, 0ms);
+    transition: none;
+  }
+  #hero [data-animation="scale-in"] {
+    animation: studio-scale-in 0.7s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: var(--studio-stagger, 0ms);
+    transition: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-animation] { animation: none !important; }
+  [data-animation] {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 @keyframes studio-fade-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 @keyframes studio-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -139,6 +198,7 @@ export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-pre
 export const STUDIO_DATA_ANIMATION_DISABLED_CSS = `/* Geen scroll-reveal: inhoud met data-animation direct zichtbaar */
 [data-animation] {
   animation: none !important;
+  transition: none !important;
   opacity: 1 !important;
   transform: none !important;
 }`;
@@ -402,16 +462,16 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
         e.target.classList.add("studio-in-view");
         io.unobserve(e.target);
       }
-    },{root:null,rootMargin:"0px 0px 12% 0px",threshold:0.01});
+    },{root:null,rootMargin:"0px 0px 22% 0px",threshold:0.01});
     for(var n=0;n<nodes.length;n++)io.observe(nodes[n]);
     for(var b=0;b<borders.length;b++)io.observe(borders[b]);
-    /* Als IO in iframe / layout nooit triggert: nooit opacity:0 laten hangen */
+    /* IO in iframe/preview soms laat of nooit: transitie + fallback voorkomen eeuwig verborgen blokken */
     setTimeout(function(){
       var p=document.querySelectorAll("[data-animation]:not(.studio-in-view)");
       for(var k=0;k<p.length;k++)p[k].classList.add("studio-in-view");
       var q=document.querySelectorAll(".studio-border-reveal:not(.studio-in-view)");
       for(var m=0;m<q.length;m++)q[m].classList.add("studio-in-view");
-    },2200);
+    },1600);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
