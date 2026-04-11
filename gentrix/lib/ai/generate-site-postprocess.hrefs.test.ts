@@ -5,6 +5,7 @@ import {
   fixAlpineNavToggleDefaultsInXData,
   normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindPage,
+  postProcessTailwindSectionsForStreamingPreview,
   repairSamePagePathHrefsInHtml,
 } from "@/lib/ai/generate-site-postprocess";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
@@ -80,6 +81,21 @@ describe("fixAlpineNavToggleDefaultsInXData", () => {
     const out = fixAlpineNavToggleDefaultsInXData(html);
     expect(out).toContain("menuOpen: false");
     expect(out).toContain("x: 1");
+  });
+
+  it("past drawerOpen: true aan", () => {
+    const html = `<div x-data="{ drawerOpen: true }">`;
+    expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("drawerOpen: false");
+  });
+});
+
+describe("postProcessTailwindSectionsForStreamingPreview", () => {
+  it("past fixAlpine toe op streaming-secties", () => {
+    const out = postProcessTailwindSectionsForStreamingPreview(
+      [{ id: "hero", html: `<div x-data="{ open: true }"></div>`, sectionName: "Hero" }],
+      null,
+    );
+    expect(out[0]?.html).toContain("open: false");
   });
 });
 

@@ -1,4 +1,11 @@
-import type { ClaudeTailwindMarketingSiteOutput, ClaudeTailwindPageOutput } from "@/lib/ai/tailwind-sections-schema";
+import type {
+  ClaudeTailwindMarketingSiteOutput,
+  ClaudeTailwindPageOutput,
+  MasterPromptPageConfig,
+  TailwindPageConfig,
+  TailwindSection,
+} from "@/lib/ai/tailwind-sections-schema";
+import { isLegacyTailwindPageConfig, slugifyToSectionId } from "@/lib/ai/tailwind-sections-schema";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -97,7 +104,8 @@ export function withRootIdOnSectionHtml(html: string, stableId: string): string 
  * Modellen zetten soms per ongeluk `open: true` / `menuOpen: true` in `x-data`, waardoor het mobiele menu
  * fullscreen opent vóór interactie. Corrigeer bekende toggles naar `false` (alleen binnen `x-data`-waarden).
  */
-const ALPINE_NAV_TOGGLE_TRUE_RE = /\b(open|menuOpen|navOpen|mobileOpen|showMenu)\s*:\s*true\b/g;
+const ALPINE_NAV_TOGGLE_TRUE_RE =
+  /\b(open|menuOpen|navOpen|mobileOpen|showMenu|drawerOpen|sidebarOpen|panelOpen|mobileNavOpen|sideMenuOpen)\s*:\s*true\b/g;
 
 export function fixAlpineNavToggleDefaultsInXData(html: string): string {
   const fixInner = (inner: string) => inner.replace(ALPINE_NAV_TOGGLE_TRUE_RE, "$1: false");
@@ -376,6 +384,43 @@ export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): C
   });
 
   return { ...page, sections: sectionsLinked };
+}
+
+const STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG: MasterPromptPageConfig = {
+  style: "studio_streaming_preview",
+  font: "Inter, ui-sans-serif, system-ui, sans-serif",
+  theme: {
+    primary: "#0f766e",
+    accent: "#b45309",
+    secondary: "#64748b",
+  },
+};
+
+/**
+ * Streaming site-studio: pas dezelfde HTML-postprocess toe als op de afgeronde JSON, zodat preview tijdens
+ * genereren geen “ruwe” modelfouten toont (Alpine menu standaard open, dubbele class op nav/header, enz.).
+ */
+export function postProcessTailwindSectionsForStreamingPreview(
+  sections: Array<{ id: string; html: string; sectionName?: string }>,
+  config: TailwindPageConfig | null,
+): TailwindSection[] {
+  if (sections.length === 0) return [];
+  const masterConfig: MasterPromptPageConfig =
+    config != null && !isLegacyTailwindPageConfig(config) ? config : STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG;
+  const page: ClaudeTailwindPageOutput = {
+    config: masterConfig,
+    sections: sections.map((s, i) => ({
+      id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName ?? `section-${i}`, i),
+      html: s.html,
+      name: s.sectionName?.trim() || undefined,
+    })),
+  };
+  const out = postProcessClaudeTailwindPage(page);
+  return out.sections.map((row, i) => ({
+    id: row.id,
+    sectionName: row.name?.trim() || sections[i]?.sectionName?.trim() || row.id,
+    html: row.html,
+  }));
 }
 
 /** Alleen voor upgrade-prompt JSON (kleinere payload). */

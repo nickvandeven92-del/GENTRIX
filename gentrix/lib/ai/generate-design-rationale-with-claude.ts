@@ -32,7 +32,11 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 5. Fine-tunen — één concrete tip voor de briefing.
 
 === contract — basisvelden ===
-- \`heroVisualSubject\`, \`heroImageSearchHints\` (optioneel) — **één string** met komma’s of puntkomma’s (geen JSON-array), \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`imageryMustReflect\`, \`imageryAvoid\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel) — zoals eerder; \`motionLevel\` moet **samenhangen** met \`referenceVisualAxes.motionStyle\` wanneer assen aanwezig zijn (geen tegenstrijdig extreme pair zonder uitleg in rationale_nl).
+- \`heroVisualSubject\`, \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
+- \`heroImageSearchHints\` (optioneel) — **één string** met komma’s of puntkomma’s (geen JSON-array), of een string-array die server-side wordt samengevoegd.
+- \`imageryMustReflect\` — **JSON-array** van 1–12 korte strings (bv. \`["sector","lifestyle"]\`). Liever **geen** enkele doorlopende CSV-string; als je toch één string gebruikt: splits met komma’s of puntkomma’s (max. 12 onderdelen).
+- \`imageryAvoid\` (optioneel) — **JSON-array** van max. 12 strings (zelfde stijl als \`imageryMustReflect\`), of leeg weglaten.
+- \`motionLevel\` moet **samenhangen** met \`referenceVisualAxes.motionStyle\` wanneer assen aanwezig zijn (geen tegenstrijdig extreme pair zonder uitleg in rationale_nl).
 - **imageryAvoid vs. winkel/webshop:** als de briefing een **fysieke winkel**, **webshop**, **online bestellen** of duidelijke **productverkoop** in deze sector noemt, zet dan **geen** brede vermijdingen als "retail", "winkelsfeer" of "winkelomgeving" — dat laat de generator ten onrechte generieke natuur- of hobbyfoto’s kiezen i.p.v. sectorjuiste uitrusting, water/visserij of een nette specialistische winkelsetting. Vermijd alleen **niet passende** retail (supermarkt, winkelcentrum zonder sectorlink, kantoor-stock) en expliciet off-topic beelden.
 
 === contract — referenceVisualAxes (verplicht bij REFERENTIESITE-excerpt) ===

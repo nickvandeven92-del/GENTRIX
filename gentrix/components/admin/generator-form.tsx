@@ -8,6 +8,7 @@ import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
+import { postProcessTailwindSectionsForStreamingPreview } from "@/lib/ai/generate-site-postprocess";
 import {
   slugifyToSectionId,
   type GeneratedTailwindPage,
@@ -75,13 +76,12 @@ export function GeneratorForm({
 
   const streamingLivePreviewPayload = useMemo(() => {
     if (streamingSections.length === 0) return null;
-    const sectionIdsOrdered = streamingSections.map((s, i) =>
-      s.id ?? slugifyToSectionId(s.sectionName, i),
-    );
+    const previewSections = postProcessTailwindSectionsForStreamingPreview(streamingSections, streamingConfig);
+    const sectionIdsOrdered = previewSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
     return publishedPayloadFromParsed(
       {
         kind: "tailwind",
-        sections: streamingSections,
+        sections: previewSections,
         ...(streamingConfig ? { config: streamingConfig } : {}),
         sectionIdsOrdered,
         siteIr: buildSiteIrV1({

@@ -66,6 +66,22 @@ describe("designGenerationContractSchema", () => {
       expect(r.data.imageryAvoid.length).toBe(2);
     }
   });
+
+  it("normaliseert imageryMustReflect en imageryAvoid van CSV-string naar array", () => {
+    const raw = {
+      heroVisualSubject: "Hero met werkplaats en gereedschap op de voorgrond.",
+      paletteMode: "light" as const,
+      imageryMustReflect: "werkplaats, vakmanschap; gereedschap",
+      imageryAvoid: "stock kantoor, generieke handdruk",
+      motionLevel: "subtle" as const,
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.imageryMustReflect).toEqual(["werkplaats", "vakmanschap", "gereedschap"]);
+      expect(r.data.imageryAvoid).toEqual(["stock kantoor", "generieke handdruk"]);
+    }
+  });
 });
 
 describe("buildDesignContractPromptInjection", () => {

@@ -47,6 +47,39 @@ function normalizeHeroImageSearchHints(val: unknown): string | undefined {
   return undefined;
 }
 
+const IMAGERY_LIST_MAX = 12;
+
+/**
+ * Model + legacy payloads leveren soms één CSV-string i.p.v. JSON-array (prompt noemde eerder “zoals hints”).
+ * Splitsen op komma/puntkomma/pipe/regeleinde; trimmen; max. IMAGERY_LIST_MAX items.
+ */
+function splitImageryPhraseList(val: unknown): string[] {
+  if (val == null) return [];
+  if (Array.isArray(val)) {
+    return val
+      .map((x) => String(x).trim())
+      .filter((s) => s.length > 0)
+      .slice(0, IMAGERY_LIST_MAX);
+  }
+  if (typeof val === "string") {
+    return val
+      .split(/[,;|\n]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .slice(0, IMAGERY_LIST_MAX);
+  }
+  return [];
+}
+
+function normalizeImageryMustReflect(val: unknown): unknown {
+  return splitImageryPhraseList(val);
+}
+
+function normalizeImageryAvoid(val: unknown): unknown {
+  if (val == null) return [];
+  return splitImageryPhraseList(val);
+}
+
 /**
  * Machine-leesbaar “designcontract” uit de Denklijn-fase: gaat de generator- en zelfreview-prompt in
  * zodat visuele keuzes (hero, palet, beeld, motion) aansluiten bij dezelfde run.
@@ -59,8 +92,14 @@ export const designGenerationContractSchema = z.object({
   ),
   paletteMode: z.enum(["light", "dark", "either"]),
   primaryPaletteNotes: z.string().max(400).optional(),
-  imageryMustReflect: z.array(z.string().min(1)).min(1).max(12),
-  imageryAvoid: z.array(z.string()).max(12).optional().default([]),
+  imageryMustReflect: z.preprocess(
+    normalizeImageryMustReflect,
+    z.array(z.string().min(1)).min(1).max(IMAGERY_LIST_MAX),
+  ),
+  imageryAvoid: z.preprocess(
+    normalizeImageryAvoid,
+    z.array(z.string()).max(IMAGERY_LIST_MAX).default([]),
+  ),
   motionLevel: z.enum(["none", "subtle", "moderate", "strong"]),
   toneSummary: z.string().max(500).optional(),
   /** Alleen vullen wanneer er een referentie-excerpt in de Denklijn-run zat; anders weglaten. */
