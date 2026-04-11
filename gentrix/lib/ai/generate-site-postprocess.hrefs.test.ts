@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   collectHtmlElementIds,
   ensureClaudeMarketingSiteJsonHasContactSections,
+  fixAlpineNavToggleDefaultsInXData,
   normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindPage,
   repairSamePagePathHrefsInHtml,
@@ -65,6 +66,20 @@ describe("collectHtmlElementIds", () => {
     const ids = collectHtmlElementIds(`<section id="hero"><div id="sub"></div></section>`);
     expect(ids.has("hero")).toBe(true);
     expect(ids.has("sub")).toBe(true);
+  });
+});
+
+describe("fixAlpineNavToggleDefaultsInXData", () => {
+  it("zet open: true om naar open: false in dubbele aanhalingstekens", () => {
+    const html = `<header x-data="{ open: true }" class="x"><button @click="open=!open"></button></header>`;
+    expect(fixAlpineNavToggleDefaultsInXData(html)).toContain('x-data="{ open: false }"');
+  });
+
+  it("past menuOpen en compound state aan", () => {
+    const html = `<div x-data='{ menuOpen: true, x: 1 }'>`;
+    const out = fixAlpineNavToggleDefaultsInXData(html);
+    expect(out).toContain("menuOpen: false");
+    expect(out).toContain("x: 1");
   });
 });
 

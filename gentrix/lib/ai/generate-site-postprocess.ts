@@ -93,6 +93,25 @@ export function withRootIdOnSectionHtml(html: string, stableId: string): string 
  * Voegt meerdere \`class="…"\` op dezelfde \`<nav>\` of \`<header>\` samen tot één attribuut (geldige HTML).
  * Claude combineert soms scroll-overlay + vaste utilities tot twee \`class\`-attributen.
  */
+/**
+ * Modellen zetten soms per ongeluk `open: true` / `menuOpen: true` in `x-data`, waardoor het mobiele menu
+ * fullscreen opent vóór interactie. Corrigeer bekende toggles naar `false` (alleen binnen `x-data`-waarden).
+ */
+const ALPINE_NAV_TOGGLE_TRUE_RE = /\b(open|menuOpen|navOpen|mobileOpen|showMenu)\s*:\s*true\b/g;
+
+export function fixAlpineNavToggleDefaultsInXData(html: string): string {
+  const fixInner = (inner: string) => inner.replace(ALPINE_NAV_TOGGLE_TRUE_RE, "$1: false");
+  let out = html.replace(/\bx-data\s*=\s*"([^"]*)"/gi, (full, inner: string) => {
+    const next = fixInner(inner);
+    return next === inner ? full : `x-data="${next}"`;
+  });
+  out = out.replace(/\bx-data\s*=\s*'([^']*)'/gi, (full, inner: string) => {
+    const next = fixInner(inner);
+    return next === inner ? full : `x-data='${next}'`;
+  });
+  return out;
+}
+
 export function mergeDuplicateClassOnChromeTags(html: string): string {
   return html.replace(/<(nav|header)(\s[^>]*?)>/gi, (full, tag: string, inner: string) => {
     const doubleQuoted = [...inner.matchAll(/\bclass\s*=\s*"([^"]*)"/gi)];
@@ -351,7 +370,8 @@ export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): C
     const html0b = repairSamePagePathHrefsInHtml(html0, validIds);
     const html1 = repairInternalLinksInHtml(html0b, validIds);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
-    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2) : html2;
+    const html2b = fixAlpineNavToggleDefaultsInXData(html2);
+    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2b) : html2b;
     return { ...row, html: html3 };
   });
 

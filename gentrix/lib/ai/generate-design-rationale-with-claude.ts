@@ -32,7 +32,7 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 5. Fine-tunen — één concrete tip voor de briefing.
 
 === contract — basisvelden ===
-- \`heroVisualSubject\`, \`heroImageSearchHints\` (optioneel), \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`imageryMustReflect\`, \`imageryAvoid\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel) — zoals eerder; \`motionLevel\` moet **samenhangen** met \`referenceVisualAxes.motionStyle\` wanneer assen aanwezig zijn (geen tegenstrijdig extreme pair zonder uitleg in rationale_nl).
+- \`heroVisualSubject\`, \`heroImageSearchHints\` (optioneel) — **één string** met komma’s of puntkomma’s (geen JSON-array), \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`imageryMustReflect\`, \`imageryAvoid\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel) — zoals eerder; \`motionLevel\` moet **samenhangen** met \`referenceVisualAxes.motionStyle\` wanneer assen aanwezig zijn (geen tegenstrijdig extreme pair zonder uitleg in rationale_nl).
 - **imageryAvoid vs. winkel/webshop:** als de briefing een **fysieke winkel**, **webshop**, **online bestellen** of duidelijke **productverkoop** in deze sector noemt, zet dan **geen** brede vermijdingen als "retail", "winkelsfeer" of "winkelomgeving" — dat laat de generator ten onrechte generieke natuur- of hobbyfoto’s kiezen i.p.v. sectorjuiste uitrusting, water/visserij of een nette specialistische winkelsetting. Vermijd alleen **niet passende** retail (supermarkt, winkelcentrum zonder sectorlink, kantoor-stock) en expliciet off-topic beelden.
 
 === contract — referenceVisualAxes (verplicht bij REFERENTIESITE-excerpt) ===

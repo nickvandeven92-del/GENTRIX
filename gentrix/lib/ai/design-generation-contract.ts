@@ -28,13 +28,35 @@ export const referenceVisualAxesSchema = z.object({
 
 export type ReferenceVisualAxes = z.infer<typeof referenceVisualAxesSchema>;
 
+/** Één string voor prompts/Unsplash; model levert soms een lijst — samenvoegen i.p.v. contract te breken. */
+function normalizeHeroImageSearchHints(val: unknown): string | undefined {
+  if (val == null) return undefined;
+  if (Array.isArray(val)) {
+    const joined = val
+      .map((x) => String(x).trim())
+      .filter((s) => s.length > 0)
+      .join("; ");
+    if (!joined) return undefined;
+    return joined.length > 500 ? joined.slice(0, 500) : joined;
+  }
+  if (typeof val === "string") {
+    const t = val.trim();
+    if (!t) return undefined;
+    return t.length > 500 ? t.slice(0, 500) : t;
+  }
+  return undefined;
+}
+
 /**
  * Machine-leesbaar “designcontract” uit de Denklijn-fase: gaat de generator- en zelfreview-prompt in
  * zodat visuele keuzes (hero, palet, beeld, motion) aansluiten bij dezelfde run.
  */
 export const designGenerationContractSchema = z.object({
   heroVisualSubject: z.string().min(5).max(800),
-  heroImageSearchHints: z.string().max(500).optional(),
+  heroImageSearchHints: z.preprocess(
+    normalizeHeroImageSearchHints,
+    z.string().max(500).optional(),
+  ),
   paletteMode: z.enum(["light", "dark", "either"]),
   primaryPaletteNotes: z.string().max(400).optional(),
   imageryMustReflect: z.array(z.string().min(1)).min(1).max(12),

@@ -33,6 +33,23 @@ describe("designGenerationContractSchema", () => {
     }
   });
 
+  it("normaliseert heroImageSearchHints van array naar string", () => {
+    const raw = {
+      heroVisualSubject: "Hero met kappersstoelen en spiegelwand.",
+      heroImageSearchHints: ["barbershop interior", "vintage chairs", "tile floor"],
+      paletteMode: "dark" as const,
+      imageryMustReflect: ["barbershop"],
+      motionLevel: "subtle" as const,
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.heroImageSearchHints).toBe(
+        "barbershop interior; vintage chairs; tile floor",
+      );
+    }
+  });
+
   it("accepteert een minimaal geldig contract", () => {
     const raw = {
       heroVisualSubject: "Hengelsport aan het water met actiebeeld van werphengel.",

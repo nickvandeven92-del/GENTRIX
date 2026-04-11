@@ -2,6 +2,7 @@
  * Server-safe Tailwind-landing HTML (DOMPurify + theme-vars). Gebruikt door iframe-preview en SSR-publieke routes.
  */
 import DOMPurify from "isomorphic-dompurify";
+import { fixAlpineNavToggleDefaultsInXData } from "@/lib/ai/generate-site-postprocess";
 import {
   isLegacyTailwindPageConfig,
   type TailwindPageConfig,
@@ -569,13 +570,15 @@ export function sanitizeTailwindFragment(html: string): string {
     return "";
   }
 
+  const htmlForSanitize = fixAlpineNavToggleDefaultsInXData(html);
+
   DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
     if (data.attrName === "style" && data.attrValue) {
       data.attrValue = sanitizeInlineStyle(data.attrValue);
     }
   });
 
-  const purified = DOMPurify.sanitize(stripLikelyBrokenImgTags(html), {
+  const purified = DOMPurify.sanitize(stripLikelyBrokenImgTags(htmlForSanitize), {
     ALLOWED_TAGS: [
       "a",
       "article",
