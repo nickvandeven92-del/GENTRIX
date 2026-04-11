@@ -1026,3 +1026,19 @@ export const INDUSTRY_KEYWORDS: { pattern: RegExp; profileId: string }[] = [
   { pattern: /\b(autopoets|auto\s*detailing|autodetailing|car\s*detailing|carwash|ceramic\s*coating|PPF|lakbescherming|autowas)\b/i, profileId: "car_detailing" },
   { pattern: /\b(autoverhuur|auto\s*verhuur|car\s*rental|huurauto|auto\s*huren|wagenpark\s*verhuur)\b/i, profileId: "car_rental" },
 ];
+
+/**
+ * Branche-profielen waar de studio een canonieke `shop`-sectie (server-side inject) verwacht —
+ * zelfde set als waar de generator webshop-nav/placeholders mag tonen.
+ */
+export function industryProfileIncludesCanonicalShopSection(
+  profileId: string | null | undefined,
+): boolean {
+  const id = profileId?.trim();
+  if (!id) return false;
+  const p = INDUSTRY_PROFILES.find((x) => x.id === id);
+  return p ? p.sections.includes("shop") : false;
+}
+
+/** Losse briefing-tekst: duidelijke webshop/e-commerce signalen (niet het brede woord “winkel” alleen). */
+export const BRIEFING_EXPLICIT_WEBSHOP_SIGNAL = /\b(webshop|webwinkel|e-?commerce|winkelwagen|winkelmand|(?:online|in\s+de\s+webshop)\s+bestellen)\b/i;

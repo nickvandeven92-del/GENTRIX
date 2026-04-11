@@ -11,32 +11,46 @@ import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 
 const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bindend designcontract** voor de website-generator in dezelfde run.
 
+=== ROLVERDELING (leidend — niet wollig) ===
+- **Briefing** bepaalt: branche, inhoud, doelgroep, CTA’s, verboden claims, toon van copy (feitelijk kader).
+- **Referentiesite (HTML-excerpt in user-bericht)** bepaalt: **visuele schil** — layoutritme, licht/donker, kleurintentie, typografie-houding, hero-**compositie**, sectiedichtheid, motion-**karakter**, rand/kader-behandeling, kaartstijl. **Niet** vreemde lange teksten of merknamen letterlijk overnemen.
+- **contract** legt vast **hoe** briefing + (eventuele) referentie samenkomen. Daarvoor gebruik je **twee lagen**:
+  1. Basisvelden: \`heroVisualSubject\`, \`imageryMustReflect\`, \`paletteMode\`, \`motionLevel\`, enz. — primair briefing/branche.
+  2. \`referenceVisualAxes\` — **alleen** als het user-bericht een blok **REFERENTIESITE** met excerpt bevat: **verplicht** object met **alle negen** sleutels. Per as een **concrete** keuze uit de toegestane enums of vrije string; gebruik \`unspecified\` **alleen** als het excerpt die as echt niet draagt — noem in \`rationale_nl\` kort welke assen uit het excerpt komen en welke \`unspecified\` zijn en waarom.
+
 === OUTPUT (strikt) ===
 - Antwoord met **alleen** één geldig JSON-object (geen markdown buiten JSON, geen uitleg erna).
 - Top-level keys, precies:
-  1. \`rationale_nl\` — **4 tot 6 korte alinea's** in het Nederlands (elk 1–3 zinnen), geschikt om aan een klant te tonen. Geen \`#\`-koppen in de string. Leg uit hoe de **briefing** gelezen wordt en welke richting de site krijgt.
-  2. \`contract\` — object volgens het schema hieronder. Vul het **concreet** op basis van de briefing; geen vage placeholders. Als de briefing kort is: kies redelijke defaults die bij de branche passen, maar zet dat ook in \`rationale_nl\` (onzekerheid benoemen).
+  1. \`rationale_nl\` — **4 tot 6 korte alinea's** in het Nederlands (elk 1–3 zinnen). Leg uit: briefing-lezing, eventuele referentie-assen (per as, geen vaag “we namen het mee”), en hoe contract de twee merged.
+  2. \`contract\` — object volgens het schema hieronder.
 
 === INHOUD rationale_nl (volgorde) ===
-1. Branche & sfeer — welk beeld lees je uit de tekst?
-2. Design — visuele richting; **luxe is geen reden om automatisch donker te kiezen**; noem lichte én donkere opties als \`paletteMode\` \`either\` is.
-3. Pagina — sectievolgorde uit de interpretatie; hero als eerste gezicht (wat moet er visueel gebeuren).
-4. **Referentiesite:** Als het user-bericht een blok **REFERENTIESITE** met HTML-excerpt bevat, is dat **leidend naast de briefing** voor sfeer (palet licht/donker, typografie-ritme, beeldtaal, motion-dichtheid). Leg in \`rationale_nl\` kort uit **welke** sfeer je uit het excerpt haalt. Als de interpretatie-JSON alleen \`referenceStyle.status: "failed"\` toont (geen excerpt): meld kort dat ophalen mislukte en werk **zonder** referentie-verplichting.
-5. Fine-tunen — één concrete tip om de briefing te verbeteren.
+1. Branche & sfeer uit briefing.
+2. Designrichting uit briefing + basisvelden contract.
+3. Pagina / sectievolgorde; hero-eis op hoofdlijn.
+4. **Referentie:** alleen als excerpt aanwezig: welke **visuele** conclusies per as (\`layoutRhythm\`, \`themeMode\`, …); geen loze bevestiging. Als \`referenceStyle.status: "failed"\` in JSON: kort melden, geen assen afdwingen.
+5. Fine-tunen — één concrete tip voor de briefing.
 
-=== contract schema (velden) ===
-- \`heroVisualSubject\` (string): één zin: wat moet de hero **visueel** uitbeelden (concreet, geen buzzwords).
-- \`heroImageSearchHints\` (string, optioneel): 3–12 korte EN/NL zoektermen voor stock (komma-gescheiden), passend bij de branche.
-- \`paletteMode\`: \`"light"\` | \`"dark"\` | \`"either"\` — kies \`either\` alleen als de briefing echt beide toe laat.
-- \`primaryPaletteNotes\` (string, optioneel): bv. "diep blauw + teal accent".
-- \`imageryMustReflect\` (array van strings, minstens 1): onderwerpen die **alle** prominente foto's moeten ondersteunen (bv. "hengelsport", "water", "visuitrusting").
-- \`imageryAvoid\` (array, optioneel): dingen die **niet** als hoofdbeeld mogen (bv. "generiek kantoor", "random plant/natuur zonder link naar de branche").
-- \`motionLevel\`: \`"none"\` | \`"subtle"\` | \`"moderate"\` | \`"strong"\` — sluit aan bij de briefing (dynamisch/interactief/scroll ⇒ minstens \`moderate\` als de briefing dat vraagt).
-- \`toneSummary\` (string, optioneel): toon van de copy in één zin.
+=== contract — basisvelden ===
+- \`heroVisualSubject\`, \`heroImageSearchHints\` (optioneel), \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`imageryMustReflect\`, \`imageryAvoid\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel) — zoals eerder; \`motionLevel\` moet **samenhangen** met \`referenceVisualAxes.motionStyle\` wanneer assen aanwezig zijn (geen tegenstrijdig extreme pair zonder uitleg in rationale_nl).
+- **imageryAvoid vs. winkel/webshop:** als de briefing een **fysieke winkel**, **webshop**, **online bestellen** of duidelijke **productverkoop** in deze sector noemt, zet dan **geen** brede vermijdingen als "retail", "winkelsfeer" of "winkelomgeving" — dat laat de generator ten onrechte generieke natuur- of hobbyfoto’s kiezen i.p.v. sectorjuiste uitrusting, water/visserij of een nette specialistische winkelsetting. Vermijd alleen **niet passende** retail (supermarkt, winkelcentrum zonder sectorlink, kantoor-stock) en expliciet off-topic beelden.
 
-**Met REFERENTIESITE-excerpt in het user-bericht:** \`paletteMode\`, \`primaryPaletteNotes\`, \`heroVisualSubject\`, \`heroImageSearchHints\`, \`motionLevel\`, \`imageryMustReflect\` en \`imageryAvoid\` moeten **duidelijk** uit het excerpt volgen (geen pixel-perfecte kopie; wel dezelfde visuele familie). Bij twijfel tussen briefing en referentie wint de **briefing** — maar negeer een geslaagde referentie niet zonder reden in \`rationale_nl\`.
+=== contract — referenceVisualAxes (verplicht bij REFERENTIESITE-excerpt) ===
+Object met exact deze keys (enum-waarden exact zoals hieronder):
 
-Het \`contract\` wordt **letterlijk** aan de generator gekoppeld: wees daarom **consequent** met \`rationale_nl\` (zelfde verhaal, contract = harde afspraken).`;
+- \`layoutRhythm\`: \`"tight"\` | \`"balanced"\` | \`"airy"\` | \`"editorial_mosaic"\` | \`"unspecified"\`
+- \`themeMode\`: \`"light"\` | \`"dark"\` | \`"mixed"\` | \`"unspecified"\`
+- \`paletteIntent\`: string (5–450 tekens) — concrete kleur/contrastintentie uit referentie (bv. "navy achtergrond, teal accent, koel wit tekstvlak").
+- \`typographyDirection\`: \`"sans_modern"\` | \`"sans_humanist"\` | \`"serif_editorial"\` | \`"mixed_pairing"\` | \`"mono_accent"\` | \`"unspecified"\`
+- \`heroComposition\`: string (8–500 tekens) — compositie **principe** (split, centered + media, overlay, asymmetrisch …), geen pixel-maten uit excerpt kopiëren.
+- \`sectionDensity\`: \`"compact"\` | \`"medium"\` | \`"sparse"\` | \`"unspecified"\`
+- \`motionStyle\`: \`"static_minimal"\` | \`"scroll_reveal"\` | \`"expressive"\` | \`"marquee_forward"\` | \`"unspecified"\`
+- \`borderTreatment\`: \`"none_minimal"\` | \`"accent_lines"\` | \`"border_reveal_forward"\` | \`"frame_heavy"\` | \`"unspecified"\`
+- \`cardStyle\`: \`"flat"\` | \`"soft_shadow"\` | \`"glass_blur"\` | \`"bordered_tile"\` | \`"unspecified"\`
+
+**Zonder** REFERENTIESITE-excerpt in het user-bericht: laat \`referenceVisualAxes\` volledig weg (geen leeg object, geen null).
+
+Het \`contract\` wordt **letterlijk** aan de generator gekoppeld — geen rhetorische “we hebben de referentie meegenomen” zonder dat de assen het excerpt echt vertalen.`;
 
 /** Standaard aan. Zet \`SKIP_DESIGN_RATIONALE=1\` om een extra API-ronde te vermijden. */
 export function isDesignRationaleDuringGenerationEnabled(): boolean {
@@ -77,7 +91,7 @@ URL: ${snap.url}
 HTML-fragment (stijl- en structuurhint; geen lange teksten of merknamen letterlijk kopiëren in contract-strings):
 ${excerpt}
 
-**Opdracht:** Lees dit excerpt en stel \`rationale_nl\` + \`contract\` daar **duidelijk** op af voor een eigen one-pager voor "${businessName}" (zelfde visuele familie: kleur, licht/donker, typografie-ritme, beeld-onderwerp, motion-niveau).`;
+**Opdracht:** Lees dit excerpt. Vul **referenceVisualAxes** (alle negen sleutels) met **concrete** waarden die het excerpt visueel vertalen (ritme, thema, paletintentie, typografie, hero-compositie, dichtheid, motion-stijl, randen, kaarten). Vul \`rationale_nl\` + overige contractvelden zodat briefing (inhoud/CTA) en referentie (visuele schil) **samenhangen** voor een eigen one-pager voor "${businessName}".`;
 }
 
 export async function generateDesignRationaleWithClaude(
@@ -99,11 +113,12 @@ export async function generateDesignRationaleWithClaude(
   const desc = input.description.trim().slice(0, 8_000);
   const ctx = slimFeedbackForRationale(input.feedback);
   const referenceBlock = buildReferenceSiteBlockForRationale(input.referenceSiteSnapshot, name || "de klant");
+  const requiresReferenceAxes = Boolean(input.referenceSiteSnapshot?.excerpt?.trim());
 
   try {
     const message = await client.messages.create({
       model,
-      max_tokens: clampMaxTokensNonStreaming(model, 2_048),
+      max_tokens: clampMaxTokensNonStreaming(model, 2_560),
       system: SYSTEM,
       messages: [
         {
@@ -153,10 +168,31 @@ Schrijf nu het JSON-antwoord met rationale_nl + contract.`,
       };
     }
 
+    const contract = contractParsed.data;
+    if (requiresReferenceAxes && contract.referenceVisualAxes == null) {
+      return {
+        ok: true,
+        text: envelope.data.rationale_nl.trim(),
+        contract: null,
+        contractWarning:
+          "Referentie-excerpt aanwezig maar `referenceVisualAxes` ontbreekt in contract — generatie zonder designcontract (herhaal run of strakker model).",
+      };
+    }
+
+    if (!requiresReferenceAxes && contract.referenceVisualAxes != null) {
+      return {
+        ok: true,
+        text: envelope.data.rationale_nl.trim(),
+        contract: null,
+        contractWarning:
+          "`referenceVisualAxes` meegegeven zonder referentie-excerpt — generatie zonder designcontract.",
+      };
+    }
+
     return {
       ok: true,
       text: envelope.data.rationale_nl.trim(),
-      contract: contractParsed.data,
+      contract,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "generateDesignRationaleWithClaude mislukt.";

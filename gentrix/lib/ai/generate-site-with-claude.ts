@@ -1974,13 +1974,18 @@ export function createGenerateSiteReadableStream(
           }
         }
 
-        if (usage) {
-          await logClaudeMessageUsage("generate_site", p.generateModel, {
-            input_tokens: usage.input_tokens ?? 0,
-            output_tokens: usage.output_tokens,
-            cache_creation_input_tokens: usage.cache_creation_input_tokens,
-            cache_read_input_tokens: usage.cache_read_input_tokens,
-          });
+        const stopUsageKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        try {
+          if (usage) {
+            await logClaudeMessageUsage("generate_site", p.generateModel, {
+              input_tokens: usage.input_tokens ?? 0,
+              output_tokens: usage.output_tokens,
+              cache_creation_input_tokens: usage.cache_creation_input_tokens,
+              cache_read_input_tokens: usage.cache_read_input_tokens,
+            });
+          }
+        } finally {
+          stopUsageKeepalive();
         }
 
         const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason, {
@@ -2105,10 +2110,14 @@ export function createGenerateSiteReadableStream(
           }
         }
 
+        /** Journal + usage-log kunnen lang duren (extra Claude + DB); zonder keepalive knipt de stream vaak net vóór `complete`. */
+        const stopPostProcessKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         try {
           await streamOptions?.onSuccess?.(data);
         } catch (journalErr) {
           console.error("[generate-site-stream] onSuccess (journal/log) mislukt; generatie wordt alsnog afgerond:", journalErr);
+        } finally {
+          stopPostProcessKeepalive();
         }
 
         send(controller, { type: "complete", outputFormat: "tailwind_sections", data });

@@ -42,7 +42,10 @@ import {
 } from "@/lib/ai/tailwind-sections-schema";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import { validateGeneratedPageHtml } from "@/lib/ai/validate-generated-page";
-import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import {
+  formatReferenceVisualAxesForPrompt,
+  type DesignGenerationContract,
+} from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback, StyleDetectionSource } from "@/lib/ai/generate-site-with-claude";
 
 const MAX_DRAFT_JSON_CHARS = 380_000;
@@ -72,7 +75,8 @@ ${buildContentAuthorityPolicyBlock()}
 - **Hero zonder redelijke \`min-h-*\` op het buitenste blok:** kan een smalle strook + leeg wit in de preview geven — overweeg \`min-h-[72vh] md:min-h-[80vh]\` (of vergelijkbaar) tenzij de briefing anders wil.
 - Als **PIPELINE-DETECTIE** in het user-bericht staat: het concept moet die **stijl (id)** en **branche** redelijk volgen; verbeter knal-contrast of verkeerde sfeer zodat het bij de gedetecteerde intent past (tenzij de briefing expliciet iets anders eist).
 - Als **DESIGN-AFSPRAAK (Denklijn-contract)** in het user-bericht staat: dat is **dezelfde run** als de Denklijn — herstel hero-beelden, dominante stock, thema (\`config.theme\`) en motion zodat ze **duidelijk** binnen dat contract vallen. Bij **expliciete** briefing-tegenstrijdigheid wint de briefing; vermeld dat niet in JSON, pas alleen markup/config aan.
-- Als **REFERENTIESITE EXCERPT** in het user-bericht staat: het concept moet **herkenbaar** in dezelfde visuele wereld als dat excerpt vallen (palet licht/donker, typografie-ritme, hero-sfeer, motion-dichtheid) — **samen** met briefing en eventueel designcontract; geen letterlijke overname van vreemde lange teksten of merkclaims.
+- Als het designcontract-blok **REFERENCE VISUAL AXES** (\`referenceVisualAxes\`) bevat: controleer **as-per-as** of de markup die assen echt volgt — niet alleen woorden uit het excerpt. \`layoutRhythm\` → grid/whitespace/max-width; \`themeMode\` + \`paletteIntent\` → \`config.theme\` + achtergrond/contrast; \`typographyDirection\` → \`config.font\` + heading/body-gewicht; \`heroComposition\` → hero-layout (split/stack/overlay); \`sectionDensity\` → verticale padding en sectielengte; \`motionStyle\` → \`data-animation\` / marquee / statisch; \`borderTreatment\` → \`studio-border-reveal\` / hairlines / zware kaders; \`cardStyle\` → schaduw/rand/glas-achtige kaarten. Bij conflict: briefing op **inhoud/claims/CTA**; assen op **visuele schil** tenzij de briefing iets visueels expliciet verbiedt.
+- Als **REFERENTIESITE EXCERPT** in het user-bericht staat **zonder** \`referenceVisualAxes\`: stem visueel af op excerpt + briefing zoals bij pass 1; als wél assen aanwezig: gebruik assen als **checklijst**.
 - **Stijlincoherentie:** als de pagina **twee botsende** esthetieken tegelijk als hoofdbeeld toont (bv. zware neumorphism + harde brutalism, of vol skeuomorphism + vol flat zonder briefing-reden), **vereenvoudig** naar **één** duidelijke richting die bij de gedetecteerde primaire stijl of de briefing past.
 - **Dubbele navigatie:** als dezelfde site-menu-items **twee keer** prominent staan (topbar + verticale/zij-nav met identieke \`#…\` links), **snoei** tot **één** globale nav (behoud de sterkste; verwijder de dubbele lijst).
 - **Typografie door elkaar:** footer/body in **Times-achtige** serif terwijl koppen brutal/cyber **sans** zijn — **trek recht**: één familie voor body + UI, of bewust **één** gepaarde serif alleen voor koppen **met** passende \`config.font\`; verhoog body-contrast op donker (\`text-gray-200\`+, geen \`font-light\` + \`text-gray-500\` op zwart).
@@ -156,14 +160,23 @@ Als het concept **duidelijk** afwijkt van deze referentie (ander licht/donker-sp
 
 function formatDesignContractForReview(c: DesignGenerationContract): string {
   const avoid = c.imageryAvoid?.length ? c.imageryAvoid.join(", ") : "(—)";
+  const axes = c.referenceVisualAxes;
+  const axesSection = axes
+    ? [
+        "",
+        "**REFERENCE VISUAL AXES (checklijst — visueel leidend naast briefing):**",
+        formatReferenceVisualAxesForPrompt(axes),
+      ].join("\n")
+    : "";
   return [
     `- **Hero-visueel:** ${c.heroVisualSubject}`,
     ...(c.heroImageSearchHints ? [`- **Foto-zoekhints:** ${c.heroImageSearchHints}`] : []),
     `- **Palett-modus:** ${c.paletteMode}${c.primaryPaletteNotes ? ` — ${c.primaryPaletteNotes}` : ""}`,
     `- **Beeld MUST:** ${c.imageryMustReflect.join(", ")}`,
     `- **Beeld vermijden:** ${avoid}`,
-    `- **Motion:** ${c.motionLevel}`,
+    `- **Motion (motionLevel):** ${c.motionLevel}`,
     ...(c.toneSummary ? [`- **Toon:** ${c.toneSummary}`] : []),
+    axesSection,
   ].join("\n");
 }
 

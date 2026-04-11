@@ -127,6 +127,51 @@ export function GenerationFeedbackPanel({
                 </div>
               ) : null}
             </dl>
+            {designContract.referenceVisualAxes ? (
+              <div className="mt-3 border-t border-emerald-200/80 pt-3">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900">
+                  Reference visual axes
+                </h4>
+                <dl className="mt-1.5 grid gap-1 text-[11px] text-emerald-950">
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">layoutRhythm</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.layoutRhythm}</dd>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">themeMode</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.themeMode}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="font-mono text-emerald-800/90">paletteIntent</dt>
+                    <dd className="mt-0.5">{designContract.referenceVisualAxes.paletteIntent}</dd>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">typographyDirection</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.typographyDirection}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="font-mono text-emerald-800/90">heroComposition</dt>
+                    <dd className="mt-0.5">{designContract.referenceVisualAxes.heroComposition}</dd>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">sectionDensity</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.sectionDensity}</dd>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">motionStyle</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.motionStyle}</dd>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">borderTreatment</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.borderTreatment}</dd>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-1">
+                    <dt className="font-mono text-emerald-800/90">cardStyle</dt>
+                    <dd className="font-mono">{designContract.referenceVisualAxes.cardStyle}</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
           </section>
         ) : null}
 

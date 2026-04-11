@@ -19,6 +19,10 @@ import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { projectSnapshotFromTailwindPayload, projectSnapshotToJson } from "@/lib/site/project-snapshot-io";
 import type { ProjectSnapshot } from "@/lib/site/project-snapshot-schema";
 import { getPersistSiteValidationErrors } from "@/lib/site/site-ir-compose-validation";
+import {
+  BRIEFING_EXPLICIT_WEBSHOP_SIGNAL,
+  industryProfileIncludesCanonicalShopSection,
+} from "@/lib/ai/site-generation-industry-data";
 
 /** Tailwind CLI-build bij opslaan kan enkele seconden duren (Vercel/serverless). */
 export const maxDuration = 60;
@@ -137,6 +141,23 @@ export async function POST(request: Request) {
   try {
     const supabase = createServiceRoleClient();
 
+    const { data: existingClientRow } = await supabase
+      .from("clients")
+      .select("webshop_enabled")
+      .eq("subfolder_slug", parsed.data.subfolder_slug)
+      .maybeSingle();
+    const priorWebshop = Boolean(
+      (existingClientRow as { webshop_enabled?: boolean } | null)?.webshop_enabled,
+    );
+    const briefingBlob = `${parsed.data.name}\n${parsed.data.description ?? ""}`;
+    const generatorAutoWebshop =
+      parsed.data.snapshot_source === "generator" &&
+      (industryProfileIncludesCanonicalShopSection(
+        parsed.data.site_ir_hints?.detected_industry_id,
+      ) ||
+        BRIEFING_EXPLICIT_WEBSHOP_SIGNAL.test(briefingBlob));
+    const resolvedWebshopEnabled = priorWebshop || generatorAutoWebshop;
+
     if (persistedTailwindSnapshot) {
       const { data: modRow } = await supabase
         .from("clients")
@@ -147,7 +168,7 @@ export async function POST(request: Request) {
         appointmentsEnabled: Boolean(
           (modRow as { appointments_enabled?: boolean } | null)?.appointments_enabled,
         ),
-        webshopEnabled: Boolean((modRow as { webshop_enabled?: boolean } | null)?.webshop_enabled),
+        webshopEnabled: resolvedWebshopEnabled,
       };
       const persistErrors = getPersistSiteValidationErrors(persistedTailwindSnapshot, flags);
       if (persistErrors.length > 0) {
@@ -194,6 +215,7 @@ export async function POST(request: Request) {
       site_data_json: jsonToStore,
       status: resolvedClientStatus,
       generation_package: STUDIO_GENERATION_PACKAGE,
+      webshop_enabled: resolvedWebshopEnabled,
       ...clientNumberPayload,
     };
 
@@ -308,7 +330,7 @@ export async function POST(request: Request) {
         const kameleon_shop_sync = await syncKameleonShopTenant({
           subfolderSlug: parsed.data.subfolder_slug,
           displayName: parsed.data.name,
-          webshopEnabled: false,
+          webshopEnabled: resolvedWebshopEnabled,
         });
         return NextResponse.json({
           ok: true,
@@ -340,7 +362,7 @@ export async function POST(request: Request) {
     const kameleon_shop_sync = await syncKameleonShopTenant({
       subfolderSlug: parsed.data.subfolder_slug,
       displayName: parsed.data.name,
-      webshopEnabled: false,
+      webshopEnabled: resolvedWebshopEnabled,
     });
 
     return NextResponse.json({

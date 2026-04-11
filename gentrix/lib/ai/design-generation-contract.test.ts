@@ -4,7 +4,35 @@ import {
   designGenerationContractSchema,
 } from "@/lib/ai/design-generation-contract";
 
+const sampleAxes = {
+  layoutRhythm: "balanced" as const,
+  themeMode: "dark" as const,
+  paletteIntent: "Diep navy met teal accent en hoog contrast op bodytekst.",
+  typographyDirection: "sans_modern" as const,
+  heroComposition: "Split: links copy + CTA, rechts full-bleed visueel met overlay-gradient.",
+  sectionDensity: "medium" as const,
+  motionStyle: "scroll_reveal" as const,
+  borderTreatment: "border_reveal_forward" as const,
+  cardStyle: "soft_shadow" as const,
+};
+
 describe("designGenerationContractSchema", () => {
+  it("accepteert contract met referenceVisualAxes", () => {
+    const raw = {
+      heroVisualSubject: "Hero met waterbeeld.",
+      paletteMode: "dark",
+      imageryMustReflect: ["water"],
+      motionLevel: "moderate",
+      referenceVisualAxes: sampleAxes,
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.referenceVisualAxes?.layoutRhythm).toBe("balanced");
+      expect(r.data.referenceVisualAxes?.paletteIntent).toContain("navy");
+    }
+  });
+
   it("accepteert een minimaal geldig contract", () => {
     const raw = {
       heroVisualSubject: "Hengelsport aan het water met actiebeeld van werphengel.",
@@ -36,5 +64,20 @@ describe("buildDesignContractPromptInjection", () => {
     expect(block).toContain("Subtiele motion");
     const withRef = buildDesignContractPromptInjection(c, { url: "https://example.com/ref" });
     expect(withRef).toContain("https://example.com/ref");
+  });
+
+  it("voegt assen- en rolverdeling toe wanneer referenceVisualAxes gezet is", () => {
+    const c = designGenerationContractSchema.parse({
+      heroVisualSubject: "Test hero",
+      paletteMode: "light",
+      imageryMustReflect: ["x"],
+      motionLevel: "subtle",
+      referenceVisualAxes: sampleAxes,
+    });
+    const block = buildDesignContractPromptInjection(c, { url: "https://ref.example/" });
+    expect(block).toContain("ROLVERDELING");
+    expect(block).toContain("REFERENCE VISUAL AXES");
+    expect(block).toContain("layoutRhythm");
+    expect(block).toContain("https://ref.example/");
   });
 });

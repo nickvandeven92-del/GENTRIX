@@ -46,7 +46,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Denklijn tijdens stream (admin UI)",
     path: "lib/ai/generate-design-rationale-with-claude.ts",
     description:
-      "JSON met rationale_nl + designcontract na generation_meta; contract → user-prompt + zelfreview + Unsplash-context. NDJSON design_rationale. Uit: SKIP_DESIGN_RATIONALE=1.",
+      "JSON met rationale_nl + designcontract; bij referentie-URL verplicht `referenceVisualAxes` (9 assen). Contract → user-prompt + zelfreview + Unsplash-context. NDJSON design_rationale. Uit: SKIP_DESIGN_RATIONALE=1.",
   },
   {
     label: "Studio prompt: archetypes + component-varianten (één bron)",
