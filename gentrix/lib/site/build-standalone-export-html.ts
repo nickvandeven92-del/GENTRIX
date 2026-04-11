@@ -8,6 +8,7 @@ import {
   buildRootCssVarsForTailwindPage,
   buildFaviconLinkTagForLogoSet,
   buildTailwindSectionsBodyInnerHtml,
+  STUDIO_BORDER_REVEAL_CSS,
   STUDIO_DATA_ANIMATION_CSS,
   STUDIO_LASER_LINE_CSS,
   STUDIO_MARQUEE_CSS,
@@ -134,6 +135,7 @@ export function buildStandaloneExportHtmlDocument(
     body { font-family: ${fontStack}; }
     ${rootCssBlock}
     ${STUDIO_DATA_ANIMATION_CSS}
+    ${STUDIO_BORDER_REVEAL_CSS}
     ${STUDIO_MARQUEE_CSS}
     ${STUDIO_LASER_LINE_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
@@ -169,6 +171,7 @@ Technisch
 - Interactiviteit: Alpine.js wordt van jsDelivr geladen (zelfde als in de Studio-preview). Zonder internet werken geen Alpine-micro-interacties (FAQ-uitklap, menu-toggle, enz.).
 - Iconen: Lucide (attribuut data-lucide) wordt van jsDelivr geladen en na load geïnitialiseerd — zonder internet verschijnen die pictogrammen niet.
 - Beweging: elementen met data-animation (fade-up, slide-in-left, …) animeren wanneer ze in beeld komen (Intersection Observer), met lichte stagger binnen dezelfde sectie — vergelijkbaar met scroll-entrance op moderne sites. Bij “verminder beweging” in het OS worden animaties uitgezet.
+- Accent-lijnen: \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`--v\` (verticaal) — lijn “groeit” van ~72% naar 100% bij scroll (zelfde observer als data-animation). Optioneel \`[--studio-br-rgb:R_G_B]\` voor kleur.
 - Marquee/ticker: optioneel \`studio-marquee\` + \`studio-marquee-track\` met dubbele inhoud voor een oneindige horizontale band (logo’s of tekst); pauzeert automatisch bij “verminder beweging”.
 - Premium merk-SVG: alleen als de site is gegenereerd met ENABLE_BRAND_LOGO_SYSTEM=1 in .env.local; het logo hoort dan als inline-SVG of img in index.html te staan (niet als los bestand in images/). Ontbrak het in de model-HTML, dan voegt de export/publicatie automatisch het primary-SVG toe na de eerste header/nav/section (attribuut data-studio-brand-mark).
 - Eigen JS/CSS uit de HTML-editor staan in index.html; controleer die code voordat je publiceert.

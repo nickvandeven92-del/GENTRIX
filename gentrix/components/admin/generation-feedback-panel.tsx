@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, Brain, Loader2, Sparkles } from "lucide-react";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
 
 type GenerationFeedbackPanelProps = {
@@ -9,6 +10,9 @@ type GenerationFeedbackPanelProps = {
   designRationale?: string | null;
   designRationaleLoading?: boolean;
   designRationaleSkipReason?: string | null;
+  /** Zelfde run: machine-contract dat aan de generator en zelfreview is meegegeven. */
+  designContract?: DesignGenerationContract | null;
+  designContractWarning?: string | null;
 };
 
 export function GenerationFeedbackPanel({
@@ -17,6 +21,8 @@ export function GenerationFeedbackPanel({
   designRationale = null,
   designRationaleLoading = false,
   designRationaleSkipReason = null,
+  designContract = null,
+  designContractWarning = null,
 }: GenerationFeedbackPanelProps) {
   const { interpreted, model } = feedback;
 
@@ -34,8 +40,9 @@ export function GenerationFeedbackPanel({
           </span>
         </div>
         <p className="mt-1 text-xs font-normal text-indigo-900/80">
-          Onder <strong className="font-medium">Denklijn</strong> staat hoe het
-          model de briefing leest — handig om prompts gericht bij te sturen.
+          <strong className="font-medium">Denklijn</strong> en het <strong className="font-medium">designcontract</strong>{" "}
+          worden in dezelfde run aan de generator (en zelfreview) gekoppeld — de briefing wint bij expliciete
+          tegenstrijdigheid.
         </p>
       </summary>
 
@@ -69,7 +76,59 @@ export function GenerationFeedbackPanel({
           ) : (
             <p className="mt-2 text-xs text-violet-800/70">Nog geen denklijn voor deze run.</p>
           )}
+          {designContractWarning ? (
+            <p className="mt-2 rounded-md border border-amber-200 bg-amber-50/90 px-2 py-1.5 text-xs text-amber-950">
+              Contractwaarschuwing: {designContractWarning}
+            </p>
+          ) : null}
         </section>
+
+        {designContract ? (
+          <section className="rounded-lg border border-emerald-200/90 bg-emerald-50/40 p-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-950">
+              Designcontract (bindend)
+            </h3>
+            <dl className="mt-2 grid gap-1.5 text-xs text-emerald-950">
+              <div>
+                <dt className="text-emerald-800/80">Hero-visueel</dt>
+                <dd className="font-medium">{designContract.heroVisualSubject}</dd>
+              </div>
+              {designContract.heroImageSearchHints ? (
+                <div>
+                  <dt className="text-emerald-800/80">Foto-zoekhints</dt>
+                  <dd>{designContract.heroImageSearchHints}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="text-emerald-800/80">Palett</dt>
+                <dd className="font-mono text-[11px]">
+                  {designContract.paletteMode}
+                  {designContract.primaryPaletteNotes ? ` — ${designContract.primaryPaletteNotes}` : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-emerald-800/80">Beeld MUST</dt>
+                <dd>{designContract.imageryMustReflect.join(", ")}</dd>
+              </div>
+              {designContract.imageryAvoid.length > 0 ? (
+                <div>
+                  <dt className="text-emerald-800/80">Beeld vermijden</dt>
+                  <dd>{designContract.imageryAvoid.join(", ")}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="text-emerald-800/80">Motion</dt>
+                <dd className="font-mono text-[11px]">{designContract.motionLevel}</dd>
+              </div>
+              {designContract.toneSummary ? (
+                <div>
+                  <dt className="text-emerald-800/80">Toon</dt>
+                  <dd>{designContract.toneSummary}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </section>
+        ) : null}
 
         <section className="rounded-lg border border-white/60 bg-white/70 p-3">
           <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -113,6 +172,12 @@ export function GenerationFeedbackPanel({
                     : interpreted.styleDetectionSource === "none"
                       ? "none — geen profiel (creatieve vrijheid)"
                       : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Agency mode</dt>
+              <dd className="text-xs font-medium text-slate-800">
+                {interpreted.agencyMode ? "Aan (prompt + hogere max_tokens)" : "Uit"}
               </dd>
             </div>
             {interpreted.referenceStyle ? (

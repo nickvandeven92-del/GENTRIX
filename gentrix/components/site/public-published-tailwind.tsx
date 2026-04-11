@@ -94,8 +94,8 @@ export function PublicPublishedTailwind({
         draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
         appointmentsEnabled,
         webshopEnabled,
-        /* Scroll-reveal aan: `data-animation` + STUDIO_SCROLL_REVEAL_SCRIPT (zie tailwind-page-html).
-         * Hero + eerste secties hebben CSS-vrijstelling; 2,2s fallback voorkomt stuck opacity in iframes. */
+        /* Scroll-reveal: `data-animation` + `.studio-border-reveal` + STUDIO_SCROLL_REVEAL_SCRIPT (tailwind-page-html).
+         * Hero + eerste secties: CSS-vrijstelling; 2,2s fallback voorkomt stuck states in iframes. */
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
         ...(contactSubpageNav ? { contactSubpageNav } : {}),
       });

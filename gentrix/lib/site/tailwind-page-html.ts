@@ -133,13 +133,102 @@ export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-pre
 
 /**
  * Nood-CSS als `disableScrollRevealAnimations` expliciet aan staat: geen paused keyframes / IO.
- * Normale weergave: STUDIO_DATA_ANIMATION_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS + STUDIO_SCROLL_REVEAL_SCRIPT.
+ * Normale weergave: STUDIO_DATA_ANIMATION_CSS + STUDIO_BORDER_REVEAL_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS + STUDIO_SCROLL_REVEAL_SCRIPT.
  */
 export const STUDIO_DATA_ANIMATION_DISABLED_CSS = `/* Geen scroll-reveal: inhoud met data-animation direct zichtbaar */
 [data-animation] {
   animation: none !important;
   opacity: 1 !important;
   transform: none !important;
+}`;
+
+/**
+ * Lijnaccent dat **uitbreidt** wanneer `.studio-in-view` wordt gezet (zelfde IntersectionObserver als `data-animation`).
+ * Lovable-achtig: start ~72% breedte/hoogte, loopt naar 100% bij binnen-scrollen — **geen** losse `<script>` in secties.
+ *
+ * Markup (horizontaal onder kop): lege container `class="… studio-border-reveal studio-border-reveal--h …"` (min. `h-1` of `mt-6`).
+ * Kleur: zet op dezelfde node bv. `[--studio-br-rgb:212_175_55]` (goud) of laat default amber; `::after` gebruikt `rgb(var(--studio-br-rgb) / var(--studio-br-a, 0.92))`.
+ * Verticaal: `studio-border-reveal studio-border-reveal--v` + `min-h-[…]` op de wrapper.
+ */
+export const STUDIO_BORDER_REVEAL_CSS = `@media (prefers-reduced-motion: no-preference) {
+  .studio-border-reveal {
+    pointer-events: none;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .studio-border-reveal--h {
+    height: 3px;
+  }
+  .studio-border-reveal--h::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    border-radius: 9999px;
+    background: rgb(var(--studio-br-rgb, 245 158 11) / var(--studio-br-a, 0.9));
+    box-shadow: 0 0 12px rgb(var(--studio-br-rgb, 245 158 11) / 0.25);
+    transform: translateX(-50%) scaleX(0.72);
+    transform-origin: center;
+    transition: transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .studio-border-reveal--h.studio-in-view::after {
+    transform: translateX(-50%) scaleX(1);
+  }
+  .studio-border-reveal--v {
+    width: 3px;
+    min-height: 3.5rem;
+  }
+  .studio-border-reveal--v::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    border-radius: 9999px;
+    background: rgb(var(--studio-br-rgb, 245 158 11) / var(--studio-br-a, 0.9));
+    box-shadow: 0 0 10px rgb(var(--studio-br-rgb, 245 158 11) / 0.22);
+    transform: translateX(-50%) scaleY(0.72);
+    transform-origin: center top;
+    transition: transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .studio-border-reveal--v.studio-in-view::after {
+    transform: translateX(-50%) scaleY(1);
+  }
+  /* Eerste scherm: zelfde vrijstelling als data-animation — geen “half” lijnwerk boven de vouw */
+  section#hero .studio-border-reveal--h::after,
+  #hero .studio-border-reveal--h::after,
+  body > section.w-full:nth-of-type(-n+3) .studio-border-reveal--h::after {
+    transform: translateX(-50%) scaleX(1);
+  }
+  section#hero .studio-border-reveal--v::after,
+  #hero .studio-border-reveal--v::after,
+  body > section.w-full:nth-of-type(-n+3) .studio-border-reveal--v::after {
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-border-reveal--h::after,
+  .studio-border-reveal--v::after {
+    transition: none !important;
+    transform: translateX(-50%) scaleX(1) !important;
+  }
+  .studio-border-reveal--v::after {
+    transform: translateX(-50%) scaleY(1) !important;
+  }
+}`;
+
+/** Bij uitgeschakelde scroll-reveal: lijnen direct volledig (geen IO). */
+export const STUDIO_BORDER_REVEAL_DISABLED_CSS = `
+.studio-border-reveal--h::after {
+  transition: none !important;
+  transform: translateX(-50%) scaleX(1) !important;
+}
+.studio-border-reveal--v::after {
+  transition: none !important;
+  transform: translateX(-50%) scaleY(1) !important;
 }`;
 
 /**
@@ -283,7 +372,7 @@ export const STUDIO_LASER_LINE_CSS = `@media (prefers-reduced-motion: no-prefere
   100% { transform: translateY(380%); }
 }`;
 
-/** Zet `.studio-in-view` op `[data-animation]` wanneer het element in (of net boven) de viewport komt; stagger per sectie. */
+/** Zet `.studio-in-view` op `[data-animation]` en `.studio-border-reveal` wanneer het element in (of net boven) de viewport komt; stagger alleen voor `data-animation`. */
 export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
 (function(){
   if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
@@ -295,7 +384,8 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
   }
   function boot(){
     var nodes=document.querySelectorAll("[data-animation]");
-    if(!nodes.length)return;
+    var borders=document.querySelectorAll(".studio-border-reveal");
+    if(!nodes.length&&!borders.length)return;
     var counts={};
     for(var i=0;i<nodes.length;i++){
       var el=nodes[i];
@@ -313,10 +403,13 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
       }
     },{root:null,rootMargin:"0px 0px 12% 0px",threshold:0.01});
     for(var n=0;n<nodes.length;n++)io.observe(nodes[n]);
+    for(var b=0;b<borders.length;b++)io.observe(borders[b]);
     /* Als IO in iframe / layout nooit triggert: nooit opacity:0 laten hangen */
     setTimeout(function(){
       var p=document.querySelectorAll("[data-animation]:not(.studio-in-view)");
       for(var k=0;k<p.length;k++)p[k].classList.add("studio-in-view");
+      var q=document.querySelectorAll(".studio-border-reveal:not(.studio-in-view)");
+      for(var m=0;m<q.length;m++)q[m].classList.add("studio-in-view");
     },2200);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
@@ -1065,8 +1158,8 @@ export function buildTailwindIframeSrcDoc(
 
   const animationCss =
     (options?.disableScrollRevealAnimations
-      ? STUDIO_DATA_ANIMATION_DISABLED_CSS
-      : STUDIO_DATA_ANIMATION_CSS) +
+      ? STUDIO_DATA_ANIMATION_DISABLED_CSS + STUDIO_BORDER_REVEAL_DISABLED_CSS
+      : STUDIO_DATA_ANIMATION_CSS + STUDIO_BORDER_REVEAL_CSS) +
     "\n" +
     STUDIO_MARQUEE_CSS +
     "\n" +

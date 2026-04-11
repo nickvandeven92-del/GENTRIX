@@ -316,6 +316,21 @@ Energie, prestatie en passie voor sport. De website moet activeren en motiveren.
 - **Typische elementen:** sportcategorieën, merkpartners (Nike, Adidas, etc.), loopanalyse/advies-CTA, teamkleding-info.`,
   },
   {
+    id: "angling_shop",
+    label: "Hengelsport / Viswinkel",
+    sections: ["hero", "shop", "features", "gallery", "about", "faq", "footer"],
+    heroStrategy: "photo",
+    servicesFormat: "split",
+    vibe: "warm",
+    promptHint: `**BRANCHE-INSPIRATIE: HENGELSPORT / VISWINKEL (specialist)**
+Rust, water, vakmanschap en serieuze uitrusting — **niet** dezelfde vibe als een fitness-sportwinkel of generieke SaaS-landing.
+- **Hero-idee:** full-bleed **water / ochtendnevel / boot / vislijn** (Unsplash: fishing rod lake, fly fishing, tackle close-up); kop in **elegant serif** + korte subkop; **geen** willekeurige stock die niets met vissen te maken heeft. Donker+diep **of** licht+editorial — kies één lijn en volg die.
+- **Compositie:** wissel **split** (foto + copy), **editoriale** banden, horizontale USP-rij met \`studio-border-reveal--h\` onder koppen — **niet** overal dezelfde drie ronde kaarten met hetzelfde icoon-patroon.
+- **Shop/nav:** \`shop\`-sectie komt server-side; zet webshop-placeholder in nav/footer. Categorie-denkrichting: hengels, molens, kunstaas, lijn, kleding, accessoires — alleen als het de briefing volgt.
+- **Galerij:** echte hengel-/natuur-scènes; geen “random nature leaf” zonder visserij-context.
+- **Motion:** bij briefing over dynamiek/interactie: \`data-animation\`, \`studio-marquee\` met vaktermen, \`studio-border-reveal\` — geen cyber-laser tenzij de klant dat expliciet zo noemt.`,
+  },
+  {
     id: "bakery",
     label: "Bakkerij / Patisserie",
     sections: ["hero", "features", "about", "gallery", "shop", "footer"],
@@ -944,6 +959,11 @@ export const INDUSTRY_KEYWORDS: { pattern: RegExp; profileId: string }[] = [
   { pattern: /\b(fietsenwinkel|fietsen\s*zaak|fietsenzaak|e-?bike|racefiets|fietsmaker|fietsenmaker|tweewieler)\b/i, profileId: "bike_shop" },
   { pattern: /\b(dierenwinkel|dierenspeciaalzaak|dierbenodigdheden|huisdierwinkel|pet\s*shop|diervoeding)\b/i, profileId: "pet_store" },
   { pattern: /\b(opticien|optiek|brillen\s*winkel|brillenwinkel|optometrist|contactlenzen|oogmeting|zonnebrillen)\b/i, profileId: "optician" },
+  {
+    pattern:
+      /\b(hengelsport|viswinkel|visspeciaalzaak|hengel\s*zaak|hengelsportzaak|vlootwinkel|aaswinkel|visserij|karpervissen|spinhengel|vliegvissen|moulinet|hengel\s*&\s*molen|fishing\s*tackle|tackle\s*shop)\b/i,
+    profileId: "angling_shop",
+  },
   { pattern: /\b(sportwinkel|sportzaak|sportartikelen|sportkleding|outdoor\s*winkel|kampeerwinkel)\b/i, profileId: "sports_store" },
   { pattern: /\b(bakkerij|bakker|patisserie|broodbakker|banketbakker|taartenbakker|croissant|brood)\b/i, profileId: "bakery" },
   { pattern: /\b(slagerij|slager|traiteur|vleesspecialist|charcuterie|poelier)\b/i, profileId: "butcher" },

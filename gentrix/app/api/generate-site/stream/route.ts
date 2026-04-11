@@ -47,11 +47,13 @@ export async function POST(request: Request) {
   const clientImages = parsed.data.clientImages ?? [];
   const referenceStyleUrl = parsed.data.reference_style_url;
 
+  const agencyMode = parsed.data.agency_mode === true;
   const promptOpts =
-    clientImages.length > 0 || referenceStyleUrl
+    clientImages.length > 0 || referenceStyleUrl || agencyMode
       ? {
           ...(clientImages.length > 0 ? { clientImages } : {}),
           ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
+          ...(agencyMode ? { agencyMode: true } : {}),
         }
       : undefined;
 

@@ -34,11 +34,13 @@ export async function POST(request: Request) {
   try {
     const recentNames = await getRecentClientNamesForPrompt(3);
     const referenceStyleUrl = parsed.data.reference_style_url;
+    const agencyMode = parsed.data.agency_mode === true;
     const promptOpts =
-      parsed.data.clientImages?.length || referenceStyleUrl
+      parsed.data.clientImages?.length || referenceStyleUrl || agencyMode
         ? {
             ...(parsed.data.clientImages?.length ? { clientImages: parsed.data.clientImages } : {}),
             ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
+            ...(agencyMode ? { agencyMode: true } : {}),
           }
         : undefined;
 

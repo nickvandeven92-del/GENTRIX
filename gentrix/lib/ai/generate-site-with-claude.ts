@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { generateDesignRationaleWithClaude } from "@/lib/ai/generate-design-rationale-with-claude";
+import {
+  buildDesignContractPromptInjection,
+  buildUnsplashThemeContextWithContract,
+  type DesignGenerationContract,
+} from "@/lib/ai/design-generation-contract";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import type { MessageDeltaUsage } from "@anthropic-ai/sdk/resources/messages/messages";
@@ -81,12 +86,16 @@ export type GenerationPipelineFeedback = {
     };
     /** `true` bij SITE_GENERATION_MINIMAL_PROMPT of `minimalPrompt` in options. */
     minimalPrompt?: boolean;
+    /** Agency mode: sterkere visuele instructies + hogere output-limiet (env of API). */
+    agencyMode?: boolean;
   };
 };
 
 const DEFAULT_GENERATE_MODEL = "claude-sonnet-4-6";
 const DEFAULT_SUPPORT_MODEL = "claude-sonnet-4-6";
 const DEFAULT_MAX_OUTPUT_TOKENS = 24_576;
+/** Agency mode: langere JSON (meer secties/HTML) binnen modelplafond. */
+const AGENCY_MAX_OUTPUT_TOKENS = 30_720;
 
 
 /**
@@ -562,6 +571,22 @@ export function detectStyle(description: string): StyleProfile | null {
 }
 
 /**
+ * Legt uit hoe de **keyword-router** branche kiest, en verbiedt expliciet voorzichtig-generiek gedrag
+ * (los van CONTENT AUTHORITY: feiten blijven strak).
+ */
+function buildSectorRouterAndCreativeMandateMarkdown(industry: IndustryProfile | null): string {
+  if (industry) {
+    return `=== BRANCHE-ROUTER (trefwoorden → preset) ===
+De pipeline matcht automatisch op keywords: **${industry.label}** (\`${industry.id}\`). Dat is **startinspiratie** — geen korset. Bedoelt de briefing een **andere** niche of toon, dan **wint de briefing**.
+- **Niet "veilig" generiek:** specialistisch en onderscheidend **ja**; saai grijs-blauw + willekeurig drie identieke icoonkaarten **nee** — tenzij dat expliciet bij deze klant past.`;
+  }
+  return `=== SECTOR (geen keyword-match op vaste branche-preset) ===
+De interne branche-router vond **geen** profiel op deze tekst — normaal voor niches die (nog) geen eigen \`profileId\` in de lijst hebben.
+- **Jij = branche-onderzoek:** lees naam + briefing als **evidence-first** sectorbepaling (aanbod, jargon, doelgroep, regio) en bouw **daarvoor** — zoals een agency vóór het ontwerp onderzoekt.
+- **Verboden:** "veilig" terugvallen op anonieme SaaS-defaults. **Gewenst:** gedurfde maar coherente layout, kleur en typografie die de **inhoud** ondersteunen.`;
+}
+
+/**
  * Bouw de branche- en stijl-specifieke prompt-hints die meegestuurd worden naar Claude.
  * Branche = structuur (welke secties, welk content-type).
  * Stijl = visuele taal (kleuren, fonts, sfeer).
@@ -571,6 +596,8 @@ function buildIndustryPromptHint(description: string): string {
   const industry = detectIndustry(description);
   const style = detectStyle(description);
   const parts: string[] = [];
+
+  parts.push(buildSectorRouterAndCreativeMandateMarkdown(industry));
 
   if (industry) {
     parts.push(`=== BRANCHE-INSPIRATIE (gedetecteerd: ${industry.label}) ===
@@ -708,7 +735,8 @@ Kies **één** duidelijke lijn door de pagina (bijv. editorial type, asymmetrisc
 
 ${accentLine}
 
-**Prioriteit:** sterke briefing > deze zinnetjes.`;
+**Prioriteit:** sterke briefing > deze zinnetjes.
+**Niet "veilig":** de accent-suggestie is bedoeld om **herkenbare** merkkleur te forceren — **niet** om visueel timide te zijn.`;
 }
 
 function buildUpgradePreserveLayoutBlock(): string {
@@ -729,7 +757,8 @@ Recente klanten (vermijd bewust copy-paste van hetzelfde stramien): ${recent}
 
 - Zet in \`config.style\` **één korte zin** (eigen woorden, **max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens**) welk compositieprincipe je kiest; laat layout en typografie dat ondersteunen.
 - Varieer sectie-opbouw (lijst / split / grid / typografie-led) — niet drie keer hetzelfde kaartpatroon achter elkaar zonder reden.
-- Sterke briefing en branche gaan boven gemakzuchtige defaults.`;
+- Sterke briefing en branche gaan boven gemakzuchtige defaults.
+- **Anti-template:** "veilig" en anoniem ogen is een **mislukking** voor deze studio — voorzichtigheid mag **niet** leiden tot generieke SaaS-esthetiek als de briefing iets specifiekers toelaat.`;
 }
 
 function buildUpgradeMergeSection(): string {
@@ -796,7 +825,37 @@ export type GenerateSitePromptOptions = {
   referenceStyleUrl?: string;
   /** Snapshot na fetch — wordt in de user-prompt ingevoegd. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
+  /**
+   * Agency mode (of env `SITE_GENERATION_AGENCY_MODE=1`): sterkere visuele/compositie-prompt,
+   * ruimere validator-waarschuwingen, hogere `max_tokens`.
+   */
+  agencyMode?: boolean;
 };
+
+/**
+ * `SITE_GENERATION_AGENCY_MODE=1|true|yes` — agency mode voor server-generaties zonder API-flag.
+ */
+export function isSiteGenerationAgencyModeFromEnv(): boolean {
+  const v = process.env.SITE_GENERATION_AGENCY_MODE?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** Agency mode aan als API `agencyMode: true` **of** env. */
+export function resolveAgencyMode(options?: GenerateSitePromptOptions): boolean {
+  return Boolean(options?.agencyMode) || isSiteGenerationAgencyModeFromEnv();
+}
+
+function buildAgencyModeUserPromptBlock(enabled: boolean): string {
+  if (!enabled) return "";
+  return `
+
+=== AGENCY MODE (actief) ===
+De studio draait **agency mode**: maximum **visueel en compositioneel onderscheid** binnen het JSON+Tailwind-contract (geen eigen \`<script>\` in secties).
+- **Layout:** durf **editorial**, **asymmetrie**, **full-bleed**, type-led splits of contrasterende banden — **niet** automatisch de veiligste drie gelijke kolommen tenzij de briefing dat is.
+- **Typografie:** display-schaal (\`text-6xl\`+) waar het past; timide alles-\`text-base\` is **niet** het doel.
+- **Motion:** bij motion in briefing: \`data-animation\`, \`studio-border-reveal\`, \`studio-marquee\` (zie §3).
+- **Kleur:** één **karaktervol** palet in \`theme\` **en** in de markup — geen anonieme grijs-blauwe default.`;
+}
 
 const UPGRADE_PROMPT_JSON_MAX = 150_000;
 
@@ -1065,7 +1124,16 @@ function buildSection3UpgradeTailMarkdown(preserve: boolean): string {
 function buildSiteGenerationDataAnimationInstructionsMarkdown(): string {
   return `**Animatie (\`data-animation\`):** standaard **optioneel** op koppen, blokken, kaarten; de studio injecteert CSS + een klein script: bij scroll krijgt het element \`.studio-in-view\` en lopen o.a. \`fade-up\` / \`fade-in\` / \`slide-in-left\` / \`slide-in-right\` / \`scale-in\` — geen GSAP nodig.
 **Verplicht zodra de briefing erom vraagt (Nederlands of Engels):** woorden en zinnen zoals **interactief** / **interactieve site**, **dynamisch**, **animatie** / **animaties**, **motion**, **micro-interactions** / **micro-interacties**, **scroll-animaties**, **in beweging**, **beweging** (bedoeld als bewegende UI — niet alleen “een bedrijf in beweging” als platte copy), **levend** / **levendige** site of presentatie, **niet te statisch**, **veel visuele dynamiek**: zet dan op **minstens 10** zichtbare blokken (koppen \`h2\`/\`h3\`, feature-kaarten, grotere tekstkolommen — niet op elk klein label) \`data-animation="fade-up"\` of afwisselend \`slide-in-left\` / \`slide-in-right\` / \`scale-in\` / \`fade-in\`. Eerste scherm (hero + evt. nav): mag subtiel; onder de vouw duidelijker.
-**Zelfcheck vóór je de JSON sluit:** komen bovenstaande motion-signalen voor in de briefing (Context / branche) → tel of je **minstens 10** \`data-animation=\`-attributen hebt in de samengevoegde landing-\`sections[].html\` (subpagina’s: ook enkele reveals als het past); zo niet → voeg ze toe **zonder** sectie-\`id\` of volgorde te wijzigen.`;
+**Zelfcheck vóór je de JSON sluit:** (1) Motion-signalen in de briefing → **minstens 10** \`data-animation=\` in de samengevoegde landing-\`sections[].html\` (subpagina’s: ook enkele reveals als het past). (2) Zie ook **border-reveal** hieronder: rand/border/kader/scroll-lijn → **minstens 3** \`studio-border-reveal\`. Zo niet → aanvullen **zonder** sectie-\`id\` of volgorde te wijzigen.`;
+}
+
+/** §3B — scroll-accentlijnen (Lovable-achtig); studio-CSS +zelfde IO als data-animation. */
+function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
+  return `**Accent-lijn / kader “uitgroeien” bij scroll (\`studio-border-reveal\`):** Zelfde idee als professionele sites waar een lijn **~72% → 100%** loopt zodra het blok in beeld komt. Zet een **lege** \`<div>\` met exact \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`studio-border-reveal studio-border-reveal--v\` (verticaal) plus Tailwind voor maat (\`w-full max-w-xl mx-auto mt-6 h-1\` bij \`--h\`; \`min-h-[6rem] w-1 shrink-0\` bij \`--v\`). **Geen** \`<script>\` in secties — de studio levert CSS + observer.
+- **Kleur:** op diezelfde \`div\` optioneel \`[--studio-br-rgb:212_175_55]\` (goud), \`[--studio-br-rgb:34_197_94]\`, enz., en/of \`[--studio-br-a:0.85]\`.
+- **Waar:** onder \`h2\`/\`h3\`, tussen kop en paragraaf, onder prijs-/USP-kaarten — waar een **editoriale / premium** lijn past.
+- **Verplicht** als de briefing vraagt om **rand**, **randen**, **border**, **kader**, **omlijning**, **gouden/teken accent-lijn**, **lijntjes die meebewegen / meegroeien met scroll**, of vergelijkbare UI-motion: **minstens 3** reveals op de landing (\`--h\` en/of \`--v\`). Combineer met \`data-animation\`; **niet** op \`studio-marquee-track\` plakken.
+- **Laser (\`studio-laser-*\`):** blijft een **aparte, zeldzame** sfeer-optie (cyber/neon/sci-fi) — **niet** verplicht en **niet** als vervanging van border-reveal voor normale winkel-/retail-/premium-briefings.`;
 }
 
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
@@ -1167,6 +1235,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
+  const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(detectIndustry(description));
 
   const psychColorLeadMin = preserve
     ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
@@ -1177,7 +1246,10 @@ function buildMinimalWebsiteGenerationUserPrompt(
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
 ${clientImagesBlock}${referenceSiteBlock}
-${upgrade0A}${contentAuthorityBlock}
+
+${sectorRouterMin}
+
+${upgrade0A}${contentAuthorityBlock}${buildAgencyModeUserPromptBlock(resolveAgencyMode(options))}
 
 === 0B. SITE STUDIO — PRODUCTINSTRUCTIES ===
 
@@ -1201,7 +1273,9 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 - **Klantfoto's:** volg het blok hierboven (niet in de hero).
 
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
-- Optioneel \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud); **geen** laser tenzij de briefing **expliciet** futuristisch/neon/scan vraagt (§3). Video alleen met **werkende** MP4-URL.
+
+${buildSiteGenerationBorderRevealInstructionsMarkdown()}
+- Optioneel \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing — zie border-reveal-blok hierboven; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL.
 
 ${section3Tail}${section3HeroHeight}
 
@@ -1259,7 +1333,7 @@ export function buildWebsiteGenerationUserPrompt(
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
 
-  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, leesbare** site die past bij de briefing — je hebt ruimte om zelf sterk ontwerp te kiezen.
+  return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, onderscheidende** site die past bij de briefing — **niet** anoniem-veilig; je hebt ruimte voor sterk ontwerp.
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
@@ -1276,7 +1350,7 @@ Let op woorden als vintage, modern, strak, warm, luxe, beige, donker, speels —
 
 ${variance}
 ${industryHint}
-${contentAuthorityBlock}
+${contentAuthorityBlock}${buildAgencyModeUserPromptBlock(resolveAgencyMode(options))}
 
 === 0B. SITE STUDIO — PRODUCTINSTRUCTIES (gaat boven algemene uitbreiding) ===
 
@@ -1317,11 +1391,12 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 **Decoratie:** optioneel kleine **inline SVG** of \`data-lucide\` — niet verplicht.
 
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
-**Rand/kader dat als los lijnwerk “rond de viewport” meescrolt** is **geen** ondersteund studio-patroon — gebruik reveal-animaties, \`transition\` op kaarten, of (alleen bij passende futuristische briefing) max. één \`studio-laser-*\` in de hero (zie laser-regel).
+
+${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
 **Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
 
-**Laserlijn / scan (zelden — zoals Lovable alleen op **passende** cyber-hero’s):** **Standaard: helemaal geen** \`studio-laser-*\`. Zelfde principe als marquee: **niet** decoreren omdat het kan. Alleen als de klant **duidelijk** om zo’n effect vraagt: woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn, futuristische interface**, of \`Stijl: …\` / zin die dat expliciet maakt. **Niet** toevoegen op basis van “branche is kapper” of “donker thema” alleen — dan **geen** laser. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` hero; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal op de pagina).
+**Laserlijn / scan (optioneel — alleen passende sfeer):** **Standaard: geen** \`studio-laser-*\`. Gebruik liever \`studio-border-reveal\` + \`data-animation\` + marquee voor “premium dynamiek”. Zet een laser **alleen** als de klant **duidelijk** futuristisch/neon/sci-fi vraagt (woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn**, of expliciete \`Stijl: …\`). **Niet** op donker thema of “branche is X” alleen. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` parent; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal).
 
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
@@ -1363,6 +1438,9 @@ type PreparedGenerateSiteClaudeCall = {
   pipelineFeedback: GenerationPipelineFeedback;
   /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
   useMarketingMultiPage: boolean;
+  agencyMode: boolean;
+  /** Zelfde excerpt als in de bouw-prompt — voor Denklijn + zelfreview. */
+  referenceSiteSnapshot?: { url: string; excerpt: string };
 };
 
 type PrepareGenerateSiteResult = PreparedGenerateSiteClaudeCall | { ok: false; error: string };
@@ -1388,8 +1466,10 @@ async function prepareGenerateSiteClaudeCall(
   const { systemText: knowledgeSystem, userPrefixBlocks } = await getKnowledgeContextForClaude();
 
   const preserveLayout = Boolean(promptOptions?.preserveLayoutUpgrade);
+  const agencyMode = resolveAgencyMode(promptOptions);
   const mergedPromptOptions: GenerateSitePromptOptions = {
     ...promptOptions,
+    agencyMode,
     varianceNonce: promptOptions?.varianceNonce ?? randomUUID(),
   };
 
@@ -1415,10 +1495,10 @@ async function prepareGenerateSiteClaudeCall(
     }
   }
 
-  const briefingSectionIds = buildSectionIdsFromBriefing(description, promptOptions?.sectionIdsHint);
+  const briefingSectionIds = buildSectionIdsFromBriefing(description, mergedPromptOptions.sectionIdsHint);
   const sectionIds = [...briefingSectionIds];
-  if (preserveLayout && promptOptions?.existingSiteTailwindJson) {
-    const existing = extractSectionIdsFromTailwindUpgradeJson(promptOptions.existingSiteTailwindJson);
+  if (preserveLayout && mergedPromptOptions.existingSiteTailwindJson) {
+    const existing = extractSectionIdsFromTailwindUpgradeJson(mergedPromptOptions.existingSiteTailwindJson);
     if (existing) {
       sectionIds.length = 0;
       sectionIds.push(...mergeUpgradeSectionOrder(existing, briefingSectionIds));
@@ -1444,6 +1524,7 @@ async function prepareGenerateSiteClaudeCall(
       styleDetectionSource: styleResolved.source,
       ...(referenceStyleField ? { referenceStyle: referenceStyleField } : {}),
       minimalPrompt,
+      agencyMode,
     },
   };
 
@@ -1461,7 +1542,7 @@ async function prepareGenerateSiteClaudeCall(
   );
   const mainUserPrompt = corePrompt;
 
-  const max_tokens = DEFAULT_MAX_OUTPUT_TOKENS;
+  const max_tokens = agencyMode ? AGENCY_MAX_OUTPUT_TOKENS : DEFAULT_MAX_OUTPUT_TOKENS;
 
   const userContent: string | ContentBlockParam[] =
     userPrefixBlocks.length > 0
@@ -1486,6 +1567,8 @@ async function prepareGenerateSiteClaudeCall(
     homepagePlan,
     pipelineFeedback,
     useMarketingMultiPage: !preserveLayout,
+    agencyMode,
+    ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
   };
 }
 
@@ -1585,6 +1668,24 @@ export async function generateSiteWithClaude(
 
   const p = prepared as PreparedGenerateSiteClaudeCall;
 
+  const rationale = await generateDesignRationaleWithClaude(p.client, p.supportModel, {
+    businessName,
+    description,
+    feedback: p.pipelineFeedback,
+    referenceSiteSnapshot: p.referenceSiteSnapshot,
+  });
+  let designContract: DesignGenerationContract | null = null;
+  const userContentForGeneration =
+    rationale.ok && rationale.contract != null
+      ? appendDesignContractToUserContent(
+          p.userContent,
+          buildDesignContractPromptInjection(rationale.contract, p.referenceSiteSnapshot ?? null),
+        )
+      : p.userContent;
+  if (rationale.ok && rationale.contract != null) {
+    designContract = rationale.contract;
+  }
+
   let textBody = "";
   let usage: MessageDeltaUsage | null = null;
   let stop_reason: string | null = null;
@@ -1594,7 +1695,7 @@ export async function generateSiteWithClaude(
       model: p.generateModel,
       max_tokens: p.max_tokens,
       system: p.system,
-      userContent: p.userContent,
+      userContent: userContentForGeneration,
     })) {
       if (ev.type === "delta") {
         textBody += ev.text;
@@ -1636,22 +1737,25 @@ export async function generateSiteWithClaude(
     homepagePlan: p.homepagePlan,
     preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
     pipelineInterpreted: p.pipelineFeedback.interpreted,
+    designContract,
+    referenceSiteSnapshot: p.referenceSiteSnapshot,
   });
   data = reviewed.data;
 
+  const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract);
   data = {
     ...data,
     sections: await replaceUnsplashImagesInSections(
       data.sections,
       process.env.UNSPLASH_ACCESS_KEY,
-      description,
+      unsplashTheme,
     ),
     ...(data.contactSections != null && data.contactSections.length > 0
       ? {
           contactSections: await replaceUnsplashImagesInSections(
             data.contactSections,
             process.env.UNSPLASH_ACCESS_KEY,
-            description,
+            unsplashTheme,
           ),
         }
       : {}),
@@ -1661,7 +1765,7 @@ export async function generateSiteWithClaude(
             await Promise.all(
               Object.entries(data.marketingPages).map(async ([k, secs]) => [
                 k,
-                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, description),
+                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme),
               ]),
             ),
           ),
@@ -1676,7 +1780,7 @@ export async function generateSiteWithClaude(
 
   if (process.env.NODE_ENV === "development") {
     const joined = data.sections.map((s) => s.html).join("\n");
-    const v = validateGeneratedPageHtml(joined, p.homepagePlan);
+    const v = validateGeneratedPageHtml(joined, p.homepagePlan, { agencyMode: p.agencyMode });
     if (v.errors.length > 0 || v.warnings.length > 0) {
       console.warn("[validateGeneratedPageHtml]", v);
     }
@@ -1689,7 +1793,13 @@ export type GenerateSiteStreamNdjsonEvent =
   | { type: "status"; message: string }
   | { type: "keepalive" }
   | { type: "generation_meta"; feedback: GenerationPipelineFeedback }
-  | { type: "design_rationale"; text: string | null; skipReason?: string }
+  | {
+      type: "design_rationale";
+      text: string | null;
+      contract?: DesignGenerationContract | null;
+      contractWarning?: string | null;
+      skipReason?: string;
+    }
   | { type: "self_review"; ran: boolean; refined: boolean }
   | { type: "token"; content: string }
   | { type: "section_complete"; section: { id: string; html: string; sectionName?: string } }
@@ -1697,26 +1807,61 @@ export type GenerateSiteStreamNdjsonEvent =
   | { type: "complete"; outputFormat: "react_sections"; data: ReactSiteDocument }
   | { type: "error"; message: string; rawText?: string };
 
-/** Tijdens stille server-stappen (o.a. zelfreview) bytes blijven sturen zodat proxies geen idle-timeout geven. */
-const NDJSON_SILENT_WORK_KEEPALIVE_MS = 10_000;
+/**
+ * Tijdens stille server-stappen (o.a. zelfreview) bytes blijven sturen zodat proxies/CDN's geen idle-timeout geven.
+ * Kort interval + **direct eerste ping**: `setInterval` vuurt anders pas na 1× interval — bij 10s was de eerste
+ * stilte vaak langer dan veel loadbalancers (5–60s) tolereren, vooral net ná de token-stream.
+ */
+const NDJSON_SILENT_WORK_KEEPALIVE_MS = 4_000;
+
+/** Houd gelijk met `export const maxDuration` in `app/api/generate-site/stream/route.ts`. */
+const GENERATE_SITE_STREAM_MAX_DURATION_MS = 300_000;
+/** Ruimte voor zelfreview + Unsplash + journal vóór Vercel het verzoek beëindigt. */
+const GENERATE_SITE_TAIL_RESERVE_MS = 95_000;
 
 function startNdjsonKeepaliveForSilentWork(
   controller: ReadableStreamDefaultController<Uint8Array>,
   send: (c: ReadableStreamDefaultController<Uint8Array>, e: GenerateSiteStreamNdjsonEvent) => void,
 ): () => void {
-  const timer = setInterval(() => {
+  const ping = () => {
     try {
       send(controller, { type: "keepalive" });
     } catch {
       /* stream gesloten of enqueue geweigerd */
     }
-  }, NDJSON_SILENT_WORK_KEEPALIVE_MS);
+  };
+  ping();
+  const timer = setInterval(ping, NDJSON_SILENT_WORK_KEEPALIVE_MS);
   return () => clearInterval(timer);
 }
 
 export type CreateGenerateSiteReadableStreamOptions = {
   onSuccess?: (data: GeneratedTailwindPage) => Promise<void>;
 };
+
+/** Hangt het Denklijn-contract aan de user-prompt vóór streaming (idee 2). */
+export function appendDesignContractToUserContent(
+  userContent: string | ContentBlockParam[],
+  contractBlock: string,
+): string | ContentBlockParam[] {
+  const tail =
+    "\n\n=== DESIGN-AFSPRAAK (Denklijn-contract, bindend in deze run) ===\n\n" +
+    contractBlock +
+    "\n\nVolg dit blok bij `config`, hero-beelden en motion. Bij **expliciete** tegenstrijdigheid met de briefing wint de briefing; trek het contract dan inhoudelijk richting de briefing zonder deze sectie te negeren.";
+
+  if (typeof userContent === "string") {
+    return `${userContent}${tail}`;
+  }
+  if (userContent.length === 0) {
+    return [{ type: "text", text: tail.trim() }];
+  }
+  const last = userContent[userContent.length - 1];
+  if (last?.type === "text" && "text" in last && typeof (last as { text: string }).text === "string") {
+    const lt = last as { type: "text"; text: string };
+    return [...userContent.slice(0, -1), { type: "text", text: `${lt.text}${tail}` }];
+  }
+  return [...userContent, { type: "text", text: tail }];
+}
 
 export function createGenerateSiteReadableStream(
   businessName: string,
@@ -1732,6 +1877,7 @@ export function createGenerateSiteReadableStream(
 
   return new ReadableStream({
     async start(controller) {
+      const streamWallClockStartMs = Date.now();
       try {
         send(controller, { type: "status", message: "Generatie gestart" });
 
@@ -1759,19 +1905,45 @@ export function createGenerateSiteReadableStream(
             businessName,
             description,
             feedback: p.pipelineFeedback,
+            referenceSiteSnapshot: p.referenceSiteSnapshot,
           });
         } finally {
           stopRationaleKeepalive();
         }
+        let designContract: DesignGenerationContract | null = null;
+        let contractWarning: string | null = null;
         if (rationale.ok) {
-          send(controller, { type: "design_rationale", text: rationale.text });
+          if (rationale.contract != null) {
+            designContract = rationale.contract;
+            contractWarning = null;
+          } else {
+            designContract = null;
+            contractWarning =
+              "contractWarning" in rationale ? (rationale.contractWarning ?? null) : null;
+          }
+          send(controller, {
+            type: "design_rationale",
+            text: rationale.text,
+            contract: designContract,
+            contractWarning,
+          });
         } else {
           send(controller, {
             type: "design_rationale",
             text: null,
+            contract: null,
+            contractWarning: null,
             skipReason: rationale.error,
           });
         }
+
+        const userContentForGeneration =
+          rationale.ok && rationale.contract != null
+            ? appendDesignContractToUserContent(
+                p.userContent,
+                buildDesignContractPromptInjection(rationale.contract, p.referenceSiteSnapshot ?? null),
+              )
+            : p.userContent;
 
         send(controller, { type: "status", message: "Pagina genereren (HTML/JSON)…" });
         let buffer = "";
@@ -1784,7 +1956,7 @@ export function createGenerateSiteReadableStream(
           model: p.generateModel,
           max_tokens: p.max_tokens,
           system: p.system,
-          userContent: p.userContent,
+          userContent: userContentForGeneration,
         })) {
           if (ev.type === "delta") {
             buffer += ev.text;
@@ -1826,25 +1998,40 @@ export function createGenerateSiteReadableStream(
 
         let data = withContentClaimDiagnostics(result.data);
 
-        send(controller, {
-          type: "status",
-          message: "Kwaliteitscontrole: concept nalopen en zo nodig verbeteren (zelfreview)…",
-        });
-        const stopSelfReviewKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        const elapsedBeforeSelfReviewMs = Date.now() - streamWallClockStartMs;
+        const selfReviewBudgetExceeded =
+          elapsedBeforeSelfReviewMs > GENERATE_SITE_STREAM_MAX_DURATION_MS - GENERATE_SITE_TAIL_RESERVE_MS;
+
         let reviewed: Awaited<ReturnType<typeof applySelfReviewToGeneratedPage>>;
-        try {
-          reviewed = await applySelfReviewToGeneratedPage({
-            client: p.client,
-            model: p.supportModel,
-            businessName,
-            description,
-            draft: data,
-            homepagePlan: p.homepagePlan,
-            preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
-            pipelineInterpreted: p.pipelineFeedback.interpreted,
+        if (selfReviewBudgetExceeded) {
+          send(controller, {
+            type: "status",
+            message:
+              "Zelfreview overgeslagen: tijdbudget voor deze run is bijna op — concept wordt direct afgerond (geen verbinding-verlies).",
           });
-        } finally {
-          stopSelfReviewKeepalive();
+          reviewed = { data, ran: false, usedRefined: false };
+        } else {
+          send(controller, {
+            type: "status",
+            message: "Kwaliteitscontrole: concept nalopen en zo nodig verbeteren (zelfreview)…",
+          });
+          const stopSelfReviewKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+          try {
+            reviewed = await applySelfReviewToGeneratedPage({
+              client: p.client,
+              model: p.supportModel,
+              businessName,
+              description,
+              draft: data,
+              homepagePlan: p.homepagePlan,
+              preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+              pipelineInterpreted: p.pipelineFeedback.interpreted,
+              designContract,
+              referenceSiteSnapshot: p.referenceSiteSnapshot,
+            });
+          } finally {
+            stopSelfReviewKeepalive();
+          }
         }
         data = reviewed.data;
         send(controller, { type: "self_review", ran: reviewed.ran, refined: reviewed.usedRefined });
@@ -1867,18 +2054,19 @@ export function createGenerateSiteReadableStream(
         let sectionsAfterUnsplash: typeof data.sections;
         let contactAfterUnsplash: typeof data.contactSections | undefined;
         let marketingAfterUnsplash: typeof data.marketingPages | undefined;
+        const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract);
         try {
           sectionsAfterUnsplash = await replaceUnsplashImagesInSections(
             data.sections,
             process.env.UNSPLASH_ACCESS_KEY,
-            description,
+            unsplashTheme,
           );
           contactAfterUnsplash =
             data.contactSections != null && data.contactSections.length > 0
               ? await replaceUnsplashImagesInSections(
                   data.contactSections,
                   process.env.UNSPLASH_ACCESS_KEY,
-                  description,
+                  unsplashTheme,
                 )
               : undefined;
           marketingAfterUnsplash =
@@ -1887,7 +2075,7 @@ export function createGenerateSiteReadableStream(
                   await Promise.all(
                     Object.entries(data.marketingPages).map(async ([k, secs]) => [
                       k,
-                      await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, description),
+                      await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme),
                     ]),
                   ),
                 )
@@ -1911,7 +2099,7 @@ export function createGenerateSiteReadableStream(
 
         if (process.env.NODE_ENV === "development") {
           const joined = data.sections.map((s) => s.html).join("\n");
-          const v = validateGeneratedPageHtml(joined, p.homepagePlan);
+          const v = validateGeneratedPageHtml(joined, p.homepagePlan, { agencyMode: p.agencyMode });
           if (v.errors.length > 0 || v.warnings.length > 0) {
             console.warn("[validateGeneratedPageHtml]", v);
           }

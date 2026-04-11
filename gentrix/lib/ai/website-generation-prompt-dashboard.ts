@@ -46,7 +46,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Denklijn tijdens stream (admin UI)",
     path: "lib/ai/generate-design-rationale-with-claude.ts",
     description:
-      "Korte NL-uitleg na generation_meta, vóór grote JSON-generatie; NDJSON design_rationale. Uit: SKIP_DESIGN_RATIONALE=1.",
+      "JSON met rationale_nl + designcontract na generation_meta; contract → user-prompt + zelfreview + Unsplash-context. NDJSON design_rationale. Uit: SKIP_DESIGN_RATIONALE=1.",
   },
   {
     label: "Studio prompt: archetypes + component-varianten (één bron)",
@@ -86,7 +86,13 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Minimale prompt-modus (env / API)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:
-      "SITE_GENERATION_MINIMAL_PROMPT=1 of options.minimalPrompt — buildMinimalWebsiteGenerationUserPrompt: geen branche-/stijl-/variatieblokken; MASTER_SITE_SYSTEM_PROMPT_MINIMAL + zelfde §3B–§5-contract.",
+      "SITE_GENERATION_MINIMAL_PROMPT=1 of options.minimalPrompt — buildMinimalWebsiteGenerationUserPrompt: geen volledige branche-/stijl-/variatieblokken; wél sector-router + anti-template; MASTER_SITE_SYSTEM_PROMPT_MINIMAL + §3B–§5-contract.",
+  },
+  {
+    label: "Agency mode (env / API)",
+    path: "lib/ai/generate-site-with-claude.ts",
+    description:
+      "SITE_GENERATION_AGENCY_MODE=1 of options.agencyMode / body agency_mode — extra user-blok (compositie, distinctief ontwerp), hogere max_tokens, zelfreview + validator met agencyMode-opties; CONTENT AUTHORITY ongewijzigd.",
   },
   {
     label: "System-bericht (optioneel)",

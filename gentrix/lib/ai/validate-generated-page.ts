@@ -26,6 +26,11 @@ export type GeneratedPageValidation = {
   warnings: string[];
 };
 
+/** Optioneel: agency mode = ruimere heuristieken (minder “template”-waarschuwingen). */
+export type ValidateGeneratedPageHtmlOptions = {
+  agencyMode?: boolean;
+};
+
 /** Eerste `<section id="hero">…</section>` (nested `<section>` in hero wordt meegeteld). */
 function sliceHeroSection(html: string): string | null {
   const openRe = /<section\b[^>]*\bid=["']hero["'][^>]*>/i;
@@ -51,13 +56,21 @@ function sliceHeroSection(html: string): string | null {
  * Lichtgewicht HTML-checks op gejoinde sectie-HTML (geen DOM).
  * Geen auto-retry hier — caller kan loggen of later feedback-loop toevoegen.
  */
-export function validateGeneratedPageHtml(html: string, plan: HomepagePlan): GeneratedPageValidation {
+export function validateGeneratedPageHtml(
+  html: string,
+  plan: HomepagePlan,
+  opts?: ValidateGeneratedPageHtmlOptions,
+): GeneratedPageValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const agency = opts?.agencyMode === true;
 
   const buttonCount = (html.match(/<button\b/gi) ?? []).length;
-  if (buttonCount > 10) {
-    warnings.push(`Veel buttons (${buttonCount}); overweeg max ~8–10 voor rust.`);
+  const buttonWarnThreshold = agency ? 14 : 10;
+  if (buttonCount > buttonWarnThreshold) {
+    warnings.push(
+      `Veel buttons (${buttonCount}); overweeg max ~${buttonWarnThreshold} voor rust${agency ? " (agency mode: hogere drempel)" : ""}.`,
+    );
   }
 
   const cardish = (html.match(/\bcard\b/gi) ?? []).length;
@@ -65,24 +78,28 @@ export function validateGeneratedPageHtml(html: string, plan: HomepagePlan): Gen
     plan.experienceModel === "editorial_content_hub" ||
     plan.experienceModel === "brand_storytelling" ||
     plan.experienceModel === "premium_product";
-  const cardBudget =
+  const cardBudgetBase =
     plan.densityProfile === "dense_commerce" || plan.experienceModel === "ecommerce_home"
       ? 18
       : editorialLean
         ? 7
         : 10;
+  const cardBudget = agency ? Math.ceil(cardBudgetBase * 1.65) : cardBudgetBase;
   if (cardish > cardBudget) {
     warnings.push(
-      `Veel ‘card’-verwijzingen (${cardish}); overweeg meer variatie (open vlakken, lijsten, split) als de pagina repetitief oogt.`,
+      `Veel ‘card’-verwijzingen (${cardish}); overweeg meer variatie (open vlakken, lijsten, split) als de pagina repetitief oogt.${agency ? " (agency mode: hogere drempel — kaartenrij mag als het past bij retail/features.)" : ""}`,
     );
   }
 
   const roundedBoxes = (html.match(/\brounded-(xl|2xl|3xl)\b/gi) ?? []).length;
   const borderHits = (html.match(/\bborder(?:-[a-z0-9]+)*\b/gi) ?? []).length;
   const softBgTiles = (html.match(/\bbg-(?:slate|gray|zinc)-50\b/gi) ?? []).length;
-  if (roundedBoxes >= 14 && borderHits >= 12 && softBgTiles >= 4) {
+  const rbTh = agency ? 22 : 14;
+  const bhTh = agency ? 18 : 12;
+  const sbTh = agency ? 6 : 4;
+  if (roundedBoxes >= rbTh && borderHits >= bhTh && softBgTiles >= sbTh) {
     warnings.push(
-      `Veel rounded-xl/2xl + borders + zachte grijze vlakken — kan generiek ogen; overweeg andere ritmes (full-bleed, type-led) als het past bij de briefing.`,
+      `Veel rounded-xl/2xl + borders + zachte grijze vlakken — kan generiek ogen; overweeg andere ritmes (full-bleed, type-led) als het past bij de briefing.${agency ? " (agency mode: pas waarschuwen bij hogere telling.)" : ""}`,
     );
   }
 
@@ -114,7 +131,7 @@ export function validateGeneratedPageHtml(html: string, plan: HomepagePlan): Gen
   }
 
   const hasLargeHeading = /text-(6|7|8)xl\b/.test(html);
-  if (!hasLargeHeading && plan.experienceModel !== "saas_landing") {
+  if (!agency && !hasLargeHeading && plan.experienceModel !== "saas_landing") {
     warnings.push("Geen zeer grote display-kop (text-6xl+); mag bewust — alleen aanpassen als de briefing impact vraagt.");
   }
 

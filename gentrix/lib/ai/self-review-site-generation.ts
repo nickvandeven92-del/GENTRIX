@@ -11,7 +11,7 @@
  * **Uitzetten:** `DISABLE_SITE_SELF_REVIEW=1` in `.env.local` (wint altijd), of `ENABLE_SITE_SELF_REVIEW=0` / `false` / `no`.
  * Na wijziging: dev-server herstarten.
  *
- * **Trade-off:** kan output **uniformer** maken (één coherente stijl, minder experiment) — bewust zo bedoeld voor QA.
+ * **Trade-off:** coherente revisie — **niet** bedoeld om output **saver of generischer** te maken dan de briefing vraagt.
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
@@ -42,6 +42,7 @@ import {
 } from "@/lib/ai/tailwind-sections-schema";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import { validateGeneratedPageHtml } from "@/lib/ai/validate-generated-page";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback, StyleDetectionSource } from "@/lib/ai/generate-site-with-claude";
 
 const MAX_DRAFT_JSON_CHARS = 380_000;
@@ -60,15 +61,18 @@ Je krijgt de briefing, een **concept**-JSON, en **automatische checks** (validat
 ${buildContentAuthorityPolicyBlock()}
 
 === VISUEEL / UX ===
+- **Strakker ≠ saver:** vermijd revisies die vooral "veiliger", grijzer of **anoniemer** maken **zonder** validator-, claim- of briefing-reden. Een **distinctief** concept (sterk palet, editorial layout, duidelijke niche) mag **niet** worden afgevlakt naar standaard drie-kaarten tenzij dat een echte fout herstelt.
 - Ontbrekende \`<h1>\`, kapotte interne \`href="#…"\`, identieke canonieke \`/site/…\` of \`https://…/site/…\` **zonder** passend \`#\` op meerdere menu-items, of zichtbare placeholder-copy: **repareren** (zet interne navigatie op \`#<sectie-id>\` die in de markup bestaat).
 - Verminder **onnodige lengte** binnen secties: dubbele stats/testimonial/CTA-banen samenvatten of één rustig blok maken **zonder** secties te droppen.
-- Behoud \`data-animation\` en root-\`id\` op sectie waar geldig. Marquee: \`studio-marquee\` / \`studio-marquee-track\` alleen met dubbele set items (anders hapert de loop). **Laser:** als \`studio-laser-*\` staat op een **generieke** (niet-cyber) briefing zonder expliciete neon/sci-fi-wens → **verwijder** (te veel “template-decoratie”). Als wél passend: max. één rail in hero; \`relative\` parent; geen twee lasers genest op hetzelfde element.
+- Behoud \`data-animation\` en root-\`id\` op sectie waar geldig. Marquee: \`studio-marquee\` / \`studio-marquee-track\` alleen met dubbele set items (anders hapert de loop). **\`studio-border-reveal\`:** behoud bestaande \`studio-border-reveal--h\` / \`--v\` waar ze kloppen; als de briefing **rand/border/kader/scroll-lijn** vraagt en er staan **minder dan 3** reveals op de landing → voeg lege \`<div class="… studio-border-reveal studio-border-reveal--h …">\` toe onder koppen of tussen blokken (met passende \`[--studio-br-rgb:…]\` als het palet dat vraagt). **Laser:** als \`studio-laser-*\` staat zonder duidelijke cyber/neon/sci-fi-wens → **verwijder**; liever border-reveal + marquee. Als wél passend: max. één rail in hero; \`relative\` parent.
 - Als de briefing **motion-signalen** bevat (interactief, dynamisch, animatie(s), motion, micro-interactions/micro-interacties, scroll-animaties, in beweging, bewegende UI, levend/levendige site, niet te statisch, veel visuele dynamiek — NL of EN) en het concept **weinig of geen** \`data-animation\` heeft: voeg \`data-animation\` toe op minstens **10** zichtbare elementen (koppen, kaarten, grotere blokken) — voorkeur \`fade-up\` — **zonder** sectie-\`id\` of volgorde te wijzigen.
 - Sterkere typografie/contrast als het concept botst met de **briefing** (bijv. gevraagd warm/donker maar alles koud wit; of gevraagd **licht/helder/crème** maar de pagina is overwegend near-black zonder dat de briefing dat zo vraagt) — binnen Tailwind-utilities.
 - **Hero heel kaal (effen donker zonder enige visuele laag):** alleen bijsturen als dat duidelijk zwak oogt **en** de briefing geen expliciet minimalisme vraagt — voeg desgewenst foto, gradient of textuur toe.
 - **Header/menu met structureel slecht contrast** (bijv. lichte linktekst op lichte secties, of donkere links op donkere achtergrond): repareer met eenvoudige Tailwind- of Alpine-aanpassingen.
 - **Hero zonder redelijke \`min-h-*\` op het buitenste blok:** kan een smalle strook + leeg wit in de preview geven — overweeg \`min-h-[72vh] md:min-h-[80vh]\` (of vergelijkbaar) tenzij de briefing anders wil.
 - Als **PIPELINE-DETECTIE** in het user-bericht staat: het concept moet die **stijl (id)** en **branche** redelijk volgen; verbeter knal-contrast of verkeerde sfeer zodat het bij de gedetecteerde intent past (tenzij de briefing expliciet iets anders eist).
+- Als **DESIGN-AFSPRAAK (Denklijn-contract)** in het user-bericht staat: dat is **dezelfde run** als de Denklijn — herstel hero-beelden, dominante stock, thema (\`config.theme\`) en motion zodat ze **duidelijk** binnen dat contract vallen. Bij **expliciete** briefing-tegenstrijdigheid wint de briefing; vermeld dat niet in JSON, pas alleen markup/config aan.
+- Als **REFERENTIESITE EXCERPT** in het user-bericht staat: het concept moet **herkenbaar** in dezelfde visuele wereld als dat excerpt vallen (palet licht/donker, typografie-ritme, hero-sfeer, motion-dichtheid) — **samen** met briefing en eventueel designcontract; geen letterlijke overname van vreemde lange teksten of merkclaims.
 - **Stijlincoherentie:** als de pagina **twee botsende** esthetieken tegelijk als hoofdbeeld toont (bv. zware neumorphism + harde brutalism, of vol skeuomorphism + vol flat zonder briefing-reden), **vereenvoudig** naar **één** duidelijke richting die bij de gedetecteerde primaire stijl of de briefing past.
 - **Dubbele navigatie:** als dezelfde site-menu-items **twee keer** prominent staan (topbar + verticale/zij-nav met identieke \`#…\` links), **snoei** tot **één** globale nav (behoud de sterkste; verwijder de dubbele lijst).
 - **Typografie door elkaar:** footer/body in **Times-achtige** serif terwijl koppen brutal/cyber **sans** zijn — **trek recht**: één familie voor body + UI, of bewust **één** gepaarde serif alleen voor koppen **met** passende \`config.font\`; verhoog body-contrast op donker (\`text-gray-200\`+, geen \`font-light\` + \`text-gray-500\` op zwart).
@@ -134,6 +138,35 @@ function styleSourceNl(source: StyleDetectionSource | undefined): string {
   return "onbekend";
 }
 
+const REFERENCE_EXCERPT_SELF_REVIEW_MAX = 6_000;
+
+function buildReferenceExcerptBlockForSelfReview(snap: { url: string; excerpt: string } | undefined): string {
+  if (!snap?.excerpt?.trim()) return "";
+  const excerpt = snap.excerpt.trim().slice(0, REFERENCE_EXCERPT_SELF_REVIEW_MAX);
+  return `=== REFERENTIESITE EXCERPT (zelfde run als pass 1) ===
+URL: ${snap.url}
+
+HTML-fragment (alleen voor visuele afstemming; geen lange teksten of merknamen van derden letterlijk overnemen):
+${excerpt}
+
+Als het concept **duidelijk** afwijkt van deze referentie (ander licht/donker-spoor, totaal andere hero-sfeer) zonder dat de briefing dat eist: **trek** binnen dezelfde sectie-\`id\`'s richting dit excerpt.
+
+`;
+}
+
+function formatDesignContractForReview(c: DesignGenerationContract): string {
+  const avoid = c.imageryAvoid?.length ? c.imageryAvoid.join(", ") : "(—)";
+  return [
+    `- **Hero-visueel:** ${c.heroVisualSubject}`,
+    ...(c.heroImageSearchHints ? [`- **Foto-zoekhints:** ${c.heroImageSearchHints}`] : []),
+    `- **Palett-modus:** ${c.paletteMode}${c.primaryPaletteNotes ? ` — ${c.primaryPaletteNotes}` : ""}`,
+    `- **Beeld MUST:** ${c.imageryMustReflect.join(", ")}`,
+    `- **Beeld vermijden:** ${avoid}`,
+    `- **Motion:** ${c.motionLevel}`,
+    ...(c.toneSummary ? [`- **Toon:** ${c.toneSummary}`] : []),
+  ].join("\n");
+}
+
 function buildSelfReviewUserPrompt(params: {
   businessName: string;
   description: string;
@@ -142,6 +175,10 @@ function buildSelfReviewUserPrompt(params: {
   claims: ContentClaimDiagnosticsReport;
   /** Zelfde detectie als pass 1 — zodat revisie weet welke designtaal bedoeld was. */
   pipelineInterpreted?: GenerationPipelineFeedback["interpreted"];
+  /** Zelfde run als Denklijn — afstemming hero/thema/motion. */
+  designContract?: DesignGenerationContract | null;
+  /** Zelfde excerpt als in bouw-prompt (alleen bij geslaagde referentie-fetch). */
+  referenceSiteSnapshot?: { url: string; excerpt: string };
 }): string {
   const draftJson = JSON.stringify(params.draft);
   const claimLines =
@@ -161,6 +198,18 @@ function buildSelfReviewUserPrompt(params: {
       ? "(Geen validator-waarschuwingen.)"
       : params.validation.warnings.map((w) => `- WARN: ${w}`).join("\n");
 
+  const referenceBlock = buildReferenceExcerptBlockForSelfReview(params.referenceSiteSnapshot);
+
+  const dc = params.designContract;
+  const designContractBlock = dc
+    ? `=== DESIGN-AFSPRAAK (Denklijn-contract, zelfde run) ===
+De eerste generatie is uitgevoerd **nadat** dit contract aan de bouw-prompt was toegevoegd. Controleer of het concept hier nog duidelijk van afwijkt (hero, stock, palet, motion) en **corrigeer** binnen dezelfde sectie-\`id\`'s.
+
+${formatDesignContractForReview(dc)}
+
+`
+    : "";
+
   const pi = params.pipelineInterpreted;
   const pipelineBlock = pi
     ? `=== PIPELINE-DETECTIE (pass 1 — intent voor revisie) ===
@@ -172,7 +221,7 @@ Dit is **niet** een tweede meningsvorming: de eerste generatie is gebouwd met de
 - **Stijl (id):** ${pi.detectedStyleId ?? "—"}
 - **Stijl-bron:** ${styleSourceNl(pi.styleDetectionSource)}
 ${pi.referenceStyle ? `- **Referentiesite:** ${pi.referenceStyle.requestedUrl} — ${pi.referenceStyle.status === "ingested" ? `ingelezen (${pi.referenceStyle.excerptChars ?? "?"} tekens, final: ${pi.referenceStyle.finalUrl ?? "—"})` : `ophalen mislukt: ${pi.referenceStyle.error ?? "onbekend"}`}` : ""}
-
+${pi.agencyMode ? `\n- **Agency mode:** **actief** — revisie mag het concept **niet** terugtrekken naar timide/generiek; alleen echte fouten, claims of briefing-schendingen herstellen.\n` : ""}
 Als de markup **duidelijk** afwijkt van deze stijl (bijv. luxe flyer i.p.v. industrieel, of omgekeerd), **corrigeer** dan binnen dezelfde sectie-\`id\`'s en JSON-structuur. Bij twijfel: briefing + dit blok samen lezen.
 
 `
@@ -184,7 +233,7 @@ ${params.businessName.trim()}
 === BRIEFING ===
 ${params.description.trim()}
 
-${pipelineBlock}
+${referenceBlock}${designContractBlock}${pipelineBlock}
 
 === AUTOMATISCHE CHECKS (validator) ===
 Fouten:
@@ -214,9 +263,23 @@ export async function applySelfReviewToGeneratedPage(options: {
   preserveLayoutUpgrade: boolean;
   /** Zelfde \`interpreted\` als \`generation_meta\` — voor consistente revisie. */
   pipelineInterpreted?: GenerationPipelineFeedback["interpreted"];
+  /** Optioneel: Denklijn-contract uit dezelfde run (idee 3). */
+  designContract?: DesignGenerationContract | null;
+  /** Zelfde excerpt als pass 1 wanneer referentie-URL is ingelezen. */
+  referenceSiteSnapshot?: { url: string; excerpt: string };
 }): Promise<{ data: GeneratedTailwindPage; ran: boolean; usedRefined: boolean }> {
-  const { client, model, businessName, description, draft, homepagePlan, preserveLayoutUpgrade, pipelineInterpreted } =
-    options;
+  const {
+    client,
+    model,
+    businessName,
+    description,
+    draft,
+    homepagePlan,
+    preserveLayoutUpgrade,
+    pipelineInterpreted,
+    designContract,
+    referenceSiteSnapshot,
+  } = options;
 
   if (!isSiteSelfReviewEnabled() || preserveLayoutUpgrade) {
     return { data: draft, ran: false, usedRefined: false };
@@ -232,7 +295,9 @@ export async function applySelfReviewToGeneratedPage(options: {
   }
 
   const joined = draft.sections.map((s) => s.html).join("\n");
-  const validation = validateGeneratedPageHtml(joined, homepagePlan);
+  const validation = validateGeneratedPageHtml(joined, homepagePlan, {
+    agencyMode: pipelineInterpreted?.agencyMode === true,
+  });
   const contactJoined =
     draft.contactSections != null && draft.contactSections.length > 0
       ? draft.contactSections.map((s) => s.html).join("\n")
@@ -257,6 +322,8 @@ export async function applySelfReviewToGeneratedPage(options: {
     validation,
     claims,
     pipelineInterpreted,
+    designContract: options.designContract,
+    referenceSiteSnapshot: options.referenceSiteSnapshot,
   });
 
   let textBody = "";

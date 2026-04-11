@@ -20,6 +20,7 @@ import {
 import { publishedPayloadFromParsed } from "@/lib/site/project-published-payload";
 import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { GenerateSiteStreamNdjsonEvent } from "@/lib/ai/generate-site-with-claude";
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
 import { isValidSubfolderSlug } from "@/lib/slug";
@@ -61,6 +62,8 @@ export function GeneratorForm({
   const [designRationale, setDesignRationale] = useState<string | null>(null);
   const [designRationaleLoading, setDesignRationaleLoading] = useState(false);
   const [designRationaleSkipReason, setDesignRationaleSkipReason] = useState<string | null>(null);
+  const [designContract, setDesignContract] = useState<DesignGenerationContract | null>(null);
+  const [designContractWarning, setDesignContractWarning] = useState<string | null>(null);
   /** Stream stopte zonder `complete` (vaak timeout/proxy tijdens zelfreview) — toch laatste secties tonen. */
   const [streamEndedWithoutComplete, setStreamEndedWithoutComplete] = useState(false);
 
@@ -125,6 +128,8 @@ export function GeneratorForm({
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
+  /** Sterkere visuele instructies + hogere output-limiet; geen losse feiten. */
+  const [agencyMode, setAgencyMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = useCallback(
@@ -221,6 +226,9 @@ export function GeneratorForm({
       if (refTrim.length > 0) {
         body.reference_style_url = refTrim;
       }
+      if (agencyMode) {
+        body.agency_mode = true;
+      }
 
       const res = await fetch("/api/generate-site/stream", {
         method: "POST",
@@ -259,9 +267,13 @@ export function GeneratorForm({
             setDesignRationaleLoading(true);
             setDesignRationale(null);
             setDesignRationaleSkipReason(null);
+            setDesignContract(null);
+            setDesignContractWarning(null);
           }
           if (ev.type === "design_rationale") {
             setDesignRationaleLoading(false);
+            setDesignContract(ev.contract ?? null);
+            setDesignContractWarning(ev.contractWarning ?? null);
             if (ev.text != null && ev.text.length > 0) {
               setDesignRationale(ev.text);
               setDesignRationaleSkipReason(null);
@@ -528,6 +540,25 @@ export function GeneratorForm({
             placeholder="https://…"
           />
         </div>
+        <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+          <input
+            id="agencyMode"
+            name="agencyMode"
+            type="checkbox"
+            checked={agencyMode}
+            onChange={(e) => setAgencyMode(e.target.checked)}
+            disabled={descriptionLocked}
+            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+          />
+          <label htmlFor="agencyMode" className="text-sm leading-snug text-slate-700">
+            <span className="font-medium text-slate-900">Agency mode</span>
+            <span className="block text-xs font-normal text-slate-600">
+              Sterkere compositie- en stijlrichting, ruimere JSON-output en mildere validator-waarschuwingen.{" "}
+              <strong className="font-medium text-slate-700">CONTENT AUTHORITY</strong> blijft van kracht (geen
+              verzonnen feiten).
+            </span>
+          </label>
+        </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">
             Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
@@ -616,6 +647,8 @@ export function GeneratorForm({
           designRationale={designRationale}
           designRationaleLoading={designRationaleLoading}
           designRationaleSkipReason={designRationaleSkipReason}
+          designContract={designContract}
+          designContractWarning={designContractWarning}
         />
       ) : null}
 
