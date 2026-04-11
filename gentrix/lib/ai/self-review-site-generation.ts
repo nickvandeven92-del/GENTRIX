@@ -7,8 +7,9 @@
  * betere contrasten, dubbele navigatie weg, laser-decoratie alleen als de briefing dat rechtvaardigt,
  * kortere dubbele trust-blokken, hero wat vullen als die te kaal is — zonder secties te verwijderen of `id`’s te wijzigen.
  *
- * **Standaard aan:** tweede pass draait tenzij je het uitzet (zie hieronder).
- * **Uitzetten:** `DISABLE_SITE_SELF_REVIEW=1` in `.env.local` (wint altijd), of `ENABLE_SITE_SELF_REVIEW=0` / `false` / `no`.
+ * **Standaard uit:** geen tweede LLM-pass (voorkomt timeouts); expliciet aanzetten met env (zie hieronder).
+ * **Aanzetten:** `ENABLE_SITE_SELF_REVIEW=1` / `true` / `yes` in `.env.local`.
+ * **Force uit:** `DISABLE_SITE_SELF_REVIEW=1` wint altijd (ook als ENABLE gezet is).
  * Na wijziging: dev-server herstarten.
  *
  * **Trade-off:** coherente revisie — **niet** bedoeld om output **saver of generischer** te maken dan de briefing vraagt.
@@ -85,14 +86,14 @@ ${buildContentAuthorityPolicyBlock()}
 - Vraagt de briefing **vintage / warm papier / old-school**: breng diensten-, trust- en testimonial-secties visueel in **dezelfde warme papierwereld** (crème/zand/stone-warm sectie-achtergronden); vervang dominerend \`bg-white\` op brede banden door passende warme tinten; geen willekeurige off-topic full-bleed beelden (bijv. verf/klus) tenzij de briefing dat zo noemt.`;
 
 /**
- * Tweede LLM-pass staat **standaard aan** (dubbele kwaliteitscheck).
- * Uitzetten: `DISABLE_SITE_SELF_REVIEW=1` (wint altijd), of `ENABLE_SITE_SELF_REVIEW=0` / `false` / `no`.
+ * Tweede LLM-pass staat **standaard uit** (minder stream-timeouts).
+ * Aanzetten: `ENABLE_SITE_SELF_REVIEW=1` / `true` / `yes`.
+ * Uitzetten wint altijd: `DISABLE_SITE_SELF_REVIEW=1`.
  */
 export function isSiteSelfReviewEnabled(): boolean {
   if (process.env.DISABLE_SITE_SELF_REVIEW === "1") return false;
   const v = process.env.ENABLE_SITE_SELF_REVIEW?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no") return false;
-  return true;
+  return v === "1" || v === "true" || v === "yes";
 }
 
 export function generatedTailwindPageToClaudeOutput(

@@ -65,7 +65,7 @@ export function GeneratorForm({
   const [designRationaleSkipReason, setDesignRationaleSkipReason] = useState<string | null>(null);
   const [designContract, setDesignContract] = useState<DesignGenerationContract | null>(null);
   const [designContractWarning, setDesignContractWarning] = useState<string | null>(null);
-  /** Stream stopte zonder `complete` (vaak timeout/proxy tijdens zelfreview) — toch laatste secties tonen. */
+  /** Stream stopte zonder `complete` (vaak timeout/proxy) — toch laatste secties tonen. */
   const [streamEndedWithoutComplete, setStreamEndedWithoutComplete] = useState(false);
 
   const streamJsonBufferRef = useRef("");
@@ -331,7 +331,7 @@ export function GeneratorForm({
         setStreamEndedWithoutComplete(true);
         setError((prev) =>
           prev ??
-          "De verbinding met de server werd verbroken vóór de generatie kon worden afgerond (dit gebeurt soms tijdens de kwaliteitscontrole aan het eind). Hieronder staan de laatst ontvangen secties — genereer opnieuw om op te kunnen slaan.",
+          "De verbinding met de server werd verbroken vóór de generatie kon worden afgerond (vaak door een time-out of netwerkonderbreking). Hieronder staan de laatst ontvangen secties — genereer opnieuw om op te kunnen slaan.",
         );
       }
 
@@ -592,7 +592,8 @@ export function GeneratorForm({
 
         <p className="rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-xs text-slate-800">
           Output wordt gevalideerd tegen het <strong className="font-medium">tailwind_sections</strong>-schema; denklijn
-          (rationale) en zelfreview gaan mee zoals voorheen.
+          (rationale) gaat mee zoals voorheen. Optionele zelfreview staat standaard uit (
+          <code className="rounded bg-slate-100 px-1">ENABLE_SITE_SELF_REVIEW=1</code>).
         </p>
         <button
           type="submit"
@@ -641,17 +642,17 @@ export function GeneratorForm({
           </div>
           {streamEndedWithoutComplete ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-              De verbinding werd verbroken vóór de server <strong>generatie voltooid</strong> meldde — vaak tijdens de
-              kwaliteitscontrole (zelfreview) of net erna. Je ziet hieronder de laatst ontvangen secties; gebruik{" "}
-              <strong>Genereer opnieuw</strong> om op te kunnen slaan.
+              De verbinding werd verbroken vóór de server <strong>generatie voltooid</strong> meldde (bijvoorbeeld door
+              een time-out). Je ziet hieronder de laatst ontvangen secties; gebruik <strong>Genereer opnieuw</strong> om
+              op te kunnen slaan.
             </p>
           ) : null}
           <p className="text-sm text-slate-600">
             Elke afgeronde sectie verschijnt hier in dezelfde web-preview als daarna. Zodra het model{" "}
             <code className="rounded bg-slate-100 px-1 text-xs">config</code> vóór{" "}
             <code className="rounded bg-slate-100 px-1 text-xs">sections</code> uitstuurt, worden thema en fonts
-            meegenomen; anders tijdelijk neutrale defaults. Zelfreview en beeldverwerking aan het eind kunnen de finale
-            pagina nog iets bijsturen.
+            meegenomen; anders tijdelijk neutrale defaults. Beeldverwerking (Unsplash) aan het eind kan de finale pagina
+            nog iets bijsturen.
           </p>
           <p className="text-xs text-slate-500">
             {streamingSections.length} sectie{streamingSections.length === 1 ? "" : "s"} binnen…

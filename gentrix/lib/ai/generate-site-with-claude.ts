@@ -42,7 +42,10 @@ import { tryExtractCompletedSections } from "@/lib/ai/stream-json-section-extrac
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import { validateGeneratedPageHtml, type HomepagePlan } from "@/lib/ai/validate-generated-page";
-import { applySelfReviewToGeneratedPage } from "@/lib/ai/self-review-site-generation";
+import {
+  applySelfReviewToGeneratedPage,
+  isSiteSelfReviewEnabled,
+} from "@/lib/ai/self-review-site-generation";
 import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
@@ -1975,7 +1978,9 @@ export function createGenerateSiteReadableStream(
           elapsedBeforeSelfReviewMs > GENERATE_SITE_STREAM_MAX_DURATION_MS - GENERATE_SITE_TAIL_RESERVE_MS;
 
         let reviewed: Awaited<ReturnType<typeof applySelfReviewToGeneratedPage>>;
-        if (selfReviewBudgetExceeded) {
+        if (!isSiteSelfReviewEnabled()) {
+          reviewed = { data, ran: false, usedRefined: false };
+        } else if (selfReviewBudgetExceeded) {
           send(controller, {
             type: "status",
             message:
