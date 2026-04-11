@@ -401,7 +401,7 @@ const STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG: MasterPromptPageConfig = {
  * genereren geen “ruwe” modelfouten toont (Alpine menu standaard open, dubbele class op nav/header, enz.).
  */
 export function postProcessTailwindSectionsForStreamingPreview(
-  sections: Array<{ id: string; html: string; sectionName?: string }>,
+  sections: readonly TailwindSection[],
   config: TailwindPageConfig | null,
 ): TailwindSection[] {
   if (sections.length === 0) return [];
@@ -410,9 +410,9 @@ export function postProcessTailwindSectionsForStreamingPreview(
   const page: ClaudeTailwindPageOutput = {
     config: masterConfig,
     sections: sections.map((s, i) => ({
-      id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName ?? `section-${i}`, i),
+      id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
       html: s.html,
-      name: s.sectionName?.trim() || undefined,
+      name: s.sectionName.trim() || undefined,
     })),
   };
   const out = postProcessClaudeTailwindPage(page);
