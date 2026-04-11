@@ -157,6 +157,7 @@ export async function replaceUnsplashImagesInSections(
 
   for (let si = 0; si < sections.length; si++) {
     const sec = sections[si];
+    const sectionId = sec.id ?? `section-${si}`;
     const matches = sec.html.matchAll(UNSPLASH_URL_RE);
     for (const m of matches) {
       const url = m[0];
@@ -168,8 +169,8 @@ export async function replaceUnsplashImagesInSections(
         url,
         query,
         sectionIdx: si,
-        sectionId: sec.id,
-        sectionName: sec.sectionName ?? sec.id,
+        sectionId,
+        sectionName: sec.sectionName ?? sectionId,
       });
     }
   }
