@@ -7,8 +7,9 @@ import {
 } from "@/lib/site/public-site-modules-registry";
 
 /**
- * Verwijdert canonieke module-secties en neutraliseert pad-placeholders voor **inactieve** modules
- * volgens het centrale register.
+ * Verwijdert canonieke module-secties voor **inactieve** modules (CRM).
+ * `__STUDIO_BOOKING_PATH__` / `__STUDIO_SHOP_PATH__` blijven in overgebleven HTML staan — resolvers zetten ze
+ * altijd om naar echte `/boek/`- en `/winkel/`-routes; inactive-state is een pagina, geen `href="#"`.
  */
 export function filterTailwindSectionsForInactivePublicModules(
   sections: TailwindSection[],
@@ -24,15 +25,7 @@ export function filterTailwindSectionsForInactivePublicModules(
     }
   }
 
-  const withoutSections = sections.filter((s) => !sectionIdsToRemove.has(s.id ?? ""));
-
-  return withoutSections.map((s) => {
-    let html = s.html;
-    for (const d of defs) {
-      html = html.split(d.pathPlaceholder).join("#");
-    }
-    return { ...s, html };
-  });
+  return sections.filter((s) => !sectionIdsToRemove.has(s.id ?? ""));
 }
 
 /** Volledige CRM-flags → één filterstap (geen losse appointments/webshop-takken in compose). */

@@ -26,6 +26,7 @@ import { getGenerationPackagePromptBlock } from "@/lib/ai/generation-packages";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-prompt";
 import {
+  ensureClaudeMarketingSiteJsonHasContactSections,
   normalizeHtmlWhitespaceForUpgradePrompt,
   postProcessClaudeTailwindMarketingSite,
   postProcessClaudeTailwindPage,
@@ -919,7 +920,8 @@ function buildMarketingMultiPageOperationalTail(
 - **Meerdere echte pagina’s in één JSON:**
   - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige “Wat wij doen”-longread hier — dat staat op de eigen subpagina).
   - \`marketingPages\` = **verplicht** exact deze vier keys, elk met **eigen** HTML-secties (minstens één sectie per key, eigen \`id\`'s binnen die pagina): \`"wat-wij-doen"\`, \`"werkwijze"\`, \`"over-ons"\`, \`"faq"\`.
-  - \`contactSections\` = **contactpagina** met minstens één **werkend** <form> (naam/e-mail/bericht of vergelijkbaar).
+  - \`contactSections\` = **alleen de contact-subpagina** (route Contact): minstens één **werkend** <form> (naam/e-mail/bericht). **Niet** op de homepage (\`sections\`).
+- **Homepage + elke marketing-subpagina:** **geen** <form> — wel dezelfde nav met \`href="__STUDIO_CONTACT_PATH__"\` naar het formulier op de contactpagina.
 - **Verboden op landings-\`sections\` en op elke \`marketingPages[*]\`:** elk \`<form>\` (ook geen newsletter-mini). Alleen \`contactSections\` mag formulieren.
 - **Sectie-ankers:** binnen **één pagina** (\`sections\` of één key van \`marketingPages\`) gebruik je \`href="#…"\` alleen naar \`id\`'s die **op diezelfde pagina** bestaan.
 - **Cross-pagina (verplicht):** gebruik **uitsluitend** het token \`href="__STUDIO_SITE_BASE__/wat-wij-doen"\` (zelfde patroon voor \`werkwijze\`, \`over-ons\`, \`faq\`) en \`href="__STUDIO_CONTACT_PATH__"\` voor Contact. **Verboden:** zelf \`/site/…\`, \`/contact\`, of losse paden verzinnen; **verboden** \`#werkwijze\` / \`#faq\` in de nav als die inhoud in \`marketingPages\` staat (dat is geen echte subroute).
@@ -1055,6 +1057,16 @@ function buildSection3UpgradeTailMarkdown(preserve: boolean): string {
     : "";
 }
 
+/**
+ * §3 scroll-reveal (`data-animation`) — identiek in volledige en **minimale** user-prompt.
+ * Minimale modus miste eerder de “verplicht bij motion”-regel, waardoor keyword-briefings geen reveals kregen.
+ */
+function buildSiteGenerationDataAnimationInstructionsMarkdown(): string {
+  return `**Animatie (\`data-animation\`):** standaard **optioneel** op koppen, blokken, kaarten; de studio injecteert CSS + een klein script: bij scroll krijgt het element \`.studio-in-view\` en lopen o.a. \`fade-up\` / \`fade-in\` / \`slide-in-left\` / \`slide-in-right\` / \`scale-in\` — geen GSAP nodig.
+**Verplicht zodra de briefing erom vraagt (Nederlands of Engels):** woorden en zinnen zoals **interactief** / **interactieve site**, **dynamisch**, **animatie** / **animaties**, **motion**, **micro-interactions** / **micro-interacties**, **scroll-animaties**, **in beweging**, **beweging** (bedoeld als bewegende UI — niet alleen “een bedrijf in beweging” als platte copy), **levend** / **levendige** site of presentatie, **niet te statisch**, **veel visuele dynamiek**: zet dan op **minstens 10** zichtbare blokken (koppen \`h2\`/\`h3\`, feature-kaarten, grotere tekstkolommen — niet op elk klein label) \`data-animation="fade-up"\` of afwisselend \`slide-in-left\` / \`slide-in-right\` / \`scale-in\` / \`fade-in\`. Eerste scherm (hero + evt. nav): mag subtiel; onder de vouw duidelijker.
+**Zelfcheck vóór je de JSON sluit:** komen bovenstaande motion-signalen voor in de briefing (Context / branche) → tel of je **minstens 10** \`data-animation=\`-attributen hebt in de samengevoegde landing-\`sections[].html\` (subpagina’s: ook enkele reveals als het past); zo niet → voeg ze toe **zonder** sectie-\`id\` of volgorde te wijzigen.`;
+}
+
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
 function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTailInput): string {
   if (input.marketingMultiPage && !input.preserve) {
@@ -1173,7 +1185,7 @@ ${section1}=== KERN (technisch) ===
 
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
 2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\` (zie §3B).
-3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (minstens één sectie met <form>)" : ""}.
+3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (contact-subpagina: minstens één sectie met <form>; **niet** op de homepage)" : ""}.
 4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
@@ -1186,7 +1198,9 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 - **Hero:** sterke eerste indruk; **geen** vaste knoppen/CTA in de hero tenzij de briefing dat **expliciet** vraagt.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
 - **Klantfoto's:** volg het blok hierboven (niet in de hero).
-- Optioneel \`data-animation\`, \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud); **geen** laser tenzij de briefing **expliciet** futuristisch/neon/scan vraagt (§3). Video alleen met **werkende** MP4-URL.
+
+${buildSiteGenerationDataAnimationInstructionsMarkdown()}
+- Optioneel \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud); **geen** laser tenzij de briefing **expliciet** futuristisch/neon/scan vraagt (§3). Video alleen met **werkende** MP4-URL.
 
 ${section3Tail}${section3HeroHeight}
 
@@ -1272,7 +1286,7 @@ ${packageBlock}${existingBlock}
 1. Output = **één geldig JSON** volgens §5 — geen andere vorm.
 2. **Balans:** duidelijke hiërarchie en leesbaarheid; \`60-30-10\` is optionele richting, geen wiskunde.
 3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; ${marketingMultiPage ? "subpagina-links via __STUDIO_SITE_BASE__ (zie §3B); " : ""}landings-\`id\`'s consistent met \`href="#…"\` **alleen binnen dezelfde pagina**; link “Contact” naar \`__STUDIO_CONTACT_PATH__\` ${marketingMultiPage ? "(verplicht token)" : ""}.
-4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (contactpagina met formulier)" : ""}.
+4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (alleen contact-subroute met formulier)" : ""}.
 5. **Kleur:** als een flashy wens botst met de branche, gebruik die kleur liever **als accent** (§2). ${preserve ? " **Upgrade:** bestaande \`config.theme\` uit bron wint." : ""}
 
 ${section1}
@@ -1301,8 +1315,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 **Decoratie:** optioneel kleine **inline SVG** of \`data-lucide\` — niet verplicht.
 
-**Animatie (\`data-animation\`):** standaard **optioneel** op koppen, blokken, kaarten; de studio zet bij scroll \`.studio-in-view\` en triggert o.a. \`fade-up\` (inhoud schuift van onder naar binnen — geen GSAP nodig).
-**Verplicht als de briefing expliciet om beweging vraagt:** woorden/zinnen zoals **interactief**, **dynamisch**, **animatie**, **motion**, **micro-interactions**, **scroll-animaties**, **in beweging**, **levend** (in die zin): zet dan op **minstens 10** zichtbare blokken (koppen \`h2\`/\`h3\`, feature-kaarten, grotere tekstkolommen — niet op elk klein label) \`data-animation="fade-up"\` of afwisselend \`slide-in-left\` / \`slide-in-right\` / \`scale-in\` voor variatie. Eerste scherm (hero + evt. nav): mag subtiel; onder de vouw duidelijker.
+${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 **Rand/kader dat als los lijnwerk “rond de viewport” meescrolt** is **geen** ondersteund studio-patroon — gebruik reveal-animaties, \`transition\` op kaarten, of (alleen bij passende futuristische briefing) max. één \`studio-laser-*\` in de hero (zie laser-regel).
 
 **Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
@@ -1512,7 +1525,9 @@ function finalizeGenerateSiteFromClaudeText(
   }
 
   if (options.useMarketingMultiPage) {
-    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(parsedResult.value);
+    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(
+      ensureClaudeMarketingSiteJsonHasContactSections(parsedResult.value),
+    );
     if (!validated.success) {
       return {
         ok: false,
@@ -1624,12 +1639,14 @@ export async function generateSiteWithClaude(
     sections: await replaceUnsplashImagesInSections(
       data.sections,
       process.env.UNSPLASH_ACCESS_KEY,
+      description,
     ),
     ...(data.contactSections != null && data.contactSections.length > 0
       ? {
           contactSections: await replaceUnsplashImagesInSections(
             data.contactSections,
             process.env.UNSPLASH_ACCESS_KEY,
+            description,
           ),
         }
       : {}),
@@ -1639,7 +1656,7 @@ export async function generateSiteWithClaude(
             await Promise.all(
               Object.entries(data.marketingPages).map(async ([k, secs]) => [
                 k,
-                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY),
+                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, description),
               ]),
             ),
           ),
@@ -1844,14 +1861,31 @@ export function createGenerateSiteReadableStream(
         const stopUnsplashKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         let sectionsAfterUnsplash: typeof data.sections;
         let contactAfterUnsplash: typeof data.contactSections | undefined;
+        let marketingAfterUnsplash: typeof data.marketingPages | undefined;
         try {
           sectionsAfterUnsplash = await replaceUnsplashImagesInSections(
             data.sections,
             process.env.UNSPLASH_ACCESS_KEY,
+            description,
           );
           contactAfterUnsplash =
             data.contactSections != null && data.contactSections.length > 0
-              ? await replaceUnsplashImagesInSections(data.contactSections, process.env.UNSPLASH_ACCESS_KEY)
+              ? await replaceUnsplashImagesInSections(
+                  data.contactSections,
+                  process.env.UNSPLASH_ACCESS_KEY,
+                  description,
+                )
+              : undefined;
+          marketingAfterUnsplash =
+            data.marketingPages != null && Object.keys(data.marketingPages).length > 0
+              ? Object.fromEntries(
+                  await Promise.all(
+                    Object.entries(data.marketingPages).map(async ([k, secs]) => [
+                      k,
+                      await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, description),
+                    ]),
+                  ),
+                )
               : undefined;
         } finally {
           stopUnsplashKeepalive();
@@ -1862,6 +1896,7 @@ export function createGenerateSiteReadableStream(
           ...(contactAfterUnsplash != null && contactAfterUnsplash.length > 0
             ? { contactSections: contactAfterUnsplash }
             : {}),
+          ...(marketingAfterUnsplash != null ? { marketingPages: marketingAfterUnsplash } : {}),
         };
 
         data = {

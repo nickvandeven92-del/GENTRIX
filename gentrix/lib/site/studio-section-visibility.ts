@@ -64,9 +64,13 @@ export function applyStudioSiteBasePlaceholder(html: string, siteBasePath: strin
 }
 
 export type ApplyStudioPathsOptions = {
-  /** `false` = boek-placeholder wordt `#` en past bij module uit (geen `/boek/`-link). */
+  /**
+   * @deprecated Boeking- en webshop-placeholders worden **altijd** naar `/boek/{slug}` en `/winkel/{slug}`
+   * omgezet zodra er een gepubliceerde slug is. CRM stuurt zichtbaarheid/activatie via compose en inactive-routes,
+   * niet via `href="#"`.
+   */
   includeBooking?: boolean;
-  /** `false` = webshop-placeholder wordt `#` (geen `/winkel/`-link). */
+  /** @deprecated Zie `includeBooking`. */
   includeShop?: boolean;
   /**
    * `false` = portaal-placeholder wordt `#` (statische export / eigen host zonder Studio-portaal-route).
@@ -94,16 +98,8 @@ export function applyStudioPublishedPathPlaceholders(
     opts?.resolvePortalPath === false
       ? h.split(STUDIO_PORTAL_PATH_PLACEHOLDER).join("#")
       : applyStudioPortalPathPlaceholder(h, subfolderSlug);
-  if (opts?.includeBooking === false) {
-    h = h.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join("#");
-  } else {
-    h = applyStudioBookingPathPlaceholder(h, subfolderSlug);
-  }
-  if (opts?.includeShop === false) {
-    h = h.split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
-  } else {
-    h = applyStudioShopPathPlaceholder(h, subfolderSlug);
-  }
+  h = applyStudioBookingPathPlaceholder(h, subfolderSlug);
+  h = applyStudioShopPathPlaceholder(h, subfolderSlug);
   h = applyStudioContactPathPlaceholder(h, subfolderSlug);
   return h;
 }

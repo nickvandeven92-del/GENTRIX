@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PublicModuleInactive } from "@/components/public/public-module-inactive";
 import { PublicWebshopLanding } from "@/components/public/public-webshop-landing";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
@@ -18,8 +19,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw);
   const resolved = await resolveActiveClientWebshopBySlug(slug);
-  if (!resolved.ok || !resolved.webshopEnabled) {
+  if (!resolved.ok) {
     return { title: "Webshop" };
+  }
+  if (!resolved.webshopEnabled) {
+    return { title: `Webshop — ${resolved.name}` };
   }
   const bundle = await getPublishedSiteBySlug(slug);
   const name =
@@ -33,13 +37,26 @@ export default async function PublicWebshopPage({ params }: Props) {
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw);
   const resolved = await resolveActiveClientWebshopBySlug(slug);
-  if (!resolved.ok || !resolved.webshopEnabled) {
+  if (!resolved.ok) {
     notFound();
   }
 
   const appOrigin = getPublicAppUrl();
   const enc = encodeURIComponent(slug);
   const publicSiteHref = `${appOrigin}/site/${enc}`;
+
+  if (!resolved.webshopEnabled) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+        <PublicModuleInactive
+          businessName={resolved.name}
+          publicSiteHref={publicSiteHref}
+          title="Webshop"
+          description="De webshop is voor deze klant nog niet geactiveerd. Je kunt wel doorklikken naar de website voor overige informatie."
+        />
+      </div>
+    );
+  }
   const embedTemplate = process.env.NEXT_PUBLIC_WEBSHOP_IFRAME_SRC_TEMPLATE?.trim() || null;
 
   const bundle = await getPublishedSiteBySlug(slug);

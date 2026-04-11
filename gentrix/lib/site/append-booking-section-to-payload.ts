@@ -35,7 +35,8 @@ export function appendDefaultBookingSectionToSections(
 
 /**
  * Na AI-generatie: verwijdert eventuele model-sectie `id: "booking"` (voorkomt dubbel) en voegt het vaste
- * canonical blok met `__STUDIO_BOOKING_PATH__` toe. Zichtbaarheid op /site hangt van `appointments_enabled` af.
+ * canonical blok met `__STUDIO_BOOKING_PATH__` toe. CRM bepaalt zichtbaarheid/activatie; de placeholder
+ * resolvet altijd naar `/boek/{slug}` (inactive-pagina als de feature nog uit staat).
  */
 export function ensureCanonicalBookingSectionInTailwindSections(sections: TailwindSection[]): TailwindSection[] {
   const withoutModelBooking = sections.filter((s) => s.id !== "booking");
@@ -75,7 +76,7 @@ export function appendDefaultShopSectionToSections(
 
 /**
  * Na AI-generatie: verwijdert eventuele model-sectie `id: "shop"` en voegt het vaste
- * vier-productenblok toe. Zichtbaarheid op /site hangt van `webshop_enabled` af.
+ * vier-productenblok toe. CRM bepaalt zichtbaarheid/activatie; `/winkel/{slug}` blijft een geldige route.
  */
 export function ensureCanonicalShopSectionInTailwindSections(sections: TailwindSection[]): TailwindSection[] {
   const withoutModelShop = sections.filter((s) => s.id !== "shop");

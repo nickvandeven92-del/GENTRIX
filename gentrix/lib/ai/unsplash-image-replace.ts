@@ -54,6 +54,23 @@ function cleanQuery(raw: string): string {
     .trim();
 }
 
+const MAX_QUERY_WORDS = 10;
+
+/** Voeg unieke termen uit de bedrijfsbriefing toe zodat stock-zoekopdrachten beter bij branche/thema blijven. */
+function enrichQueryWithTheme(baseQuery: string, themeContext?: string): string {
+  const t = themeContext?.trim();
+  if (!t) return baseQuery;
+  const themeClean = cleanQuery(t);
+  if (!themeClean) return baseQuery;
+  const baseWords = baseQuery.toLowerCase().split(/\s+/).filter(Boolean);
+  const baseSet = new Set(baseWords);
+  const extras = themeClean
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !baseSet.has(w.toLowerCase()));
+  const merged = [...baseWords, ...extras].slice(0, MAX_QUERY_WORDS).join(" ").trim();
+  return merged || baseQuery;
+}
+
 interface UnsplashSearchResult {
   urls: { regular: string; small: string; raw: string };
   alt_description: string | null;
@@ -107,10 +124,12 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * - Deduplicates queries: same alt text → same result set.
  * - Uniqueness: picks different photos from the result set for the same query.
  * - Respects rate limits with inter-request delays and a total timeout.
+ * @param themeContext Optioneel: korte bedrijfsbeschrijving; wordt gemengd in de zoekterm voor betere branche-match.
  */
 export async function replaceUnsplashImagesInSections(
   sections: TailwindSection[],
   accessKey?: string,
+  themeContext?: string,
 ): Promise<TailwindSection[]> {
   if (!accessKey) return sections;
 
@@ -130,7 +149,8 @@ export async function replaceUnsplashImagesInSections(
       const url = m[0];
       const alt = extractAltForUrl(sec.html, url);
       const rawQuery = alt ?? sec.sectionName ?? "professional business";
-      const query = cleanQuery(rawQuery) || "professional business";
+      const base = cleanQuery(rawQuery) || "professional business";
+      const query = enrichQueryWithTheme(base, themeContext);
       entries.push({ url, query, sectionIdx: si });
     }
   }

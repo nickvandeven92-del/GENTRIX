@@ -1038,12 +1038,8 @@ export function buildTailwindIframeSrcDoc(
   });
   const slug = options?.publishedSlug?.trim();
   if (slug) {
-    const appt = options?.appointmentsEnabled;
-    const shop = options?.webshopEnabled;
     const previewTok = options?.draftPublicPreviewToken?.trim();
     body = applyStudioPublishedPathPlaceholders(body, slug, {
-      includeBooking: appt !== false,
-      includeShop: shop !== false,
       resolvePortalPath: previewTok ? false : undefined,
     });
     body = stripLeakedStudioPlaceholderTokens(body);

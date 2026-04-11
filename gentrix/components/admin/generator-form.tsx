@@ -365,7 +365,7 @@ export function GeneratorForm({
                 className="size-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90"
                 aria-hidden
               />
-              FAQ: zo genereer je een site & wat met placeholders?
+              FAQ: site genereren, blueprints &amp; studio-links
             </span>
           </summary>
           <div className="space-y-4 border-t border-slate-200 px-3 py-3 text-sm leading-relaxed text-slate-700">
@@ -393,31 +393,75 @@ export function GeneratorForm({
                   <strong>site-editor</strong>.
                 </li>
               </ol>
+              <p className="mt-3 text-xs text-slate-600">
+                <strong>Nieuwe volledige generaties</strong> (geen layout-upgrade) leveren een <strong>kleine site</strong>:
+                homepage (<code className="font-mono text-[11px]">/site/…</code>) met vaste subpagina&apos;s + een{" "}
+                <strong>aparte contactpagina</strong> met het formulier. De AI zet daarvoor o.a.{" "}
+                <code className="font-mono text-[11px]">__STUDIO_SITE_BASE__</code> en{" "}
+                <code className="font-mono text-[11px]">__STUDIO_CONTACT_PATH__</code> in de HTML; het platform vervangt
+                die door echte paden. Ontbreekt het contactblok in de model-JSON, vult de server een veilige default aan —
+                je ziet alsnog een werkende contactroute.
+              </p>
             </section>
             <section>
-              <h3 className="text-sm font-semibold text-slate-900">Slimme links (geen lelijke codes op de site)</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Blueprints vs. links in de HTML</h3>
               <p className="mt-2 text-xs text-slate-600">
-                In de <code className="font-mono">href</code> van knoppen en menu&apos;s staan interne vaste tokens die het
-                platform automatisch omzet naar het juiste pad per klant. In preview en live zie je dus normale URL&apos;s
-                zoals <code className="font-mono text-[11px]">/portal/…</code>, <code className="font-mono text-[11px]">/boek/…</code>{" "}
-                en <code className="font-mono text-[11px]">/winkel/…</code> — of een <code className="font-mono text-[11px]">#</code>{" "}
-                als de bijbehorende module nog uit staat.
+                Dat loopt <strong>niet</strong> alleen via blueprints, en <strong>placeholders zijn niet weg</strong>: in
+                opgeslagen sectie-HTML staan nog steeds vaste <strong>studio-tokens</strong> (zoals{" "}
+                <code className="font-mono text-[11px]">__STUDIO_PORTAL_PATH__</code>,{" "}
+                <code className="font-mono text-[11px]">__STUDIO_BOOKING_PATH__</code>,{" "}
+                <code className="font-mono text-[11px]">__STUDIO_SHOP_PATH__</code> — en bij meerdere pagina&apos;s{" "}
+                <code className="font-mono text-[11px]">__STUDIO_SITE_BASE__</code> /{" "}
+                <code className="font-mono text-[11px]">__STUDIO_CONTACT_PATH__</code>). Bij <strong>preview en live</strong>{" "}
+                met klant-slug worden boek- en webshop-tokens <strong>altijd</strong> echte <code className="font-mono text-[11px]">/boek/…</code> /{" "}
+                <code className="font-mono text-[11px]">/winkel/…</code>-links (geen <code className="font-mono text-[11px]">#</code> meer daarvoor); CRM bepaalt
+                of de feature actief is of een inactive-pagina toont. Portaal kan bij export/preview nog <code className="font-mono text-[11px]">#</code> zijn.
+              </p>
+              <p className="mt-2 text-xs text-slate-600">
+                Een <strong>blueprint</strong> in de project-snapshot (standaard{" "}
+                <code className="font-mono text-[11px]">studio_marketing_single_page</code>) beschrijft daarnaast{" "}
+                <strong>site-IR</strong>: welk type site + <strong>module-slots</strong> (o.a. portaal, boeken, webshop) —
+                vooral <strong>structuur en validatie</strong>. Dat is <strong>geen</strong> vervanging van die tokens: IR en
+                HTML lopen <strong>naast elkaar</strong>. Briefing + model bepalen nog steeds uitstraling en copy.
+              </p>
+            </section>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">Boeken &amp; webshop — wat genereert de AI wél?</h3>
+              <p className="mt-2 text-xs text-slate-600">
+                De generator bouwt <strong>geen</strong> volledig maatwerk-checkout of agenda-app in HTML. Na de
+                AI-run voegt de server vaste, <strong>canonieke</strong> secties toe (<code className="font-mono text-[11px]">booking</code>,{" "}
+                <code className="font-mono text-[11px]">shop</code>) met dezelfde placeholder-tokens als in de nav.{" "}
+                <strong>Site-IR</strong> bevat standaard ook de route-keys voor boeken en webshop. CRM bepaalt of blokken/CTA&apos;s
+                zichtbaar zijn en of de feature achter <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code> actief is;
+                anders toont die route een geldige inactive-pagina.
+              </p>
+            </section>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">Wat zie je in de editor?</h3>
+              <p className="mt-2 text-xs text-slate-600">
+                In de <strong>bron</strong> (HTML-editor) blijven de <code className="font-mono text-[11px]">__STUDIO_…</code>
+                -strings vaak <strong>zichtbaar</strong> in <code className="font-mono">href</code> — dat hoort zo. In{" "}
+                <strong>preview en live</strong> worden ze omgezet; je ziet dan normale paden zoals{" "}
+                <code className="font-mono text-[11px]">/portal/…</code>, <code className="font-mono text-[11px]">/boek/…</code>,{" "}
+                <code className="font-mono text-[11px]">/winkel/…</code>. Zonder gepubliceerde slug kan de preview nog <code className="font-mono text-[11px]">#</code> tonen
+                (geen klantcontext).
               </p>
             </section>
             <section>
               <h3 className="text-sm font-semibold text-slate-900">Wat doe jij ermee in de editor?</h3>
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs text-slate-600">
                 <li>
-                  <strong>Laat slimme links staan</strong> in de editor als je wilt dat portaal-, boek- en winkellinks
-                  automatisch naar de juiste URL voor <em>deze</em> klant blijven wijzen.
+                  <strong>Laat studio-tokens in href&apos;s staan</strong> (zoals <code className="font-mono text-[11px]">__STUDIO_BOOKING_PATH__</code>
+                  ) als je wilt dat boek-, shop- en portaal-links automatisch naar het juiste pad voor <em>deze</em> klant blijven
+                  wijzen na publicatie.
                 </li>
                 <li>
                   Alleen handmatig vervangen door concrete paden als je bewust één vaste link wilt; let op dat je dan geen
                   verkeerde slug gebruikt.
                 </li>
                 <li>
-                  Zie je <code className="font-mono text-[11px]">#</code> in de preview: vaak omdat een module (boeken/shop)
-                  voor die site nog niet actief is — activeer de module of pas de copy/knoppen aan in de editor.
+                  Zie je <code className="font-mono text-[11px]">#</code> in de preview: vaak omdat er nog geen klant-slug in de
+                  context zit, of het gaat om portaal-export — niet als signaal dat boek/webshop-route &quot;weg&quot; is.
                 </li>
               </ul>
             </section>

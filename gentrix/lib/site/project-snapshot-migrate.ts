@@ -14,7 +14,12 @@ import {
   type GenerationContext,
   type ProjectSnapshot,
 } from "@/lib/site/project-snapshot-schema";
-import { buildSiteIrV1, safeParseSiteIrV1, siteIrV1Schema } from "@/lib/site/site-ir-schema";
+import {
+  buildSiteIrV1,
+  ensureSiteIrStandardModuleRoutes,
+  safeParseSiteIrV1,
+  siteIrV1Schema,
+} from "@/lib/site/site-ir-schema";
 import { LAYOUT_PRESET_IDS } from "@/lib/site/project-snapshot-layout";
 import { CONTENT_DENSITY_VALUES } from "@/lib/site/project-snapshot-layout";
 import { SNAPSHOT_PAGE_TYPES } from "@/lib/site/snapshot-page-type";
@@ -208,6 +213,7 @@ export function upgradeLooseProjectSnapshotV1(
       ],
     });
   }
+  siteIr = ensureSiteIrStandardModuleRoutes(siteIr);
 
   return {
     format,

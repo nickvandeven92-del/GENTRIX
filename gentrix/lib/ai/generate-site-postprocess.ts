@@ -362,3 +362,119 @@ export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): C
 export function normalizeHtmlWhitespaceForUpgradePrompt(html: string): string {
   return html.replace(/[\t\n\r]+/g, " ").replace(/\s{2,}/g, " ").trim();
 }
+
+const DEFAULT_FALLBACK_PRIMARY = "#0f766e";
+const DEFAULT_FALLBACK_ACCENT = "#b45309";
+
+function sanitizeThemeHex(raw: unknown, fallback: string): string {
+  if (typeof raw !== "string") return fallback;
+  const t = raw.trim();
+  return /^#[0-9a-fA-F]{3,8}$/.test(t) ? t : fallback;
+}
+
+function extractThemeHexesFromParsedRoot(o: Record<string, unknown>): { primary: string; accent: string } {
+  const cfg = o.config;
+  if (cfg === null || typeof cfg !== "object" || Array.isArray(cfg)) {
+    return { primary: DEFAULT_FALLBACK_PRIMARY, accent: DEFAULT_FALLBACK_ACCENT };
+  }
+  const theme = (cfg as Record<string, unknown>).theme;
+  if (theme === null || typeof theme !== "object" || Array.isArray(theme)) {
+    return { primary: DEFAULT_FALLBACK_PRIMARY, accent: DEFAULT_FALLBACK_ACCENT };
+  }
+  const th = theme as Record<string, unknown>;
+  return {
+    primary: sanitizeThemeHex(th.primary, DEFAULT_FALLBACK_PRIMARY),
+    accent: sanitizeThemeHex(th.accent, DEFAULT_FALLBACK_ACCENT),
+  };
+}
+
+/**
+ * Minimale contactpagina + nav (zelfde studio-tokens als het model) als `contactSections` ontbreekt of leeg is.
+ * Formulier alleen hier — homepage en marketing-subpagina's blijven form-vrij.
+ */
+export function buildDefaultClaudeMarketingContactSectionRow(primary: string, accent: string): {
+  id: string;
+  name: string;
+  html: string;
+} {
+  return {
+    id: "contact",
+    name: "Contact",
+    html: `<section id="contact" class="bg-stone-50">
+  <header class="border-b border-stone-200 bg-white/90 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 text-sm font-medium text-stone-700">
+      <a href="__STUDIO_SITE_BASE__" class="font-semibold" style="color:${primary}">Home</a>
+      <div class="flex flex-wrap items-center gap-3 md:gap-4">
+        <a href="__STUDIO_SITE_BASE__/wat-wij-doen" class="hover:opacity-80">Wat wij doen</a>
+        <a href="__STUDIO_SITE_BASE__/werkwijze" class="hover:opacity-80">Werkwijze</a>
+        <a href="__STUDIO_SITE_BASE__/over-ons" class="hover:opacity-80">Over ons</a>
+        <a href="__STUDIO_SITE_BASE__/faq" class="hover:opacity-80">FAQ</a>
+        <a href="__STUDIO_CONTACT_PATH__" class="rounded-md px-3 py-1.5 text-white shadow-sm hover:opacity-90" style="background:${accent}">Contact</a>
+      </div>
+    </nav>
+  </header>
+  <div class="mx-auto max-w-xl px-4 py-16 md:py-24">
+    <h1 class="text-3xl font-semibold tracking-tight text-stone-900">Neem contact op</h1>
+    <p class="mt-3 text-stone-600">Laat een bericht achter; we nemen zo snel mogelijk contact met u op.</p>
+    <form class="mt-10 space-y-5" method="post">
+      <div>
+        <label for="gentrix-contact-name" class="block text-sm font-medium text-stone-700">Naam</label>
+        <input id="gentrix-contact-name" name="name" type="text" required autocomplete="name" class="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-400" />
+      </div>
+      <div>
+        <label for="gentrix-contact-email" class="block text-sm font-medium text-stone-700">E-mail</label>
+        <input id="gentrix-contact-email" name="email" type="email" required autocomplete="email" class="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-400" />
+      </div>
+      <div>
+        <label for="gentrix-contact-message" class="block text-sm font-medium text-stone-700">Bericht</label>
+        <textarea id="gentrix-contact-message" name="message" rows="5" required class="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-400"></textarea>
+      </div>
+      <button type="submit" class="inline-flex w-full items-center justify-center rounded-md px-4 py-3 text-sm font-semibold text-white shadow hover:opacity-90 md:w-auto" style="background:${primary}">Versturen</button>
+    </form>
+  </div>
+</section>`,
+  };
+}
+
+function marketingContactSectionsArrayLooksValid(raw: unknown): boolean {
+  if (!Array.isArray(raw) || raw.length === 0) return false;
+  return raw.every((row) => {
+    if (row === null || typeof row !== "object" || Array.isArray(row)) return false;
+    const r = row as Record<string, unknown>;
+    const id = typeof r.id === "string" ? r.id.trim() : "";
+    const html = typeof r.html === "string" ? r.html.trim() : "";
+    return id.length > 0 && html.length > 0;
+  });
+}
+
+function marketingContactSectionsIncludeForm(raw: unknown): boolean {
+  if (!Array.isArray(raw)) return false;
+  const joined = raw
+    .map((row) => {
+      if (row === null || typeof row !== "object" || Array.isArray(row)) return "";
+      const h = (row as Record<string, unknown>).html;
+      return typeof h === "string" ? h : "";
+    })
+    .join("\n");
+  return /<form\b/i.test(joined);
+}
+
+/**
+ * Vult ontbrekende `contactSections` aan vóór Zod-parse (marketing multi-page).
+ * Voorkomt schema-fouten wanneer het model het veld weglaat; het formulier blijft op de contact-subroute.
+ */
+export function ensureClaudeMarketingSiteJsonHasContactSections(parsed: unknown): unknown {
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return parsed;
+  }
+  const o = parsed as Record<string, unknown>;
+  if (
+    marketingContactSectionsArrayLooksValid(o.contactSections) &&
+    marketingContactSectionsIncludeForm(o.contactSections)
+  ) {
+    return parsed;
+  }
+  const { primary, accent } = extractThemeHexesFromParsedRoot(o);
+  const row = buildDefaultClaudeMarketingContactSectionRow(primary, accent);
+  return { ...o, contactSections: [row] };
+}

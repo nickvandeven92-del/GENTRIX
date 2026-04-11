@@ -49,12 +49,7 @@ export function ReactPublishedSiteView({
   const resolveHref = (href: string) => {
     const slug = publishedSlug?.trim();
     if (!slug) return neutralizeStudioPathPlaceholdersWithoutSlug(href);
-    return stripLeakedStudioPlaceholderTokens(
-      applyStudioPublishedPathPlaceholders(href, slug, {
-        includeBooking: appointmentsEnabled,
-        includeShop: webshopEnabled,
-      }),
-    );
+    return stripLeakedStudioPlaceholderTokens(applyStudioPublishedPathPlaceholders(href, slug));
   };
 
   const sans = doc.theme.fontSans?.trim();

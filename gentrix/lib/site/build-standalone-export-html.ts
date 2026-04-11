@@ -89,8 +89,6 @@ export function buildStandaloneExportHtmlDocument(
   if (!forScan && publish && publish.subfolderSlug.trim()) {
     const slug = publish.subfolderSlug.trim();
     bodyInner = applyStudioPublishedPathPlaceholders(bodyInner, slug, {
-      includeBooking: publish.appointmentsEnabled,
-      includeShop: publish.webshopEnabled,
       resolvePortalPath: false,
     });
     bodyInner = stripLeakedStudioPlaceholderTokens(bodyInner);

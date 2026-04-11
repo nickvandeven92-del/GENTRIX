@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai/content-claim-diagnostics";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import {
+  ensureClaudeMarketingSiteJsonHasContactSections,
   postProcessClaudeTailwindMarketingSite,
   postProcessClaudeTailwindPage,
 } from "@/lib/ai/generate-site-postprocess";
@@ -61,7 +62,7 @@ ${buildContentAuthorityPolicyBlock()}
 - Ontbrekende \`<h1>\`, kapotte interne \`href="#…"\`, identieke canonieke \`/site/…\` of \`https://…/site/…\` **zonder** passend \`#\` op meerdere menu-items, of zichtbare placeholder-copy: **repareren** (zet interne navigatie op \`#<sectie-id>\` die in de markup bestaat).
 - Verminder **onnodige lengte** binnen secties: dubbele stats/testimonial/CTA-banen samenvatten of één rustig blok maken **zonder** secties te droppen.
 - Behoud \`data-animation\` en root-\`id\` op sectie waar geldig. Marquee: \`studio-marquee\` / \`studio-marquee-track\` alleen met dubbele set items (anders hapert de loop). **Laser:** als \`studio-laser-*\` staat op een **generieke** (niet-cyber) briefing zonder expliciete neon/sci-fi-wens → **verwijder** (te veel “template-decoratie”). Als wél passend: max. één rail in hero; \`relative\` parent; geen twee lasers genest op hetzelfde element.
-- Als de briefing **expliciet interactief/dynamisch/motion/scroll-animaties** vraagt en het concept **weinig of geen** \`data-animation\` heeft: voeg \`data-animation\` toe op minstens **8** zichtbare elementen (koppen, kaarten, grotere blokken) — voorkeur \`fade-up\` — **zonder** sectie-\`id\` of volgorde te wijzigen.
+- Als de briefing **motion-signalen** bevat (interactief, dynamisch, animatie(s), motion, micro-interactions/micro-interacties, scroll-animaties, in beweging, bewegende UI, levend/levendige site, niet te statisch, veel visuele dynamiek — NL of EN) en het concept **weinig of geen** \`data-animation\` heeft: voeg \`data-animation\` toe op minstens **10** zichtbare elementen (koppen, kaarten, grotere blokken) — voorkeur \`fade-up\` — **zonder** sectie-\`id\` of volgorde te wijzigen.
 - Sterkere typografie/contrast als het concept botst met de **briefing** (bijv. gevraagd warm/donker maar alles koud wit; of gevraagd **licht/helder/crème** maar de pagina is overwegend near-black zonder dat de briefing dat zo vraagt) — binnen Tailwind-utilities.
 - **Hero heel kaal (effen donker zonder enige visuele laag):** alleen bijsturen als dat duidelijk zwak oogt **en** de briefing geen expliciet minimalisme vraagt — voeg desgewenst foto, gradient of textuur toe.
 - **Header/menu met structureel slecht contrast** (bijv. lichte linktekst op lichte secties, of donkere links op donkere achtergrond): repareer met eenvoudige Tailwind- of Alpine-aanpassingen.
@@ -289,7 +290,9 @@ export async function applySelfReviewToGeneratedPage(options: {
   const marketingMulti = draft.contactSections != null && draft.contactSections.length > 0;
 
   if (marketingMulti) {
-    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(parsedResult.value);
+    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(
+      ensureClaudeMarketingSiteJsonHasContactSections(parsedResult.value),
+    );
     if (!validated.success) {
       console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);
       return { data: draft, ran: true, usedRefined: false };

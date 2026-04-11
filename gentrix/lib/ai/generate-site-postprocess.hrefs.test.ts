@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   collectHtmlElementIds,
+  ensureClaudeMarketingSiteJsonHasContactSections,
   postProcessClaudeTailwindPage,
   repairSamePagePathHrefsInHtml,
 } from "@/lib/ai/generate-site-postprocess";
+import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
+import { claudeTailwindMarketingSiteOutputSchema, mapClaudeOutputToSections } from "@/lib/ai/tailwind-sections-schema";
 import type { ClaudeTailwindPageOutput } from "@/lib/ai/tailwind-sections-schema";
 
 describe("repairSamePagePathHrefsInHtml", () => {
@@ -83,5 +86,58 @@ describe("postProcessClaudeTailwindPage path href integration", () => {
     const joined = out.sections.map((s) => s.html).join("\n");
     expect(joined).toContain('href="#top"');
     expect(joined).toContain('href="#diensten"');
+  });
+});
+
+describe("ensureClaudeMarketingSiteJsonHasContactSections", () => {
+  const minimalConfig = {
+    style: "Professioneel, rustig",
+    theme: { primary: "#1e3a2f", accent: "#c4a574" },
+    font: "system-ui, sans-serif",
+  };
+
+  it("injects contactSections when undefined and output passes marketing schema + hard rules", () => {
+    const raw = {
+      config: minimalConfig,
+      sections: [{ id: "hero", html: '<section id="hero" class="min-h-[72vh] md:min-h-[80vh] p-8">H</section>' }],
+    };
+    const patched = ensureClaudeMarketingSiteJsonHasContactSections(raw);
+    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(patched);
+    expect(validated.success).toBe(true);
+    if (!validated.success) return;
+    const landing = mapClaudeOutputToSections({ config: validated.data.config, sections: validated.data.sections });
+    const contact = mapClaudeOutputToSections({
+      config: validated.data.config,
+      sections: validated.data.contactSections,
+    });
+    const errors = validateMarketingSiteHardRules(landing.sections, contact.sections);
+    expect(errors).toEqual([]);
+    expect(validated.data.contactSections[0]?.html).toMatch(/<form\b/i);
+    expect(validated.data.contactSections[0]?.html).toContain("__STUDIO_CONTACT_PATH__");
+  });
+
+  it("leaves valid contactSections unchanged", () => {
+    const row = {
+      id: "contact",
+      html: '<section id="contact"><form method="post"><input name="x"/></form></section>',
+    };
+    const raw = {
+      config: minimalConfig,
+      sections: [{ id: "hero", html: '<section id="hero" class="min-h-[72vh] md:min-h-[80vh]">H</section>' }],
+      contactSections: [row],
+    };
+    const patched = ensureClaudeMarketingSiteJsonHasContactSections(raw);
+    expect(patched).toBe(raw);
+  });
+
+  it("replaces contactSections when there is no form", () => {
+    const raw = {
+      config: minimalConfig,
+      sections: [{ id: "hero", html: '<section id="hero" class="min-h-[72vh] md:min-h-[80vh] p-8">H</section>' }],
+      contactSections: [{ id: "contact", html: '<section id="contact"><p>Alleen tekst</p></section>' }],
+    };
+    const patched = ensureClaudeMarketingSiteJsonHasContactSections(raw) as Record<string, unknown>;
+    const cs = patched.contactSections as { html: string }[];
+    expect(cs[0]?.html).toMatch(/<form\b/i);
   });
 });
