@@ -85,14 +85,10 @@ export function businessOsNavItemIsActive(pathname: string, href: string, label?
   const p = pathname.split("?")[0] ?? pathname;
   if (href === "/admin/ops") return p === "/admin/ops" || p === "/admin/ops/";
   if (href === "/admin/flyers") {
-    return p === "/admin/flyers" || p === "/admin/flyers/" || /\/admin\/clients\/[^/]+\/flyer(\/|$)/.test(p);
+    return p === "/admin/flyers" || p === "/admin/flyers/" || /^\/admin\/flyers\/[^/]+/.test(p);
   }
   if (href === "/admin/clients") {
-    return (
-      p === "/admin/clients" ||
-      p === "/admin/clients/" ||
-      (p.startsWith("/admin/clients/") && !/\/flyer(\/|$)/.test(p))
-    );
+    return p === "/admin/clients" || p === "/admin/clients/" || p.startsWith("/admin/clients/");
   }
   return p === href || p.startsWith(`${href}/`);
 }

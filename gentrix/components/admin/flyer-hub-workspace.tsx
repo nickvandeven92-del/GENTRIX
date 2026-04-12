@@ -5,7 +5,7 @@ import { FlyerStudioEditor } from "@/components/admin/flyer-studio-editor";
 import type { FlyerStudioPersisted } from "@/lib/flyer/flyer-studio-schema";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, Download, ExternalLink, QrCode } from "lucide-react";
+import { ArrowLeft, Check, Copy, Download, ExternalLink, QrCode } from "lucide-react";
 import QRCode from "qrcode";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ type Props = {
   initialFlyerStudio: FlyerStudioPersisted;
 };
 
-export function ClientFlyerWorkspace({
+export function FlyerHubWorkspace({
   slug,
   clientName,
   flyerQrAbsoluteUrl,
@@ -59,12 +59,19 @@ export function ClientFlyerWorkspace({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Flyer & QR</h2>
+        <Link
+          href="/admin/flyers"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Flyer &amp; QR — alle klanten
+        </Link>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{clientName}</h1>
         <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-          Vaste korte link per klant — wijst naar live site of conceptpreview. Gebruik op drukwerk; scans verschijnen
-          hieronder zodra de tabel <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">flyer_scans</code>{" "}
-          actief is. Teksten voor de PDF bewaar je in de Flyerstudio (kolom{" "}
-          <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">flyer_studio_json</code>).
+          Flyer-link, studio en downloads horen bij het Flyer &amp; QR-hoofdmenu — los van het klantdossier.{" "}
+          <Link href={`/admin/clients/${enc}`} className="font-medium text-violet-700 underline-offset-2 hover:underline dark:text-violet-300">
+            Naar dossier →
+          </Link>
         </p>
       </div>
 
@@ -110,8 +117,8 @@ export function ClientFlyerWorkspace({
             </>
           ) : (
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              Geen flyer-link beschikbaar. Controleer of de migratie voor <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">flyer_public_token</code> op
-              Supabase staat.
+              Geen flyer-link beschikbaar. Controleer of de migratie voor{" "}
+              <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">flyer_public_token</code> op Supabase staat.
             </p>
           )}
         </div>
@@ -137,10 +144,10 @@ export function ClientFlyerWorkspace({
       <FlyerStudioEditor slug={slug} initialStudio={initialFlyerStudio} />
 
       <div>
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">A4-flyer (PDF)</h3>
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">A4-flyer (PDF)</h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Drie stijlen; zelfde QR. Sla je copy eerst op in de Flyerstudio — daarna bevat elke PDF die teksten (lege velden
-          vullen we per stijl met een standaard).
+          Drie stijlen; zelfde QR. Sla je copy op in de Flyerstudio — downloads gebruiken de opgeslagen teksten (lege
+          velden: standaarden per stijl).
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <a
@@ -209,14 +216,6 @@ export function ClientFlyerWorkspace({
           )}
         </div>
       ) : null}
-
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Terug naar{" "}
-        <Link href={`/admin/clients/${enc}`} className="font-medium text-violet-700 underline-offset-2 hover:underline dark:text-violet-300">
-          dossier-overzicht
-        </Link>
-        .
-      </p>
     </div>
   );
 }

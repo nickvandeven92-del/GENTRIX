@@ -1,8 +1,8 @@
 "use client";
 
-import { BookmarkPlus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { BookmarkPlus, Loader2, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { defaultFlyerCopyForTemplate } from "@/lib/flyer/flyer-studio-defaults";
 import type { FlyerPdfTemplateId, FlyerPreset, FlyerStudioPersisted } from "@/lib/flyer/flyer-studio-schema";
 import { cn } from "@/lib/utils";
@@ -25,10 +25,70 @@ export function FlyerStudioEditor({ slug, initialStudio }: Props) {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [presetName, setPresetName] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewErr, setPreviewErr] = useState<string | null>(null);
+  const previewBlobRef = useRef<string | null>(null);
 
   useEffect(() => {
     setStudio(initialStudio);
   }, [initialStudio]);
+
+  const studioKey = useMemo(() => JSON.stringify(studio), [studio]);
+  const studioRef = useRef(studio);
+  studioRef.current = studio;
+
+  useEffect(() => {
+    return () => {
+      if (previewBlobRef.current) {
+        URL.revokeObjectURL(previewBlobRef.current);
+        previewBlobRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    const t = window.setTimeout(() => {
+      void (async () => {
+        const s = studioRef.current;
+        setPreviewLoading(true);
+        setPreviewErr(null);
+        try {
+          const res = await fetch(`/api/clients/${encodeURIComponent(slug)}/flyer-pdf-preview`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studio: s, template: s.pdfTemplate }),
+            signal: ac.signal,
+          });
+          if (!res.ok) {
+            const ct = res.headers.get("content-type") ?? "";
+            if (ct.includes("application/json")) {
+              const j = (await res.json()) as { error?: string };
+              throw new Error(j.error ?? `Preview (${res.status})`);
+            }
+            throw new Error(`Preview mislukt (HTTP ${res.status}).`);
+          }
+          const blob = await res.blob();
+          const nextUrl = URL.createObjectURL(blob);
+          setPreviewUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            previewBlobRef.current = nextUrl;
+            return nextUrl;
+          });
+        } catch (e) {
+          if ((e as Error).name === "AbortError") return;
+          setPreviewErr(e instanceof Error ? e.message : "Preview mislukt.");
+        } finally {
+          if (!ac.signal.aborted) setPreviewLoading(false);
+        }
+      })();
+    }, 420);
+    return () => {
+      window.clearTimeout(t);
+      ac.abort();
+    };
+  }, [slug, studioKey]);
 
   const applyDefaultsForTemplate = useCallback((t: FlyerPdfTemplateId) => {
     const d = defaultFlyerCopyForTemplate(t);
@@ -120,8 +180,8 @@ export function FlyerStudioEditor({ slug, initialStudio }: Props) {
         <div>
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Flyerstudio</h3>
           <p className="mt-1 max-w-xl text-xs text-zinc-600 dark:text-zinc-400">
-            Bewerk de teksten voor de PDF-flyers. Elke download gebruikt dezelfde flyer-QR; je kunt meerdere vaste
-            sjablonen bewaren (bijv. seizoenscampagnes) en die met één klik in het formulier laden.
+            Bewerk de teksten; rechts zie je een live PDF-preview (zelfde engine als download). Elke download gebruikt
+            dezelfde flyer-QR. Je kunt combinaties bewaren als preset.
           </p>
         </div>
         <button
@@ -138,7 +198,8 @@ export function FlyerStudioEditor({ slug, initialStudio }: Props) {
       {msg ? <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">{msg}</p> : null}
       {err ? <p className="mt-3 text-sm text-red-700 dark:text-red-400">{err}</p> : null}
 
-      <div className="mt-6 space-y-5">
+      <div className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_min(100%,420px)]">
+        <div className="min-w-0 space-y-5">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Voorkeur layout</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -268,6 +329,29 @@ export function FlyerStudioEditor({ slug, initialStudio }: Props) {
           ) : (
             <p className="mt-3 text-xs text-zinc-500">Nog geen eigen templates.</p>
           )}
+        </div>
+        </div>
+
+        <div className="min-w-0 space-y-2 xl:sticky xl:top-6 xl:self-start">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Live preview</p>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            PDF zoals bij download; volgt de gekozen layout. Korte pauze na elke wijziging.
+          </p>
+          {previewErr ? <p className="text-xs text-red-600 dark:text-red-400">{previewErr}</p> : null}
+          <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 shadow-inner dark:border-zinc-700 dark:bg-zinc-900">
+            {previewLoading ? (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 dark:bg-zinc-950/85">
+                <Loader2 className="size-9 animate-spin text-violet-600 dark:text-violet-400" aria-hidden />
+              </div>
+            ) : null}
+            {previewUrl ? (
+              <iframe title="Flyer PDF preview" src={previewUrl} className="h-[min(78vh,820px)] w-full border-0 bg-white" />
+            ) : (
+              <div className="flex h-64 items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+                Preview laden…
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

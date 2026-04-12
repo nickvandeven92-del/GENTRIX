@@ -15,8 +15,9 @@ export default async function AdminFlyersHubPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Flyer & QR</h1>
         <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-          Kies een klant om de vaste flyer-link, QR-preview, PDF-downloads en scanstatistieken te openen. Elke klant heeft één
-          stabiele <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">/p/…</code>-link voor drukwerk.
+          Kies een klant voor de vaste flyer-link, QR-preview, Flyerstudio (met live PDF-preview), downloads en scans. Elke
+          klant heeft één stabiele <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">/p/…</code>-link
+          voor drukwerk.
         </p>
         <p className="mt-3 text-sm">
           <Link href="/admin/clients" className="font-medium text-violet-700 underline-offset-2 hover:underline dark:text-violet-300">
@@ -52,7 +53,7 @@ export default async function AdminFlyersHubPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        href={`/admin/clients/${enc}/flyer`}
+                        href={`/admin/flyers/${enc}`}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs font-medium text-violet-950 hover:bg-violet-100 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-950/70"
                       >
                         <QrCode className="size-3.5 shrink-0" aria-hidden />

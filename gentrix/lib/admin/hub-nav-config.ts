@@ -92,14 +92,14 @@ export const SUB_NAV: Record<HubSectionId, { title: string; items: SubNavItem[] 
         isActive: (path) =>
           path === "/admin/clients" ||
           path === "/admin/clients/" ||
-          (/^\/admin\/clients\/[^/]+/.test(path) && !/\/flyer(\/|$)/.test(path)),
+          /^\/admin\/clients\/[^/]+/.test(path),
       },
       {
         href: "/admin/flyers",
         label: "Flyer & QR",
         description: "QR-link, PDF en scans per klant",
         isActive: (path) =>
-          path.startsWith("/admin/flyers") || /\/admin\/clients\/[^/]+\/flyer(\/|$)/.test(path),
+          path.startsWith("/admin/flyers"),
       },
       {
         href: "/admin/search",

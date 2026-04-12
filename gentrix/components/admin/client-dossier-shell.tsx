@@ -50,10 +50,10 @@ export function ClientDossierShell({
     { href: `${base}/deals`, label: "Deals", icon: Briefcase, match: (p: string) => p.startsWith(`${base}/deals`) },
     { href: `${base}/websites`, label: "Websites", icon: Globe, match: (p: string) => p.startsWith(`${base}/websites`) },
     {
-      href: `${base}/flyer`,
+      href: `/admin/flyers/${enc}`,
       label: "Flyer & QR",
       icon: QrCode,
-      match: (p: string) => p.startsWith(`${base}/flyer`),
+      match: (p: string) => p === `/admin/flyers/${enc}` || p === `/admin/flyers/${enc}/`,
     },
     { href: `${base}/activity`, label: "Activiteit", icon: Activity, match: (p: string) => p.startsWith(`${base}/activity`) },
     {
@@ -109,9 +109,9 @@ export function ClientDossierShell({
             </Link>
           )}
           <Link
-            href={`${base}/flyer`}
+            href={`/admin/flyers/${enc}`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-950 hover:bg-violet-100 dark:border-violet-900/40 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-950/60"
-            title="Flyer-link, PDF-downloads en scanstatistieken"
+            title="Flyer-link, studio, PDF-downloads en scanstatistieken"
           >
             <QrCode className="size-4" aria-hidden />
             Flyer & QR
