@@ -141,6 +141,8 @@ export function GeneratorForm({
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
+  /** Geen marketingPages + contact in één run — merkbaar korter (minder timeout-risico). */
+  const [landingPageOnly, setLandingPageOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = useCallback(
@@ -237,6 +239,7 @@ export function GeneratorForm({
       if (refTrim.length > 0) {
         body.reference_style_url = refTrim;
       }
+      body.landing_page_only = landingPageOnly;
 
       const res = await fetch("/api/generate-site/stream", {
         method: "POST",
@@ -557,6 +560,23 @@ export function GeneratorForm({
             onChange={(e) => setReferenceStyleUrl(e.target.value)}
             placeholder="https://…"
           />
+        </div>
+        <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+          <input
+            id="landingPageOnly"
+            type="checkbox"
+            checked={landingPageOnly}
+            onChange={(e) => setLandingPageOnly(e.target.checked)}
+            disabled={descriptionLocked}
+            className="mt-1 size-4 shrink-0 rounded border-slate-300 text-indigo-600"
+          />
+          <label htmlFor="landingPageOnly" className={cn("text-sm text-slate-700", descriptionLocked && "opacity-60")}>
+            <span className="font-medium text-slate-800">Compact: alleen landingspagina</span>
+            <span className="mt-0.5 block text-xs font-normal text-slate-500">
+              Sla de vaste vier marketing-subpagina&apos;s + contact-JSON over in deze run — veel korter en minder kans op
+              stream-timeout. Subpagina&apos;s kun je later alsnog uitbreiden.
+            </span>
+          </label>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">

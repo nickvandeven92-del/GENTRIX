@@ -1,5 +1,8 @@
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
-import { createGenerateSiteReadableStream } from "@/lib/ai/generate-site-with-claude";
+import {
+  createGenerateSiteReadableStream,
+  type GenerateSitePromptOptions,
+} from "@/lib/ai/generate-site-with-claude";
 
 /** Langere runs: eerste model + design rationale + zelfreview + Unsplash. Zonder dit breekt Vercel de stream vaak af vóór `complete`. */
 export const maxDuration = 300;
@@ -47,19 +50,18 @@ export async function POST(request: Request) {
   const clientImages = parsed.data.clientImages ?? [];
   const referenceStyleUrl = parsed.data.reference_style_url;
 
-  const promptOpts =
-    clientImages.length > 0 || referenceStyleUrl
-      ? {
-          ...(clientImages.length > 0 ? { clientImages } : {}),
-          ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
-        }
-      : undefined;
+  const promptOpts: GenerateSitePromptOptions = {
+    ...(clientImages.length > 0 ? { clientImages } : {}),
+    ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
+    ...(parsed.data.landing_page_only !== undefined ? { landingPageOnly: parsed.data.landing_page_only } : {}),
+  };
+  const hasPromptOpts = Object.keys(promptOpts).length > 0;
 
   const stream = createGenerateSiteReadableStream(
     businessName,
     description,
     recentNames,
-    promptOpts,
+    hasPromptOpts ? promptOpts : undefined,
     {
       onSuccess: async (data) => {
         await tryAppendClaudeActivityJournal({

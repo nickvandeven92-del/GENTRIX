@@ -89,6 +89,12 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
       "SITE_GENERATION_MINIMAL_PROMPT=1 of options.minimalPrompt — buildMinimalWebsiteGenerationUserPrompt: geen volledige branche-/stijl-/variatieblokken; wél sector-router + anti-template; MASTER_SITE_SYSTEM_PROMPT_MINIMAL + §3B–§5-contract.",
   },
   {
+    label: "Compacte studio-run (alleen landing)",
+    path: "lib/ai/generate-site-with-claude.ts",
+    description:
+      "SITE_GENERATION_LANDING_ONLY=1 of API `landing_page_only: true` / options.landingPageOnly — zelfde §3B–§5 maar zonder verplichte `marketingPages` + `contactSections` in één JSON (kortere output, minder timeout-risico).",
+  },
+  {
     label: "Site-generatie output-limiet (streaming)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:

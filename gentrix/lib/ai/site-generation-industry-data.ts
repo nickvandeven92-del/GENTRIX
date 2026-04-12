@@ -935,7 +935,11 @@ Gemak, keuze en betrouwbaarheid. De klant wil snel de juiste auto vinden en boek
 ];
 
 export const INDUSTRY_KEYWORDS: { pattern: RegExp; profileId: string }[] = [
-  { pattern: /\b(barber|barbershop|herenkapper|herensalon|baard\s*trim|hot\s*towel|fade|tondeuse|scheren)\b/i, profileId: "barber" },
+  {
+    pattern:
+      /\b(barber|barbershop|herenkapper|herenkapster|herensalon|heren\s*salon|baard\s*trim|hot\s*towel|fade|tondeuse|scheren|knipstoel|scheerstoel)\b/i,
+    profileId: "barber",
+  },
   { pattern: /\b(dameskapper|dameskapster|damessalon|dameskapsalon|vrouwenkapper|vrouwen\s*salon|vrouwen\s*kapsalon)\b/i, profileId: "womens_salon" },
   { pattern: /\b(kapper|kappers|kapsalon|haarsalon|hair\s*salon|hairstylist|haarverzorging|stylist|coiffeur|balayage|highlights|kleuring|föhn)\b/i, profileId: "hair_salon" },
   { pattern: /\b(elektronica|electronics|tv|laptop|telefoon|smartphone|headphone|koptelefoon|camera|drone|gadget|tech\s*winkel|tech\s*shop|audio|computer)\b/i, profileId: "retail_electronics" },

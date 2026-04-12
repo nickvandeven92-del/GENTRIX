@@ -105,6 +105,17 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 30_720;
 
 
 /**
+ * Tekst voor branche- en sectie-detectie: **bedrijfsnaam + briefing** samen.
+ * Zo matcht bv. alleen "Herenkapster De Snijder" als naam al op kappers-profielen.
+ */
+export function combinedIndustryProbeText(businessName: string, description: string): string {
+  const n = businessName.trim();
+  const d = description.trim();
+  if (n && d) return `${n}\n${d}`;
+  return n || d;
+}
+
+/**
  * Detecteer de branche op basis van de briefing-beschrijving.
  * Retourneert het best matchende IndustryProfile, of null als geen match.
  */
@@ -587,8 +598,8 @@ De pipeline matcht automatisch op keywords: **${industry.label}** (\`${industry.
 - **Niet "veilig" generiek:** specialistisch en onderscheidend **ja**; saai grijs-blauw + willekeurig drie identieke icoonkaarten **nee** — tenzij dat expliciet bij deze klant past.`;
   }
   return `=== SECTOR (geen keyword-match op vaste branche-preset) ===
-De interne branche-router vond **geen** profiel op deze tekst — normaal voor niches die (nog) geen eigen \`profileId\` in de lijst hebben.
-- **Jij = branche-onderzoek:** lees naam + briefing als **evidence-first** sectorbepaling (aanbod, jargon, doelgroep, regio) en bouw **daarvoor** — zoals een agency vóór het ontwerp onderzoekt.
+De interne branche-router vond **geen** profiel op **bedrijfsnaam + briefing** — normaal voor niches die (nog) geen eigen \`profileId\` in de lijst hebben.
+- **Jij = branche-onderzoek:** lees naam + briefing als **evidence-first** sectorbepaling (aanbod, jargon, doelgroep, regio) en kies **zelf** een logische set sectie-\`id\`'s (uit o.a. \`hero\`, \`features\`, \`about\`, \`gallery\`, \`team\`, \`pricing\`, \`testimonials\`, \`faq\`, \`cta\`, \`footer\`) die bij **die** sector passen — zoals een agency vóór het ontwerp onderzoekt. Geen generieke SaaS-stack als de briefing iets anders is.
 - **Verboden:** "veilig" terugvallen op anonieme SaaS-defaults. **Gewenst:** gedurfde maar coherente layout, kleur en typografie die de **inhoud** ondersteunen.`;
 }
 
@@ -598,8 +609,8 @@ De interne branche-router vond **geen** profiel op deze tekst — normaal voor n
  * Stijl = visuele taal (kleuren, fonts, sfeer).
  * Deze twee zijn onafhankelijk en worden apart meegestuurd.
  */
-function buildIndustryPromptHint(description: string): string {
-  const industry = detectIndustry(description);
+function buildIndustryPromptHint(businessName: string, description: string): string {
+  const industry = detectIndustry(combinedIndustryProbeText(businessName, description));
   const style = detectStyle(description);
   const parts: string[] = [];
 
@@ -824,6 +835,12 @@ export type GenerateSitePromptOptions = {
   existingSiteTailwindJson?: string | null;
   varianceNonce?: string;
   sectionIdsHint?: string[];
+  /**
+   * `true` = geen `marketingPages` + `contactSections` in één JSON (alleen landings-`sections`).
+   * Kortere model-run — vergelijkbaar met “één pagina eerst” i.p.v. volledige marketing-multi-route.
+   * Ook: env `SITE_GENERATION_LANDING_ONLY=1` wanneer hier `undefined`.
+   */
+  landingPageOnly?: boolean;
   /** Korte prompt (geen branche/stijl/variatie). Ook: env `SITE_GENERATION_MINIMAL_PROMPT=1`. */
   minimalPrompt?: boolean;
   clientImages?: ClientImage[];
@@ -1188,6 +1205,19 @@ export function isSiteGenerationMinimalPromptFromEnv(): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
+/** Alleen landings-`sections` genereren (geen vaste vier marketing-subpagina's + contact-JSON). */
+export function isSiteGenerationLandingPageOnlyFromEnv(): boolean {
+  const v = process.env.SITE_GENERATION_LANDING_ONLY?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** `true`/`false` expliciet van client; bij `undefined` → env. */
+export function resolveLandingPageOnlyFlag(explicit?: boolean): boolean {
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  return isSiteGenerationLandingPageOnlyFromEnv();
+}
+
 /** Alleen briefing + CONTENT AUTHORITY + studio-contract + technische tail — geen INDUSTRY/DESIGNTAAL/variatie/§1/shop-blokken. */
 function buildMinimalWebsiteGenerationUserPrompt(
   businessName: string,
@@ -1196,6 +1226,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
   options?: GenerateSitePromptOptions,
 ): string {
   const preserve = Boolean(options?.preserveLayoutUpgrade);
+  const landingPageOnly = Boolean(options?.landingPageOnly);
   const packageBlock = getGenerationPackagePromptBlock(undefined, { preserveLayoutUpgrade: preserve });
   const existingBlock = buildExistingSiteJsonBlock(options?.existingSiteTailwindJson);
   const upgrade0A = preserve ? `${buildUpgradePreserveLayoutBlock()}\n\n` : "";
@@ -1206,12 +1237,14 @@ function buildMinimalWebsiteGenerationUserPrompt(
     preserve,
     options?.sectionIdsHint,
   );
-  const marketingMultiPage = !preserve;
+  const marketingMultiPage = !preserve && !landingPageOnly;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
-  const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(detectIndustry(description));
+  const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(
+    detectIndustry(combinedIndustryProbeText(businessName, description)),
+  );
 
   const psychColorLeadMin = preserve
     ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
@@ -1278,6 +1311,7 @@ export function buildWebsiteGenerationUserPrompt(
     return buildMinimalWebsiteGenerationUserPrompt(businessName, description, recentClientNames, options);
   }
   const preserve = Boolean(options?.preserveLayoutUpgrade);
+  const landingPageOnly = Boolean(options?.landingPageOnly);
   const variance = preserve
     ? buildUpgradePreserveLayoutBlock()
     : buildVarianceBlock(businessName, description, recentClientNames, options?.varianceNonce);
@@ -1295,16 +1329,15 @@ export function buildWebsiteGenerationUserPrompt(
     preserve,
     options?.sectionIdsHint,
   );
-  const marketingMultiPage = !preserve;
+  const marketingMultiPage = !preserve && !landingPageOnly;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
 
-  const detectedSections = new Set(
-    options?.sectionIdsHint ?? buildSectionIdsFromBriefing(description),
-  );
+  const industryProbe = combinedIndustryProbeText(businessName, description);
+  const detectedSections = new Set(options?.sectionIdsHint ?? buildSectionIdsFromBriefing(industryProbe));
   /** Shop-sectie zelf is server-side; instructies voor nav/footer moeten wél in de prompt. */
   detectedSections.add("shop");
   const brancheSectionBlocks = buildBrancheSectionPromptBlocks(detectedSections);
-  const industryHint = buildIndustryPromptHint(description);
+  const industryHint = buildIndustryPromptHint(businessName, description);
 
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
@@ -1446,6 +1479,7 @@ async function prepareGenerateSiteClaudeCall(
   const mergedPromptOptions: GenerateSitePromptOptions = {
     ...promptOptions,
     varianceNonce: promptOptions?.varianceNonce ?? randomUUID(),
+    landingPageOnly: resolveLandingPageOnlyFlag(promptOptions?.landingPageOnly),
   };
 
   const refUrlRequested = mergedPromptOptions.referenceStyleUrl?.trim();
@@ -1470,7 +1504,8 @@ async function prepareGenerateSiteClaudeCall(
     }
   }
 
-  const briefingSectionIds = buildSectionIdsFromBriefing(description, mergedPromptOptions.sectionIdsHint);
+  const industryProbe = combinedIndustryProbeText(businessName, description);
+  const briefingSectionIds = buildSectionIdsFromBriefing(industryProbe, mergedPromptOptions.sectionIdsHint);
   const sectionIds = [...briefingSectionIds];
   if (preserveLayout && mergedPromptOptions.existingSiteTailwindJson) {
     const existing = extractSectionIdsFromTailwindUpgradeJson(mergedPromptOptions.existingSiteTailwindJson);
@@ -1482,7 +1517,7 @@ async function prepareGenerateSiteClaudeCall(
 
   const homepagePlan = buildMinimalHomepagePlan(sectionIds);
 
-  const detectedIndustry = detectIndustry(description);
+  const detectedIndustry = detectIndustry(industryProbe);
   const styleResolved = resolveStyleDetection(description);
   const minimalPrompt =
     Boolean(mergedPromptOptions.minimalPrompt) || isSiteGenerationMinimalPromptFromEnv();
@@ -1540,7 +1575,7 @@ async function prepareGenerateSiteClaudeCall(
     userContent,
     homepagePlan,
     pipelineFeedback,
-    useMarketingMultiPage: !preserveLayout,
+    useMarketingMultiPage: !preserveLayout && !mergedPromptOptions.landingPageOnly,
     ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
   };
 }

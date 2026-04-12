@@ -17,6 +17,11 @@ export const generateSiteRequestBodySchema = z.object({
   /** Observability / kwaliteit (fase 5): optioneel meesturen vanuit studio. */
   generation_preset_ids: z.array(z.string().min(1).max(120)).max(24).optional(),
   layout_archetypes: z.array(z.string().min(1).max(120)).max(24).optional(),
+  /**
+   * `true` = alleen landings-`sections` (geen `marketingPages` + `contactSections` in één run).
+   * Kortere generatie; subpagina's kun je later alsnog toevoegen via upgrade/editor.
+   */
+  landing_page_only: z.boolean().optional(),
   /** Optioneel: publieke http(s)-URL; server haalt HTML op als stijl-/structuurhint (geen pixel-perfect kopie). */
   reference_style_url: z.preprocess((v) => {
     if (v == null) return undefined;

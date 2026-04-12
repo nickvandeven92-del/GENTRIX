@@ -3,7 +3,7 @@ import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
 
 /** Zelfde plafond als stream-endpoint (Claude + zelfreview + Unsplash). */
 export const maxDuration = 300;
-import { generateSiteWithClaude } from "@/lib/ai/generate-site-with-claude";
+import { generateSiteWithClaude, type GenerateSitePromptOptions } from "@/lib/ai/generate-site-with-claude";
 import {
   buildJournalFactsGenerateSite,
   tryAppendClaudeActivityJournal,
@@ -34,19 +34,18 @@ export async function POST(request: Request) {
   try {
     const recentNames = await getRecentClientNamesForPrompt(3);
     const referenceStyleUrl = parsed.data.reference_style_url;
-    const promptOpts =
-      parsed.data.clientImages?.length || referenceStyleUrl
-        ? {
-            ...(parsed.data.clientImages?.length ? { clientImages: parsed.data.clientImages } : {}),
-            ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
-          }
-        : undefined;
+    const promptOpts: GenerateSitePromptOptions = {
+      ...(parsed.data.clientImages?.length ? { clientImages: parsed.data.clientImages } : {}),
+      ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
+      ...(parsed.data.landing_page_only !== undefined ? { landingPageOnly: parsed.data.landing_page_only } : {}),
+    };
+    const hasPromptOpts = Object.keys(promptOpts).length > 0;
 
     const twResult = await generateSiteWithClaude(
       parsed.data.businessName,
       parsed.data.description,
       recentNames,
-      promptOpts,
+      hasPromptOpts ? promptOpts : undefined,
     );
     if (!twResult.ok) {
       return NextResponse.json(
