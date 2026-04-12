@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PanelTop } from "lucide-react";
+import { Download, PanelTop } from "lucide-react";
 import { GeneratorForm } from "@/components/admin/generator-form";
 import { StudioTailwindWorkspace } from "@/components/admin/studio-tailwind-workspace";
 import { getParsedSiteDraftBySlug } from "@/lib/data/client-draft-site";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
+import { getFlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
 import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 import { formatSlugForDisplay } from "@/lib/slug";
@@ -28,7 +29,10 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
     const appointmentsEnabled = commercial?.appointments_enabled ?? false;
     const webshopEnabled = commercial?.webshop_enabled ?? false;
     const origin = await getRequestOrigin();
-    const siteUrls = await getClientSiteUrlsForAdminDossier(existing.subfolder_slug, origin);
+    const [siteUrls, flyerScans] = await Promise.all([
+      getClientSiteUrlsForAdminDossier(existing.subfolder_slug, origin),
+      getFlyerScanSummary(existing.id),
+    ]);
     let draftPublicPreviewToken: string | null = null;
     if (siteUrls?.previewAbsolute) {
       try {
@@ -72,6 +76,34 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
                 className="break-all font-mono text-indigo-800 underline-offset-2 hover:underline dark:text-indigo-300"
               >
                 {siteUrls.flyerQrAbsolute}
+              </a>
+            </p>
+          ) : null}
+          {flyerScans ? (
+            <p className="mt-2 text-xs text-neutral-600 dark:text-zinc-400">
+              Flyer-scans:{" "}
+              <span className="font-medium text-neutral-800 dark:text-zinc-200">{flyerScans.total}</span> totaal
+              {flyerScans.lastScannedAt
+                ? ` · laatste ${new Intl.DateTimeFormat("nl-NL", { dateStyle: "short", timeStyle: "short" }).format(new Date(flyerScans.lastScannedAt))}`
+                : ""}
+            </p>
+          ) : null}
+          {existing ? (
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600 dark:text-zinc-400">
+              <span className="font-medium text-neutral-700 dark:text-zinc-300">Flyer PDF:</span>
+              <a
+                href={`/api/clients/${encodeURIComponent(existing.subfolder_slug)}/flyer-pdf?template=minimal`}
+                className="inline-flex items-center gap-1 text-violet-800 underline-offset-2 hover:underline dark:text-violet-300"
+              >
+                <Download className="size-3.5 shrink-0" aria-hidden />
+                rustig
+              </a>
+              <a
+                href={`/api/clients/${encodeURIComponent(existing.subfolder_slug)}/flyer-pdf?template=modern`}
+                className="inline-flex items-center gap-1 text-violet-800 underline-offset-2 hover:underline dark:text-violet-300"
+              >
+                <Download className="size-3.5 shrink-0" aria-hidden />
+                donker
               </a>
             </p>
           ) : null}

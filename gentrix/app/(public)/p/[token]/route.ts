@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { ensureClientPreviewSecretBySlug } from "@/lib/data/ensure-client-preview-secret";
+import { recordFlyerScanByToken } from "@/lib/data/record-flyer-scan";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { isFlyerPublicTokenFormat, resolveFlyerPublicLink } from "@/lib/data/resolve-flyer-public-link";
@@ -40,6 +41,12 @@ export async function GET(request: NextRequest, context: Ctx) {
   if (!resolved) {
     return NextResponse.json({ ok: false, error: "Niet gevonden." }, { status: 404 });
   }
+
+  await recordFlyerScanByToken({
+    flyerPublicToken: token,
+    userAgent: request.headers.get("user-agent"),
+    referer: request.headers.get("referer"),
+  });
 
   const origin = request.nextUrl.origin;
   const enc = encodeURIComponent(resolved.slug);

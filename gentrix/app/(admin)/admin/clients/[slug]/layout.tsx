@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { ClientDossierShell } from "@/components/admin/client-dossier-shell";
 import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
+import { getFlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 
@@ -19,7 +20,10 @@ export default async function ClientDossierLayout({ children, params }: LayoutPr
   if (!row) notFound();
 
   const origin = await getRequestOrigin();
-  const urls = await getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin);
+  const [urls, flyerScanSummary] = await Promise.all([
+    getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin),
+    getFlyerScanSummary(row.id),
+  ]);
 
   return (
     <ClientDossierShell
@@ -28,6 +32,7 @@ export default async function ClientDossierLayout({ children, params }: LayoutPr
       liveSiteAbsoluteUrl={urls?.status === "active" ? urls.liveAbsolute : undefined}
       conceptPreviewAbsoluteUrl={urls?.previewAbsolute ?? null}
       flyerQrAbsoluteUrl={urls?.flyerQrAbsolute ?? null}
+      flyerScanSummary={flyerScanSummary}
       clientStatus={row.status}
     >
       {children}

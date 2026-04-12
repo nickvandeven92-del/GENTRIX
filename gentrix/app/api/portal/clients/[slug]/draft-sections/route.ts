@@ -126,11 +126,23 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const supabase = createServiceRoleClient();
-  let q = await supabase
+  const q = await supabase
     .from("clients")
     .select("id, name, description, subfolder_slug, status, draft_snapshot_id, generation_package")
     .eq("subfolder_slug", slug)
     .maybeSingle();
+
+  type PersistRow = {
+    id: string;
+    name: string;
+    description: string | null;
+    subfolder_slug: string;
+    status: string;
+    draft_snapshot_id: string | null;
+    generation_package?: string | null;
+  };
+
+  let row: PersistRow | null = null;
 
   if (q.error && isPostgrestUnknownColumnError(q.error, "draft_snapshot_id")) {
     const second = await supabase
@@ -141,22 +153,16 @@ export async function POST(request: Request, context: RouteContext) {
     if (second.error || !second.data) {
       return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     }
-    q = { data: { ...second.data, draft_snapshot_id: null }, error: null };
+    row = { ...(second.data as Omit<PersistRow, "draft_snapshot_id">), draft_snapshot_id: null };
+  } else if (q.error || !q.data) {
+    return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+  } else {
+    row = q.data as PersistRow;
   }
 
-  if (q.error || !q.data) {
+  if (!row) {
     return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
   }
-
-  const row = q.data as {
-    id: string;
-    name: string;
-    description: string | null;
-    subfolder_slug: string;
-    status: string;
-    draft_snapshot_id: string | null;
-    generation_package?: string | null;
-  };
 
   const persist = await persistTailwindDraftForExistingClient(supabase, row, strictPayload, {
     snapshotSource: "editor",

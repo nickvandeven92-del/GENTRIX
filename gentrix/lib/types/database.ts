@@ -154,6 +154,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      flyer_scans: {
+        Row: {
+          id: string;
+          client_id: string;
+          scanned_at: string;
+          user_agent: string | null;
+          referer: string | null;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          scanned_at?: string;
+          user_agent?: string | null;
+          referer?: string | null;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          scanned_at?: string;
+          user_agent?: string | null;
+          referer?: string | null;
+        };
+        Relationships: [];
+      };
       client_dossier_notes: {
         Row: {
           id: string;
