@@ -193,7 +193,8 @@ export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-pre
 
 /**
  * Nood-CSS als `disableScrollRevealAnimations` expliciet aan staat: geen paused keyframes / IO.
- * Normale weergave: STUDIO_DATA_ANIMATION_CSS + STUDIO_BORDER_REVEAL_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS + STUDIO_SCROLL_REVEAL_SCRIPT.
+ * Normale weergave: STUDIO_DATA_ANIMATION_CSS + STUDIO_BORDER_REVEAL_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS
+ * + STUDIO_SCROLL_REVEAL_SCRIPT + STUDIO_NAV_SCROLL_CONTRAST_* (sticky nav op lichte achtergrond).
  */
 export const STUDIO_DATA_ANIMATION_DISABLED_CSS = `/* Geen scroll-reveal: inhoud met data-animation direct zichtbaar */
 [data-animation] {
@@ -472,6 +473,125 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
       var q=document.querySelectorAll(".studio-border-reveal:not(.studio-in-view)");
       for(var m=0;m<q.length;m++)q[m].classList.add("studio-in-view");
     },1600);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();
+</script>`;
+
+/**
+ * Sticky/fixed top-nav: bemonster wat visueel **achter** de balk ligt; bij lichte achtergrond
+ * `.studio-nav-tone-light` voor donkere voorgrond (studio-preview + live site + export).
+ */
+export const STUDIO_NAV_SCROLL_CONTRAST_CSS = `/* Zie STUDIO_NAV_SCROLL_CONTRAST_SCRIPT */
+header.studio-nav-tone-light,
+nav.studio-nav-tone-light {
+  --studio-nav-auto-fg: rgb(15 23 42);
+  --studio-nav-auto-muted: rgb(51 65 85);
+}
+header.studio-nav-tone-light,
+header.studio-nav-tone-light a,
+header.studio-nav-tone-light button,
+header.studio-nav-tone-light span,
+header.studio-nav-tone-light li,
+header.studio-nav-tone-light label,
+header.studio-nav-tone-light svg,
+nav.studio-nav-tone-light,
+nav.studio-nav-tone-light a,
+nav.studio-nav-tone-light button,
+nav.studio-nav-tone-light span,
+nav.studio-nav-tone-light li,
+nav.studio-nav-tone-light label,
+nav.studio-nav-tone-light svg {
+  color: var(--studio-nav-auto-fg) !important;
+}
+header.studio-nav-tone-light svg,
+nav.studio-nav-tone-light svg {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+header.studio-nav-tone-light [class*="border-white"],
+nav.studio-nav-tone-light [class*="border-white"] {
+  border-color: rgba(15, 23, 42, 0.22) !important;
+}
+`;
+
+export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
+(function(){
+  function lin(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
+  function relLum(r,g,b){return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);}
+  function lumFromRgbStr(rgb){
+    var m=rgb.match(/rgba?\(([^)]+)\)/);
+    if(!m)return null;
+    var p=m[1].split(","),r=parseFloat(p[0])/255,g=parseFloat(p[1])/255,b=parseFloat(p[2])/255;
+    var a=p.length>3?parseFloat(p[3].trim()):1;
+    if(isNaN(r)||isNaN(g)||isNaN(b))return null;
+    if(isNaN(a))a=1;
+    if(a<0.04)return null;
+    var L=relLum(r,g,b);
+    return a>=0.9?L:L*a+1*(1-a);
+  }
+  function bgLum(el){
+    var cur=el;
+    for(var d=0;d<16&&cur;d++){
+      var col=getComputedStyle(cur).backgroundColor;
+      var L=lumFromRgbStr(col);
+      if(L!=null)return L;
+      cur=cur.parentElement;
+    }
+    return 1;
+  }
+  function behindNav(nav,x,y){
+    var stack=document.elementsFromPoint(x,y);
+    for(var i=0;i<stack.length;i++){
+      var el=stack[i];
+      if(nav.contains(el))continue;
+      return bgLum(el);
+    }
+    return 1;
+  }
+  function pickNav(){
+    var list=document.querySelectorAll("header,nav");
+    for(var i=0;i<list.length;i++){
+      var el=list[i];
+      if(el.closest("[data-studio-skip-nav-tone]"))continue;
+      var st=getComputedStyle(el);
+      if(st.position!=="fixed"&&st.position!=="sticky")continue;
+      var r=el.getBoundingClientRect();
+      if(r.top>innerHeight*0.42)continue;
+      if(r.height>innerHeight*0.55)continue;
+      return el;
+    }
+    return null;
+  }
+  var nav=null,ticking=false,THRESH=0.57;
+  function sync(){
+    if(!nav)return;
+    var r=nav.getBoundingClientRect();
+    if(r.height<20||r.width<32)return;
+    var x1=Math.min(Math.max(innerWidth*0.22,6),innerWidth-6);
+    var x2=Math.min(Math.max(innerWidth*0.5,6),innerWidth-6);
+    var x3=Math.min(Math.max(innerWidth*0.78,6),innerWidth-6);
+    var py=Math.min(Math.max(r.top+r.height*0.5,2),innerHeight-3);
+    var L=Math.max(behindNav(nav,x1,py),behindNav(nav,x2,py),behindNav(nav,x3,py));
+    nav.classList.toggle("studio-nav-tone-light",L>THRESH);
+  }
+  function onTick(){
+    if(ticking)return;
+    ticking=true;
+    requestAnimationFrame(function(){
+      ticking=false;
+      sync();
+    });
+  }
+  function boot(){
+    nav=pickNav();
+    if(!nav)return;
+    sync();
+    addEventListener("scroll",onTick,{passive:true});
+    addEventListener("resize",onTick,{passive:true});
+    setTimeout(sync,60);
+    setTimeout(sync,320);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
@@ -1290,6 +1410,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     body { font-family: ${fontStack}; }
     ${rootCss}
     ${animationCss}
+    ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
 ${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
@@ -1298,6 +1419,7 @@ ${foucCssBlock}  </style>
 ${twLoadingScript}${body}
 ${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${scrollRevealScript}
+${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
 ${buildLucideRuntimeScriptBlock()}
