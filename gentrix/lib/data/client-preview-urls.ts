@@ -6,7 +6,7 @@ import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import type { ClientStatus } from "@/lib/types/database";
 
 /** Zelfde basis als PDF-routes: request-host, anders `NEXT_PUBLIC_SITE_URL` / Vercel. */
-function resolvePublicBase(origin: string | null | undefined): string {
+export function resolvePublicBase(origin: string | null | undefined): string {
   const trimmed = origin?.trim() ?? "";
   const raw = trimmed.length > 0 ? trimmed : getPublicAppUrl();
   return raw.replace(/\/$/, "");

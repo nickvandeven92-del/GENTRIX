@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FlyerHubWorkspace } from "@/components/admin/flyer-hub-workspace";
-import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
+import { getAdminFlyerQrAbsoluteUrl } from "@/lib/data/get-admin-flyer-qr-url";
 import { getClientFlyerStudioBySlugForAdmin } from "@/lib/data/get-client-flyer-studio";
 import { getFlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { getRequestOrigin } from "@/lib/site/request-origin";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -26,8 +28,8 @@ export default async function AdminFlyerClientPage({ params }: PageProps) {
   if (!row) notFound();
 
   const origin = await getRequestOrigin();
-  const [urls, flyerScanSummary, initialFlyerStudio] = await Promise.all([
-    getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin),
+  const [flyerQrAbsoluteUrl, flyerScanSummary, initialFlyerStudio] = await Promise.all([
+    getAdminFlyerQrAbsoluteUrl(row.subfolder_slug, origin),
     getFlyerScanSummary(row.id),
     getClientFlyerStudioBySlugForAdmin(row.subfolder_slug),
   ]);
@@ -36,7 +38,7 @@ export default async function AdminFlyerClientPage({ params }: PageProps) {
     <FlyerHubWorkspace
       slug={row.subfolder_slug}
       clientName={row.name}
-      flyerQrAbsoluteUrl={urls?.flyerQrAbsolute ?? null}
+      flyerQrAbsoluteUrl={flyerQrAbsoluteUrl}
       flyerScanSummary={flyerScanSummary}
       initialFlyerStudio={initialFlyerStudio}
     />
