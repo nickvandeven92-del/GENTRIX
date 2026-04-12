@@ -7,6 +7,7 @@ import {
   Columns3,
   Globe,
   LayoutList,
+  QrCode,
   Receipt,
   ScrollText,
   Settings,
@@ -60,6 +61,7 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
     children: [
       { type: "item", label: "Klanten", href: "/admin/clients", icon: Users },
       { type: "item", label: "Websites", href: "/admin/sites", icon: Globe },
+      { type: "item", label: "Flyer & QR", href: "/admin/clients", icon: QrCode },
     ],
   },
   {
@@ -78,15 +80,24 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
   },
 ];
 
-export function businessOsNavItemIsActive(pathname: string, href: string): boolean {
+export function businessOsNavItemIsActive(pathname: string, href: string, label?: string): boolean {
   const p = pathname.split("?")[0] ?? pathname;
   if (href === "/admin/ops") return p === "/admin/ops" || p === "/admin/ops/";
-  if (href === "/admin/clients") return p === "/admin/clients" || p === "/admin/clients/";
+  if (label === "Flyer & QR" && href === "/admin/clients") {
+    return /\/admin\/clients\/[^/]+\/flyer/.test(p);
+  }
+  if (href === "/admin/clients") {
+    return (
+      p === "/admin/clients" ||
+      p === "/admin/clients/" ||
+      (p.startsWith("/admin/clients/") && !/\/flyer(\/|$)/.test(p))
+    );
+  }
   return p === href || p.startsWith(`${href}/`);
 }
 
 export function businessOsGroupHasActive(pathname: string, group: BusinessOsNavGroup): boolean {
-  return group.children.some((c) => businessOsNavItemIsActive(pathname, c.href));
+  return group.children.some((c) => businessOsNavItemIsActive(pathname, c.href, c.label));
 }
 
 /** Standaard open groepen: alleen degene met actieve route. */

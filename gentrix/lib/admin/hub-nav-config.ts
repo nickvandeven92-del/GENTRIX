@@ -89,7 +89,15 @@ export const SUB_NAV: Record<HubSectionId, { title: string; items: SubNavItem[] 
         label: "Alle klanten",
         description: "CRM: dossiers, commercie, domein",
         isActive: (path) =>
-          path === "/admin/clients" || /^\/admin\/clients\/[^/]+/.test(path),
+          path === "/admin/clients" ||
+          path === "/admin/clients/" ||
+          (/^\/admin\/clients\/[^/]+/.test(path) && !/\/flyer(\/|$)/.test(path)),
+      },
+      {
+        href: "/admin/clients",
+        label: "Flyer & QR",
+        description: "Per klant: tab Flyer & QR in het dossier",
+        isActive: (path) => /\/admin\/clients\/[^/]+\/flyer/.test(path),
       },
       {
         href: "/admin/search",

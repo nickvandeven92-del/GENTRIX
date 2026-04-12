@@ -150,11 +150,11 @@ export function SalesSidebarContent({
         {effectiveCollapsed ? (
           <div className="flex flex-col gap-0.5">
             {flattenNavLeaves().map((item) => {
-              const active = businessOsNavItemIsActive(pathname, item.href);
+              const active = businessOsNavItemIsActive(pathname, item.href, item.label);
               const Icon = item.icon;
               return (
                 <Link
-                  key={item.href}
+                  key={`${item.href}-${item.label}`}
                   href={item.href}
                   onClick={afterNav}
                   title={item.label}
@@ -199,11 +199,11 @@ export function SalesSidebarContent({
                 {isOpen ? (
                   <div className="mt-0.5 flex flex-col gap-0.5 pb-1">
                     {group.children.map((item) => {
-                      const active = businessOsNavItemIsActive(pathname, item.href);
+                      const active = businessOsNavItemIsActive(pathname, item.href, item.label);
                       const Icon = item.icon;
                       return (
                         <Link
-                          key={item.href}
+                          key={`${item.href}-${item.label}`}
                           href={item.href}
                           onClick={afterNav}
                           className={cn(

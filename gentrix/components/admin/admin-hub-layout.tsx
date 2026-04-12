@@ -97,11 +97,11 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
             {expanded ? (
               <div className="ml-1 flex flex-col gap-0.5 border-l border-zinc-100 pl-2 dark:border-zinc-800">
                 {group.children.map((item) => {
-                  const active = businessOsNavItemIsActive(pathname, item.href);
+                  const active = businessOsNavItemIsActive(pathname, item.href, item.label);
                   const Icon = item.icon;
                   return (
                     <Link
-                      key={item.href}
+                      key={`${item.href}-${item.label}`}
                       href={item.href}
                       onClick={() => onNavigate?.()}
                       className={cn(
@@ -220,7 +220,7 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
             ) : (
               <ul className="mt-2 space-y-1">
                 {sub.items.map((item) => (
-                  <li key={item.href}>
+                  <li key={`${item.href}-${item.label}`}>
                     <Link
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
@@ -263,7 +263,7 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
                   const active = isSubNavItemActive(pathname, item);
                   return (
                     <Link
-                      key={item.href}
+                      key={`${item.href}-${item.label}`}
                       href={item.href}
                       className={cn(
                         "group rounded-lg px-3 py-2.5 text-sm transition-colors",
@@ -303,11 +303,11 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
             <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {dashboardNav
                 ? flattenBusinessOsLeaves().map((item) => {
-                    const active = businessOsNavItemIsActive(pathname, item.href);
+                    const active = businessOsNavItemIsActive(pathname, item.href, item.label);
                     const Icon = item.icon;
                     return (
                       <Link
-                        key={item.href}
+                        key={`${item.href}-${item.label}`}
                         href={item.href}
                         className={cn(
                           "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
@@ -323,7 +323,7 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
                     const active = isSubNavItemActive(pathname, item);
                     return (
                       <Link
-                        key={item.href}
+                        key={`${item.href}-${item.label}`}
                         href={item.href}
                         className={cn(
                           "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium",
