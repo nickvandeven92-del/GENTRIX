@@ -6,7 +6,8 @@
 const MAX_REDIRECTS = 4;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_BODY_BYTES = 1_400_000;
-const EXCERPT_MAX_CHARS = 12_000;
+/** Iets onder de oude 12k-cap om model-attentie en runtijd te sparen; excerpt blijft groot genoeg voor kleur/ritme. */
+const EXCERPT_MAX_CHARS = 9_000;
 
 function isBlockedHostname(hostname: string): boolean {
   const h = hostname.toLowerCase().trim();

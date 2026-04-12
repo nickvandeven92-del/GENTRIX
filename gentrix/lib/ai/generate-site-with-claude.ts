@@ -30,6 +30,12 @@ import {
 import { getGenerationPackagePromptBlock } from "@/lib/ai/generation-packages";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-prompt";
+
+/**
+ * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
+ * zodat bindende instructies vóór het (vaak zeer lange) REFERENTIESITE-excerpt staan.
+ */
+const SITE_GENERATION_DESIGN_CONTRACT_SLOT = "__GENTRIX_DESIGN_CONTRACT_SLOT__";
 import {
   ensureClaudeMarketingSiteJsonHasContactSections,
   normalizeClaudeSectionArraysInParsedJson,
@@ -1215,6 +1221,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
+${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
 ${clientImagesBlock}${referenceSiteBlock}
 
 ${sectorRouterMin}
@@ -1249,7 +1256,7 @@ ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
 ${section3Tail}${section3HeroHeight}
 
-${getAlpineInteractivityPromptBlock()}
+${getAlpineInteractivityPromptBlock({ defaultHeroVideoOrderSeed: options?.varianceNonce })}
 
 ${buildSiteGenerationOperationalTail({
     preserve,
@@ -1307,6 +1314,7 @@ export function buildWebsiteGenerationUserPrompt(
 
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
+${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
 ${clientImagesBlock}${referenceSiteBlock}
 === SFEER (lees de briefing) ===
 
@@ -1376,7 +1384,7 @@ ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
 ${section3Tail}${section3HeroHeight}
 
-${getAlpineInteractivityPromptBlock()}
+${getAlpineInteractivityPromptBlock({ defaultHeroVideoOrderSeed: options?.varianceNonce })}
 ${brancheSectionBlocks}
 ${buildSiteGenerationOperationalTail({
     preserve,
@@ -1809,28 +1817,37 @@ export type CreateGenerateSiteReadableStreamOptions = {
   onSuccess?: (data: GeneratedTailwindPage) => Promise<void>;
 };
 
-/** Hangt het Denklijn-contract aan de user-prompt vóór streaming (idee 2). */
+/** Hangt het Denklijn-contract in de user-prompt (placeholder vóór referentie-excerpt, anders achteraan). */
 export function appendDesignContractToUserContent(
   userContent: string | ContentBlockParam[],
   contractBlock: string,
 ): string | ContentBlockParam[] {
-  const tail =
-    "\n\n=== DESIGN-AFSPRAAK (Denklijn-contract, bindend in deze run) ===\n\n" +
-    contractBlock +
-    "\n\nVolg dit blok bij `config`, hero-beelden en motion. Bij **expliciete** tegenstrijdigheid met de briefing wint de briefing; trek het contract dan inhoudelijk richting de briefing zonder deze sectie te negeren.";
+  const header = "\n\n=== DESIGN-AFSPRAAK (Denklijn-contract, bindend in deze run) ===\n\n";
+  const footer =
+    "\n\nVolg dit blok bij `config`, hero-beelden en motion. Bij **expliciete** tegenstrijdigheid met de briefing over **feiten of claims** wint de briefing. " +
+    "Voor **beelden, sfeer en sectorherkenning** gelden `imageryMustReflect`, `heroVisualSubject` en dit contract samen met de briefing — vervang geen branche-passende scènes door generieke stock alleen omdat het REFERENTIESITE-excerpt veel markup bevat.";
+
+  const injection = `${header}${contractBlock}${footer}`;
+
+  const injectIntoText = (text: string): string => {
+    if (text.includes(SITE_GENERATION_DESIGN_CONTRACT_SLOT)) {
+      return text.replace(SITE_GENERATION_DESIGN_CONTRACT_SLOT, injection);
+    }
+    return `${text}${injection}`;
+  };
 
   if (typeof userContent === "string") {
-    return `${userContent}${tail}`;
+    return injectIntoText(userContent);
   }
   if (userContent.length === 0) {
-    return [{ type: "text", text: tail.trim() }];
+    return [{ type: "text", text: injection.trim() }];
   }
   const last = userContent[userContent.length - 1];
   if (last?.type === "text" && "text" in last && typeof (last as { text: string }).text === "string") {
     const lt = last as { type: "text"; text: string };
-    return [...userContent.slice(0, -1), { type: "text", text: `${lt.text}${tail}` }];
+    return [...userContent.slice(0, -1), { type: "text", text: injectIntoText(lt.text) }];
   }
-  return [...userContent, { type: "text", text: tail }];
+  return [...userContent, { type: "text", text: injection.trim() }];
 }
 
 export function createGenerateSiteReadableStream(

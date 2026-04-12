@@ -147,6 +147,19 @@ describe("buildDesignContractPromptInjection", () => {
     expect(withRef).toContain("https://example.com/ref");
   });
 
+  it("bevat harde beeld- en zelfcontrole-regels", () => {
+    const c = designGenerationContractSchema.parse({
+      heroVisualSubject: "Pretpark-actie",
+      paletteMode: "dark",
+      imageryMustReflect: ["achtbaan", "publiek"],
+      motionLevel: "strong",
+    });
+    const block = buildDesignContractPromptInjection(c);
+    expect(block).toContain("ZELFCONTROLE");
+    expect(block).toContain("BEELDEN");
+    expect(block).toContain("lege belofte");
+  });
+
   it("voegt assen- en rolverdeling toe wanneer referenceVisualAxes gezet is", () => {
     const c = designGenerationContractSchema.parse({
       heroVisualSubject: "Test hero",

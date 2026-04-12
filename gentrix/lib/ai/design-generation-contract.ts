@@ -290,6 +290,15 @@ export function buildDesignContractPromptInjection(
     "Je **moet** deze afspraken in `config` (thema/kleuren) en in de **hero** en overige beelden concreet maken — **tenzij** de briefing hier **expliciet** mee in strijd is (dan wint altijd de briefing).",
     "Als de briefing **webshop**, **online bestellen** of een **fysieke winkel** met producten in deze branche noemt, mag **breed** `imageryAvoid` (zoals “algemene retail”) **nooit** domineren boven sectorjuiste product-, winkel- of sportscènes — gebruik dan alleen scherpe, off-topic vermijdingen (bv. supermarkt, unrelated mall).",
     "",
+    "=== CONTRACT → HTML (geen lege belofte in copy — wél uitvoeren) ===",
+    "Dit contract is **bindend gedrag** voor deze ene JSON-response: `config.theme` en dominante achtergronden moeten `paletteMode` en (indien gezet) `referenceVisualAxes.paletteIntent` **zichtbaar** volgen; sectieritme, kaartstijl, randbehandeling en hero-compositie moeten de assen **concreet** vertalen (Tailwind + `data-animation`/`studio-border-reveal` waar contract en briefing dat vragen).",
+    "",
+    "=== BEELDEN (harde sector-eis) ===",
+    "- Elke `https://images.unsplash.com/...` in `sections[].html` moet **inhoudelijk** passen bij `imageryMustReflect`, eventuele `heroImageSearchHints`, en de briefing-branche. **Verboden** als dominant beeld: off-topic stock (bv. kantoorinterieur, plantenmacro’s, kerken, scuba onderwater, abstracte code/matrix-walls, generieke stad zonder link naar de sector) tenzij dat letterlijk in `imageryMustReflect` of de briefing staat.",
+    "- **Hero:** minstens één sterk visueel dat `heroVisualSubject` en de sector weerspiegelt (Unsplash met **passende** `photo-` id, split-layout met sectorfoto, of — **alleen** als de briefing expliciet om bewegende hero / video-achtergrond vraagt — `<video>` met studio-standaard MP4’s uit de user-prompt). Een **kale** effen kleurvlak-hero zonder sectoranker is **niet** voldoende als dit contract spanning/attractiepark/expressieve hero beschrijft.",
+    "",
+    "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Loop alle `<img`-URL’s: elk beeld moet aansluiten op minstens één term uit `imageryMustReflect` of `heroImageSearchHints`; zo niet → URL vervangen of sectie met gradient + sterke typografie. (3) `config` + `hero` + één feature-blok moeten `referenceVisualAxes` en `paletteMode` niet tegenspreken.",
+    "",
     `- **Hero-visueel:** ${contract.heroVisualSubject}`,
     ...(contract.heroImageSearchHints
       ? [`- **Zoekhints voor hero/stock (sluit aan bij onderwerp):** ${contract.heroImageSearchHints}`]

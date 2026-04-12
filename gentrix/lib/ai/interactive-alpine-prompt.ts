@@ -4,7 +4,12 @@
  */
 import { getStudioDefaultHeroVideoPromptBlock } from "@/lib/site/studio-default-hero-videos";
 
-export function getAlpineInteractivityPromptBlock(): string {
+export type AlpineInteractivityPromptOptions = {
+  /** Zelfde waarde als site-generatie `varianceNonce` → andere volgorde standaard hero-MP4’s in de prompt. */
+  defaultHeroVideoOrderSeed?: string;
+};
+
+export function getAlpineInteractivityPromptBlock(opts?: AlpineInteractivityPromptOptions): string {
   return `=== INTERACTIVITEIT (Alpine.js 3, CDN) ===
 De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-interacties waar dat de UX merkbaar verbetert (FAQ-uitklap, mobiel menu, tabs, eenvoudige toggles) — niet overal tóévoegen.
 
@@ -24,5 +29,5 @@ De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-int
 
 **Formulieren:** \`<form>\` met \`@submit.prevent\` mag voor UX (bijv. "bedankt"-toggle); echte server-POST is niet standaard — gebruik \`mailto:\`, \`tel:\`, \`https://\` of ankers naar \`#contact\` tenzij de briefing expliciet anders vraagt. Geen fictieve API-routes als harde afhankelijkheid.
 
-${getStudioDefaultHeroVideoPromptBlock()}`;
+${getStudioDefaultHeroVideoPromptBlock(opts?.defaultHeroVideoOrderSeed)}`;
 }
