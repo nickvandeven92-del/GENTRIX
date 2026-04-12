@@ -51,6 +51,86 @@ const IMAGERY_LIST_MAX = 12;
 
 const MOTION_LEVEL_ENUM = ["none", "subtle", "moderate", "strong"] as const;
 
+const PALETTE_MODE_ENUM = ["light", "dark", "either"] as const;
+
+/**
+ * `paletteMode` is alleen \`light\` | \`dark\` | \`either\` (hoofdthema); modellen zetten soms \`mixed\`, kleurwoorden of NL.
+ */
+function normalizePaletteMode(val: unknown): unknown {
+  if (val == null) return val;
+  const raw = String(val).trim().toLowerCase();
+  if (!raw) return val;
+  const s = raw.replace(/\s+/g, " ");
+  if ((PALETTE_MODE_ENUM as readonly string[]).includes(s)) return s;
+
+  const typoFix: Record<string, (typeof PALETTE_MODE_ENUM)[number]> = {
+    ligth: "light",
+    ligjt: "light",
+    drak: "dark",
+    darl: "dark",
+    dorl: "dark",
+  };
+  if (typoFix[s]) return typoFix[s];
+
+  const toEither = new Set([
+    "mixed",
+    "flexible",
+    "auto",
+    "any",
+    "neutral",
+    "balanced",
+    "adaptable",
+    "versatile",
+    "colorful",
+    "vibrant",
+    "licht of donker",
+    "light or dark",
+    "dual",
+    "both",
+  ]);
+  if (toEither.has(s)) return "either";
+
+  const toLight = new Set([
+    "bright",
+    "warm",
+    "pastel",
+    "airy",
+    "cream",
+    "daylight",
+    "day",
+    "white",
+    "high-key",
+    "highkey",
+    "luminant",
+    "licht",
+    "light mode",
+    "warm light",
+    "soft light",
+    "off-white",
+    "offwhite",
+  ]);
+  if (toLight.has(s)) return "light";
+
+  const toDark = new Set([
+    "night",
+    "moody",
+    "neon",
+    "deep",
+    "bold",
+    "black",
+    "low-key",
+    "lowkey",
+    "dramatic",
+    "noir",
+    "donker",
+    "dark mode",
+    "dim",
+  ]);
+  if (toDark.has(s)) return "dark";
+
+  return val;
+}
+
 /**
  * LLM’s gebruiken soms natuurlijke synoniemen (“high”, “medium”) i.p.v. de vaste enum.
  * Mappen naar canonieke waarden zodat het designcontract niet ongeldig wordt.
@@ -122,7 +202,7 @@ export const designGenerationContractSchema = z.object({
     normalizeHeroImageSearchHints,
     z.string().max(500).optional(),
   ),
-  paletteMode: z.enum(["light", "dark", "either"]),
+  paletteMode: z.preprocess(normalizePaletteMode, z.enum(PALETTE_MODE_ENUM)),
   primaryPaletteNotes: z.string().max(400).optional(),
   imageryMustReflect: imageryMustReflectFieldSchema,
   imageryAvoid: imageryAvoidFieldSchema,

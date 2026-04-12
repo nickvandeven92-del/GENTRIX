@@ -33,6 +33,7 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 
 === contract — basisvelden ===
 - \`heroVisualSubject\`, \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
+- \`paletteMode\` — **exact één** van: \`"light"\` | \`"dark"\` | \`"either"\` (hoofdthema van de site). **Niet** \`"mixed"\` (dat hoort bij \`referenceVisualAxes.themeMode\` bij referentie). Warm/helder → \`"light"\`; diep/neon → \`"dark"\`; echt licht-of-donker vrij → \`"either"\`.
 - \`motionLevel\` — **exact één** van deze strings (geen synoniemen zoals "high"): \`"none"\` | \`"subtle"\` | \`"moderate"\` | \`"strong"\`. Hoge bewegingswens uit briefing → meestal \`"strong"\`; spaarzaam → \`"subtle"\`.
 - \`heroImageSearchHints\` (optioneel) — **één string** met komma’s of puntkomma’s (geen JSON-array), of een string-array die server-side wordt samengevoegd.
 - \`imageryMustReflect\` — **JSON-array** van 1–12 korte strings (bv. \`["sector","lifestyle"]\`). Liever **geen** enkele doorlopende CSV-string; als je toch één string gebruikt: splits met komma’s of puntkomma’s (max. 12 onderdelen).

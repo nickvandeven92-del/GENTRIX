@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -32,6 +32,9 @@ import {
 } from "@/lib/editor/site-history-reducer";
 import { formatSlugForDisplay } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+
+/** Debounce na laatste wijziging (undo/AI/…) voordat concept naar Supabase gaat — vergelijkbaar met Lovable. */
+const AUTOSAVE_DEBOUNCE_MS = 2500;
 
 type SiteHtmlEditorProps = {
   subfolderSlug: string;
@@ -87,12 +90,18 @@ export function SiteHtmlEditor({
   /** Na concept-opslag: waar je de opgeslagen site volledig kunt bekijken (los van de editor-preview). */
   const [postSaveDraftView, setPostSaveDraftView] = useState<{ clientPreviewTokenUrl: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [autoSaveHint, setAutoSaveHint] = useState<string | null>(null);
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const [autoSaving, setAutoSaving] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [stepsOpen, setStepsOpen] = useState(false);
   const customCss = initialCustomCss;
   const customJs = initialCustomJs;
   const [pageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
   const snapshotSourceRef = useRef<"editor" | "ai_command">("editor");
+  const lastSavedFingerprintRef = useRef("");
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistInFlightRef = useRef(false);
 
   const payload = useMemo(
     () =>
@@ -107,6 +116,8 @@ export function SiteHtmlEditor({
       }) satisfies Record<string, unknown>,
     [sections, config, customCss, customJs, initialLogoSet, pageType],
   );
+
+  const persistFingerprint = useMemo(() => JSON.stringify({ p: payload, status }), [payload, status]);
 
   const composePlan: ComposePublicMarketingPlan | null = useMemo(() => {
     const sectionIdsOrdered = sections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
@@ -127,6 +138,7 @@ export function SiteHtmlEditor({
     dispatch({ type: "undo" });
     setSaveMsg(null);
     setSaveError(null);
+    setAutoSaveError(null);
     setPreviewKey((k) => k + 1);
   }
 
@@ -135,6 +147,7 @@ export function SiteHtmlEditor({
     dispatch({ type: "redo" });
     setSaveMsg(null);
     setSaveError(null);
+    setAutoSaveError(null);
     setPreviewKey((k) => k + 1);
   }
 
@@ -142,25 +155,58 @@ export function SiteHtmlEditor({
     dispatch({ type: "jump", index });
     setSaveMsg(null);
     setSaveError(null);
+    setAutoSaveError(null);
     setPreviewKey((k) => k + 1);
   }
 
-  async function save() {
-    setSaving(true);
-    setSaveError(null);
-    setSaveMsg(null);
-    setPostSaveDraftView(null);
-    try {
-      const res = await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+  const persistDraft = useCallback(
+    async (opts: { silent: boolean; auto?: boolean }) {
+      if (opts.auto && persistInFlightRef.current) return;
+
+      if (autoSaveTimerRef.current && !opts.auto) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+
+      const fingerprintAtRun = JSON.stringify({ p: payload, status });
+      if (opts.auto && fingerprintAtRun === lastSavedFingerprintRef.current) return;
+
+      if (!opts.silent && persistInFlightRef.current) {
+        const t0 = Date.now();
+        while (persistInFlightRef.current && Date.now() - t0 < 30_000) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        if (persistInFlightRef.current) {
+          setSaveError("Er wordt nog opgeslagen — even wachten en opnieuw proberen.");
+          return;
+        }
+      }
+
+      persistInFlightRef.current = true;
+      if (opts.silent) setAutoSaving(true);
+      else {
+        setSaving(true);
+        setSaveError(null);
+        setSaveMsg(null);
+        setPostSaveDraftView(null);
+        setAutoSaveError(null);
+        setAutoSaveHint(null);
+      }
+
+      try {
+        const body: Record<string, unknown> = {
           name: initialName,
           description: initialDescription,
           subfolder_slug: subfolderSlug,
           site_data_json: payload,
           status,
           snapshot_source: snapshotSourceRef.current,
+          ...(opts.auto
+            ? {
+                snapshot_label: "Auto-save",
+                snapshot_notes: "Automatisch concept (studio)",
+              }
+            : {}),
           ...(initialSiteIr?.detectedIndustryId != null || initialSiteIr?.blueprintId != null
             ? {
                 site_ir_hints: {
@@ -173,36 +219,89 @@ export function SiteHtmlEditor({
                 },
               }
             : {}),
-        }),
-      });
-      const data = (await res.json()) as {
-        ok: boolean;
-        error?: string;
-        data?: { preview_url?: string | null; status?: string };
-      };
-      if (!res.ok || !data.ok) {
-        setSaveError(data.error ?? "Opslaan mislukt.");
-        return;
-      }
-      snapshotSourceRef.current = "editor";
-      if (status === "draft") {
-        setSaveMsg("Concept opgeslagen — volledige site staat in de database (werkversie / draft).");
-        setPostSaveDraftView({
-          clientPreviewTokenUrl:
-            typeof data.data?.preview_url === "string" && data.data.preview_url.length > 0
-              ? data.data.preview_url
-              : null,
+        };
+
+        const res = await fetch("/api/clients", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
         });
-      } else {
-        setSaveMsg("Opgeslagen.");
-        setPostSaveDraftView(null);
+        const data = (await res.json()) as {
+          ok: boolean;
+          error?: string;
+          data?: { preview_url?: string | null; status?: string };
+        };
+        if (!res.ok || !data.ok) {
+          if (opts.silent) {
+            setAutoSaveError(data.error ?? "Automatisch opslaan mislukt.");
+            setAutoSaveHint(null);
+          } else {
+            setSaveError(data.error ?? "Opslaan mislukt.");
+          }
+          return;
+        }
+
+        lastSavedFingerprintRef.current = fingerprintAtRun;
+        snapshotSourceRef.current = "editor";
+
+        if (opts.silent) {
+          setAutoSaveError(null);
+          setAutoSaveHint(
+            `Automatisch opgeslagen · ${new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`,
+          );
+        } else if (status === "draft") {
+          setSaveMsg("Concept opgeslagen — volledige site staat in de database (werkversie / draft).");
+          setPostSaveDraftView({
+            clientPreviewTokenUrl:
+              typeof data.data?.preview_url === "string" && data.data.preview_url.length > 0
+                ? data.data.preview_url
+                : null,
+          });
+        } else {
+          setSaveMsg("Opgeslagen.");
+          setPostSaveDraftView(null);
+        }
+        setPreviewKey((k) => k + 1);
+      } catch {
+        if (opts.silent) {
+          setAutoSaveError("Netwerkfout bij automatisch opslaan.");
+          setAutoSaveHint(null);
+        } else {
+          setSaveError("Netwerkfout.");
+        }
+      } finally {
+        persistInFlightRef.current = false;
+        if (opts.silent) setAutoSaving(false);
+        else setSaving(false);
       }
-      setPreviewKey((k) => k + 1);
-    } catch {
-      setSaveError("Netwerkfout.");
-    } finally {
-      setSaving(false);
+    },
+    [payload, status, initialName, initialDescription, subfolderSlug, initialSiteIr],
+  );
+
+  useEffect(() => {
+    if (lastSavedFingerprintRef.current === "") {
+      lastSavedFingerprintRef.current = persistFingerprint;
+      return;
     }
+    if (persistFingerprint === lastSavedFingerprintRef.current) return;
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      void persistDraft({ silent: true, auto: true });
+    }, AUTOSAVE_DEBOUNCE_MS);
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [persistFingerprint, persistDraft]);
+
+  async function save() {
+    await persistDraft({ silent: false });
   }
 
   return (
@@ -330,7 +429,7 @@ export function SiteHtmlEditor({
           </button>
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || autoSaving}
             onClick={() => void save()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-sm font-medium text-white hover:bg-blue-950 disabled:opacity-60 dark:bg-blue-800 dark:hover:bg-blue-900"
           >
@@ -338,6 +437,10 @@ export function SiteHtmlEditor({
             Concept opslaan
           </button>
         </div>
+        <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+          Wijzigingen worden na {AUTOSAVE_DEBOUNCE_MS / 1000} s stilte automatisch als concept opgeslagen (zoals Lovable).
+          Handmatig opslaan blijft mogelijk; snapshots tonen label <span className="font-mono">Auto-save</span>.
+        </p>
       </div>
 
       {stepsOpen && (
@@ -362,6 +465,26 @@ export function SiteHtmlEditor({
         </ol>
       )}
 
+      {(autoSaving || autoSaveHint || autoSaveError) && (
+        <div className="flex flex-wrap items-center gap-2 px-4 text-[11px] md:px-5">
+          {autoSaving ? (
+            <span className="inline-flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
+              <Loader2 className="size-3 animate-spin" aria-hidden />
+              Automatisch opslaan…
+            </span>
+          ) : null}
+          {autoSaveHint ? (
+            <span className="text-emerald-700 dark:text-emerald-400" role="status">
+              {autoSaveHint}
+            </span>
+          ) : null}
+          {autoSaveError ? (
+            <span className="text-red-600 dark:text-red-400" role="alert">
+              {autoSaveError}
+            </span>
+          ) : null}
+        </div>
+      )}
       {saveError && (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {saveError}

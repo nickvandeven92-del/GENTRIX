@@ -83,6 +83,26 @@ describe("designGenerationContractSchema", () => {
     }
   });
 
+  it("normaliseert paletteMode-synoniemen (bv. mixed → either, warm → light)", () => {
+    const mixed = designGenerationContractSchema.safeParse({
+      heroVisualSubject: "12345678",
+      paletteMode: "MIXED",
+      imageryMustReflect: ["x"],
+      motionLevel: "moderate",
+    });
+    expect(mixed.success).toBe(true);
+    if (mixed.success) expect(mixed.data.paletteMode).toBe("either");
+
+    const warm = designGenerationContractSchema.safeParse({
+      heroVisualSubject: "12345678",
+      paletteMode: "warm",
+      imageryMustReflect: ["x"],
+      motionLevel: "moderate",
+    });
+    expect(warm.success).toBe(true);
+    if (warm.success) expect(warm.data.paletteMode).toBe("light");
+  });
+
   it("normaliseert motionLevel-synoniemen (bv. high → strong)", () => {
     const raw = {
       heroVisualSubject: "12345678",

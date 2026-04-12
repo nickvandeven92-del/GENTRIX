@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Briefcase,
-  Code2,
   ExternalLink,
   Eye,
   FileText,
@@ -103,18 +102,11 @@ export function ClientDossierShell({
             </Link>
           )}
           <Link
-            href={`/admin/editor/${enc}`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:bg-blue-950/60"
-          >
-            <Code2 className="size-4" aria-hidden />
-            HTML-editor
-          </Link>
-          <Link
             href={`/admin/ops/studio?slug=${enc}`}
             className="sales-os-glass-primary-btn inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:border-transparent dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
           >
             <PanelTop className="size-4" aria-hidden />
-            Site studio
+            Site-studio
           </Link>
           {clientStatus === "active" ? (
             <Link

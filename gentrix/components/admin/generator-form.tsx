@@ -6,6 +6,7 @@ import { StudioThemeStylesHint } from "@/components/admin/studio-theme-styles-hi
 import { DutchSpellcheckPanel } from "@/components/admin/dutch-spellcheck-panel";
 import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-panel";
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
+import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { postProcessTailwindSectionsForStreamingPreview } from "@/lib/ai/generate-site-postprocess";
@@ -36,6 +37,8 @@ type GeneratorFormProps = {
   initialClientDescription?: string | null;
   /** True als er al concept-site JSON in de DB staat (briefing lock). */
   existingDraftLocked?: boolean;
+  /** Na geslaagde opslag vanuit SaveSitePanel (bijv. studio-workspace → terug naar bewerken). */
+  onSiteSaved?: () => void;
 };
 
 export function GeneratorForm({
@@ -43,6 +46,7 @@ export function GeneratorForm({
   initialClientName,
   initialClientDescription,
   existingDraftLocked = false,
+  onSiteSaved,
 }: GeneratorFormProps) {
   const slugFromUrl = initialSubfolderSlug?.trim() || undefined;
 
@@ -124,6 +128,15 @@ export function GeneratorForm({
       STUDIO_GENERATION_PACKAGE,
     );
   }, [generatedTailwind, businessName, detectedIndustryId]);
+
+  /** Zelfde `PublishedSiteView`-payload als na afloop; tijdens stream de laatst bekende secties. */
+  const activeStudioPreviewPayload = useMemo(() => {
+    if (completedGeneratorPreviewPayload) return completedGeneratorPreviewPayload;
+    if (streamingLivePreviewPayload) return streamingLivePreviewPayload;
+    return null;
+  }, [completedGeneratorPreviewPayload, streamingLivePreviewPayload]);
+
+  const previewIsStreaming = Boolean(!generatedTailwind && streamingSections.length > 0);
 
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
@@ -352,11 +365,20 @@ export function GeneratorForm({
     "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-600 placeholder:text-slate-400 focus:border-slate-200 focus:ring-0";
 
   return (
-    <div className="space-y-10">
-      <form
-        onSubmit={onSubmit}
-        className="sales-os-glass-panel space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"
-      >
+    <div className="flex min-h-0 flex-1 flex-col">
+      <ResizableEditorPanels
+        storageKey="gentrix-studio-generator-sidebar-px"
+        className="min-h-0 flex-1"
+        defaultSidebarPx={420}
+        minSidebarPx={280}
+        maxSidebarPx={560}
+        minMainPx={480}
+        sidebar={
+          <div className="flex min-h-0 flex-col gap-5 pr-1">
+            <form
+              onSubmit={onSubmit}
+              className="sales-os-glass-panel space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"
+            >
         <p className="rounded-lg border border-emerald-100 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
           <strong>HTML + Tailwind</strong> — output is <code className="rounded bg-emerald-100 px-1">tailwind_sections</code>{" "}
           (secties met HTML); dezelfde weergave in studio, concept-preview en live{" "}
@@ -395,9 +417,9 @@ export function GeneratorForm({
                   kun je een live preview zien zodra secties binnenkomen.
                 </li>
                 <li>
-                  Controleer de preview en sla op via het paneel onderaan (concept of publiceren). Zodra er een concept
-                  is, wordt de briefing hier <strong>vastgezet</strong> — verdere tekstwijzigingen gaan via de{" "}
-                  <strong>site-editor</strong>.
+                  Controleer de preview rechts en sla op via het paneel linksonder (concept of publiceren). Zodra er een
+                  concept is, wordt de briefing hier <strong>vastgezet</strong> — verdere tekstwijzigingen via de tab{" "}
+                  <strong>Bewerken</strong> in site-studio.
                 </li>
               </ol>
               <p className="mt-3 text-xs text-slate-600">
@@ -500,8 +522,9 @@ export function GeneratorForm({
           </div>
           {descriptionLocked ? (
             <p className="mt-1 text-xs text-slate-500">
-              Briefing is beveiligd zodra er een concept-site is of je net hebt gegenereerd. Gebruik de{" "}
-              <strong className="font-medium text-slate-700">site-editor</strong> voor HTML-wijzigingen.
+                  Briefing is beveiligd zodra er een concept-site is of je net hebt gegenereerd. Gebruik de tab{" "}
+                  <strong className="font-medium text-slate-700">Bewerken</strong> in site-studio (zelfde URL met slug) voor
+                  HTML-wijzigingen via AI-chat.
             </p>
           ) : null}
           <textarea
@@ -629,44 +652,6 @@ export function GeneratorForm({
         />
       ) : null}
 
-      {!generatedTailwind && streamingSections.length > 0 ? (
-        <section className="space-y-3 border-t border-slate-200 pt-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <Monitor className="size-5 text-indigo-500" aria-hidden />
-            <h2 className="text-lg font-semibold text-slate-900">Live preview</h2>
-            {loading ? (
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-900">tijdens generatie</span>
-            ) : streamEndedWithoutComplete ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-950">stream afgebroken</span>
-            ) : null}
-          </div>
-          {streamEndedWithoutComplete ? (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-              De verbinding werd verbroken vóór de server <strong>generatie voltooid</strong> meldde (bijvoorbeeld door
-              een time-out). Je ziet hieronder de laatst ontvangen secties; gebruik <strong>Genereer opnieuw</strong> om
-              op te kunnen slaan.
-            </p>
-          ) : null}
-          <p className="text-sm text-slate-600">
-            Elke afgeronde sectie verschijnt hier in dezelfde web-preview als daarna. Zodra het model{" "}
-            <code className="rounded bg-slate-100 px-1 text-xs">config</code> vóór{" "}
-            <code className="rounded bg-slate-100 px-1 text-xs">sections</code> uitstuurt, worden thema en fonts
-            meegenomen; anders tijdelijk neutrale defaults. Beeldverwerking (Unsplash) aan het eind kan de finale pagina
-            nog iets bijsturen.
-          </p>
-          <p className="text-xs text-slate-500">
-            {streamingSections.length} sectie{streamingSections.length === 1 ? "" : "s"} binnen…
-          </p>
-          <div className="sales-os-glass-panel overflow-hidden rounded-xl border border-indigo-200 bg-white shadow-sm ring-1 ring-indigo-500/10">
-            <PublishedSiteView
-              payload={streamingLivePreviewPayload!}
-              className="min-h-[min(70vh,800px)]"
-              publishedSlug={slugFromUrl}
-            />
-          </div>
-        </section>
-      ) : null}
-
       {loading && (streamPhase != null || streamLog.length > 0) ? (
         <div className="space-y-4">
           {streamPhase ? (
@@ -706,27 +691,15 @@ export function GeneratorForm({
       )}
 
       {generatedTailwind ? (
-        <section className="space-y-4 border-t border-slate-200 pt-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <Monitor className="size-5 text-slate-500" aria-hidden />
-            <h2 className="text-lg font-semibold text-slate-900">Preview</h2>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900">tailwind_sections</span>
-          </div>
-          <p className="text-sm text-slate-600">
-            Zelfde weergave als <code className="rounded bg-slate-100 px-1 text-xs">/site/…</code> na opslaan.
-          </p>
-          <p className="text-xs text-slate-500">
-            Primary <span className="font-mono">{generatedTailwind.config.theme.primary}</span> · accent{" "}
+        <section className="space-y-4 border-t border-slate-200 pt-6">
+          <h2 className="text-sm font-semibold text-slate-900">Volgende stappen</h2>
+          <p className="text-xs text-slate-600">
+            Preview staat rechts — zelfde <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">PublishedSiteView</code>{" "}
+            als <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/site/…</code> na opslaan. Thema:{" "}
+            <span className="font-mono">{generatedTailwind.config.theme.primary}</span> ·{" "}
             <span className="font-mono">{generatedTailwind.config.theme.accent}</span> ·{" "}
             {generatedTailwind.sections.length} secties
           </p>
-          <div className="sales-os-glass-panel overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <PublishedSiteView
-              payload={completedGeneratorPreviewPayload!}
-              className="min-h-[min(85vh,900px)]"
-              publishedSlug={slugFromUrl}
-            />
-          </div>
           <DutchSpellcheckPanel
             sections={generatedTailwind.sections.map((s, i) => ({
               id: s.id ?? slugifyToSectionId(s.sectionName, i),
@@ -743,6 +716,7 @@ export function GeneratorForm({
             defaultSubfolderSlug={slugFromUrl}
             defaultPublishStatus="draft"
             generatorMode
+            onSaved={onSiteSaved}
           />
           <div className="pt-2">
             <button
@@ -761,6 +735,70 @@ export function GeneratorForm({
           </div>
         </section>
       ) : null}
+          </div>
+        }
+        main={
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+            <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                <span>Live preview</span>
+                {previewIsStreaming ? (
+                  <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
+                    stream
+                  </span>
+                ) : null}
+                {generatedTailwind ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-100">
+                    definitief
+                  </span>
+                ) : null}
+                {streamEndedWithoutComplete ? (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                    stream afgebroken
+                  </span>
+                ) : null}
+              </div>
+              {previewIsStreaming && streamingConfig == null ? (
+                <p className="mt-1 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">
+                  Wachten op <code className="font-mono">config</code> uit het model — tijdelijk placeholderkleuren tot de
+                  stream die keys heeft uitgestuurd.
+                </p>
+              ) : null}
+            </div>
+            {streamEndedWithoutComplete ? (
+              <p className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50">
+                De verbinding werd verbroken vóór de server <strong>generatie voltooid</strong> meldde. Rechts de laatst
+                ontvangen secties; gebruik <strong>Genereer opnieuw</strong> om op te kunnen slaan.
+              </p>
+            ) : null}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+              {loading && !activeStudioPreviewPayload ? (
+                <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                  <Loader2 className="size-8 animate-spin text-indigo-500" aria-hidden />
+                  <p>Bezig met genereren… preview verschijnt zodra de eerste secties binnen zijn.</p>
+                </div>
+              ) : activeStudioPreviewPayload ? (
+                <PublishedSiteView
+                  payload={activeStudioPreviewPayload}
+                  className="min-h-0 flex-1"
+                  publishedSlug={slugFromUrl}
+                />
+              ) : (
+                <div className="flex min-h-[min(360px,50dvh)] flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+                  <Monitor className="size-10 text-zinc-300 dark:text-zinc-600" aria-hidden />
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Nog geen preview</p>
+                  <p className="max-w-sm text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    Vul links de briefing in en klik op <strong className="text-zinc-800 dark:text-zinc-200">Genereer</strong>.
+                    Hier komt dezelfde weergave als op de openbare site (<code className="font-mono text-[11px]">/site/…</code>
+                    ), inclusief studio-tokens die naar echte paden worden omgezet zodra er een slug is.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 }

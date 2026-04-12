@@ -11,13 +11,15 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "gentrix-site-editor-sidebar-px";
+const DEFAULT_STORAGE_KEY = "gentrix-site-editor-sidebar-px";
 /** Ruimte voor de sleepbalk (Tailwind `w-2`). */
 const SPLITTER_PX = 8;
 
 type ResizableEditorPanelsProps = {
   sidebar: ReactNode;
   main: ReactNode;
+  /** localStorage-key voor sidebarbreedte (default: zelfde als HTML-editor). */
+  storageKey?: string;
   /** Default sidebar width on large screens (px). */
   defaultSidebarPx?: number;
   minSidebarPx?: number;
@@ -52,6 +54,7 @@ function boundsForHost(
 export function ResizableEditorPanels({
   sidebar,
   main,
+  storageKey = DEFAULT_STORAGE_KEY,
   defaultSidebarPx = 400,
   minSidebarPx = 260,
   maxSidebarPx = 640,
@@ -60,6 +63,8 @@ export function ResizableEditorPanels({
 }: ResizableEditorPanelsProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const storageHydrated = useRef(false);
+  const storageKeyRef = useRef(storageKey);
+  storageKeyRef.current = storageKey;
   const [hostWidth, setHostWidth] = useState(0);
   const [splitLayout, setSplitLayout] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarPx);
@@ -104,7 +109,7 @@ export function ResizableEditorPanels({
     storageHydrated.current = true;
     if (typeof window === "undefined") return;
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(storageKeyRef.current);
       if (raw == null) return;
       const n = Number.parseInt(raw, 10);
       if (!Number.isFinite(n)) return;
@@ -116,7 +121,7 @@ export function ResizableEditorPanels({
 
   const persist = useCallback((w: number) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, String(Math.round(w)));
+      window.localStorage.setItem(storageKeyRef.current, String(Math.round(w)));
     } catch {
       /* ignore */
     }

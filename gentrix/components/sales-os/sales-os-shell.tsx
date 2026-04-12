@@ -11,8 +11,9 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "sales-os-sidebar-collapsed";
 
-function isSiteEditorPath(pathname: string) {
-  return pathname.startsWith("/admin/editor");
+/** Volledige werkhoogte + flex-keten (split editor / studio-generator met live preview). */
+function isFullBleedWorkspacePath(pathname: string) {
+  return pathname.startsWith("/admin/editor") || pathname.startsWith("/admin/ops/studio");
 }
 
 type SalesOsShellProps = {
@@ -22,7 +23,7 @@ type SalesOsShellProps = {
 /** Vercel-achtige shell: #fafafa zijbalk, wit werkvlak, Geist (via globals.css). */
 export function SalesOsShell({ children }: SalesOsShellProps) {
   const pathname = usePathname() ?? "";
-  const siteEditor = isSiteEditorPath(pathname);
+  const fullBleedWorkspace = isFullBleedWorkspacePath(pathname);
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -115,7 +116,7 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
       <div
         className={cn(
           "sales-os-workspace flex min-w-0 flex-col bg-white transition-[margin] duration-200 ease-out dark:bg-zinc-900",
-          siteEditor ? "h-dvh max-h-dvh overflow-hidden" : "min-h-screen",
+          fullBleedWorkspace ? "h-dvh max-h-dvh overflow-hidden" : "min-h-screen",
           mainMargin,
         )}
       >
@@ -125,14 +126,14 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
         <div
           className={cn(
             "sales-os-main-area min-h-0 min-w-0 w-full flex-1",
-            siteEditor ? "flex flex-col py-0" : "py-6 md:py-8",
-            siteEditor ? "px-0" : SALES_OS_GUTTER_X_CLASS,
+            fullBleedWorkspace ? "flex flex-col py-0" : "py-6 md:py-8",
+            fullBleedWorkspace ? "px-0" : SALES_OS_GUTTER_X_CLASS,
           )}
         >
           <div
             className={cn(
               "sales-os-main-frame min-w-0 w-full",
-              siteEditor
+              fullBleedWorkspace
                 ? "mx-0 flex max-w-none flex-1 flex-col overflow-hidden"
                 : cn("mx-auto", SALES_OS_MAIN_MAX_CLASS),
             )}

@@ -29,6 +29,8 @@ type SaveSitePanelProps = {
    * Verbergt de status-dropdown.
    */
   generatorMode?: boolean;
+  /** Na geslaagde POST (concept bijgewerkt). */
+  onSaved?: () => void;
 };
 
 export function SaveSitePanel({
@@ -39,6 +41,7 @@ export function SaveSitePanel({
   defaultSubfolderSlug,
   defaultPublishStatus,
   generatorMode = false,
+  onSaved,
 }: SaveSitePanelProps) {
   function initialSlug(): string {
     const fromUrl = defaultSubfolderSlug?.trim();
@@ -131,6 +134,7 @@ export function SaveSitePanel({
       }
 
       setLastSaveMessage("Opgeslagen / bijgewerkt.");
+      onSaved?.();
       if (typeof window !== "undefined") {
         if (payload.data.preview_url) {
           setSavedPreviewUrl(payload.data.preview_url);
@@ -206,8 +210,8 @@ export function SaveSitePanel({
                 <option value="active">Actief — /site/… toegestaan voor bezoekers</option>
               </select>
               <p className="mt-1 text-xs text-slate-500">
-                Concept staat op je laatste opslag. Live-inhoud voor bezoekers stem je af via de HTML-editor of snapshots
-                in het dossier.
+                Concept staat op je laatste opslag. Live-inhoud voor bezoekers stem je af via site-studio (tab Bewerken)
+                of snapshots in het dossier.
               </p>
             </>
           )}

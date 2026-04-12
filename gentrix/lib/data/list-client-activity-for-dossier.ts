@@ -137,7 +137,7 @@ export async function listClientActivityForDossier(
     .maybeSingle();
   const meta = clientMeta as { subfolder_slug?: string | null; subscription_cancel_requested_at?: string | null } | null;
   const slug = meta?.subfolder_slug?.trim() ?? null;
-  const editorHref = slug ? `/admin/editor/${encodeURIComponent(slug)}` : undefined;
+  const studioHref = slug ? `/admin/ops/studio?slug=${encodeURIComponent(slug)}` : undefined;
   const snapshotsHref = slug ? `/admin/clients/${encodeURIComponent(slug)}/snapshots` : undefined;
 
   const { data: invoiceRows } = await supabase.from("invoices").select("id, invoice_number").eq("client_id", clientId);
@@ -181,7 +181,7 @@ export async function listClientActivityForDossier(
         ]
           .filter(Boolean)
           .join(" · "),
-        href: editorHref ?? snapshotsHref,
+        href: studioHref ?? snapshotsHref,
       });
     }
   }

@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
-import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
+import { notFound, redirect } from "next/navigation";
 import { getParsedSiteDraftBySlug } from "@/lib/data/client-draft-site";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
-import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
-import { getRequestOrigin } from "@/lib/site/request-origin";
 import { formatSlugForDisplay } from "@/lib/slug";
 
 type EditorPageProps = {
@@ -28,22 +24,7 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
   const row = await getAdminClientBySlug(slug);
   if (!row) notFound();
 
-  const commercial = await getClientCommercialBySlug(slug);
-  const appointmentsEnabled = commercial?.appointments_enabled ?? false;
-  const webshopEnabled = commercial?.webshop_enabled ?? false;
-
   const parsed = await getParsedSiteDraftBySlug(slug);
-
-  const origin = await getRequestOrigin();
-  const siteUrls = await getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin);
-  let draftPublicPreviewToken: string | null = null;
-  if (siteUrls?.previewAbsolute) {
-    try {
-      draftPublicPreviewToken = new URL(siteUrls.previewAbsolute).searchParams.get("token");
-    } catch {
-      draftPublicPreviewToken = null;
-    }
-  }
 
   if (parsed?.kind === "react") {
     return (
@@ -55,8 +36,8 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
           ) voor nieuwe generaties en de site-editor.
         </p>
         <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/90">
-          Genereer de pagina opnieuw in de <strong>site-studio</strong> en sla op — dan kun je hier verder met de HTML-editor.
-          Live weergave van deze slug blijft werken tot je overschrijft.
+          Genereer de pagina opnieuw in de <strong>site-studio</strong> en sla op — daarna werk je verder in dezelfde studio
+          (bewerken + preview). Live weergave van deze slug blijft werken tot je overschrijft.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -77,24 +58,7 @@ export default async function AdminEditorPage({ params }: EditorPageProps) {
   }
 
   if (parsed?.kind === "tailwind") {
-    return (
-      <SiteHtmlEditor
-        subfolderSlug={row.subfolder_slug}
-        initialName={row.name}
-        initialDescription={row.description}
-        initialStatus={row.status}
-        initialSections={parsed.sections}
-        initialConfig={parsed.config}
-        initialPageType={parsed.pageType}
-        initialCustomCss={parsed.customCss}
-        initialCustomJs={parsed.customJs}
-        initialLogoSet={parsed.logoSet}
-        appointmentsEnabled={appointmentsEnabled}
-        webshopEnabled={webshopEnabled}
-        initialSiteIr={parsed.siteIr ?? null}
-        draftPublicPreviewToken={draftPublicPreviewToken}
-      />
-    );
+    redirect(`/admin/ops/studio?slug=${encodeURIComponent(slug)}`);
   }
 
   return (

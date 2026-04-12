@@ -71,7 +71,7 @@ function SiteRowActionsCard({ r }: { r: AdminClientRow }) {
         Dossier
       </Link>
       <Link
-        href={`/admin/editor/${slug}`}
+        href={`/admin/ops/studio?slug=${encodeURIComponent(slug)}`}
         data-tone="blue"
         className={cn(
           cardActionClass,
@@ -132,7 +132,7 @@ function SiteRowActionsTable({ r }: { r: AdminClientRow }) {
         Dossier
       </Link>
       <Link
-        href={`/admin/editor/${slug}`}
+        href={`/admin/ops/studio?slug=${encodeURIComponent(slug)}`}
         data-tone="blue"
         className={cn(
           tableActionClass,
