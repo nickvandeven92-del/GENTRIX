@@ -117,8 +117,11 @@ export function FlyerHubWorkspace({
             </>
           ) : (
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              Geen flyer-link beschikbaar. Controleer of de migratie voor{" "}
-              <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">flyer_public_token</code> op Supabase staat.
+              Geen flyer-link beschikbaar. Controleer of kolom{" "}
+              <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">flyer_public_token</code> bestaat (migratie) en
+              of PostgREST de schema-cache heeft vernieuwd. Zonder geldige{" "}
+              <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">SUPABASE_SERVICE_ROLE_KEY</code> op de server kan
+              er geen token worden weggeschreven.
             </p>
           )}
         </div>

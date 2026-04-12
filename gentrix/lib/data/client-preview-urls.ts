@@ -2,7 +2,15 @@ import { ensureClientFlyerPublicTokenBySlug } from "@/lib/data/ensure-client-fly
 import { ensureClientPreviewSecretBySlug } from "@/lib/data/ensure-client-preview-secret";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
+import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import type { ClientStatus } from "@/lib/types/database";
+
+/** Zelfde basis als PDF-routes: request-host, anders `NEXT_PUBLIC_SITE_URL` / Vercel. */
+function resolvePublicBase(origin: string | null | undefined): string {
+  const trimmed = origin?.trim() ?? "";
+  const raw = trimmed.length > 0 ? trimmed : getPublicAppUrl();
+  return raw.replace(/\/$/, "");
+}
 
 export type ClientSiteUrlsForAdmin = {
   status: ClientStatus;
@@ -22,7 +30,7 @@ export async function getClientSiteUrlsForAdminDossier(
   slug: string,
   origin: string | null,
 ): Promise<ClientSiteUrlsForAdmin | null> {
-  const base = (origin ?? "").replace(/\/$/, "");
+  const base = resolvePublicBase(origin);
   const enc = encodeURIComponent(slug);
   const liveAbsolute = `${base}/site/${enc}`;
 
@@ -83,7 +91,7 @@ export async function getClientSiteUrlsForAdminDossier(
     if (!flyerTok) {
       flyerTok = (await ensureClientFlyerPublicTokenBySlug(slug))?.trim() ?? null;
     }
-    const flyerQrAbsolute = flyerTok && base ? `${base}/p/${encodeURIComponent(flyerTok)}` : null;
+    const flyerQrAbsolute = flyerTok ? `${base}/p/${encodeURIComponent(flyerTok)}` : null;
 
     return { status, liveAbsolute, previewAbsolute, flyerQrAbsolute };
   } catch {
@@ -101,7 +109,7 @@ export async function resolveSiteOpenAbsoluteUrlForAdmin(
   statusHint: ClientStatus,
   origin: string | null,
 ): Promise<string> {
-  const base = (origin ?? "").replace(/\/$/, "");
+  const base = resolvePublicBase(origin);
   const enc = encodeURIComponent(slug);
   const liveAbsolute = `${base}/site/${enc}`;
 
