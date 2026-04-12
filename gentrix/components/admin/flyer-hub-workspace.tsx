@@ -4,8 +4,9 @@ import type { FlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
 import { FlyerStudioEditor } from "@/components/admin/flyer-studio-editor";
 import type { FlyerStudioPersisted } from "@/lib/flyer/flyer-studio-schema";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Check, Copy, Download, ExternalLink, QrCode } from "lucide-react";
+import { ArrowLeft, Check, Copy, Download, ExternalLink, QrCode, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
 import { cn } from "@/lib/utils";
 
@@ -24,9 +25,12 @@ export function FlyerHubWorkspace({
   flyerScanSummary,
   initialFlyerStudio,
 }: Props) {
+  const router = useRouter();
   const enc = encodeURIComponent(slug);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+  const [repairErr, setRepairErr] = useState<string | null>(null);
   const previewSrc = flyerQrAbsoluteUrl ? qrDataUrl : null;
 
   useEffect(() => {
@@ -55,6 +59,24 @@ export function FlyerHubWorkspace({
       setCopied(false);
     }
   }, [flyerQrAbsoluteUrl]);
+
+  const retryFlyerLink = useCallback(async () => {
+    setRepairErr(null);
+    setRepairing(true);
+    try {
+      const res = await fetch(`/api/clients/${encodeURIComponent(slug)}/flyer-link`, { method: "POST" });
+      const j = (await res.json()) as { ok?: boolean; error?: string; url?: string };
+      if (!res.ok || !j.ok) {
+        setRepairErr(j.error ?? `Mislukt (HTTP ${res.status}).`);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setRepairErr("Netwerkfout. Probeer opnieuw.");
+    } finally {
+      setRepairing(false);
+    }
+  }, [router, slug]);
 
   return (
     <div className="space-y-8">
@@ -116,13 +138,27 @@ export function FlyerHubWorkspace({
               </p>
             </>
           ) : (
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              Geen flyer-link beschikbaar. Controleer of kolom{" "}
-              <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">flyer_public_token</code> bestaat (migratie) en
-              of PostgREST de schema-cache heeft vernieuwd. Zonder geldige{" "}
-              <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">SUPABASE_SERVICE_ROLE_KEY</code> op de server kan
-              er geen token worden weggeschreven.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Geen flyer-link beschikbaar. Meestal: migratie nog niet op <strong>dit</strong> Supabase-project, schema-cache
+                niet vernieuwd, of <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
+                ontbreekt op de server. Zet ook{" "}
+                <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">NEXT_PUBLIC_SITE_URL</code> op je publieke domein
+                (bijv. <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">https://www.gentrix.nl</code>).
+              </p>
+              <button
+                type="button"
+                disabled={repairing}
+                onClick={() => void retryFlyerLink()}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-400/80 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100 dark:hover:bg-amber-950/80"
+              >
+                <RefreshCw className={cn("size-4", repairing && "animate-spin")} aria-hidden />
+                {repairing ? "Bezig…" : "Opnieuw proberen (token + link)"}
+              </button>
+              {repairErr ? (
+                <p className="text-sm text-red-700 dark:text-red-400">{repairErr}</p>
+              ) : null}
+            </div>
           )}
         </div>
 
