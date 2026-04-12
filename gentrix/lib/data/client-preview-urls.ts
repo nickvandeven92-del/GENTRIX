@@ -62,25 +62,18 @@ export async function getClientSiteUrlsForAdminDossier(
 }
 
 /**
- * Absolute URL voor **Site** in nieuw tabblad vanuit de admin:
- * - `active` → publieke live site `/site/{slug}`.
- * - `draft` / `paused` / `archived` → `/site/{slug}?token=…` wanneer `preview_secret` beschikbaar is (ook bestaande klanten).
- * - Anders → `/site/{slug}` zonder token (kan 404 zijn zonder actieve publicatie).
+ * Absolute URL voor **Site** in nieuw tabblad vanuit de admin.
+ * Status komt uit **de database** (service role), niet alleen uit de UI-hint — anders opent een concept
+ * soms per ongeluk `/site/…` zonder `?token=` en krijg je 404.
  */
 export async function resolveSiteOpenAbsoluteUrlForAdmin(
   slug: string,
-  status: ClientStatus,
+  statusHint: ClientStatus,
   origin: string | null,
 ): Promise<string> {
   const base = (origin ?? "").replace(/\/$/, "");
   const enc = encodeURIComponent(slug);
   const liveAbsolute = `${base}/site/${enc}`;
-  if (status === "active") {
-    return liveAbsolute;
-  }
-
-  const needsPreviewToken =
-    status === "draft" || status === "paused" || status === "archived";
 
   let urls: ClientSiteUrlsForAdmin | null = null;
   try {
@@ -89,11 +82,21 @@ export async function resolveSiteOpenAbsoluteUrlForAdmin(
     urls = null;
   }
 
+  const effectiveStatus: ClientStatus = urls?.status ?? statusHint;
+
+  if (effectiveStatus === "active") {
+    return liveAbsolute;
+  }
+
   if (urls?.previewAbsolute) {
     return urls.previewAbsolute;
   }
 
-  /** O.a. tijdelijke Supabase-fout of afwijkende caller-status: nog één keer secret proberen (bestaande dossiers). */
+  const needsPreviewToken =
+    effectiveStatus === "draft" ||
+    effectiveStatus === "paused" ||
+    effectiveStatus === "archived";
+
   if (needsPreviewToken) {
     const secret = (await ensureClientPreviewSecretBySlug(slug))?.trim() ?? null;
     if (secret) {
