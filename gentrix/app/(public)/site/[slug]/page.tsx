@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
@@ -7,7 +8,7 @@ import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type SitePageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; flyer?: string }>;
 };
 
 /** Vercel hobby: standaard ~10s; bij zware HTML-build iets ruimer (Pro/hogere limiet). */
@@ -92,13 +93,31 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
   const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
 
+  const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
+  const siteLabel =
+    bundle.payload.kind === "tailwind"
+      ? bundle.payload.clientName?.trim() || formatSlugForDisplay(slug)
+      : bundle.payload.kind === "react"
+        ? bundle.payload.doc.documentTitle?.trim() || formatSlugForDisplay(slug)
+        : formatSlugForDisplay(slug);
+
   return (
-    <PublishedSiteView
-      payload={bundle.payload}
-      publishedSlug={slug}
-      appointmentsEnabled={bundle.appointmentsEnabled}
-      webshopEnabled={bundle.webshopEnabled}
-      draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
-    />
+    <>
+      {showFlyer ? (
+        <ConceptFlyerExperience
+          siteLabel={siteLabel}
+          slug={slug}
+          appointmentsEnabled={bundle.appointmentsEnabled}
+          webshopEnabled={bundle.webshopEnabled}
+        />
+      ) : null}
+      <PublishedSiteView
+        payload={bundle.payload}
+        publishedSlug={slug}
+        appointmentsEnabled={bundle.appointmentsEnabled}
+        webshopEnabled={bundle.webshopEnabled}
+        draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+      />
+    </>
   );
 }

@@ -120,6 +120,18 @@ export function fixAlpineNavToggleDefaultsInXData(html: string): string {
   return out;
 }
 
+/**
+ * Verwijdert decoratieve “SCROLL”-cues onderaan hero’s (model-template; blijft zichtbaar i.c.m. video-loop).
+ * Alleen nodes waar de tekstinhoud **uitsluitend** `SCROLL` is — geen woorden in lopende zinnen.
+ */
+export function stripDecorativeScrollCueMarkup(html: string): string {
+  if (!html.includes("SCROLL")) return html;
+  let s = html;
+  s = s.replace(/<(span|p|div|a|button|strong|em|label)\b[^>]{0,360}?>\s*SCROLL\s*<\/\1>/gi, "");
+  s = s.replace(/>[\s\u00A0\u200B]*SCROLL[\s\u00A0\u200B]*</g, "><");
+  return s;
+}
+
 export function mergeDuplicateClassOnChromeTags(html: string): string {
   return html.replace(/<(nav|header)(\s[^>]*?)>/gi, (full, tag: string, inner: string) => {
     const doubleQuoted = [...inner.matchAll(/\bclass\s*=\s*"([^"]*)"/gi)];
@@ -379,7 +391,8 @@ export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): C
     const html1 = repairInternalLinksInHtml(html0b, validIds);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
-    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2b) : html2b;
+    const html2c = stripDecorativeScrollCueMarkup(html2b);
+    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2c) : html2c;
     return { ...row, html: html3 };
   });
 

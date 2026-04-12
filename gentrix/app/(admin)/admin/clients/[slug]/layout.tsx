@@ -27,6 +27,7 @@ export default async function ClientDossierLayout({ children, params }: LayoutPr
       clientName={row.name}
       liveSiteAbsoluteUrl={urls?.status === "active" ? urls.liveAbsolute : undefined}
       conceptPreviewAbsoluteUrl={urls?.previewAbsolute ?? null}
+      flyerQrAbsoluteUrl={urls?.flyerQrAbsolute ?? null}
       clientStatus={row.status}
     >
       {children}

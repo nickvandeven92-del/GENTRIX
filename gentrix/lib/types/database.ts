@@ -60,6 +60,8 @@ export type Database = {
           portal_user_id: string | null;
           /** Token voor concept op `/site/{slug}?token=` (status ≠ active). */
           preview_secret: string | null;
+          /** Publiek UUID voor flyer/QR (`/p/{uuid}`). */
+          flyer_public_token: string | null;
         };
         Insert: {
           id?: string;
@@ -104,6 +106,7 @@ export type Database = {
           subscription_cancel_requested_at?: string | null;
           portal_user_id?: string | null;
           preview_secret?: string | null;
+          flyer_public_token?: string | null;
         };
         Update: {
           id?: string;
@@ -147,6 +150,7 @@ export type Database = {
           subscription_cancel_requested_at?: string | null;
           portal_user_id?: string | null;
           preview_secret?: string | null;
+          flyer_public_token?: string | null;
         };
         Relationships: [];
       };

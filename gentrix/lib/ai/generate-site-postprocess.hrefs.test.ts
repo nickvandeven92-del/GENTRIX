@@ -7,6 +7,7 @@ import {
   postProcessClaudeTailwindPage,
   postProcessTailwindSectionsForStreamingPreview,
   repairSamePagePathHrefsInHtml,
+  stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import {
@@ -86,6 +87,18 @@ describe("fixAlpineNavToggleDefaultsInXData", () => {
   it("past drawerOpen: true aan", () => {
     const html = `<div x-data="{ drawerOpen: true }">`;
     expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("drawerOpen: false");
+  });
+});
+
+describe("stripDecorativeScrollCueMarkup", () => {
+  it("verwijdert span met alleen SCROLL", () => {
+    const html = `<div class="flex flex-col"><span class="text-xs uppercase tracking-widest">SCROLL</span></div>`;
+    expect(stripDecorativeScrollCueMarkup(html)).not.toContain("SCROLL");
+  });
+
+  it("laat lopende tekst met SCROLL staan", () => {
+    const html = `<p class="prose">Je kunt hier verder SCROLLEN voor meer.</p>`;
+    expect(stripDecorativeScrollCueMarkup(html)).toContain("SCROLLEN");
   });
 });
 

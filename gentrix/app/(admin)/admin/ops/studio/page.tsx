@@ -62,6 +62,19 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
               Klantdossier →
             </Link>
           </div>
+          {siteUrls?.flyerQrAbsolute ? (
+            <p className="mt-2 text-xs text-neutral-600 dark:text-zinc-400">
+              Flyer / QR:{" "}
+              <a
+                href={siteUrls.flyerQrAbsolute}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all font-mono text-indigo-800 underline-offset-2 hover:underline dark:text-indigo-300"
+              >
+                {siteUrls.flyerQrAbsolute}
+              </a>
+            </p>
+          ) : null}
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <StudioTailwindWorkspace

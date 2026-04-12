@@ -11,6 +11,8 @@ type PortalShellProps = {
   appointmentsEnabled: boolean;
   invoicesEnabled: boolean;
   accountEnabled: boolean;
+  /** Studio/medewerker: snelkoppeling naar /admin/ops. Klanten: uit. */
+  showStudioNav: boolean;
   /** Volledige URL (https://host/site/slug) zodat de site in een echte browsertab opent. */
   publicSiteAbsoluteUrl?: string;
   /** Studio bekijkt het dossier; niet de gekoppelde klant-sessie (push e.d.). */
@@ -26,6 +28,7 @@ export function PortalShell({
   appointmentsEnabled,
   invoicesEnabled,
   accountEnabled,
+  showStudioNav,
   publicSiteAbsoluteUrl,
   portalSessionMismatch = false,
   showStudioPreviewBanner = false,
@@ -71,12 +74,14 @@ export function PortalShell({
                 <ExternalLink className="size-4" aria-hidden />
                 Publieke site
               </a>
-              <Link
-                href="/admin/ops"
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                Studio
-              </Link>
+              {showStudioNav ? (
+                <Link
+                  href="/admin/ops"
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Studio
+                </Link>
+              ) : null}
             </div>
           </div>
         </header>

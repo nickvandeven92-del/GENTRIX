@@ -1278,7 +1278,7 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 === 3. PAGINA → HTML (Tailwind) ===
 
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll.
-- **Hero:** sterke eerste indruk; **geen** vaste knoppen/CTA in de hero tenzij de briefing dat **expliciet** vraagt.
+- **Hero:** sterke eerste indruk; **geen** vaste knoppen/CTA in de hero tenzij de briefing dat **expliciet** vraagt. **Verboden:** decoratieve scroll-hint onderaan (los **SCROLL**-label, verticaal streepje/muisicoon zonder inhoud) — sjabloon-rommel en blijft bij video-loops in beeld; gebruik liever inhoud of één duidelijke CTA.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
 - **Klantfoto's:** volg het blok hierboven (niet in de hero).
 

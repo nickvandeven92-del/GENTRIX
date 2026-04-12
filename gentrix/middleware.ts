@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { maybeRewriteCustomDomain } from "@/lib/supabase/middleware-custom-domain";
 import { maybeRewritePrimaryLandingSite } from "@/lib/supabase/middleware-primary-landing";
+import { maybeRewritePortalHost } from "@/lib/supabase/middleware-portal-host";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
@@ -11,6 +12,10 @@ export async function middleware(request: NextRequest) {
   const landing = maybeRewritePrimaryLandingSite(request);
   if (landing) {
     return landing;
+  }
+  const portalHost = maybeRewritePortalHost(request);
+  if (portalHost) {
+    return portalHost;
   }
   return updateSession(request);
 }

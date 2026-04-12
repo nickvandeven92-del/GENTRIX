@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
@@ -13,7 +14,7 @@ import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type ContactSitePageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; flyer?: string }>;
 };
 
 export const maxDuration = 60;
@@ -68,7 +69,10 @@ export default async function PublicClientSiteContactPage({ params, searchParams
 
   const sp = await searchParams;
   const previewToken = typeof sp.token === "string" ? sp.token : "";
-  const tq = previewToken.trim() ? `?token=${encodeURIComponent(previewToken.trim())}` : "";
+  const qs = new URLSearchParams();
+  if (previewToken.trim()) qs.set("token", previewToken.trim());
+  if (sp.flyer === "1") qs.set("flyer", "1");
+  const tq = qs.toString() ? `?${qs.toString()}` : "";
 
   const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
@@ -96,14 +100,27 @@ export default async function PublicClientSiteContactPage({ params, searchParams
     redirect(`/site/${encodeURIComponent(slug)}${tq}`);
   }
 
+  const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
+  const siteLabel = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
+
   return (
-    <PublishedSiteView
-      payload={bundle.payload}
-      publishedSlug={slug}
-      appointmentsEnabled={bundle.appointmentsEnabled}
-      webshopEnabled={bundle.webshopEnabled}
-      publicSiteTailwindPath="contact"
-      draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
-    />
+    <>
+      {showFlyer ? (
+        <ConceptFlyerExperience
+          siteLabel={siteLabel}
+          slug={slug}
+          appointmentsEnabled={bundle.appointmentsEnabled}
+          webshopEnabled={bundle.webshopEnabled}
+        />
+      ) : null}
+      <PublishedSiteView
+        payload={bundle.payload}
+        publishedSlug={slug}
+        appointmentsEnabled={bundle.appointmentsEnabled}
+        webshopEnabled={bundle.webshopEnabled}
+        publicSiteTailwindPath="contact"
+        draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+      />
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import { ensureClientFlyerPublicTokenBySlug } from "@/lib/data/ensure-client-flyer-token";
 import { ensureClientPreviewSecretBySlug } from "@/lib/data/ensure-client-preview-secret";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
@@ -9,6 +10,8 @@ export type ClientSiteUrlsForAdmin = {
   liveAbsolute: string;
   /** Bij concept of gepauzeerd + preview_secret: URL met token. */
   previewAbsolute: string | null;
+  /** Korte flyer/QR-link (`/p/{uuid}`); concept → preview+walkthrough, live → site. */
+  flyerQrAbsolute: string | null;
 };
 
 /**
@@ -27,7 +30,7 @@ export async function getClientSiteUrlsForAdminDossier(
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase
       .from("clients")
-      .select("status, preview_secret")
+      .select("status, preview_secret, flyer_public_token")
       .eq("subfolder_slug", slug)
       .maybeSingle();
 
@@ -39,7 +42,28 @@ export async function getClientSiteUrlsForAdminDossier(
         status: st,
         liveAbsolute,
         previewAbsolute: null,
+        flyerQrAbsolute: null,
       };
+    }
+
+    if (error && isPostgrestUnknownColumnError(error, "flyer_public_token")) {
+      const second = await supabase
+        .from("clients")
+        .select("status, preview_secret")
+        .eq("subfolder_slug", slug)
+        .maybeSingle();
+      if (second.error || !second.data) return null;
+      const status = second.data.status as ClientStatus;
+      let secret = (second.data as { preview_secret?: string | null }).preview_secret?.trim() ?? null;
+      const useConceptPreviewUrl = status === "draft" || status === "paused" || status === "archived";
+      if (useConceptPreviewUrl && !secret) {
+        secret = (await ensureClientPreviewSecretBySlug(slug))?.trim() ?? null;
+      }
+      const previewAbsolute =
+        useConceptPreviewUrl && secret
+          ? `${base}/site/${enc}?token=${encodeURIComponent(secret)}`
+          : null;
+      return { status, liveAbsolute, previewAbsolute, flyerQrAbsolute: null };
     }
 
     if (error || !data) return null;
@@ -55,7 +79,13 @@ export async function getClientSiteUrlsForAdminDossier(
         ? `${base}/site/${enc}?token=${encodeURIComponent(secret)}`
         : null;
 
-    return { status, liveAbsolute, previewAbsolute };
+    let flyerTok = (data as { flyer_public_token?: string | null }).flyer_public_token?.trim() ?? null;
+    if (!flyerTok) {
+      flyerTok = (await ensureClientFlyerPublicTokenBySlug(slug))?.trim() ?? null;
+    }
+    const flyerQrAbsolute = flyerTok && base ? `${base}/p/${encodeURIComponent(flyerTok)}` : null;
+
+    return { status, liveAbsolute, previewAbsolute, flyerQrAbsolute };
   } catch {
     return null;
   }

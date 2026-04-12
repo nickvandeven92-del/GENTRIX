@@ -1,27 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-access";
 import { publishClientSnapshotForSlug } from "@/lib/data/publish-client-snapshot";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
 const bodySchema = z.object({ snapshot_id: z.string().uuid().optional() }).optional();
 
-type RouteContext = { params: Promise<{ subfolder_slug: string }> };
+type RouteContext = { params: Promise<{ slug: string }> };
 
-/**
- * Fase 3: zet de **live** site op een bestaande snapshot (standaard = huidige concept).
- * Wijzigt niet `clients.status`; publieke URL vereist nog steeds `active`.
- */
+/** Klant zet zichtbare live-inhoud op de huidige (of gekozen) snapshot — zelfde kern als admin-publish. */
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
+  const { slug: raw } = await context.params;
+  const slug = decodeURIComponent(raw);
+  if (!isValidSubfolderSlug(slug)) {
+    return NextResponse.json({ ok: false, error: "Ongeldige slug." }, { status: 400 });
   }
 
-  const { subfolder_slug: raw } = await context.params;
-  const subfolder_slug = decodeURIComponent(raw);
-  if (!isValidSubfolderSlug(subfolder_slug)) {
-    return NextResponse.json({ ok: false, error: "Ongeldige slug." }, { status: 400 });
+  const access = await requirePortalApiAccessForSlug(slug);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.message }, { status: access.status });
   }
 
   let body: unknown = {};
@@ -35,7 +32,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: false, error: "Ongeldige body." }, { status: 400 });
   }
 
-  const result = await publishClientSnapshotForSlug(subfolder_slug, parsed.data?.snapshot_id ?? null);
+  const result = await publishClientSnapshotForSlug(slug, parsed.data?.snapshot_id ?? null);
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
   }

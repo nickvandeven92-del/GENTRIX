@@ -24,6 +24,8 @@ type ClientDossierShellProps = {
   liveSiteAbsoluteUrl?: string;
   /** Publieke concept-URL met token; alleen bij concept + migratie preview_secret. */
   conceptPreviewAbsoluteUrl?: string | null;
+  /** Flyer/QR: korte `/p/{uuid}` (ook live bruikbaar). */
+  flyerQrAbsoluteUrl?: string | null;
   /** Alleen actieve klanten hebben een portaal-route. */
   clientStatus: "draft" | "active" | "paused" | "archived";
   children: React.ReactNode;
@@ -34,6 +36,7 @@ export function ClientDossierShell({
   clientName,
   liveSiteAbsoluteUrl,
   conceptPreviewAbsoluteUrl,
+  flyerQrAbsoluteUrl,
   clientStatus,
   children,
 }: ClientDossierShellProps) {
@@ -101,6 +104,18 @@ export function ClientDossierShell({
               Concept-preview (admin)
             </Link>
           )}
+          {flyerQrAbsoluteUrl ? (
+            <a
+              href={flyerQrAbsoluteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-950 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-100 dark:hover:bg-sky-950/70"
+              title="Korte link voor QR op flyers"
+            >
+              <Globe className="size-4" aria-hidden />
+              Flyer / QR-link
+            </a>
+          ) : null}
           <Link
             href={`/admin/ops/studio?slug=${enc}`}
             className="sales-os-glass-primary-btn inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:border-transparent dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"

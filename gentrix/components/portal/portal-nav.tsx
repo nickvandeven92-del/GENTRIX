@@ -23,6 +23,7 @@ export function PortalNav({
 
   const items: { href: string; label: string }[] = [
     { href: base, label: "Dashboard" },
+    { href: `${base}/website`, label: "Website" },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen" }] : []),
     ...(appointmentsEnabled
       ? [
