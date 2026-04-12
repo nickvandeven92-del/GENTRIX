@@ -77,10 +77,10 @@ export default async function ClientWebsitesPage({ params }: PageProps) {
             className={cn(cardBtn)}
             title={
               row.status === "active"
-                ? "Publieke site, volledig scherm"
+                ? "Publieke site in nieuw tabblad"
                 : siteOpenAbsoluteUrl.includes("token=")
-                  ? "Concept volledig scherm (/site met token; zonder Studio-zijbalk)"
-                  : "Concept (admin-preview met zijbalk)"
+                  ? "Site in nieuw tabblad (/site met token; deelbaar met klant)"
+                  : "Site in nieuw tabblad; zonder token kan deze pagina 404 geven — controleer preview_secret in de database"
             }
           >
             <ExternalLink className="size-4 shrink-0" aria-hidden />

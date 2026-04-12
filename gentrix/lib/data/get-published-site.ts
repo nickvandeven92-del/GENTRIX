@@ -36,8 +36,15 @@ type ClientRowWithPreviewMeta = ActiveClientRow & {
   status?: string;
 };
 
+/** Zelfde `?token=`-contract als concept; `paused` heeft geen actieve `/site`-rij maar wél vaak een werkversie. */
+const SITE_PREVIEW_TOKEN_STATUSES = ["draft", "paused"] as const;
+
+function rowAllowsSitePreviewToken(status: string | undefined | null): boolean {
+  return status === "draft" || status === "paused";
+}
+
 /**
- * Concept-site (`status = draft`) alleen met geldig `preview_secret` — zelfde kolommen als actieve site voor payload.
+ * Concept of gepauzeerde site alleen met geldig `preview_secret` — zelfde kolommen als actieve site voor payload.
  */
 async function fetchConceptDraftSiteRow(
   slug: string,
@@ -54,7 +61,7 @@ async function fetchConceptDraftSiteRow(
       .from("clients")
       .select(fullSel)
       .eq("subfolder_slug", slug)
-      .eq("status", "draft")
+      .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
       .maybeSingle();
 
     if (error && isPostgrestUnknownColumnError(error, "preview_secret")) {
@@ -68,13 +75,13 @@ async function fetchConceptDraftSiteRow(
           "site_data_json, name, generation_package, published_snapshot_id, appointments_enabled, webshop_enabled, preview_secret, status",
         )
         .eq("subfolder_slug", slug)
-        .eq("status", "draft")
+        .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
         .maybeSingle();
       if (second.error || !second.data) {
         return { data: null, error: second.error ?? { message: "Onbekende fout." } };
       }
       const row = second.data as ClientRowWithPreviewMeta;
-      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+      if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
       const { preview_secret: _ps0, status: _st0, ...rest0 } = row;
@@ -88,13 +95,13 @@ async function fetchConceptDraftSiteRow(
           "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, appointments_enabled, preview_secret, status",
         )
         .eq("subfolder_slug", slug)
-        .eq("status", "draft")
+        .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
         .maybeSingle();
       if (second.error || !second.data) {
         return { data: null, error: second.error ?? { message: "Onbekende fout." } };
       }
       const row = second.data as ClientRowWithPreviewMeta;
-      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+      if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
       const { preview_secret: _ps, status: _st, ...rest } = row;
@@ -111,21 +118,21 @@ async function fetchConceptDraftSiteRow(
           "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, webshop_enabled, preview_secret, status",
         )
         .eq("subfolder_slug", slug)
-        .eq("status", "draft")
+        .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
         .maybeSingle();
       if (second.error && isPostgrestUnknownColumnError(second.error, "webshop_enabled")) {
         second = await supabase
           .from("clients")
           .select("site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, preview_secret, status")
           .eq("subfolder_slug", slug)
-          .eq("status", "draft")
+          .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
           .maybeSingle();
       }
       if (second.error || !second.data) {
         return { data: null, error: second.error ?? { message: "Onbekende fout." } };
       }
       const row = second.data as ClientRowWithPreviewMeta & { webshop_enabled?: boolean };
-      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+      if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
       const { preview_secret: _ps2, status: _st2, ...rest2 } = row;
@@ -144,13 +151,13 @@ async function fetchConceptDraftSiteRow(
         .from("clients")
         .select("site_data_json, name, generation_package, draft_snapshot_id, preview_secret, status")
         .eq("subfolder_slug", slug)
-        .eq("status", "draft")
+        .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
         .maybeSingle();
       if (second.error || !second.data) {
         return { data: null, error: second.error ?? { message: "Onbekende fout." } };
       }
       const row = second.data as ClientRowWithPreviewMeta;
-      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+      if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
       const { preview_secret: _ps3, status: _st3, ...rest3 } = row;
@@ -170,21 +177,21 @@ async function fetchConceptDraftSiteRow(
         .from("clients")
         .select("site_data_json, name, draft_snapshot_id, preview_secret, status")
         .eq("subfolder_slug", slug)
-        .eq("status", "draft")
+        .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
         .maybeSingle();
       if (second.error && isPostgrestUnknownColumnError(second.error, "draft_snapshot_id")) {
         second = await supabase
           .from("clients")
           .select("site_data_json, name, preview_secret, status")
           .eq("subfolder_slug", slug)
-          .eq("status", "draft")
+          .in("status", [...SITE_PREVIEW_TOKEN_STATUSES])
           .maybeSingle();
       }
       if (second.error || !second.data) {
         return { data: null, error: second.error ?? { message: "Onbekende fout." } };
       }
       const row = second.data as ClientRowWithPreviewMeta;
-      if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+      if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
       const { preview_secret: _ps4, status: _st4, ...rest4 } = row;
@@ -206,7 +213,7 @@ async function fetchConceptDraftSiteRow(
     }
 
     const row = data as ClientRowWithPreviewMeta;
-    if (row.status !== "draft" || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
+    if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
       return { data: null, error: null };
     }
     const { preview_secret: _ps5, status: _st5, ...rest5 } = row;
@@ -416,7 +423,7 @@ async function fetchActiveClientRow(
 }
 
 /**
- * Publieke site (`status = active`) óf **concept** met geldige `?token=` (zelfde routes als live, niet indexeerbaar).
+ * Publieke site (`status = active`) óf **concept/gepauzeerd** met geldige `?token=` (zelfde routes als live, niet indexeerbaar).
  * Server-side met service role; fallback anon als key ontbreekt.
  *
  * Wrapped in `cache()` zodat `generateMetadata` + page in dezelfde request **één** Supabase-roundtrip doen.

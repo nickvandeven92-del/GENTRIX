@@ -7,7 +7,7 @@ export type ClientSiteUrlsForAdmin = {
   status: ClientStatus;
   /** Absolute URL naar definitieve live site (/site/{slug}). */
   liveAbsolute: string;
-  /** Alleen bij concept + preview_secret: URL met token. */
+  /** Bij concept of gepauzeerd + preview_secret: URL met token. */
   previewAbsolute: string | null;
 };
 
@@ -46,11 +46,12 @@ export async function getClientSiteUrlsForAdminDossier(
 
     const status = data.status as ClientStatus;
     let secret = (data as { preview_secret?: string | null }).preview_secret?.trim() ?? null;
-    if (status === "draft" && !secret) {
+    const useConceptPreviewUrl = status === "draft" || status === "paused";
+    if (useConceptPreviewUrl && !secret) {
       secret = (await ensureClientPreviewSecretBySlug(slug))?.trim() ?? null;
     }
     const previewAbsolute =
-      status === "draft" && secret
+      useConceptPreviewUrl && secret
         ? `${base}/site/${enc}?token=${encodeURIComponent(secret)}`
         : null;
 
@@ -63,8 +64,8 @@ export async function getClientSiteUrlsForAdminDossier(
 /**
  * Absolute URL voor **Site** in nieuw tabblad vanuit de admin:
  * - `active` → publieke live site `/site/{slug}`.
- * - `draft` → `/site/{slug}?token=…` wanneer `preview_secret` beschikbaar is (zelfde weergave als live).
- * - Anders → `/site/{slug}` zonder token (concept zonder secret kan “niet gevonden” geven tot secret staat).
+ * - `draft` / `paused` → `/site/{slug}?token=…` wanneer `preview_secret` beschikbaar is (deelbare conceptweergave).
+ * - Anders (o.a. `archived` of ontbrekende kolom) → `/site/{slug}` zonder token (kan 404 zijn).
  */
 export async function resolveSiteOpenAbsoluteUrlForAdmin(
   slug: string,
