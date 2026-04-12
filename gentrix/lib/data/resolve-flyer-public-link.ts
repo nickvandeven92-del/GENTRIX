@@ -1,3 +1,4 @@
+import { ensureClientPreviewSecretBySlug } from "@/lib/data/ensure-client-preview-secret";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import type { ClientStatus } from "@/lib/types/database";
@@ -23,9 +24,10 @@ export async function resolveFlyerPublicLink(rawToken: string): Promise<FlyerPub
 
   try {
     const supabase = createServiceRoleClient();
+    /** Alleen slug + status: live-clients hebben geen preview_secret nodig; scheelt fouten bij kolom-/schema-varianten. */
     const { data, error } = await supabase
       .from("clients")
-      .select("subfolder_slug, status, preview_secret")
+      .select("subfolder_slug, status")
       .eq("flyer_public_token", token)
       .maybeSingle();
 
@@ -42,10 +44,21 @@ export async function resolveFlyerPublicLink(rawToken: string): Promise<FlyerPub
       return { kind: "live", slug };
     }
 
-    const secret = (data as { preview_secret?: string | null }).preview_secret?.trim() ?? "";
-    if (!secret) {
+    const { data: secRow, error: secErr } = await supabase
+      .from("clients")
+      .select("preview_secret")
+      .eq("subfolder_slug", slug)
+      .maybeSingle();
+
+    if (secErr && isPostgrestUnknownColumnError(secErr, "preview_secret")) {
       return null;
     }
+
+    let secret = (secRow as { preview_secret?: string | null } | null)?.preview_secret?.trim() ?? "";
+    if (!secret) {
+      secret = (await ensureClientPreviewSecretBySlug(slug))?.trim() ?? "";
+    }
+    if (!secret) return null;
     return { kind: "concept", slug, previewSecret: secret };
   } catch {
     return null;
