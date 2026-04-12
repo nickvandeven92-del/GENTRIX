@@ -6,10 +6,10 @@ import {
   resolveFlyerPublicLink,
   type FlyerPublicLinkResolution,
 } from "@/lib/data/resolve-flyer-public-link";
-
-type FlyerResolved = NonNullable<FlyerPublicLinkResolution>;
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
+
+type FlyerResolved = NonNullable<FlyerPublicLinkResolution>;
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -50,9 +50,10 @@ export async function GET(request: NextRequest, context: Ctx) {
   }
 
   const supabase = createServiceRoleClient();
+  /** Geen `preview_secret` in deze select: kolom kan in oudere DB ontbreken — dan geen harde 500. */
   const { data: row, error: rowErr } = await supabase
     .from("clients")
-    .select("id, subfolder_slug, status, preview_secret")
+    .select("id, subfolder_slug, status")
     .eq("flyer_public_token", token)
     .maybeSingle();
 
@@ -82,7 +83,6 @@ export async function GET(request: NextRequest, context: Ctx) {
     .trim()
     .toLowerCase();
 
-  /** Live: altijd door — ook als resolve eerder faalde (status-huisstijl, edge). */
   if (statusNorm === "active" && slug) {
     return respondWithResolution(request, token, { kind: "live", slug });
   }
@@ -96,14 +96,20 @@ export async function GET(request: NextRequest, context: Ctx) {
     }
   }
 
-  const hasPreview = Boolean(String((row as { preview_secret?: string | null }).preview_secret ?? "").trim());
+  let previewColumnMissing = false;
+  if (clientId) {
+    const { error: colErr } = await supabase.from("clients").select("preview_secret").eq("id", clientId).maybeSingle();
+    previewColumnMissing = Boolean(colErr && isPostgrestUnknownColumnError(colErr, "preview_secret"));
+  }
 
   return json404(
-    "NIET_BEREIKBAAR",
-    "Deze link kan nu niet worden geopend: er is geen geldige preview-token voor dit concept. Controleer in Supabase of `preview_secret` op deze klant staat en of `SUPABASE_SERVICE_ROLE_KEY` updates op `clients` mag doen.",
+    previewColumnMissing ? "PREVIEW_SECRET_ONTBREEKT" : "NIET_BEREIKBAAR",
+    previewColumnMissing
+      ? "Kolom `preview_secret` ontbreekt op `clients`. Voer in Supabase de migratie uit: `supabase/migrations/20260410150000_clients_preview_secret.sql` (of: alter table … add column preview_secret text)."
+      : "Deze link kan nu niet worden geopend: er is geen geldige preview-token voor dit concept. Sla opnieuw op vanuit de site-studio of controleer `SUPABASE_SERVICE_ROLE_KEY`.",
     {
       clientStatus: (row as { status: string }).status,
-      previewSecretPresent: hasPreview,
+      previewSecretColumnMissing: previewColumnMissing,
     },
   );
 }
