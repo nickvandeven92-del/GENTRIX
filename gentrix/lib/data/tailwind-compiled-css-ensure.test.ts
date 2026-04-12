@@ -10,7 +10,7 @@ const minimalTailwindPublished = (overrides?: Partial<Extract<PublishedSitePaylo
   ({
     kind: "tailwind" as const,
     clientName: "Test BV",
-    generationPackage: "studio_v1",
+    generationPackage: "studio",
     sections: [
       {
         id: "hero",
@@ -39,10 +39,21 @@ describe("ensureTailwindCompiledCssOnPublishedPayload", () => {
     const legacy = {
       kind: "legacy" as const,
       clientName: "X",
-      generationPackage: "studio_v1" as const,
+      generationPackage: "studio" as const,
       site: {
         meta: { title: "T", description: "D" },
-        sections: [],
+        theme: {
+          primary: "#000000",
+          background: "#ffffff",
+          foreground: "#111111",
+        },
+        sections: [
+          {
+            id: "hero",
+            type: "hero" as const,
+            headline: "Hallo",
+          },
+        ],
       },
     };
     const out = await ensureTailwindCompiledCssOnPublishedPayload(legacy, "T");

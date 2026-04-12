@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { safePostAuthRedirectPath } from "@/lib/auth/safe-same-origin-next-path";
 
 function isLoginPath(pathname: string) {
   return pathname === "/login" || pathname.startsWith("/login/");
@@ -87,18 +88,27 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!needsMfa && pathname === "/login") {
-      const next = request.nextUrl.searchParams.get("next") ?? "/home";
-      if (!next.startsWith("/")) {
+      const rawNext = request.nextUrl.searchParams.get("next");
+      if (rawNext !== null && rawNext.trim() === "") {
         return supabaseResponse;
       }
+      if (rawNext != null && rawNext.trim() !== "" && !rawNext.trim().startsWith("/")) {
+        return supabaseResponse;
+      }
+      const next = safePostAuthRedirectPath(rawNext, request.url);
       return NextResponse.redirect(new URL(next, request.url));
     }
 
     if (!needsMfa && pathname === "/login/mfa") {
-      const next = request.nextUrl.searchParams.get("next") ?? "/home";
-      if (next.startsWith("/")) {
-        return NextResponse.redirect(new URL(next, request.url));
+      const rawNext = request.nextUrl.searchParams.get("next");
+      if (rawNext !== null && rawNext.trim() === "") {
+        return supabaseResponse;
       }
+      if (rawNext != null && rawNext.trim() !== "" && !rawNext.trim().startsWith("/")) {
+        return supabaseResponse;
+      }
+      const next = safePostAuthRedirectPath(rawNext, request.url);
+      return NextResponse.redirect(new URL(next, request.url));
     }
   }
 

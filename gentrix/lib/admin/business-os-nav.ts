@@ -61,7 +61,7 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
     children: [
       { type: "item", label: "Klanten", href: "/admin/clients", icon: Users },
       { type: "item", label: "Websites", href: "/admin/sites", icon: Globe },
-      { type: "item", label: "Flyer & QR", href: "/admin/clients", icon: QrCode },
+      { type: "item", label: "Flyer & QR", href: "/admin/flyers", icon: QrCode },
     ],
   },
   {
@@ -83,8 +83,8 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
 export function businessOsNavItemIsActive(pathname: string, href: string, label?: string): boolean {
   const p = pathname.split("?")[0] ?? pathname;
   if (href === "/admin/ops") return p === "/admin/ops" || p === "/admin/ops/";
-  if (label === "Flyer & QR" && href === "/admin/clients") {
-    return /\/admin\/clients\/[^/]+\/flyer/.test(p);
+  if (href === "/admin/flyers") {
+    return p === "/admin/flyers" || p === "/admin/flyers/" || /\/admin\/clients\/[^/]+\/flyer(\/|$)/.test(p);
   }
   if (href === "/admin/clients") {
     return (

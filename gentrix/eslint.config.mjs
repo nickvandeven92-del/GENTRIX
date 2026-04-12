@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "**/dist/**",
     "next-env.d.ts",
     // Oude AI-laag; niet meer in tsconfig — geen lint voor gebroken legacy-imports.
     "lib/ai/_archive/**",

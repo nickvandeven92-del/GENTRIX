@@ -35,6 +35,7 @@ export function getActiveHubSection(pathname: string): HubSectionId {
 
   if (p.startsWith("/admin/invoices") || p.startsWith("/admin/quotes") || p.startsWith("/admin/ops")) return "dashboard";
   if (p.startsWith("/admin/clients")) return "klanten";
+  if (p.startsWith("/admin/flyers")) return "klanten";
   if (p.startsWith("/admin/search")) return "klanten";
 
   if (p.startsWith("/admin/packages")) return "websites";
@@ -94,10 +95,11 @@ export const SUB_NAV: Record<HubSectionId, { title: string; items: SubNavItem[] 
           (/^\/admin\/clients\/[^/]+/.test(path) && !/\/flyer(\/|$)/.test(path)),
       },
       {
-        href: "/admin/clients",
+        href: "/admin/flyers",
         label: "Flyer & QR",
-        description: "Per klant: tab Flyer & QR in het dossier",
-        isActive: (path) => /\/admin\/clients\/[^/]+\/flyer/.test(path),
+        description: "QR-link, PDF en scans per klant",
+        isActive: (path) =>
+          path.startsWith("/admin/flyers") || /\/admin\/clients\/[^/]+\/flyer(\/|$)/.test(path),
       },
       {
         href: "/admin/search",
