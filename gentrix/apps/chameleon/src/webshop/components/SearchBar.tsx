@@ -53,7 +53,7 @@ export function SearchBar() {
       )}
       {isFocused && query.length >= 2 && results.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-lg shadow-lg z-50 p-4">
-          <p className="text-sm text-muted-foreground text-center">Geen resultaten voor "{query}"</p>
+          <p className="text-sm text-muted-foreground text-center">Geen resultaten voor {`\u201c${query}\u201d`}</p>
         </div>
       )}
     </div>

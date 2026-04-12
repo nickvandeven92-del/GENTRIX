@@ -4,10 +4,10 @@ import { DayOff } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { millisPrefixedId } from '@/lib/local-id';
 
 export default function DashboardDaysOff() {
   const { employees, updateEmployee } = useBusiness();
@@ -18,7 +18,7 @@ export default function DashboardDaysOff() {
 
   const addDayOff = () => {
     const today = new Date().toISOString().split('T')[0];
-    const newOff: DayOff = { id: `off-${Date.now()}`, type: 'personal', startDate: today, endDate: today, reason: '' };
+    const newOff: DayOff = { id: millisPrefixedId('off'), type: 'personal', startDate: today, endDate: today, reason: '' };
     updateEmployee(employee.id, { daysOff: [...employee.daysOff, newOff] });
   };
 

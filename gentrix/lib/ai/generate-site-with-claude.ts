@@ -1537,7 +1537,8 @@ async function prepareGenerateSiteClaudeCall(
     },
   };
 
-  const { referenceStyleUrl: _omitRefUrl, ...promptOptsForBuild } = mergedPromptOptions;
+  const { referenceStyleUrl, ...promptOptsForBuild } = mergedPromptOptions;
+  void referenceStyleUrl;
   const corePrompt = buildWebsiteGenerationUserPrompt(
     businessName,
     description,

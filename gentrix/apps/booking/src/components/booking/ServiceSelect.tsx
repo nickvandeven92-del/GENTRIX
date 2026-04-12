@@ -1,6 +1,6 @@
 import { Service } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Clock, DollarSign } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface Props {
   services: Service[];

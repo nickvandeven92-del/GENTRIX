@@ -110,7 +110,7 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
   useEffect(() => {
     seededRef.current = false;
     knownIdsRef.current = new Set();
-    setNotice(null);
+    queueMicrotask(() => setNotice(null));
   }, [slug, appointmentsEnabled]);
 
   useEffect(() => {

@@ -24,18 +24,16 @@ type SalesOsShellProps = {
 export function SalesOsShell({ children }: SalesOsShellProps) {
   const pathname = usePathname() ?? "";
   const fullBleedWorkspace = isFullBleedWorkspacePath(pathname);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY);
-      if (v === "1") setCollapsed(true);
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const onToggleCollapse = useCallback(() => {
     setCollapsed((c) => {

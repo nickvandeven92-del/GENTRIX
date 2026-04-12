@@ -59,8 +59,9 @@ function openingHintForColumn(col: TZDate, settings: BookingSettings): string {
 export function PortalAppointmentPlanning({ settings, appointments }: Props) {
   const tz = settings.timeZone;
   const [weekOffset, setWeekOffset] = useState(0);
+  const [weekAnchorMs] = useState(() => Date.now());
 
-  const monday0 = useMemo(() => mondayMidnightOfWeekContaining(tz, Date.now()), [tz]);
+  const monday0 = useMemo(() => mondayMidnightOfWeekContaining(tz, weekAnchorMs), [tz, weekAnchorMs]);
   const weekStart = useMemo(
     () => addDays(monday0, weekOffset * 7) as TZDate,
     [monday0, weekOffset],

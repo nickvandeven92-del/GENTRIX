@@ -1,8 +1,7 @@
 import { useBusiness } from '@/context/BusinessContext';
 import { Card } from '@/components/ui/card';
-import { CalendarDays, Users, Scissors, TrendingUp, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
+import type { LucideIcon } from 'lucide-react';
+import { CalendarDays, Users, Scissors, TrendingUp } from 'lucide-react';
 
 export default function DashboardOverview() {
   const { appointments, employees, services, business } = useBusiness();
@@ -82,7 +81,7 @@ export default function DashboardOverview() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
+function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
   return (
     <Card className="p-4 flex items-center gap-4">
       <div className="w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center shrink-0">

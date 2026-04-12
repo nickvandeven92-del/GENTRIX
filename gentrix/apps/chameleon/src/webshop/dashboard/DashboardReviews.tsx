@@ -1,8 +1,7 @@
 import { useWebshop } from '@/webshop';
 import { StarRating } from '../components/StarRating';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Check, X, Trash2 } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 
 export default function DashboardReviews() {
   const { state, approveReview, deleteReview } = useWebshop();

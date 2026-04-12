@@ -63,8 +63,6 @@ export function ResizableEditorPanels({
 }: ResizableEditorPanelsProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const storageHydrated = useRef(false);
-  const storageKeyRef = useRef(storageKey);
-  storageKeyRef.current = storageKey;
   const [hostWidth, setHostWidth] = useState(0);
   const [splitLayout, setSplitLayout] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarPx);
@@ -101,7 +99,9 @@ export function ResizableEditorPanels({
 
   useEffect(() => {
     if (hostWidth <= 0) return;
-    setSidebarWidth((w) => (w === clamp(w) ? w : clamp(w)));
+    queueMicrotask(() => {
+      setSidebarWidth((w) => (w === clamp(w) ? w : clamp(w)));
+    });
   }, [hostWidth, clamp]);
 
   useEffect(() => {
@@ -109,23 +109,26 @@ export function ResizableEditorPanels({
     storageHydrated.current = true;
     if (typeof window === "undefined") return;
     try {
-      const raw = window.localStorage.getItem(storageKeyRef.current);
+      const raw = window.localStorage.getItem(storageKey);
       if (raw == null) return;
       const n = Number.parseInt(raw, 10);
       if (!Number.isFinite(n)) return;
-      setSidebarWidth(clamp(n, hostWidth));
+      queueMicrotask(() => setSidebarWidth(clamp(n, hostWidth)));
     } catch {
       /* ignore */
     }
-  }, [hostWidth, clamp]);
+  }, [hostWidth, clamp, storageKey]);
 
-  const persist = useCallback((w: number) => {
-    try {
-      window.localStorage.setItem(storageKeyRef.current, String(Math.round(w)));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const persist = useCallback(
+    (w: number) => {
+      try {
+        window.localStorage.setItem(storageKey, String(Math.round(w)));
+      } catch {
+        /* ignore */
+      }
+    },
+    [storageKey],
+  );
 
   const { min: effMinSidebar, max: effMaxSidebar } = boundsForHost(
     hostWidth,

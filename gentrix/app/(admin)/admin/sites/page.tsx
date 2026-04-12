@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AdminSitesTable } from "@/components/admin/sites-table";
 import { resolveSiteOpenAbsoluteUrlForAdmin } from "@/lib/data/client-preview-urls";
 import { listAdminClients, type AdminClientRow } from "@/lib/data/list-admin-clients";
@@ -26,9 +27,9 @@ export default async function AdminSitesPage() {
           Snel naar de HTML-editor of de site in een <strong className="font-medium text-zinc-800 dark:text-zinc-200">nieuw tabblad</strong>{" "}
           (<code className="rounded bg-zinc-100 px-1 font-mono text-[11px] dark:bg-zinc-800">/site/…</code>
           , concept met token waar van toepassing). Het volledige dossier (commercie, domein) staat onder{" "}
-          <a href="/admin/clients" className="font-medium text-blue-800 underline dark:text-blue-400">
+          <Link href="/admin/clients" className="font-medium text-blue-800 underline dark:text-blue-400">
             Klanten
-          </a>
+          </Link>
           .
         </p>
       </div>

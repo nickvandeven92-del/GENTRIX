@@ -1,7 +1,4 @@
-import { generateLogoCandidatesWithClaude } from "@/lib/ai/generate-logo-candidates";
-import { pickBestCandidateId, scoreLogoCandidates } from "@/lib/ai/score-logo-candidates";
-import { renderFinalLogoSet } from "@/lib/branding/render-logo-svg";
-import { generatedLogoSetSchema, type GeneratedLogoSet } from "@/types/logo";
+import type { GeneratedLogoSet } from "@/types/logo";
 
 function minifySvgOneLine(svg: string): string {
   return svg.replace(/\s+/g, " ").trim();
@@ -59,10 +56,11 @@ Gebruiknotities: ${logo.metadata.usageNotes.join(" ")}`;
  * De functie heeft de oude prompt-pipeline nodig (buildBrandIdentity, enz.).
  * Herbouw deze wanneer de nieuwe pipeline klaar is.
  */
-export async function runPremiumLogoPipeline(_input: {
+export async function runPremiumLogoPipeline(input: {
   businessName: string;
   description: string;
   [key: string]: unknown;
 }): Promise<{ ok: true; data: GeneratedLogoSet } | { ok: false; error: string }> {
+  void input;
   return { ok: false, error: "Logo-pipeline uitgeschakeld (AI engine reset — nog niet herbouwd)." };
 }

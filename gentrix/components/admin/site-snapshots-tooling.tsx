@@ -260,8 +260,10 @@ function SnapshotRow({
   const [notes, setNotes] = useState(row.notes ?? "");
 
   useEffect(() => {
-    setLabel(row.label ?? "");
-    setNotes(row.notes ?? "");
+    queueMicrotask(() => {
+      setLabel(row.label ?? "");
+      setNotes(row.notes ?? "");
+    });
   }, [row.label, row.notes]);
 
   return (

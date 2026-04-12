@@ -35,7 +35,6 @@ export function ReactPublishedSiteView({
   visibility = "public",
   publishedSlug,
   embedded = false,
-  appointmentsEnabled = true,
   webshopEnabled = true,
 }: ReactPublishedSiteViewProps) {
   const sections = (() => {

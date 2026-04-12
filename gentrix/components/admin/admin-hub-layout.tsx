@@ -7,7 +7,6 @@ import { ChevronDown, Globe2, LayoutDashboard, Menu, Settings, Users, X } from "
 import {
   BUSINESS_OS_SIDEBAR_NAV,
   businessOsDefaultOpenGroupIds,
-  businessOsGroupHasActive,
   businessOsNavItemIsActive,
   type BusinessOsNavGroup,
 } from "@/lib/admin/business-os-nav";
@@ -58,10 +57,12 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => defaultOpen);
 
   useEffect(() => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      for (const id of businessOsDefaultOpenGroupIds(pathname)) next.add(id);
-      return next;
+    queueMicrotask(() => {
+      setOpenGroups((prev) => {
+        const next = new Set(prev);
+        for (const id of businessOsDefaultOpenGroupIds(pathname)) next.add(id);
+        return next;
+      });
     });
   }, [pathname]);
 

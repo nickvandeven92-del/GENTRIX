@@ -10,26 +10,58 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 
+function createDraftProduct(categoryId: string): Product {
+  const ts = Date.now();
+  const iso = new Date(ts).toISOString();
+  return {
+    id: `prod-${ts}`,
+    slug: '',
+    name: '',
+    description: '',
+    shortDescription: '',
+    images: [''],
+    categoryId: categoryId || '',
+    tags: [],
+    variantOptions: [{ name: 'Maat', values: ['M'] }],
+    variants: [
+      {
+        id: `v-${ts}`,
+        options: { Maat: 'M' },
+        price: 0,
+        stock: 0,
+        reservedStock: 0,
+        sku: '',
+        trackInventory: true,
+        allowBackorder: false,
+      },
+    ],
+    basePrice: 0,
+    totalStock: 0,
+    status: 'draft',
+    active: false,
+    trackInventory: true,
+    allowBackorder: false,
+    lowStockThreshold: 5,
+    createdAt: iso,
+    updatedAt: iso,
+  };
+}
+
+function newVariantRowId(variantIndex: number): string {
+  return `v-${Date.now()}-${variantIndex}`;
+}
+
 export default function DashboardProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { state, getProductById, updateProduct, addProduct, adjustStock } = useWebshop();
+  const { state, getProductById, updateProduct, addProduct } = useWebshop();
   const isNew = id === 'new';
 
   const existing = isNew ? null : getProductById(id!);
 
-  const [form, setForm] = useState<Product>(existing ?? {
-    id: `prod-${Date.now()}`, slug: '', name: '', description: '', shortDescription: '',
-    images: [''], categoryId: state.categories[0]?.id || '', tags: [],
-    variantOptions: [{ name: 'Maat', values: ['M'] }],
-    variants: [{
-      id: `v-${Date.now()}`, options: { Maat: 'M' }, price: 0, stock: 0,
-      reservedStock: 0, sku: '', trackInventory: true, allowBackorder: false,
-    }],
-    basePrice: 0, totalStock: 0, status: 'draft', active: false,
-    trackInventory: true, allowBackorder: false, lowStockThreshold: 5,
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-  });
+  const [form, setForm] = useState<Product>(() =>
+    existing ?? createDraftProduct(state.categories[0]?.id || ''),
+  );
 
   const updateField = <K extends keyof Product>(key: K, value: Product[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -44,7 +76,7 @@ export default function DashboardProductEdit() {
     setForm(prev => ({
       ...prev,
       variants: [...prev.variants, {
-        id: `v-${Date.now()}-${prev.variants.length}`,
+        id: newVariantRowId(prev.variants.length),
         options: Object.fromEntries(prev.variantOptions.map(o => [o.name, o.values[0] || ''])),
         price: prev.basePrice, stock: 0, reservedStock: 0, sku: '',
         trackInventory: true, allowBackorder: false,

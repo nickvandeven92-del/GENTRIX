@@ -5,7 +5,6 @@ import {
   projectSnapshotSchema,
   tailwindSectionsPayloadToProjectSnapshot,
   projectSnapshotToTailwindSectionsPayload,
-  type GenerationContext,
   type ProjectSnapshot,
   type ProjectSnapshotFromTailwindOptions,
 } from "@/lib/site/project-snapshot-schema";

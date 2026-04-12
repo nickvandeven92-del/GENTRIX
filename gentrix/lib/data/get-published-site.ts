@@ -84,7 +84,9 @@ async function fetchConceptDraftSiteRow(
       if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
-      const { preview_secret: _ps0, status: _st0, ...rest0 } = row;
+      const { preview_secret: stripPs0, status: stripSt0, ...rest0 } = row;
+      void stripPs0;
+      void stripSt0;
       return { data: rest0 as ActiveClientRow, error: null };
     }
 
@@ -104,7 +106,9 @@ async function fetchConceptDraftSiteRow(
       if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
-      const { preview_secret: _ps, status: _st, ...rest } = row;
+      const { preview_secret: stripPs, status: stripSt, ...rest } = row;
+      void stripPs;
+      void stripSt;
       return {
         data: { ...(rest as ActiveClientRow), webshop_enabled: false },
         error: null,
@@ -135,7 +139,9 @@ async function fetchConceptDraftSiteRow(
       if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
-      const { preview_secret: _ps2, status: _st2, ...rest2 } = row;
+      const { preview_secret: stripPs2, status: stripSt2, ...rest2 } = row;
+      void stripPs2;
+      void stripSt2;
       return {
         data: {
           ...(rest2 as ActiveClientRow),
@@ -160,7 +166,9 @@ async function fetchConceptDraftSiteRow(
       if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
-      const { preview_secret: _ps3, status: _st3, ...rest3 } = row;
+      const { preview_secret: stripPs3, status: stripSt3, ...rest3 } = row;
+      void stripPs3;
+      void stripSt3;
       return {
         data: {
           ...(rest3 as ActiveClientRow),
@@ -194,7 +202,9 @@ async function fetchConceptDraftSiteRow(
       if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
         return { data: null, error: null };
       }
-      const { preview_secret: _ps4, status: _st4, ...rest4 } = row;
+      const { preview_secret: stripPs4, status: stripSt4, ...rest4 } = row;
+      void stripPs4;
+      void stripSt4;
       return {
         data: {
           ...(rest4 as ActiveClientRow),
@@ -216,7 +226,9 @@ async function fetchConceptDraftSiteRow(
     if (!rowAllowsSitePreviewToken(row.status) || !previewSecretsEqual(row.preview_secret ?? null, trimmed)) {
       return { data: null, error: null };
     }
-    const { preview_secret: _ps5, status: _st5, ...rest5 } = row;
+    const { preview_secret: stripPs5, status: stripSt5, ...rest5 } = row;
+    void stripPs5;
+    void stripSt5;
     return { data: rest5 as ActiveClientRow, error: null };
   } catch {
     return { data: null, error: null };

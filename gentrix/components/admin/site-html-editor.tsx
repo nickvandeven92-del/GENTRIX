@@ -85,7 +85,7 @@ export function SiteHtmlEditor({
   );
 
   const snap = getCurrentSnapshot(hist);
-  const sections = snap?.sections ?? [];
+  const sections = useMemo(() => snap?.sections ?? [], [snap]);
   const config = snap?.config;
 
   const [status, setStatus] = useState(initialStatus);

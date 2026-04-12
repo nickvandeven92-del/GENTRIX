@@ -81,6 +81,7 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
 ];
 
 export function businessOsNavItemIsActive(pathname: string, href: string, label?: string): boolean {
+  void label;
   const p = pathname.split("?")[0] ?? pathname;
   if (href === "/admin/ops") return p === "/admin/ops" || p === "/admin/ops/";
   if (href === "/admin/flyers") {

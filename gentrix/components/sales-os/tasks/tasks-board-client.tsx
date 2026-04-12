@@ -16,7 +16,35 @@ function entityNl(t: string) {
   return m[t] ?? t;
 }
 
-function TaskLine({ t, onDone }: { t: SalesTaskRow; onDone: (id: string) => void }) {
+function TaskBoardSection({
+  title,
+  rows,
+  onComplete,
+}: {
+  title: string;
+  rows: SalesTaskRow[];
+  onComplete: (id: string) => void | Promise<void>;
+}) {
+  return (
+    <section className="rounded-lg border border-neutral-200 bg-white">
+      <div className="border-b border-neutral-200 px-4 py-2">
+        <h2 className="text-xs font-semibold uppercase text-neutral-500">{title}</h2>
+        <p className="text-[10px] text-neutral-500">{rows.length} item(s)</p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="px-4 py-6 text-center text-[12px] text-neutral-400">—</p>
+      ) : (
+        <ul className="px-4 py-1">
+          {rows.map((t) => (
+            <TaskLine key={t.id} t={t} onDone={onComplete} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function TaskLine({ t, onDone }: { t: SalesTaskRow; onDone: (id: string) => void | Promise<void> }) {
   const [busy, setBusy] = useState(false);
   return (
     <li className="flex items-center justify-between gap-3 border-b border-neutral-100 py-2">
@@ -65,34 +93,14 @@ export function TasksBoardClient({ tasks }: { tasks: SalesTaskRow[] }) {
     if (j.ok) router.refresh();
   }
 
-  function Section({ title, rows }: { title: string; rows: SalesTaskRow[] }) {
-    return (
-      <section className="rounded-lg border border-neutral-200 bg-white">
-        <div className="border-b border-neutral-200 px-4 py-2">
-          <h2 className="text-xs font-semibold uppercase text-neutral-500">{title}</h2>
-          <p className="text-[10px] text-neutral-500">{rows.length} item(s)</p>
-        </div>
-        {rows.length === 0 ? (
-          <p className="px-4 py-6 text-center text-[12px] text-neutral-400">—</p>
-        ) : (
-          <ul className="px-4 py-1">
-            {rows.map((t) => (
-              <TaskLine key={t.id} t={t} onDone={complete} />
-            ))}
-          </ul>
-        )}
-      </section>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <Section title="Te laat" rows={overdue} />
-      <Section title="Vandaag" rows={today} />
-      <Section title="Deze week" rows={week} />
-      <Section title="Later / geen deadline" rows={later} />
-      <Section title="Automatisch / regel / systeem (open)" rows={auto} />
-      <Section title="Gedelegeerd (eigenaar ≠ jij — nog niet geïmplementeerd)" rows={delegated} />
+      <TaskBoardSection title="Te laat" rows={overdue} onComplete={complete} />
+      <TaskBoardSection title="Vandaag" rows={today} onComplete={complete} />
+      <TaskBoardSection title="Deze week" rows={week} onComplete={complete} />
+      <TaskBoardSection title="Later / geen deadline" rows={later} onComplete={complete} />
+      <TaskBoardSection title="Automatisch / regel / systeem (open)" rows={auto} onComplete={complete} />
+      <TaskBoardSection title="Gedelegeerd (eigenaar ≠ jij — nog niet geïmplementeerd)" rows={delegated} onComplete={complete} />
       <section className={cn("rounded-lg border border-neutral-200 bg-white")}>
         <div className="border-b border-neutral-200 px-4 py-2">
           <h2 className="text-xs font-semibold uppercase text-neutral-500">Recent afgerond</h2>

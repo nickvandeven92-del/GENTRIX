@@ -21,7 +21,7 @@ export function PublicBookingForm({ slug, businessName }: Props) {
   useEffect(() => {
     if (b.servicesLoading || didInitStep.current) return;
     didInitStep.current = true;
-    if (b.requiresTreatmentChoice) setStep("service");
+    if (b.requiresTreatmentChoice) queueMicrotask(() => setStep("service"));
   }, [b.servicesLoading, b.requiresTreatmentChoice]);
 
   const flowSteps = useMemo(() => {

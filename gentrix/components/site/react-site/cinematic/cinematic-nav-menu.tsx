@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import type { ResolveHref } from "./types";
 
 type NavSection = Extract<ReactSiteSection, { type: "nav_overlay" }>;
-type NavItem = NavSection["props"]["links"][number];
 
 export type CinematicNavVariant = "floating" | "bar_light" | "bar_dark";
 

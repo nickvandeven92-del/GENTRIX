@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useWebshop } from '../context/WebshopContext';
 
 interface ProductFiltersProps {

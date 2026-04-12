@@ -158,7 +158,9 @@ export const masterPromptThemeSchema = z
   .transform((row) => {
     const vibe = coerceThemeVibeInput(row.vibe);
     const typographyStyle = coerceThemeTypographyInput(row.typographyStyle);
-    const { vibe: _v, typographyStyle: _t, ...rest } = row;
+    const { vibe: rowVibe, typographyStyle: rowTypography, ...rest } = row;
+    void rowVibe;
+    void rowTypography;
     return {
       ...rest,
       ...(vibe !== undefined ? { vibe } : {}),

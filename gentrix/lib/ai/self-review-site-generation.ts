@@ -295,6 +295,8 @@ export async function applySelfReviewToGeneratedPage(options: {
     designContract,
     referenceSiteSnapshot,
   } = options;
+  void designContract;
+  void referenceSiteSnapshot;
 
   if (!isSiteSelfReviewEnabled() || preserveLayoutUpgrade) {
     return { data: draft, ran: false, usedRefined: false };

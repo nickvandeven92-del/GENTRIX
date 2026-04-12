@@ -61,7 +61,7 @@ export function BookingConfirm({ service, employee, date, time, customer, onConf
             <span>{customer.phone}</span>
           </div>
           {customer.notes && (
-            <p className="text-sm text-muted-foreground italic">"{customer.notes}"</p>
+            <p className="text-sm text-muted-foreground italic">{`\u201c${customer.notes}\u201d`}</p>
           )}
         </div>
 

@@ -8,7 +8,7 @@ self.addEventListener("push", (event) => {
       const j = event.data.json();
       if (j && typeof j === "object") payload = { ...payload, ...j };
     }
-  } catch (_) {
+  } catch {
     /* ignore */
   }
   const url = typeof payload.url === "string" ? payload.url : self.location.origin;
@@ -95,7 +95,7 @@ async function staticCacheFirst(request) {
     const res = await fetch(request);
     if (res.ok) await cache.put(request, res.clone());
     return res;
-  } catch (e) {
+  } catch {
     return cached ?? new Response("Offline", { status: 503, statusText: "Service Unavailable" });
   }
 }

@@ -32,7 +32,7 @@ export function ConceptFlyerExperience({
   useEffect(() => {
     try {
       if (sessionStorage.getItem(storageKey) === "1") {
-        setStep(-1);
+        queueMicrotask(() => setStep(-1));
       }
     } catch {
       /* ignore */

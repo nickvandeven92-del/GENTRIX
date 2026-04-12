@@ -85,7 +85,7 @@ export type SearchCompaniesOptions = {
  * @see https://developers.kvk.nl/apis/zoeken
  */
 export async function searchCompanies(query: string, options?: SearchCompaniesOptions): Promise<KvkZoekenResponse> {
-  const cfg = getConfig();
+  getConfig();
   const params = new URLSearchParams();
   const q = query.trim();
   if (q) params.set("naam", q);

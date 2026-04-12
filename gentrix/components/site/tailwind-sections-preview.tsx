@@ -131,12 +131,12 @@ export function TailwindSectionsPreview({
   );
 
   useEffect(() => {
-    setMeasuredHeight(null);
+    queueMicrotask(() => setMeasuredHeight(null));
   }, [srcDoc]);
 
   useLayoutEffect(() => {
     if (!autoResizeFromPostMessage || documentHeightMode === "full") {
-      setPanelClipPx(null);
+      queueMicrotask(() => setPanelClipPx(null));
       return;
     }
     const el = containerRef.current;

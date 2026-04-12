@@ -74,7 +74,7 @@ export function DealDetailClient({ deal }: { deal: SalesDealRow }) {
 
     setSaveError(null);
 
-  }, [deal.updated_at, deal.id]);
+  }, [deal.updated_at, deal.id, deal.next_step, deal.next_step_due_at, deal.lost_reason]);
 
 
 

@@ -20,7 +20,9 @@ type QuoteHead = Omit<QuoteDetail, "items" | "amount">;
 const ta = "mt-1 w-full rounded-md border border-neutral-200 px-3 py-2 text-sm";
 
 function stripItems(q: QuoteDetail): QuoteHead {
-  const { items: _i, amount: _a, ...rest } = q;
+  const { items, amount, ...rest } = q;
+  void items;
+  void amount;
   return rest;
 }
 

@@ -48,8 +48,6 @@ export function buildOpsPrioritySignals(input: {
 }): OpsPrioritySignal[] {
   const signals: OpsPrioritySignal[] = [];
 
-  const clientById = new Map(input.clients.map((c) => [c.id, c]));
-
   const highChurnClients = input.clients.filter((c) => getChurnRiskLevel(c) === "high");
   if (highChurnClients.length > 0) {
     const n = highChurnClients.length;

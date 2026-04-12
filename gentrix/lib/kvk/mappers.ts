@@ -117,7 +117,6 @@ export function mapBasisprofielToProfile(
 ): KvkMappedProfile {
   const kvkNummer = bp.kvkNummer?.trim() ?? "";
   const naam = bp.naam?.trim() ?? bp.statutaireNaam?.trim() ?? "";
-  const handelsnamen = (bp.handelsnamen ?? []).map((h) => h.naam?.trim()).filter(Boolean) as string[];
   const rechtsvorm =
     bp._embedded?.eigenaar?.rechtsvorm?.trim() ??
     bp._embedded?.eigenaar?.uitgebreideRechtsvorm?.trim() ??

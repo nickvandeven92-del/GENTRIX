@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useWebshop } from '@/webshop';
-import { isLowStock, isOutOfStock, getVariantLabel, getAvailableStock } from '@/webshop/types';
+import { getVariantLabel, getAvailableStock } from '@/webshop/types';
 import type { StockMutationType } from '@/webshop/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, AlertTriangle, ArrowUpCircle, ArrowDownCircle, History } from 'lucide-react';
+import { Search, AlertTriangle, ArrowUpCircle, History } from 'lucide-react';
 
 type InventoryView = 'overview' | 'mutations';
 
 export default function DashboardInventory() {
-  const { state, adjustStock, bulkAdjustStock, formatPrice } = useWebshop();
+  const { state, adjustStock, bulkAdjustStock } = useWebshop();
   const [view, setView] = useState<InventoryView>('overview');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'low' | 'out' | 'ok'>('all');
@@ -229,7 +229,8 @@ export default function DashboardInventory() {
                     checked={selected.has(row.variant.id)}
                     onCheckedChange={() => {
                       const next = new Set(selected);
-                      next.has(row.variant.id) ? next.delete(row.variant.id) : next.add(row.variant.id);
+                      if (next.has(row.variant.id)) next.delete(row.variant.id);
+                      else next.add(row.variant.id);
                       setSelected(next);
                     }}
                   />

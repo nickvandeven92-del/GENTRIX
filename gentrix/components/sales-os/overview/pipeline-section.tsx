@@ -20,6 +20,7 @@ export function PipelineSection({
   assistContext?: PipelineDealAssistContext;
 }) {
   const [tab, setTab] = useState<Tab>("pipeline");
+  const [asOfMs] = useState(() => Date.now());
 
   const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   const committedCents = deals.filter((d) => d.stage === "won").reduce((a, d) => a + d.value_cents, 0);
@@ -29,8 +30,8 @@ export function PipelineSection({
   }, 0);
   const riskCents = open.filter((d) => d.at_risk).reduce((a, d) => a + d.value_cents, 0);
 
-  const now = Date.now();
-  const monthEnd = new Date();
+  const now = asOfMs;
+  const monthEnd = new Date(now);
   monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1, 1);
   monthEnd.setUTCDate(0);
   const likelyThisMonth = open

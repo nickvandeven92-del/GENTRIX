@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import type { DealFollowUpDashboardRow } from "@/lib/sales-os/deal-step-log";
 import { formatEURFromCents } from "@/lib/sales-os/format-money";
@@ -28,6 +31,7 @@ export function OpsDealFollowUps({
   variant?: "default" | "cockpit";
 }) {
   const cockpit = variant === "cockpit";
+  const [asOfMs] = useState(() => Date.now());
   const fullTotal = totalCount ?? rows.length;
   const extra = fullTotal - rows.length;
   const shell = cockpit
@@ -56,7 +60,7 @@ export function OpsDealFollowUps({
     );
   }
 
-  const now = Date.now();
+  const now = asOfMs;
 
   return (
     <section id="deal-opvolging" className={shell}>

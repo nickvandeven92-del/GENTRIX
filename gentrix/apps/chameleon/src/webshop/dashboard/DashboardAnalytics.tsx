@@ -1,4 +1,5 @@
 import { useAnalytics } from '../analytics/AnalyticsTracker';
+import type { AnalyticsEventType } from '../types';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Eye, ShoppingCart, CreditCard, Heart, Search, Trash2 } from 'lucide-react';
 
@@ -22,7 +23,7 @@ export default function DashboardAnalytics() {
   const eventCounts = Object.keys(EVENT_LABELS).map(type => ({
     type,
     ...EVENT_LABELS[type],
-    count: getEventsByType(type as any).length,
+    count: getEventsByType(type as AnalyticsEventType).length,
   }));
 
   return (

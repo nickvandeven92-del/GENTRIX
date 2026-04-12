@@ -3,7 +3,6 @@ import { useBusiness } from '@/context/BusinessContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function DashboardAppointments() {
@@ -71,7 +70,9 @@ export default function DashboardAppointments() {
                   </div>
                   <p className="text-xs text-muted-foreground">{service?.name} · {employee?.name}</p>
                   <p className="text-xs text-muted-foreground">{apt.customer.email} · {apt.customer.phone}</p>
-                  {apt.notes && <p className="text-xs text-muted-foreground italic mt-1">"{apt.notes}"</p>}
+                  {apt.notes && (
+                    <p className="text-xs text-muted-foreground italic mt-1">{`\u201c${apt.notes}\u201d`}</p>
+                  )}
                 </div>
                 <div className="text-right text-sm shrink-0">
                   <p className="font-medium">{apt.date}</p>

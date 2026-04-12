@@ -50,11 +50,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setRoles([]);
     }
-  }, [session?.user?.id]);
+  }, [session]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
     supabase.auth.getSession().then(({ data }) => {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!session?.user || !isSupabaseConfigured) {
-      setRoles([]);
+      queueMicrotask(() => setRoles([]));
       return;
     }
     let cancelled = false;
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+  }, [session]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (!isSupabaseConfigured) return { error: new Error('Supabase niet geconfigureerd') };

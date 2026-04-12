@@ -43,6 +43,7 @@ export function rejectForbiddenAiPatchShape(raw: unknown): { ok: true } | { ok: 
 }
 
 /** Controle dat het geparste patch-object geen verboden paden raakt (defensief). `customJs` zit niet in het Zod-schema. */
-export function assertAiPatchMutationPolicy(_patch: SiteAiSnapshotPatch): { ok: true } | { ok: false; error: string } {
+export function assertAiPatchMutationPolicy(patch: SiteAiSnapshotPatch): { ok: true } | { ok: false; error: string } {
+  void patch;
   return { ok: true };
 }

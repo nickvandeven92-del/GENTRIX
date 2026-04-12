@@ -199,7 +199,7 @@ export type AnalyticsEventType =
 export interface AnalyticsEvent {
   id: string;
   type: AnalyticsEventType;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   timestamp: string;
   sessionId: string;
 }

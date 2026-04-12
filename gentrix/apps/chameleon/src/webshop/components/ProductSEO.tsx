@@ -8,7 +8,7 @@ interface ProductSEOProps {
 }
 
 export function ProductSEO({ product }: ProductSEOProps) {
-  const { state, formatPrice, getProductReviews, shopBasePath } = useWebshop();
+  const { state, getProductReviews, shopBasePath } = useWebshop();
   const reviews = getProductReviews(product.id).filter(r => r.approved);
   const avgRating = getAverageRating(reviews);
 

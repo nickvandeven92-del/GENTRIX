@@ -275,7 +275,7 @@ export function WebshopProvider({ children }: { children: React.ReactNode }) {
     if (!valid) {
       const first = ownerClients[0].id;
       localStorage.setItem(OWNER_CLIENT_KEY, first);
-      setOwnerClientIdState(first);
+      queueMicrotask(() => setOwnerClientIdState(first));
     }
   }, [isOwner, ownerClients, ownerClientId]);
 
@@ -377,7 +377,7 @@ export function WebshopProvider({ children }: { children: React.ReactNode }) {
 
   const loadWishlist = useCallback(async () => {
     if (!isSupabaseConfigured || !activeClientId || config.simpleMode) {
-      setWishlistLocal([]);
+      queueMicrotask(() => setWishlistLocal([]));
       return;
     }
     let q = supabase.from('wishlist_items').select('product_id, added_at').eq('client_id', activeClientId);
@@ -391,10 +391,12 @@ export function WebshopProvider({ children }: { children: React.ReactNode }) {
     setWishlistLocal(
       (data ?? []).map(r => ({ productId: r.product_id, addedAt: r.added_at }))
     );
-  }, [activeClientId, config.simpleMode, guestSessionId, user?.id]);
+  }, [activeClientId, config.simpleMode, guestSessionId, user]);
 
   useEffect(() => {
-    void loadWishlist();
+    queueMicrotask(() => {
+      void loadWishlist();
+    });
   }, [loadWishlist]);
 
   const dataLoading =
@@ -816,7 +818,7 @@ export function WebshopProvider({ children }: { children: React.ReactNode }) {
       }
       await loadWishlist();
     },
-    [activeClientId, config.simpleMode, wishlistLocal, user?.id, guestSessionId, loadWishlist]
+    [activeClientId, config.simpleMode, wishlistLocal, user, guestSessionId, loadWishlist]
   );
 
   const isInWishlist = useCallback(

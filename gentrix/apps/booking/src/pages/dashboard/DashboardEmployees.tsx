@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
-import { Employee } from '@/types';
+import type { Employee, Service, WeekSchedule } from '@/types';
+import { millisPrefixedId } from '@/lib/local-id';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,16 +25,16 @@ export default function DashboardEmployees() {
       updateEmployee(editingEmployee.id, data);
       toast.success('Medewerker bijgewerkt');
     } else {
-      const defaultSchedule: any = {};
-      ['monday','tuesday','wednesday','thursday','friday'].forEach(d => {
+      const defaultSchedule: WeekSchedule = {};
+      (['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const).forEach((d) => {
         defaultSchedule[d] = { enabled: true, blocks: [{ start: '09:00', end: '17:00' }] };
       });
-      ['saturday','sunday'].forEach(d => {
+      (['saturday', 'sunday'] as const).forEach((d) => {
         defaultSchedule[d] = { enabled: false, blocks: [] };
       });
 
       addEmployee({
-        id: `emp-${Date.now()}`,
+        id: millisPrefixedId('emp'),
         businessId: employees[0]?.businessId || 'biz-1',
         schedule: defaultSchedule,
         breaks: [],
@@ -93,7 +94,15 @@ export default function DashboardEmployees() {
   );
 }
 
-function EmployeeForm({ employee, services, onSave }: { employee: Employee | null; services: any[]; onSave: (data: Partial<Employee>) => void }) {
+function EmployeeForm({
+  employee,
+  services,
+  onSave,
+}: {
+  employee: Employee | null;
+  services: Service[];
+  onSave: (data: Partial<Employee>) => void;
+}) {
   const [name, setName] = useState(employee?.name || '');
   const [role, setRole] = useState(employee?.role || '');
   const [specialization, setSpecialization] = useState(employee?.specialization || '');

@@ -19,9 +19,12 @@ const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 
 export function DateTimeSelect({ employee, service, appointments, settings, onSelect }: Props) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const maxDate = addDays(today, settings.maxAdvanceBookingDays);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const maxDate = useMemo(() => addDays(today, settings.maxAdvanceBookingDays), [today, settings.maxAdvanceBookingDays]);
 
   // Pre-compute which dates have no availability at all
   const unavailableDates = useMemo(() => {
@@ -49,7 +52,7 @@ export function DateTimeSelect({ employee, service, appointments, settings, onSe
       }
     }
     return dates;
-  }, [employee, service, appointments, settings]);
+  }, [employee, service, appointments, settings, today]);
 
   const slots = useMemo(() => {
     if (!selectedDate) return [];

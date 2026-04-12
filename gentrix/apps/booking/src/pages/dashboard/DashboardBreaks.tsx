@@ -4,10 +4,10 @@ import { EmployeeBreak } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { millisPrefixedId } from '@/lib/local-id';
 
 export default function DashboardBreaks() {
   const { employees, updateEmployee } = useBusiness();
@@ -17,7 +17,7 @@ export default function DashboardBreaks() {
   if (!employee) return <div className="p-6"><p className="text-muted-foreground">Geen medewerkers.</p></div>;
 
   const addBreak = () => {
-    const newBreak: EmployeeBreak = { id: `brk-${Date.now()}`, label: 'Nieuwe pauze', day: 'all', start: '12:00', end: '12:30' };
+    const newBreak: EmployeeBreak = { id: millisPrefixedId('brk'), label: 'Nieuwe pauze', day: 'all', start: '12:00', end: '12:30' };
     updateEmployee(employee.id, { breaks: [...employee.breaks, newBreak] });
   };
 
