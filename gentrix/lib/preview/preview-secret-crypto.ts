@@ -5,12 +5,14 @@ export function generatePreviewSecret(): string {
   return randomBytes(24).toString("hex");
 }
 
-/** Constant-time vergelijking voor preview-token (UTF-8). */
+/** Constant-time vergelijking voor preview-token (UTF-8). Trim voor bestaande DB-waarden met spaties/newlines. */
 export function previewSecretsEqual(stored: string | null | undefined, provided: string): boolean {
-  if (stored == null || stored === "" || provided === "") return false;
+  const s = (stored ?? "").trim();
+  const p = (provided ?? "").trim();
+  if (s === "" || p === "") return false;
   try {
-    const a = Buffer.from(stored, "utf8");
-    const b = Buffer.from(provided, "utf8");
+    const a = Buffer.from(s, "utf8");
+    const b = Buffer.from(p, "utf8");
     if (a.length !== b.length) return false;
     return timingSafeEqual(a, b);
   } catch {

@@ -46,7 +46,7 @@ export async function getClientSiteUrlsForAdminDossier(
 
     const status = data.status as ClientStatus;
     let secret = (data as { preview_secret?: string | null }).preview_secret?.trim() ?? null;
-    const useConceptPreviewUrl = status === "draft" || status === "paused";
+    const useConceptPreviewUrl = status === "draft" || status === "paused" || status === "archived";
     if (useConceptPreviewUrl && !secret) {
       secret = (await ensureClientPreviewSecretBySlug(slug))?.trim() ?? null;
     }
@@ -64,8 +64,8 @@ export async function getClientSiteUrlsForAdminDossier(
 /**
  * Absolute URL voor **Site** in nieuw tabblad vanuit de admin:
  * - `active` → publieke live site `/site/{slug}`.
- * - `draft` / `paused` → `/site/{slug}?token=…` wanneer `preview_secret` beschikbaar is (deelbare conceptweergave).
- * - Anders (o.a. `archived` of ontbrekende kolom) → `/site/{slug}` zonder token (kan 404 zijn).
+ * - `draft` / `paused` / `archived` → `/site/{slug}?token=…` wanneer `preview_secret` beschikbaar is (ook bestaande klanten).
+ * - Anders → `/site/{slug}` zonder token (kan 404 zijn zonder actieve publicatie).
  */
 export async function resolveSiteOpenAbsoluteUrlForAdmin(
   slug: string,
@@ -78,9 +78,28 @@ export async function resolveSiteOpenAbsoluteUrlForAdmin(
   if (status === "active") {
     return liveAbsolute;
   }
-  const urls = await getClientSiteUrlsForAdminDossier(slug, origin);
+
+  const needsPreviewToken =
+    status === "draft" || status === "paused" || status === "archived";
+
+  let urls: ClientSiteUrlsForAdmin | null = null;
+  try {
+    urls = await getClientSiteUrlsForAdminDossier(slug, origin);
+  } catch {
+    urls = null;
+  }
+
   if (urls?.previewAbsolute) {
     return urls.previewAbsolute;
   }
+
+  /** O.a. tijdelijke Supabase-fout of afwijkende caller-status: nog één keer secret proberen (bestaande dossiers). */
+  if (needsPreviewToken) {
+    const secret = (await ensureClientPreviewSecretBySlug(slug))?.trim() ?? null;
+    if (secret) {
+      return `${base}/site/${enc}?token=${encodeURIComponent(secret)}`;
+    }
+  }
+
   return liveAbsolute;
 }

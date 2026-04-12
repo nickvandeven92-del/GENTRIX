@@ -37,10 +37,10 @@ type ClientRowWithPreviewMeta = ActiveClientRow & {
 };
 
 /** Zelfde `?token=`-contract als concept; `paused` heeft geen actieve `/site`-rij maar wél vaak een werkversie. */
-const SITE_PREVIEW_TOKEN_STATUSES = ["draft", "paused"] as const;
+const SITE_PREVIEW_TOKEN_STATUSES = ["draft", "paused", "archived"] as const;
 
 function rowAllowsSitePreviewToken(status: string | undefined | null): boolean {
-  return status === "draft" || status === "paused";
+  return status === "draft" || status === "paused" || status === "archived";
 }
 
 /**
