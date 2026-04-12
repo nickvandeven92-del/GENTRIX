@@ -23,7 +23,7 @@ const ADMIN_FULL_WITHOUT_PKG =
 
 export async function getAdminClientBySlug(slug: string): Promise<AdminClientFullRow | null> {
   const supabase = await createSupabaseServerClient();
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("clients")
     .select(ADMIN_FULL_WITH_PKG)
     .eq("subfolder_slug", slug)

@@ -44,7 +44,7 @@ export async function listAdminClients(options?: ListAdminClientsOptions): Promi
 
   let q1 = supabase.from("clients").select(SEL_PKG_NUM).order("updated_at", order);
   if (pattern) q1 = q1.or(`name.ilike.${pattern},client_number.ilike.${pattern}`);
-  let { data, error } = await q1;
+  const { data, error } = await q1;
 
   if (error && isPostgrestUnknownColumnError(error, "client_number")) {
     let q2 = supabase.from("clients").select(SEL_PKG).order("updated_at", order);

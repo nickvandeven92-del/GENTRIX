@@ -105,6 +105,13 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
                 <Download className="size-3.5 shrink-0" aria-hidden />
                 donker
               </a>
+              <a
+                href={`/api/clients/${encodeURIComponent(existing.subfolder_slug)}/flyer-pdf?template=gentrix`}
+                className="inline-flex items-center gap-1 text-violet-800 underline-offset-2 hover:underline dark:text-violet-300"
+              >
+                <Download className="size-3.5 shrink-0" aria-hidden />
+                gentrix
+              </a>
             </p>
           ) : null}
         </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import type { FlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
+import { FlyerStudioEditor } from "@/components/admin/flyer-studio-editor";
+import type { FlyerStudioPersisted } from "@/lib/flyer/flyer-studio-schema";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Download, ExternalLink, QrCode } from "lucide-react";
@@ -12,9 +14,16 @@ type Props = {
   clientName: string;
   flyerQrAbsoluteUrl: string | null;
   flyerScanSummary: FlyerScanSummary | null;
+  initialFlyerStudio: FlyerStudioPersisted;
 };
 
-export function ClientFlyerWorkspace({ slug, clientName, flyerQrAbsoluteUrl, flyerScanSummary }: Props) {
+export function ClientFlyerWorkspace({
+  slug,
+  clientName,
+  flyerQrAbsoluteUrl,
+  flyerScanSummary,
+  initialFlyerStudio,
+}: Props) {
   const enc = encodeURIComponent(slug);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -53,7 +62,9 @@ export function ClientFlyerWorkspace({ slug, clientName, flyerQrAbsoluteUrl, fly
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Flyer & QR</h2>
         <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
           Vaste korte link per klant — wijst naar live site of conceptpreview. Gebruik op drukwerk; scans verschijnen
-          hieronder zodra de database-migratie actief is.
+          hieronder zodra de tabel <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">flyer_scans</code>{" "}
+          actief is. Teksten voor de PDF bewaar je in de Flyerstudio (kolom{" "}
+          <code className="rounded bg-zinc-200 px-1 text-xs dark:bg-zinc-800">flyer_studio_json</code>).
         </p>
       </div>
 
@@ -123,10 +134,26 @@ export function ClientFlyerWorkspace({ slug, clientName, flyerQrAbsoluteUrl, fly
         </div>
       </div>
 
+      <FlyerStudioEditor slug={slug} initialStudio={initialFlyerStudio} />
+
       <div>
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">A4-flyer (PDF)</h3>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Twee templates; beide bevatten dezelfde QR.</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Drie stijlen; zelfde QR. Sla je copy eerst op in de Flyerstudio — daarna bevat elke PDF die teksten (lege velden
+          vullen we per stijl met een standaard).
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <a
+            href={`/api/clients/${enc}/flyer-pdf?template=gentrix`}
+            className="group flex flex-col rounded-2xl border border-violet-400/50 bg-gradient-to-b from-violet-950 to-zinc-950 p-5 text-zinc-50 shadow-sm transition hover:border-violet-400 hover:shadow-md"
+          >
+            <span className="text-sm font-semibold">Gentrix · merk</span>
+            <span className="mt-1 text-xs text-violet-100/85">Donker gradient, logo, paarse accenten.</span>
+            <span className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-violet-200 group-hover:text-white">
+              <Download className="size-4" aria-hidden />
+              Download PDF
+            </span>
+          </a>
           <a
             href={`/api/clients/${enc}/flyer-pdf?template=minimal`}
             className="group flex flex-col rounded-2xl border border-zinc-200 bg-gradient-to-b from-white to-zinc-50/80 p-5 transition hover:border-violet-300 hover:shadow-md dark:border-zinc-800 dark:from-zinc-950 dark:to-zinc-900/80 dark:hover:border-violet-800"
@@ -140,7 +167,7 @@ export function ClientFlyerWorkspace({ slug, clientName, flyerQrAbsoluteUrl, fly
           </a>
           <a
             href={`/api/clients/${enc}/flyer-pdf?template=modern`}
-            className="group flex flex-col rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-5 text-zinc-50 transition hover:border-violet-500/50 hover:shadow-lg"
+            className="group flex flex-col rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-5 text-zinc-50 transition hover:border-violet-500/50 hover:shadow-lg sm:col-span-1"
           >
             <span className="text-sm font-semibold">Modern · donker</span>
             <span className="mt-1 text-xs text-zinc-400">Donker vlak, witte QR-omlijning.</span>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
 import { ensureClientFlyerPublicTokenBySlug } from "@/lib/data/ensure-client-flyer-token";
+import { getClientFlyerStudioBySlugService } from "@/lib/data/get-client-flyer-studio";
 import { buildClientFlyerPdf, type FlyerPdfTemplateId } from "@/lib/flyer/build-client-flyer-pdf";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { getRequestOrigin } from "@/lib/site/request-origin";
@@ -12,7 +13,9 @@ export const maxDuration = 60;
 type RouteContext = { params: Promise<{ subfolder_slug: string }> };
 
 function templateFromSearch(search: string | null): FlyerPdfTemplateId {
-  return search === "modern" ? "modern" : "minimal";
+  if (search === "modern") return "modern";
+  if (search === "gentrix") return "gentrix";
+  return "minimal";
 }
 
 /** Admin: download vaste A4-flyer met QR naar `/p/{token}`. */
@@ -49,10 +52,13 @@ export async function GET(request: Request, context: RouteContext) {
   const flyerPageUrl = `${origin}/p/${encodeURIComponent(token)}`;
   const displayName = String((row as { name?: string }).name ?? "").trim() || slug;
 
+  const studio = await getClientFlyerStudioBySlugService(slug);
+
   const bytes = await buildClientFlyerPdf({
     template,
     clientDisplayName: displayName,
     flyerPageUrl,
+    studio,
   });
 
   const safeSlug = slug.replace(/[^a-z0-9-]+/gi, "-").slice(0, 48);

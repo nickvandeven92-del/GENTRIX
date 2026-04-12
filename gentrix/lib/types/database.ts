@@ -62,6 +62,8 @@ export type Database = {
           preview_secret: string | null;
           /** Publiek UUID voor flyer/QR (`/p/{uuid}`). */
           flyer_public_token: string | null;
+          /** Flyerstudio: teksten + presets (JSON). */
+          flyer_studio_json: Json | null;
         };
         Insert: {
           id?: string;
@@ -107,6 +109,7 @@ export type Database = {
           portal_user_id?: string | null;
           preview_secret?: string | null;
           flyer_public_token?: string | null;
+          flyer_studio_json?: Json | null;
         };
         Update: {
           id?: string;
@@ -151,6 +154,7 @@ export type Database = {
           portal_user_id?: string | null;
           preview_secret?: string | null;
           flyer_public_token?: string | null;
+          flyer_studio_json?: Json | null;
         };
         Relationships: [];
       };

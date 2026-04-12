@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ClientFlyerWorkspace } from "@/components/admin/client-flyer-workspace";
 import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
+import { getClientFlyerStudioBySlugForAdmin } from "@/lib/data/get-client-flyer-studio";
 import { getFlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { getRequestOrigin } from "@/lib/site/request-origin";
@@ -16,9 +17,10 @@ export default async function ClientFlyerPage({ params }: PageProps) {
   if (!row) notFound();
 
   const origin = await getRequestOrigin();
-  const [urls, flyerScanSummary] = await Promise.all([
+  const [urls, flyerScanSummary, initialFlyerStudio] = await Promise.all([
     getClientSiteUrlsForAdminDossier(row.subfolder_slug, origin),
     getFlyerScanSummary(row.id),
+    getClientFlyerStudioBySlugForAdmin(row.subfolder_slug),
   ]);
 
   return (
@@ -27,6 +29,7 @@ export default async function ClientFlyerPage({ params }: PageProps) {
       clientName={row.name}
       flyerQrAbsoluteUrl={urls?.flyerQrAbsolute ?? null}
       flyerScanSummary={flyerScanSummary}
+      initialFlyerStudio={initialFlyerStudio}
     />
   );
 }

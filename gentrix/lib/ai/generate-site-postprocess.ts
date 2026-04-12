@@ -20,7 +20,7 @@ function sectionNameToStableId(sectionName: string, index: number): string {
 export function stableIdsForUpgradeSections(sectionNames: string[]): string[] {
   const used = new Set<string>();
   return sectionNames.map((name, i) => {
-    let base = sectionNameToStableId(name, i);
+    const base = sectionNameToStableId(name, i);
     let id = base;
     let suffix = 2;
     while (used.has(id)) {
@@ -57,7 +57,7 @@ export function ensureUniqueSectionIds(
 ): ClaudeTailwindPageOutput["sections"] {
   const used = new Set<string>();
   return sections.map((row, index) => {
-    let base = slugifyIdSegment(row.id || row.name || `section-${index + 1}`);
+    const base = slugifyIdSegment(row.id || row.name || `section-${index + 1}`);
     let id = base;
     let suffix = 2;
     while (used.has(id)) {

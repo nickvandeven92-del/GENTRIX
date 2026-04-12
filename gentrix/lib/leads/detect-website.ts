@@ -52,7 +52,7 @@ function tryDeriveNlDomain(profile: KvkMappedProfile): string | null {
     profile.statutaireNaam?.trim() ||
     profile.naam?.trim();
   if (!base) return null;
-  let slug = base
+  const slug = base
     .toLowerCase()
     .replace(/\b(b\.?v\.?|n\.?v\.?|vof|ez|cv)\b\.?/gi, "")
     .replace(/&/g, " en ")

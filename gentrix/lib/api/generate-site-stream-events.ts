@@ -22,7 +22,7 @@ export function consumeGenerateSiteNdjsonBuffer(
   chunk: string,
   onEvent: (e: GenerateSiteStreamNdjsonEvent) => void,
 ): string {
-  let next = buffer + chunk;
+  const next = buffer + chunk;
   const lines = next.split("\n");
   const rest = lines.pop() ?? "";
   for (const line of lines) {

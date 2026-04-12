@@ -20,7 +20,7 @@ export async function ensureClientPreviewSecretBySlug(subfolderSlug: string): Pr
 export async function ensureClientPreviewSecret(clientId: string): Promise<string | null> {
   try {
     const supabase = createServiceRoleClient();
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("clients")
       .select("preview_secret")
       .eq("id", clientId)

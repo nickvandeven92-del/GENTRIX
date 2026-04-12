@@ -63,7 +63,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: true, data: { id: snapshot_id } });
   }
 
-  let { error } = await supabase.from("site_snapshots").update(updates).eq("id", snapshot_id);
+  const { error } = await supabase.from("site_snapshots").update(updates).eq("id", snapshot_id);
 
   if (error && isPostgrestUnknownColumnError(error, "label")) {
     return NextResponse.json(
