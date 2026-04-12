@@ -39,8 +39,10 @@ export async function resolveFlyerPublicLink(rawToken: string): Promise<FlyerPub
     const slug = String((data as { subfolder_slug: string }).subfolder_slug ?? "").trim();
     if (!slug) return null;
 
-    const status = (data as { status: ClientStatus }).status;
-    if (status === "active") {
+    const statusNorm = String((data as { status: ClientStatus }).status ?? "")
+      .trim()
+      .toLowerCase();
+    if (statusNorm === "active") {
       return { kind: "live", slug };
     }
 
