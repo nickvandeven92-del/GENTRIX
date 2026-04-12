@@ -11,10 +11,7 @@ function siteViewHref(row: AdminClientRow): string {
     return row.siteOpenAbsoluteUrl.trim();
   }
   const enc = encodeURIComponent(row.subfolder_slug);
-  if (row.status === "active") {
-    return `/site/${enc}`;
-  }
-  return `/admin/clients/${enc}/preview`;
+  return `/site/${enc}`;
 }
 
 function statusLabel(status: string) {
@@ -87,10 +84,10 @@ function SiteRowActionsCard({ r }: { r: AdminClientRow }) {
         rel="noopener noreferrer"
         title={
           r.status === "active"
-            ? "Publieke site (/site/…), volledig scherm"
+            ? "Publieke site in nieuw tabblad (/site/…)"
             : r.siteOpenAbsoluteUrl?.includes("token=")
-              ? "Concept in volledige weergave (/site met token); zonder Studio-zijbalk"
-              : "Concept in admin-preview (Studio-zijbalk); stel preview_secret in of activeer voor volledig scherm"
+              ? "Concept-site in nieuw tabblad (/site/… met token)"
+              : "Site in nieuw tabblad (/site/…); bij concept zonder token: zet preview_secret of open via dossier"
         }
         data-tone="neutral"
         className={cn(cardActionClass, "border-zinc-200 text-zinc-800 dark:border-zinc-700 dark:text-zinc-200")}
@@ -148,10 +145,10 @@ function SiteRowActionsTable({ r }: { r: AdminClientRow }) {
         rel="noopener noreferrer"
         title={
           r.status === "active"
-            ? "Publieke site (/site/…), volledig scherm"
+            ? "Publieke site in nieuw tabblad (/site/…)"
             : r.siteOpenAbsoluteUrl?.includes("token=")
-              ? "Concept in volledige weergave (/site met token); zonder Studio-zijbalk"
-              : "Concept in admin-preview (Studio-zijbalk); stel preview_secret in of activeer voor volledig scherm"
+              ? "Concept-site in nieuw tabblad (/site/… met token)"
+              : "Site in nieuw tabblad (/site/…); bij concept zonder token: zet preview_secret of open via dossier"
         }
         data-tone="neutral"
         className={cn(tableActionClass, "border-zinc-200 dark:border-zinc-700")}

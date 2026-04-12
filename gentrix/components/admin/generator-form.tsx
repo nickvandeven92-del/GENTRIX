@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ChevronRight, Code2, ImagePlus, Loader2, Monitor, Send, X } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronRight,
+  Code2,
+  ExternalLink,
+  ImagePlus,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Monitor,
+  Send,
+  X,
+} from "lucide-react";
 import { StudioThemeStylesHint } from "@/components/admin/studio-theme-styles-hint";
 import { DutchSpellcheckPanel } from "@/components/admin/dutch-spellcheck-panel";
 import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-panel";
@@ -26,6 +38,7 @@ import type { DesignGenerationContract } from "@/lib/ai/design-generation-contra
 import type { GenerateSiteStreamNdjsonEvent } from "@/lib/ai/generate-site-with-claude";
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
 import { isValidSubfolderSlug } from "@/lib/slug";
+import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
 import { cn } from "@/lib/utils";
 
 type ApiOk = { ok: true; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage };
@@ -39,6 +52,8 @@ type GeneratorFormProps = {
   existingDraftLocked?: boolean;
   /** Na geslaagde opslag vanuit SaveSitePanel (bijv. studio-workspace → terug naar bewerken). */
   onSiteSaved?: () => void;
+  /** Concept: zelfde `?token=` als iframe voor `/site/…` in nieuw tabblad. */
+  draftPublicPreviewToken?: string | null;
 };
 
 export function GeneratorForm({
@@ -47,6 +62,7 @@ export function GeneratorForm({
   initialClientDescription,
   existingDraftLocked = false,
   onSiteSaved,
+  draftPublicPreviewToken = null,
 }: GeneratorFormProps) {
   const slugFromUrl = initialSubfolderSlug?.trim() || undefined;
 
@@ -143,7 +159,31 @@ export function GeneratorForm({
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
   /** Geen marketingPages + contact in één run — merkbaar korter (minder timeout-risico). */
   const [landingPageOnly, setLandingPageOnly] = useState(false);
+  /** Preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
+  const [previewFullscreen, setPreviewFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const canOpenSitePreviewTab = Boolean(slugFromUrl && isValidSubfolderSlug(slugFromUrl));
+
+  const openSitePreviewInNewTab = useCallback(() => {
+    if (!slugFromUrl || !isValidSubfolderSlug(slugFromUrl)) return;
+    const href = buildStudioSiteOpenPreviewUrl(window.location.origin, slugFromUrl, draftPublicPreviewToken);
+    window.open(href, "_blank", "noopener,noreferrer");
+  }, [slugFromUrl, draftPublicPreviewToken]);
+
+  useEffect(() => {
+    if (!previewFullscreen) return;
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") setPreviewFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [previewFullscreen]);
 
   const uploadFile = useCallback(
     async (file: File) => {
@@ -758,26 +798,65 @@ export function GeneratorForm({
           </div>
         }
         main={
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          <div
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
+              previewFullscreen &&
+                "fixed inset-0 z-[1000] gap-0 overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
+            )}
+          >
             <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                <span>Live preview</span>
-                {previewIsStreaming ? (
-                  <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
-                    stream
-                  </span>
-                ) : null}
-                {generatedTailwind ? (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-100">
-                    definitief
-                  </span>
-                ) : null}
-                {streamEndedWithoutComplete ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-                    stream afgebroken
-                  </span>
-                ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                  <span>Live preview</span>
+                  {previewIsStreaming ? (
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
+                      stream
+                    </span>
+                  ) : null}
+                  {generatedTailwind ? (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-100">
+                      definitief
+                    </span>
+                  ) : null}
+                  {streamEndedWithoutComplete ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                      stream afgebroken
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={openSitePreviewInNewTab}
+                    disabled={!canOpenSitePreviewTab}
+                    title={
+                      canOpenSitePreviewTab
+                        ? "Open de site in een nieuw tabblad (/site/…, zelfde als live preview na opslaan)"
+                        : "Open studio via een klant met slug om /site in een tabblad te openen"
+                    }
+                    className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    <ExternalLink className="size-4 shrink-0" aria-hidden />
+                    <span className="sr-only">Open preview in nieuw tabblad</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFullscreen((v) => !v)}
+                    title={previewFullscreen ? "Volledig scherm sluiten (Esc)" : "Volledig scherm"}
+                    className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    {previewFullscreen ? (
+                      <Minimize2 className="size-4 shrink-0" aria-hidden />
+                    ) : (
+                      <Maximize2 className="size-4 shrink-0" aria-hidden />
+                    )}
+                    <span className="sr-only">
+                      {previewFullscreen ? "Volledig scherm sluiten" : "Volledig scherm"}
+                    </span>
+                  </button>
+                </div>
               </div>
               {previewIsStreaming && streamingConfig == null ? (
                 <p className="mt-1 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">
@@ -792,7 +871,12 @@ export function GeneratorForm({
                 ontvangen secties; gebruik <strong>Genereer opnieuw</strong> om op te kunnen slaan.
               </p>
             ) : null}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <div
+              className={cn(
+                "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950",
+                previewFullscreen && "rounded-lg border-zinc-300 dark:border-zinc-700",
+              )}
+            >
               {loading && !activeStudioPreviewPayload ? (
                 <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
                   <Loader2 className="size-8 animate-spin text-indigo-500" aria-hidden />
@@ -803,6 +887,7 @@ export function GeneratorForm({
                   payload={activeStudioPreviewPayload}
                   className="min-h-0 flex-1"
                   publishedSlug={slugFromUrl}
+                  draftPublicPreviewToken={draftPublicPreviewToken}
                 />
               ) : (
                 <div className="flex min-h-[min(360px,50dvh)] flex-1 flex-col items-center justify-center gap-2 px-6 text-center">

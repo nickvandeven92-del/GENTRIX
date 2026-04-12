@@ -5,9 +5,12 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Check,
+  ExternalLink,
   Eye,
   History,
   Loader2,
+  Maximize2,
+  Minimize2,
   Redo2,
   RefreshCw,
   Save,
@@ -30,7 +33,8 @@ import {
   getCurrentSnapshot,
   siteHistoryReducer,
 } from "@/lib/editor/site-history-reducer";
-import { formatSlugForDisplay } from "@/lib/slug";
+import { formatSlugForDisplay, isValidSubfolderSlug } from "@/lib/slug";
+import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
 import { cn } from "@/lib/utils";
 
 /** Debounce na laatste wijziging (undo/AI/…) voordat concept naar Supabase gaat — vergelijkbaar met Lovable. */
@@ -87,6 +91,7 @@ export function SiteHtmlEditor({
   const [status, setStatus] = useState(initialStatus);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [previewFullscreen, setPreviewFullscreen] = useState(false);
   /** Na concept-opslag: waar je de opgeslagen site volledig kunt bekijken (los van de editor-preview). */
   const [postSaveDraftView, setPostSaveDraftView] = useState<{ clientPreviewTokenUrl: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -299,6 +304,28 @@ export function SiteHtmlEditor({
       }
     };
   }, [persistFingerprint, persistDraft]);
+
+  const canOpenSitePreviewTab = isValidSubfolderSlug(subfolderSlug);
+
+  const openSitePreviewInNewTab = useCallback(() => {
+    if (!isValidSubfolderSlug(subfolderSlug)) return;
+    const href = buildStudioSiteOpenPreviewUrl(window.location.origin, subfolderSlug, draftPublicPreviewToken);
+    window.open(href, "_blank", "noopener,noreferrer");
+  }, [subfolderSlug, draftPublicPreviewToken]);
+
+  useEffect(() => {
+    if (!previewFullscreen) return;
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") setPreviewFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [previewFullscreen]);
 
   async function save() {
     await persistDraft({ silent: false });
@@ -568,9 +595,48 @@ export function SiteHtmlEditor({
         }
         main={
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 lg:min-h-[200px]">
-              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                Live preview
+            <div
+              className={cn(
+                "flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 lg:min-h-[200px]",
+                previewFullscreen &&
+                  "fixed inset-0 z-[1000] m-0 min-h-0 rounded-none border-0 bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
+              )}
+            >
+              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Live preview</span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={openSitePreviewInNewTab}
+                      disabled={!canOpenSitePreviewTab}
+                      title={
+                        canOpenSitePreviewTab
+                          ? "Open de site in een nieuw tabblad (/site/…)"
+                          : "Ongeldige slug — kan /site niet openen"
+                      }
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    >
+                      <ExternalLink className="size-4 shrink-0" aria-hidden />
+                      <span className="sr-only">Open preview in nieuw tabblad</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFullscreen((v) => !v)}
+                      title={previewFullscreen ? "Volledig scherm sluiten (Esc)" : "Volledig scherm"}
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    >
+                      {previewFullscreen ? (
+                        <Minimize2 className="size-4 shrink-0" aria-hidden />
+                      ) : (
+                        <Maximize2 className="size-4 shrink-0" aria-hidden />
+                      )}
+                      <span className="sr-only">
+                        {previewFullscreen ? "Volledig scherm sluiten" : "Volledig scherm"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
                 <TailwindSectionsPreview

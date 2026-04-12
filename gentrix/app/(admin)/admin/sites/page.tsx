@@ -23,8 +23,9 @@ export default async function AdminSitesPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Sites</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Snel naar de HTML-editor of de site bekijken (live op /site/… of concept in preview). Het volledige dossier
-          (commercie, domein) staat onder{" "}
+          Snel naar de HTML-editor of de site in een <strong className="font-medium text-zinc-800 dark:text-zinc-200">nieuw tabblad</strong>{" "}
+          (<code className="rounded bg-zinc-100 px-1 font-mono text-[11px] dark:bg-zinc-800">/site/…</code>
+          , concept met token waar van toepassing). Het volledige dossier (commercie, domein) staat onder{" "}
           <a href="/admin/clients" className="font-medium text-blue-800 underline dark:text-blue-400">
             Klanten
           </a>

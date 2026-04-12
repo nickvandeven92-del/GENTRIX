@@ -110,6 +110,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
               initialClientDescription={props.initialDescription}
               existingDraftLocked={false}
               onSiteSaved={onSiteSaved}
+              draftPublicPreviewToken={props.draftPublicPreviewToken ?? null}
             />
           </div>
         )}

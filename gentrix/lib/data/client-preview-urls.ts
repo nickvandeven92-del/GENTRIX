@@ -62,9 +62,9 @@ export async function getClientSiteUrlsForAdminDossier(
 
 /**
  * Absolute URL voor **Site** in nieuw tabblad vanuit de admin:
- * - `active` → publieke live site `/site/{slug}` (geen studio-chrome).
- * - `draft` → `/site/{slug}?token=…` wanneer dat kan (zelfde routes als live; geen zijbalk).
- * - anders → admin concept-preview (fallback als `preview_secret` ontbreekt).
+ * - `active` → publieke live site `/site/{slug}`.
+ * - `draft` → `/site/{slug}?token=…` wanneer `preview_secret` beschikbaar is (zelfde weergave als live).
+ * - Anders → `/site/{slug}` zonder token (concept zonder secret kan “niet gevonden” geven tot secret staat).
  */
 export async function resolveSiteOpenAbsoluteUrlForAdmin(
   slug: string,
@@ -73,12 +73,13 @@ export async function resolveSiteOpenAbsoluteUrlForAdmin(
 ): Promise<string> {
   const base = (origin ?? "").replace(/\/$/, "");
   const enc = encodeURIComponent(slug);
+  const liveAbsolute = `${base}/site/${enc}`;
   if (status === "active") {
-    return `${base}/site/${enc}`;
+    return liveAbsolute;
   }
   const urls = await getClientSiteUrlsForAdminDossier(slug, origin);
   if (urls?.previewAbsolute) {
     return urls.previewAbsolute;
   }
-  return `${base}/admin/clients/${enc}/preview`;
+  return liveAbsolute;
 }
