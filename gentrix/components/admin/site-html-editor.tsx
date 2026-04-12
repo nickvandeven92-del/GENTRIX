@@ -160,7 +160,7 @@ export function SiteHtmlEditor({
   }
 
   const persistDraft = useCallback(
-    async (opts: { silent: boolean; auto?: boolean }) {
+    async (opts: { silent: boolean; auto?: boolean }) => {
       if (opts.auto && persistInFlightRef.current) return;
 
       if (autoSaveTimerRef.current && !opts.auto) {
