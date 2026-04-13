@@ -182,11 +182,10 @@ export function ClientPortalModulesCard({
         </p>
         <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
           <li>
-            <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> het model bouwt{" "}
-            <strong className="text-zinc-800 dark:text-zinc-200">geen</strong> eigen booking-sectie (geen dubbel); na
-            generatie voegt de studio automatisch het vaste blok{" "}
-            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">booking</code> met werkende
-            boekingslink toe (geen dubbele sectie).
+            <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> de AI genereert{" "}
+            <strong className="text-zinc-800 dark:text-zinc-200">geen</strong> booking-sectie. Voeg het vaste blok toe
+            met de knop hieronder wanneer de klant online boeken wil; daarna bepaalt de schakelaar Afspraken of het
+            zichtbaar is op <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/site/…</code>.
           </li>
           <li>
             Zet <strong className="text-zinc-800 dark:text-zinc-200">“Afspraken”</strong> aan om portaal + boekpagina +
@@ -268,9 +267,10 @@ export function ClientPortalModulesCard({
         </p>
         <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
           <li>
-            <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> na generatie staat een vast
-            blok met <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">shop</code> — vier
-            producttegels + link naar de webshop-route (geen dubbele sectie door het model).
+            <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> de AI genereert{" "}
+            <strong className="text-zinc-800 dark:text-zinc-200">geen</strong> shop-sectie. Voeg het standaardblok toe
+            met de knop hieronder; de schakelaar Webshop bepaalt of het op{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/site/…</code> zichtbaar is.
           </li>
           <li>
             Zet <strong className="text-zinc-800 dark:text-zinc-200">Webshop</strong> aan om{" "}

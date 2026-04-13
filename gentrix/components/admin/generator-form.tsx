@@ -327,8 +327,23 @@ export function GeneratorForm({
       const decoder = new TextDecoder();
       let buffer = "";
       let streamStopped = false;
+      const streamT0 = Date.now();
+      const streamDiag = {
+        counts: {} as Record<string, number>,
+        sawComplete: false,
+        sawErrorNdjson: false,
+        lastType: "" as string,
+      };
+      const tickStreamDiag = (ev: GenerateSiteStreamNdjsonEvent) => {
+        if (ev.type === "keepalive") return;
+        streamDiag.lastType = ev.type;
+        streamDiag.counts[ev.type] = (streamDiag.counts[ev.type] ?? 0) + 1;
+        if (ev.type === "complete") streamDiag.sawComplete = true;
+        if (ev.type === "error") streamDiag.sawErrorNdjson = true;
+      };
 
       const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
+          tickStreamDiag(ev);
           if (ev.type === "keepalive") {
             return;
           }
@@ -417,8 +432,51 @@ export function GeneratorForm({
         );
       }
 
+      // #region agent log
+      void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+        body: JSON.stringify({
+          sessionId: "688ece",
+          hypothesisId: streamDiag.sawComplete ? "OK" : "H2",
+          location: "components/admin/generator-form.tsx:stream_reader_finished",
+          message: "client NDJSON stream read loop exited",
+          data: {
+            streamStopped,
+            sawComplete: streamDiag.sawComplete,
+            sawErrorNdjson: streamDiag.sawErrorNdjson,
+            resStatus: res.status,
+            resOk: res.ok,
+            elapsedMs: Date.now() - streamT0,
+            counts: streamDiag.counts,
+            lastType: streamDiag.lastType,
+            bufferRemainderChars: buffer.length,
+            endedWithoutComplete: !streamStopped,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
       await reader.cancel().catch(() => {});
-    } catch {
+    } catch (err) {
+      // #region agent log
+      void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+        body: JSON.stringify({
+          sessionId: "688ece",
+          hypothesisId: "H3",
+          location: "components/admin/generator-form.tsx:onSubmit_catch",
+          message: "generate-site stream fetch/read threw",
+          data: {
+            errName: err instanceof Error ? err.name : "unknown",
+            errMsg: err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       setError("Netwerkfout of server niet bereikbaar.");
     } finally {
       setLoading(false);
@@ -510,10 +568,11 @@ export function GeneratorForm({
                 <code className="font-mono text-[11px]">__STUDIO_BOOKING_PATH__</code>,{" "}
                 <code className="font-mono text-[11px]">__STUDIO_SHOP_PATH__</code> — en bij meerdere pagina&apos;s{" "}
                 <code className="font-mono text-[11px]">__STUDIO_SITE_BASE__</code> /{" "}
-                <code className="font-mono text-[11px]">__STUDIO_CONTACT_PATH__</code>). Bij <strong>preview en live</strong>{" "}
-                met klant-slug worden boek- en webshop-tokens <strong>altijd</strong> echte <code className="font-mono text-[11px]">/boek/…</code> /{" "}
-                <code className="font-mono text-[11px]">/winkel/…</code>-links (geen <code className="font-mono text-[11px]">#</code> meer daarvoor); CRM bepaalt
-                of de feature actief is of een inactive-pagina toont. Portaal kan bij export/preview nog <code className="font-mono text-[11px]">#</code> zijn.
+                <code className="font-mono text-[11px]">__STUDIO_CONTACT_PATH__</code>).                 Met klant-slug in preview/live worden bestaande boek- en webshop-tokens in opgeslagen HTML omgezet naar{" "}
+                <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code>{" "}
+                (geen <code className="font-mono text-[11px]">#</code> daarvoor); CRM bepaalt of de module actief is of een inactive-pagina toont.{" "}
+                <strong>Nieuwe generaties</strong> zetten die tokens niet meer automatisch in de output. Portaal kan bij export/preview nog{" "}
+                <code className="font-mono text-[11px]">#</code> zijn.
               </p>
               <p className="mt-2 text-xs text-slate-600">
                 Een <strong>blueprint</strong> in de project-snapshot (standaard{" "}
@@ -526,12 +585,12 @@ export function GeneratorForm({
             <section>
               <h3 className="text-sm font-semibold text-slate-900">Boeken &amp; webshop — wat genereert de AI wél?</h3>
               <p className="mt-2 text-xs text-slate-600">
-                De generator bouwt <strong>geen</strong> volledig maatwerk-checkout of agenda-app in HTML. Na de
-                AI-run voegt de server vaste, <strong>canonieke</strong> secties toe (<code className="font-mono text-[11px]">booking</code>,{" "}
-                <code className="font-mono text-[11px]">shop</code>) met dezelfde placeholder-tokens als in de nav.{" "}
-                <strong>Site-IR</strong> bevat standaard ook de route-keys voor boeken en webshop. CRM bepaalt of blokken/CTA&apos;s
-                zichtbaar zijn en of de feature achter <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code> actief is;
-                anders toont die route een geldige inactive-pagina.
+                De generator bouwt <strong>geen</strong> volledig maatwerk-checkout of agenda-app in HTML en voegt na de
+                AI-run <strong>geen</strong> vaste secties <code className="font-mono text-[11px]">booking</code> /{" "}
+                <code className="font-mono text-[11px]">shop</code> meer toe — die zet je per klant aan via{" "}
+                <strong>Portaal-modules</strong> (schakelaars + knoppen “Standaard booking-/webshop-sectie”).{" "}
+                <strong>Site-IR</strong> kan nog route-keys voor die modules bevatten voor validatie; CRM bepaalt zichtbaarheid en of{" "}
+                <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code> actief is.
               </p>
             </section>
             <section>

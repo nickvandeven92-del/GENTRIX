@@ -1,6 +1,4 @@
 import {
-  PUBLIC_SITE_MODULE_APPOINTMENTS,
-  PUBLIC_SITE_MODULE_WEBSHOP,
   STUDIO_DATA_ATTR_FEATURE_ZONE,
   STUDIO_DATA_ATTR_MODULE,
   STUDIO_DATA_ATTR_MODULE_CTA,
@@ -71,15 +69,10 @@ const PORTAL_MARKUP_RULES = `=== ZAKELIJK PORTAAL — MARKERING (verplicht) ===
 - Knoppen en nav-links naar het echte portaal (achter login op deze app): gebruik **exact** \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — géén \`#\` of verzonnen URL voor het portaal-pad.
 - Blijft **statische** mock; geen \`<script>\`, geen echte login-flow in HTML.`;
 
-const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties **van dezelfde pagina**), \`mailto:\`, \`tel:\`, \`https://…\`, of de **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): marketing-subroutes \`href="__STUDIO_SITE_BASE__/<slug>"\` (canonieke keys zoals \`wat-wij-doen\`, \`faq\`) wanneer de site \`marketingPages\` gebruikt, portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\`, publiek boeken \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` **met** \`${STUDIO_DATA_ATTR_MODULE}="${PUBLIC_SITE_MODULE_APPOINTMENTS}"\` op dezelfde openende \`<a>\`-tag (legacy \`data-studio-module-link\` mag, maar verkies \`${STUDIO_DATA_ATTR_MODULE}\`), webshop \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` **met** \`${STUDIO_DATA_ATTR_MODULE}="${PUBLIC_SITE_MODULE_WEBSHOP}"\` — **geen** \`href="#"\` of lege links voor die doelen.
-- **Module-zones (optioneel, voor uitbreidbare layouts):** een blok dat **volledig** verdwijnt als een module later uit staat, wikkel je in bv. \`<div ${STUDIO_DATA_ATTR_FEATURE_ZONE}="${PUBLIC_SITE_MODULE_APPOINTMENTS}">…</div>\` (zelfde \`id\`-string als module-id). Alleen gebruiken als de inhoud echt module-specifiek is — geen algemene marketing erin.
-- **Nav alleen voor een module:** zet op de openende \`<a>\` bv. \`${STUDIO_DATA_ATTR_NAV_MODULE}="${PUBLIC_SITE_MODULE_WEBSHOP}"\` naast de placeholder-\`href\`.
-- **CTA-knop (niet altijd een link):** op \`<button>\` of \`<a>\` die vooral een module activeert, gebruik \`${STUDIO_DATA_ATTR_MODULE_CTA}="${PUBLIC_SITE_MODULE_APPOINTMENTS}"\` (of de juiste module-id).
+const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties **van dezelfde pagina**), \`mailto:\`, \`tel:\`, \`https://…\`, of **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): marketing-subroutes \`href="__STUDIO_SITE_BASE__/<slug>"\` (canonieke keys zoals \`wat-wij-doen\`, \`faq\`) wanneer de site \`marketingPages\` gebruikt, portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — **geen** \`href="#"\` of lege links.
+- **Boeking & webshop (publieke marketing, nieuwe generatie):** lever **geen** sectie \`id: "booking"\` of \`id: "shop"\`; **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`, **geen** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\`, en **geen** \`${STUDIO_DATA_ATTR_MODULE}\` / \`${STUDIO_DATA_ATTR_FEATURE_ZONE}\` / \`${STUDIO_DATA_ATTR_NAV_MODULE}\` / \`${STUDIO_DATA_ATTR_MODULE_CTA}\` voor appointments of webshop — die modules schakelt de beheerder aan en voegt de vaste blokken toe **na** generatie. Vermijd dus ook copy als “boek nu” met een nep-URL; gebruik desnoods neutrale CTA’s (\`#contact\`, \`mailto:\`, \`tel:\`) tot de module live staat.
+- **Upgrade met bron-JSON:** als de bron al booking/shop-placeholders of module-attrs bevat, **kopieer** die markup **ongewijzigd** op de betreffende rijen (geen extra dubbele booking/shop-secties toevoegen).
 - **Verboden op publieke marketing:** login, registratie, wachtwoordvelden, “mijn account” als werkende app — wel mag je **naar** het portaal linken met het portaal-placeholder.
-- **Boeken-sectie:** lever **geen** sectie met \`id: "booking"\` in je JSON — die wordt **altijd** server-side toegevoegd. Dubbel = verboden.
-- **Shop-sectie:** lever **geen** sectie met \`id: "shop"\` in je JSON — de studio voegt **vier producttegels** + webshop-CTA server-side toe. Dubbel = verboden.
-- **Online afspraak (bezoeker):** als de briefing afspraken / online boeken noemt, zet het boekings-placeholder op één of twee plekken in **nav en/of footer**. Geen aparte booking-sectie bouwen; niet verwarren met het portaal-placeholder.
-- **Webshop / online winkel:** bij retail-, product- of webshop-signalen in de briefing: **minstens één** link in **nav en/of footer** met het webshop-placeholder (bv. “Webshop”). Zonder duidelijk verkoopsignaal mag je die link weglaten.
 - **Copy:** professioneel en menselijk; **vermijd** woorden als “AI”, “gegenereerd”, “prompt” of “chatbot-engine” in zichtbare tekst voor bezoekers — en **nooit** de ruwe placeholder-tokens als leesbare tekst op de pagina.`;
 
 /** Vrije generatie: sectielijst in STUDIO STRUCTUUR is exhaustief. */
@@ -103,7 +96,7 @@ const PORTAL_AND_MOCKS = `${PORTAL_MARKUP_RULES}
 
 - Naast de **publieke** pagina, voeg waar het de briefing ondersteunt **portaal-gemarkeerde** secties toe (\`data-studio-visibility="portal"\`):
   - **Zakelijk portaal mock:** facturen/overzicht/documenten (kaarten, placeholders).
-  - **Boeken / afspraken (ondernemer-mock):** statische UI in portaal-sectie mag; op de **publieke** marketingpagina geen eigen \`id: "booking"\`-sectie — alleen nav/footer-links met \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` waar passend; geen nep-formulier dat data post.
+  - **Boeken / afspraken (ondernemer-mock):** statische UI in portaal-sectie mag; op de **publieke** marketingpagina **geen** \`id: "booking"\` en **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` in nieuwe builds (beheerder voegt het vaste blok + toggles later toe). Geen nep-formulier op de marketingpagina dat data post.
   - **Klant-dashboard mock** (“Mijn afspraken”, placeholders) waar passend.
 - Op de **publieke** marketingpagina: duidelijke link in header/footer naar het portaal met \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` (bv. “Zakelijk portaal” of “Inloggen ondernemers”).
 - Publieke nav: **geen** volledige dashboard-HTML buiten de gemarkeerde portal-secties.

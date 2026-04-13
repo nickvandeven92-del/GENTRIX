@@ -57,6 +57,26 @@ export async function POST(request: Request) {
   };
   const hasPromptOpts = Object.keys(promptOpts).length > 0;
 
+  // #region agent log
+  void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+    body: JSON.stringify({
+      sessionId: "688ece",
+      hypothesisId: "H1",
+      location: "app/api/generate-site/stream/route.ts:POST",
+      message: "stream route accepted",
+      data: {
+        landingPageOnly: Boolean(parsed.data.landing_page_only),
+        descLen: description.length,
+        maxDurationExport: 300,
+        hasRefUrl: Boolean(referenceStyleUrl?.trim()),
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   const stream = createGenerateSiteReadableStream(
     businessName,
     description,

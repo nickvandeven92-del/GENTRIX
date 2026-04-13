@@ -56,8 +56,7 @@ import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
-import { ensureCanonicalBookingAndShopSectionsInTailwindSections } from "@/lib/site/append-booking-section-to-payload";
-import { STUDIO_SHOP_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
+import { finalizeBookingShopAfterAiGeneration } from "@/lib/site/append-booking-section-to-payload";
 import { INDUSTRY_KEYWORDS, INDUSTRY_PROFILES } from "@/lib/ai/site-generation-industry-data";
 import type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
 
@@ -784,7 +783,7 @@ function buildUpgradeMergeSection(): string {
 - Output = **één** geldig JSON-object met \`config\` + \`sections\` zoals in §5.
 - **config:** kopieer van de bestaande site (zie JSON hieronder of briefing) **zonder** esthetische wijziging.
 - **sections:** de bron-JSON bevat per rij \`id\` (stabiele slug), \`sectionName\` (label) en \`html\`. Behoud **exact** dezelfde \`id\`'s en **dezelfde** \`html\` voor die rijen, in **dezelfde volgorde**; voeg daartussen of aan het eind (logisch) **nieuwe** secties toe volgens briefing / §0B.
-- Nieuwe secties: unieke \`id\` (bijv. \`portal\`, \`client_dashboard\`); **geen** sectie \`id: "booking"\` of \`id: "shop"\` — die injecteert de studio server-side. Inhoud en Tailwind-stijl moeten **visueel aansluiten** op de bestaande secties.
+- Nieuwe secties: unieke \`id\` (bijv. \`portal\`, \`client_dashboard\`); **geen** sectie \`id: "booking"\` of \`id: "shop"\` — die voegt de beheerder later toe via de studio (niet automatisch na AI). Inhoud en Tailwind-stijl moeten **visueel aansluiten** op de bestaande secties.
 - Als er **geen** bestaande JSON in de prompt staat: bouw de marketingpagina compact volgens de briefing, maar **zonder** "alles opnieuw verzinnen" — focus op **toevoegen** van gevraagde secties; varieer niet gratuit t.o.v. de beschreven huidige site.`;
 }
 
@@ -794,13 +793,6 @@ function buildUpgradeMergeSection(): string {
 
 function buildBrancheSectionPromptBlocks(sectionIds: Set<string>): string {
   const blocks: string[] = [];
-
-  if (sectionIds.has("shop")) {
-    blocks.push(`**=== SHOP — niet zelf bouwen ===**
-Het publieke \`id: "shop"\`-blok (vier producttegels + webshop-CTA) injecteert de studio **server-side** na generatie — lever **geen** sectie \`id: "shop"\` in je JSON.
-- **Nav/footer:** zet minstens één link met **exact** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` (bv. “Webshop”, icoon \`data-lucide="ShoppingBag"\`) als de briefing retail/online verkoop raakt.
-- Geen tweede shop-sectie of dubbele \`id: "shop"\`.`);
-  }
 
   if (sectionIds.has("gallery")) {
     blocks.push(`**=== GALERIJ (id: "gallery") ===**
@@ -1344,8 +1336,6 @@ export function buildWebsiteGenerationUserPrompt(
 
   const industryProbe = combinedIndustryProbeText(businessName, description);
   const detectedSections = new Set(options?.sectionIdsHint ?? buildSectionIdsFromBriefing(industryProbe));
-  /** Shop-sectie zelf is server-side; instructies voor nav/footer moeten wél in de prompt. */
-  detectedSections.add("shop");
   const brancheSectionBlocks = buildBrancheSectionPromptBlocks(detectedSections);
   const industryHint = buildIndustryPromptHint(businessName, description);
 
@@ -1799,7 +1789,9 @@ export async function generateSiteWithClaude(
 
   data = {
     ...data,
-    sections: ensureCanonicalBookingAndShopSectionsInTailwindSections(data.sections),
+    sections: finalizeBookingShopAfterAiGeneration(data.sections, {
+      preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+    }),
   };
 
   if (process.env.NODE_ENV === "development") {
@@ -2007,6 +1999,26 @@ export function createGenerateSiteReadableStream(
           }
         }
 
+        // #region agent log
+        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+          body: JSON.stringify({
+            sessionId: "688ece",
+            hypothesisId: "H1",
+            location: "generate-site-with-claude.ts:after_claude_token_stream",
+            message: "Claude token stream ended",
+            data: {
+              elapsedMs: Date.now() - streamWallClockStartMs,
+              bufferLen: buffer.length,
+              stopReason: stop_reason,
+              outTok: usage?.output_tokens ?? null,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+
         const stopUsageKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         try {
           if (usage) {
@@ -2139,7 +2151,9 @@ export function createGenerateSiteReadableStream(
 
         data = {
           ...data,
-          sections: ensureCanonicalBookingAndShopSectionsInTailwindSections(data.sections),
+          sections: finalizeBookingShopAfterAiGeneration(data.sections, {
+            preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+          }),
         };
 
         if (process.env.NODE_ENV === "development") {
@@ -2183,6 +2197,20 @@ export function createGenerateSiteReadableStream(
 
         /** Journal + usage-log kunnen lang duren (extra Claude + DB); zonder keepalive knipt de stream vaak net vóór `complete`. */
         const stopPostProcessKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        // #region agent log
+        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+          body: JSON.stringify({
+            sessionId: "688ece",
+            hypothesisId: "H5",
+            location: "generate-site-with-claude.ts:before_onSuccess",
+            message: "entering onSuccess journal (keepalive active)",
+            data: { elapsedMs: Date.now() - streamWallClockStartMs },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         try {
           await streamOptions?.onSuccess?.(data);
         } catch (journalErr) {
@@ -2190,11 +2218,42 @@ export function createGenerateSiteReadableStream(
         } finally {
           stopPostProcessKeepalive();
         }
+        // #region agent log
+        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+          body: JSON.stringify({
+            sessionId: "688ece",
+            hypothesisId: "H5",
+            location: "generate-site-with-claude.ts:after_onSuccess",
+            message: "onSuccess finished, about to send complete",
+            data: { elapsedMs: Date.now() - streamWallClockStartMs },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
 
         send(controller, { type: "complete", outputFormat: "tailwind_sections", data });
         send(controller, { type: "status", message: "Generatie voltooid" });
         controller.close();
       } catch (error) {
+        // #region agent log
+        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
+          body: JSON.stringify({
+            sessionId: "688ece",
+            hypothesisId: "H4",
+            location: "generate-site-with-claude.ts:stream_outer_catch",
+            message: "ReadableStream start() threw",
+            data: {
+              errName: error instanceof Error ? error.name : "unknown",
+              errMsg: error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         send(controller, {
           type: "error",
           message: error instanceof Error ? error.message : "Onbekende fout",

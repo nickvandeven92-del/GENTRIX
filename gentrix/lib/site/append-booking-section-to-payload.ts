@@ -34,9 +34,19 @@ export function appendDefaultBookingSectionToSections(
 }
 
 /**
- * Na AI-generatie: verwijdert eventuele model-sectie `id: "booking"` (voorkomt dubbel) en voegt het vaste
- * canonical blok met `__STUDIO_BOOKING_PATH__` toe. CRM bepaalt zichtbaarheid/activatie; de placeholder
- * resolvet altijd naar `/boek/{slug}` (inactive-pagina als de feature nog uit staat).
+ * Verwijdert `id: "booking"` en `id: "shop"` uit model-output (geen canonieke injectie).
+ * Standaardblokken voeg je toe via admin (`append-booking-section` / `append-shop-section`).
+ */
+export function stripModelBookingAndShopSectionsFromTailwindSections(
+  sections: TailwindSection[],
+): TailwindSection[] {
+  return sections.filter((s) => s.id !== "booking" && s.id !== "shop");
+}
+
+/**
+ * Na ophalen van model-JSON: model-`booking` verwijderen en het vaste canonieke blok met
+ * `__STUDIO_BOOKING_PATH__` toevoegen. Onder meer voor handmatige/normalisatie-flows; **niet** meer
+ * standaard na elke site-generatie.
  */
 export function ensureCanonicalBookingSectionInTailwindSections(sections: TailwindSection[]): TailwindSection[] {
   const withoutModelBooking = sections.filter((s) => s.id !== "booking");
@@ -75,8 +85,8 @@ export function appendDefaultShopSectionToSections(
 }
 
 /**
- * Na AI-generatie: verwijdert eventuele model-sectie `id: "shop"` en voegt het vaste
- * vier-productenblok toe. CRM bepaalt zichtbaarheid/activatie; `/winkel/{slug}` blijft een geldige route.
+ * Model-`shop` verwijderen en het vaste vier-productenblok toevoegen. Onder meer voor admin-append;
+ * **niet** standaard na elke site-generatie.
  */
 export function ensureCanonicalShopSectionInTailwindSections(sections: TailwindSection[]): TailwindSection[] {
   const withoutModelShop = sections.filter((s) => s.id !== "shop");
@@ -84,9 +94,23 @@ export function ensureCanonicalShopSectionInTailwindSections(sections: TailwindS
   return merged.ok ? merged.sections : withoutModelShop;
 }
 
-/** Booking- en shop-secties in vaste volgorde (booking → shop → footer). */
+/** Booking- en shop-secties in vaste volgorde (booking → shop → footer) — optioneel, bv. migratie. */
 export function ensureCanonicalBookingAndShopSectionsInTailwindSections(
   sections: TailwindSection[],
 ): TailwindSection[] {
   return ensureCanonicalShopSectionInTailwindSections(ensureCanonicalBookingSectionInTailwindSections(sections));
+}
+
+/**
+ * Na site-generatie: standaard **geen** booking/shop injecteren (strip model-output).
+ * In **layout-upgrade**-modus blijft normalisatie naar de canonieke blokken (oude gedrag voor bestaande sites).
+ */
+export function finalizeBookingShopAfterAiGeneration(
+  sections: TailwindSection[],
+  options?: { preserveLayoutUpgrade?: boolean },
+): TailwindSection[] {
+  if (options?.preserveLayoutUpgrade) {
+    return ensureCanonicalBookingAndShopSectionsInTailwindSections(sections);
+  }
+  return stripModelBookingAndShopSectionsFromTailwindSections(sections);
 }
