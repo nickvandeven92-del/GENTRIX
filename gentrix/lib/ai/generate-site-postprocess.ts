@@ -124,15 +124,35 @@ export function fixAlpineNavToggleDefaultsInXData(html: string): string {
   return out;
 }
 
+/** Inline tags waar modellen vaak alleen “SCROLL” / “Scroll” in zetten (case-insensitive strip). */
+const DECORATIVE_SCROLL_CUE_TAG =
+  "span|p|div|a|button|strong|em|label|h1|h2|h3|h4|h5|h6|small|i|b|kbd|aside|blockquote|cite|abbr|figcaption|time";
+
 /**
  * Verwijdert decoratieve “SCROLL”-cues onderaan hero’s (model-template; blijft zichtbaar i.c.m. video-loop).
- * Alleen nodes waar de tekstinhoud **uitsluitend** `SCROLL` is — geen woorden in lopende zinnen.
+ * Alleen nodes waar de tekstinhoud **uitsluitend** “scroll” is (elke hoofdlettervorm) — geen woorden in lopende zinnen.
  */
 export function stripDecorativeScrollCueMarkup(html: string): string {
-  if (!html.includes("SCROLL")) return html;
+  if (!/scroll/i.test(html)) return html;
   let s = html;
-  s = s.replace(/<(span|p|div|a|button|strong|em|label)\b[^>]{0,360}?>\s*SCROLL\s*<\/\1>/gi, "");
-  s = s.replace(/>[\s\u00A0\u200B]*SCROLL[\s\u00A0\u200B]*</g, "><");
+  const tagOnly = new RegExp(
+    `<(${DECORATIVE_SCROLL_CUE_TAG})\\b[^>]{0,800}?>[\\s\\u00A0\\u200B]*scroll[\\s\\u00A0\\u200B]*<\\/\\1>`,
+    "gi",
+  );
+  let prev: string;
+  do {
+    prev = s;
+    s = s.replace(tagOnly, "");
+  } while (s !== prev);
+  s = s.replace(
+    />[\s\u00A0\u200B]*(?:<br\s*\/?>[\s\u00A0\u200B]*)*scroll[\s\u00A0\u200B]*(?:<br\s*\/?>[\s\u00A0\u200B]*)*</gi,
+    "><",
+  );
+  /** `writing-vertical-rl` + alleen scroll-label in het element. */
+  s = s.replace(
+    /<div\b[^>]{0,960}?\bwriting-vertical[^>]{0,960}?>[\s\u00A0\u200B]*scroll[\s\u00A0\u200B]*<\/div>/gi,
+    "",
+  );
   return s;
 }
 

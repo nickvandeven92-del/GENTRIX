@@ -151,6 +151,21 @@ describe("stripDecorativeScrollCueMarkup", () => {
     expect(stripDecorativeScrollCueMarkup(html)).not.toContain("SCROLL");
   });
 
+  it("verwijdert h2 met alleen Scroll (anders gecapitaleerd)", () => {
+    const html = `<div><h2 class="writing-vertical-rl text-xs">Scroll</h2></div>`;
+    expect(stripDecorativeScrollCueMarkup(html)).not.toMatch(/scroll/i);
+  });
+
+  it("verwijdert scroll in losse tekstknoop tussen tags", () => {
+    const html = `<div class="flex flex-col items-center"><div class="h-6 w-px bg-white/30"></div>scroll</div>`;
+    expect(stripDecorativeScrollCueMarkup(html).toLowerCase()).not.toContain("scroll");
+  });
+
+  it("verwijdert verticale div met alleen scroll", () => {
+    const html = `<footer><div class="mx-auto flex writing-vertical-rl text-[10px] tracking-[0.35em] text-white/70">SCROLL</div></footer>`;
+    expect(stripDecorativeScrollCueMarkup(html)).not.toContain("SCROLL");
+  });
+
   it("laat lopende tekst met SCROLL staan", () => {
     const html = `<p class="prose">Je kunt hier verder SCROLLEN voor meer.</p>`;
     expect(stripDecorativeScrollCueMarkup(html)).toContain("SCROLLEN");

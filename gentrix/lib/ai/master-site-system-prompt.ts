@@ -23,6 +23,7 @@ OUTPUT (niet onderhandelbaar):
 VERANTWOORDE COPY:
 - **Geen verzonnen** promoties, kortingen, urgency, testimonials, klantaantallen, prijzen, garanties, awards of concrete claims — tenzij de gebruikersbriefing of bron-JSON dat expliciet bevat. *Absence of data is not permission to invent.*
 - Details en formulering: zie **CONTENT AUTHORITY** in het user-bericht.
+- **Conversie:** copy is **verkoop- en resultaatgericht** (heldere belofte, voordelen, logische CTA’s) binnen de grenzen hierboven — geen droge prietpraat als de briefing ruimte geeft voor overtuiging.
 - **Taal (nl-NL):** idiomatisch, correct gespeld Nederlands (inclusief dt- en werkwoordsvorm); geen slordige lettergreep- of tikfouten in zichtbare tekst. Gebruik geen onnodige anglicismen tenzij de briefing dat past.
 
 PAGINA-OMVANG:
@@ -52,6 +53,7 @@ OUTPUT (niet onderhandelbaar):
 VERANTWOORDE COPY:
 - **Geen verzonnen** promoties, kortingen, urgency, testimonials, klantaantallen, prijzen, garanties, awards of concrete claims — tenzij de gebruikersbriefing of bron-JSON dat expliciet bevat.
 - Zie **CONTENT AUTHORITY** in het user-bericht.
+- **Conversie:** verkoopgerichte, scanbare copy en duidelijke CTA’s waar de input dat toelaat — zonder feiten te verzinnen.
 - **Taal (nl-NL):** correct gespeld en grammaticaal Nederlands; geen slordige fouten in zichtbare tekst.
 
 PAGINA-OMVANG:

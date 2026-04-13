@@ -91,6 +91,17 @@ export function GeneratorForm({
   const streamJsonBufferRef = useRef("");
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
+  /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
+  const [generationActivity, setGenerationActivity] = useState<{ id: string; text: string }[]>([]);
+  const appendGenerationActivity = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setGenerationActivity((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].text === trimmed) return prev;
+      const id = `gen-act-${prev.length}-${trimmed.slice(0, 24)}`;
+      return [...prev, { id, text: trimmed }];
+    });
+  }, []);
 
   const detectedIndustryId = pipelineFeedback?.interpreted?.detectedIndustryId;
 
@@ -145,14 +156,18 @@ export function GeneratorForm({
     );
   }, [generatedTailwind, businessName, detectedIndustryId]);
 
-  /** Zelfde `PublishedSiteView`-payload als na afloop; tijdens stream de laatst bekende secties. */
+  /**
+   * Alleen volledige JSON in de iframe-preview (geen tussentijdse secties).
+   * Uitzondering: stream viel weg vóór `complete` — dan tonen we de laatst ontvangen secties.
+   */
   const activeStudioPreviewPayload = useMemo(() => {
     if (completedGeneratorPreviewPayload) return completedGeneratorPreviewPayload;
-    if (streamingLivePreviewPayload) return streamingLivePreviewPayload;
+    if (streamEndedWithoutComplete && streamingLivePreviewPayload) return streamingLivePreviewPayload;
     return null;
-  }, [completedGeneratorPreviewPayload, streamingLivePreviewPayload]);
+  }, [completedGeneratorPreviewPayload, streamEndedWithoutComplete, streamingLivePreviewPayload]);
 
-  const previewIsStreaming = Boolean(!generatedTailwind && streamingSections.length > 0);
+  const previewIsStreaming = Boolean(streamEndedWithoutComplete && streamingSections.length > 0);
+  const previewPendingUntilComplete = Boolean(loading && !generatedTailwind && !streamEndedWithoutComplete);
 
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
@@ -262,6 +277,7 @@ export function GeneratorForm({
     setDesignRationaleLoading(false);
     setDesignRationaleSkipReason(null);
     setStreamEndedWithoutComplete(false);
+    setGenerationActivity([]);
     setLoading(true);
     try {
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
@@ -313,6 +329,9 @@ export function GeneratorForm({
       let streamStopped = false;
 
       const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
+          if (ev.type === "keepalive") {
+            return;
+          }
           if (ev.type === "generation_meta") {
             setPipelineFeedback(ev.feedback);
             setDesignRationaleLoading(true);
@@ -320,6 +339,7 @@ export function GeneratorForm({
             setDesignRationaleSkipReason(null);
             setDesignContract(null);
             setDesignContractWarning(null);
+            appendGenerationActivity("Pipeline: briefing geïnterpreteerd (branche, stijl, structuur).");
           }
           if (ev.type === "design_rationale") {
             setDesignRationaleLoading(false);
@@ -328,13 +348,18 @@ export function GeneratorForm({
             if (ev.text != null && ev.text.length > 0) {
               setDesignRationale(ev.text);
               setDesignRationaleSkipReason(null);
+              appendGenerationActivity("Denklijn: rationale en designcontract ontvangen.");
             } else {
               setDesignRationale(null);
               setDesignRationaleSkipReason(ev.skipReason ?? "onbekend");
+              appendGenerationActivity(
+                `Denklijn overgeslagen${ev.skipReason ? `: ${ev.skipReason}` : ""}.`,
+              );
             }
           }
           if (ev.type === "status") {
             setStreamPhase(ev.message);
+            appendGenerationActivity(ev.message);
           }
           if (ev.type === "token") {
             streamJsonBufferRef.current += ev.content;
@@ -343,6 +368,7 @@ export function GeneratorForm({
           if (ev.type === "section_complete") {
             const s = ev.section;
             const sectionName = s.sectionName?.trim() || s.id;
+            appendGenerationActivity(`Sectie ontvangen: ${sectionName}`);
             setStreamingSections((prev) => {
               if (prev.some((x) => x.id === s.id)) return prev;
               return [...prev, { id: s.id, html: s.html, sectionName }];
@@ -456,8 +482,8 @@ export function GeneratorForm({
                   )? Dan hoort die slug bij <strong>opslaan</strong> al te kloppen.
                 </li>
                 <li>
-                  Klik <strong>Genereer site (HTML/Tailwind)</strong> en wacht tot de stream klaar is; tijdens het genereren
-                  kun je een live preview zien zodra secties binnenkomen.
+                  Klik <strong>Genereer site (HTML/Tailwind)</strong> en wacht tot de run klaar is; rechts zie je een{" "}
+                  <strong>activiteitenlog</strong> en verschijnt de preview pas wanneer de generatie volledig afgerond is.
                 </li>
                 <li>
                   Controleer de preview rechts en sla op via het paneel linksonder (concept of publiceren). Zodra er een
@@ -583,7 +609,7 @@ export function GeneratorForm({
             }}
             readOnly={descriptionLocked}
             className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
-            placeholder="Briefing voor de studio…"
+            placeholder="Briefing: doelgroep, aanbod, USP’s, gewenste toon — wat moet de bezoeker doen (bellen, offerte, boeken)?"
           />
         </div>
         <div>
@@ -810,9 +836,14 @@ export function GeneratorForm({
                 <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
                   <span>Live preview</span>
-                  {previewIsStreaming ? (
+                  {previewPendingUntilComplete ? (
                     <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
-                      stream
+                      na voltooiing
+                    </span>
+                  ) : null}
+                  {previewIsStreaming ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                      tussentijds
                     </span>
                   ) : null}
                   {generatedTailwind ? (
@@ -877,10 +908,53 @@ export function GeneratorForm({
                 previewFullscreen && "rounded-lg border-zinc-300 dark:border-zinc-700",
               )}
             >
-              {loading && !activeStudioPreviewPayload ? (
-                <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                  <Loader2 className="size-8 animate-spin text-indigo-500" aria-hidden />
-                  <p>Bezig met genereren… preview verschijnt zodra de eerste secties binnen zijn.</p>
+              {(loading && !activeStudioPreviewPayload) ||
+              (!activeStudioPreviewPayload && error && generationActivity.length > 0) ? (
+                <div className="flex min-h-[280px] flex-1 flex-col gap-0 overflow-hidden">
+                  <div className="flex shrink-0 flex-col items-center gap-2 border-b border-zinc-100 bg-zinc-50/90 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                    {loading ? (
+                      <Loader2 className="size-8 animate-spin text-indigo-500" aria-hidden />
+                    ) : (
+                      <AlertCircle className="size-8 text-red-500" aria-hidden />
+                    )}
+                    <p className="text-center text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                      {loading ? "Bezig met genereren…" : "Generatie gestopt"}
+                    </p>
+                    <p className="text-center text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                      De preview verschijnt hier pas als de run <strong className="font-medium text-zinc-800 dark:text-zinc-200">volledig</strong> klaar is.
+                      Hieronder wat de server onderweg deed.
+                    </p>
+                    {streamPhase ? (
+                      <p className="max-w-md text-center text-xs text-indigo-800 dark:text-indigo-200">
+                        <span className="font-medium">Nu:</span> {streamPhase}
+                      </p>
+                    ) : null}
+                    {streamingSections.length > 0 ? (
+                      <p className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+                        {streamingSections.length} sectie{streamingSections.length === 1 ? "" : "s"} in model-output
+                        geparset — nog niet in de preview getoond.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                      Activiteiten
+                    </p>
+                    {generationActivity.length === 0 ? (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Wachten op eerste serverberichten…</p>
+                    ) : (
+                      <ol className="space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-700">
+                        {generationActivity.map((row) => (
+                          <li
+                            key={row.id}
+                            className="relative text-xs leading-snug text-zinc-700 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-300 dark:before:bg-indigo-500"
+                          >
+                            {row.text}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
                 </div>
               ) : activeStudioPreviewPayload ? (
                 <PublishedSiteView

@@ -962,6 +962,11 @@ type SiteGenerationOperationalTailInput = {
   section5IdsNote: string;
 };
 
+/** Gedeelde copy-richting: sales/conversie binnen CONTENT AUTHORITY (geen fictie). */
+function buildSiteGenerationSalesCopyGuidanceLine(): string {
+  return `- **Copy (conversie / sales):** schrijf voor iemand die een keuze moet maken: duidelijke **belofte + bewijs uit de briefing** (diensten, aanpak, differentiatie), voordelen in **jij/wij**-taal, concrete **CTA’s** met werkende \`href\` (ook secundair, bv. “Meer over …” → anker of subroute). Vermijd encyclopedische of interne jargon-brochures; elke sectie ondersteunt vertrouwen of de volgende stap. **Geen** verzonnen prijzen, stats, reviews of “limited time” — zie CONTENT AUTHORITY.`;
+}
+
 /** §3B–§5 voor multi-route marketing: landing + vaste subpagina's + contact. */
 function buildMarketingMultiPageOperationalTail(
   input: Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote">,
@@ -970,6 +975,7 @@ function buildMarketingMultiPageOperationalTail(
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
 - **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum) — zelfde CONTENT AUTHORITY-regels als standaard.
+${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Meerdere echte pagina’s in één JSON:**
   - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige “Wat wij doen”-longread hier — dat staat op de eigen subpagina).
   - \`marketingPages\` = **verplicht** exact deze vier keys, elk met **eigen** HTML-secties (minstens één sectie per key, eigen \`id\`'s binnen die pagina): \`"wat-wij-doen"\`, \`"werkwijze"\`, \`"over-ons"\`, \`"faq"\`.
@@ -1140,7 +1146,8 @@ function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTail
   const { preserve, requiredIdsLine, section4Nav, section5IdsNote } = input;
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
-- **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum, geen lege placeholders) — **maar** geen **verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (zie **CONTENT AUTHORITY** hierboven). Headlines en USP's: alleen claims die uit de **briefing** volgen; ontbreken die feiten → neutrale, bescheiden copy zonder fake social proof of prijzen. FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands (geen kromme woorden of verkeerde werkwoordsvormen zoals "Productic" i.p.v. "Productie").
+- **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum, geen lege placeholders) — **maar** geen **verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (zie **CONTENT AUTHORITY** hierboven). Headlines en USP's: alleen claims die uit de **briefing** volgen; ontbreken harde feiten → **toch verkoopgericht formuleren** (voordeel, ontzorging, duidelijke keuze) **zonder** fake social proof of prijzen. FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands (geen kromme woorden of verkeerde werkwoordsvormen zoals "Productic" i.p.v. "Productie").
+${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Sectie-ankers:** Het **buitenste** element van elke sectie-\`html\` (eerste tag, meestal \`<section>\`) heeft \`id="…"\` dat **exact gelijk** is aan de JSON-\`id\` van die sectie (bijv. \`"id": "faq"\` → \`<section id="faq" class="…">\`). Zo werkt elke interne link.
 - **Interne links (\`#…\`):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#…">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen — plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).
 - **One-pager menu & CTA's (strikt):** Voor springen **binnen deze pagina** gebruik je **alleen** \`href="#<sectie-id>"\` (zelfde id als op het buitenste element van die sectie). **Verboden** voor interne secties: dezelfde canonieke URL op elk item (\`href="/site/jouwe-slug"\`, \`https://…/site/jouwe-slug\` **zonder** hash), of losse paden als \`/diensten\` / \`/contact\` — in de live viewer lijken die “werkend” maar landen ze praktisch allemaal op dezelfde plek. Elk menu-item krijgt **een eigen** geldig anker naar **inhoud die je ook echt in een sectie met die \`id\` uitwerkt** (bv. \`#diensten\`, \`#over-ons\`, \`#klanten\`, \`#faq\`, \`#contact\`). Uitzonderingen: echte externe \`https://\` (social, kaarten), \`mailto:\`, \`tel:\`, en studio-placeholders \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\` volgens de portal-/module-instructies.
@@ -1281,7 +1288,7 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 === 3. PAGINA → HTML (Tailwind) ===
 
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll.
-- **Hero:** sterke eerste indruk; **geen** vaste knoppen/CTA in de hero tenzij de briefing dat **expliciet** vraagt. **Verboden:** decoratieve scroll-hint onderaan (los **SCROLL**-label, verticaal streepje/muisicoon zonder inhoud) — sjabloon-rommel en blijft bij video-loops in beeld; gebruik liever inhoud of één duidelijke CTA.
+- **Hero:** sterke eerste indruk met **kop + korte waardepropositie**; **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) als dat past bij de briefing — tenzij de briefing expliciet een tekst-only hero wil. **Verboden:** elk decoratief scroll-label (**SCROLL**, **Scroll**, verticaal of horizontaal, muisicoon/streepje **zonder** echte link/anker) — dat blijft bij video-loops in beeld en oogt als sjabloon-rommel.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
 - **Klantfoto's:** volg het blok hierboven (niet in de hero).
 
@@ -1394,7 +1401,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
-**Hero (\`#hero\`):** eerste indruk: kop, eventueel korte intro en sterk visueel element; **optioneel** één primaire CTA (mag ook alleen in de nav staan). Volg de **viewport-/min-h-regels** hieronder (§VIEWPORT) zodat de preview geen smalle strook + leeg wit wordt. Combineer tekst met **foto (Unsplash), split-layout of gradient** waar dat sterk is; een **kaal effen donkervlak zonder enige laag** is meestal zwak — tenzij de briefing expliciet zo minimaal wil. **Achtergrond-\`<video>\`:** **niet** standaard — alleen als de gebruikersbriefing **expliciet** om video, bewegende achtergrond, filmische loop, fullscreen motion of dergelijke vraagt (losse woorden als “cinematisch”, “premium” of “stoer” tellen **niet** als video-mandaat). Houd je aan **BRANCHE-INSPIRATIE** (bijv. barbershop: grote **stilstaande** cinematic foto, geen Pexels-achtergrondvideo tenzij de briefing om beweging vraagt).
+**Hero (\`#hero\`):** eerste indruk: kop, korte **waardepropositie** (sales: wat levert het op / welke drempel weg?) en sterk visueel element; **één primaire CTA** en optioneel **één secundaire** (werkende \`href\`) — mag deels overlappen met de nav. **Verboden:** decoratief **scroll**-label (SCROLL, Scroll, verticaal, muis-icoon zonder actie) in de hero. Volg de **viewport-/min-h-regels** hieronder (§VIEWPORT) zodat de preview geen smalle strook + leeg wit wordt. Combineer tekst met **foto (Unsplash), split-layout of gradient** waar dat sterk is; een **kaal effen donkervlak zonder enige laag** is meestal zwak — tenzij de briefing expliciet zo minimaal wil. **Achtergrond-\`<video>\`:** **niet** standaard — alleen als de gebruikersbriefing **expliciet** om video, bewegende achtergrond, filmische loop, fullscreen motion of dergelijke vraagt (losse woorden als “cinematisch”, “premium” of “stoer” tellen **niet** als video-mandaat). Houd je aan **BRANCHE-INSPIRATIE** (bijv. barbershop: grote **stilstaande** cinematic foto, geen Pexels-achtergrondvideo tenzij de briefing om beweging vraagt).
 
 **Klantfoto's:** blijven **buiten** de hero (zie blok KLANTFOTO'S hierboven).
 
