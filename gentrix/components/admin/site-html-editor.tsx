@@ -337,7 +337,7 @@ export function SiteHtmlEditor({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-900">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-900">
       <div className="shrink-0 space-y-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 md:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
@@ -348,6 +348,12 @@ export function SiteHtmlEditor({
           >
             <ArrowLeft className="size-4 shrink-0" aria-hidden />
             Terug naar dossier
+          </Link>
+          <Link
+            href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/flyer`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            Flyer & QR
           </Link>
           <span className="hidden text-zinc-300 sm:inline dark:text-zinc-700" aria-hidden>
             |
@@ -572,7 +578,7 @@ export function SiteHtmlEditor({
         defaultSidebarPx={400}
         minSidebarPx={280}
         maxSidebarPx={560}
-        minMainPx={768}
+        minMainPx={520}
         sidebar={
           <>
             <SiteAiChatPanel

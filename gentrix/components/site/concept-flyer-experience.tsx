@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { Calendar, ShoppingBag, X } from "lucide-react";
+import { Calendar, HelpCircle, ShoppingBag, X } from "lucide-react";
+import { PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
 
 type ConceptFlyerExperienceProps = {
   siteLabel: string;
@@ -15,6 +16,7 @@ export type FlyerStudioCtaConfig = {
   /** Bestel-/checkout-link; leeg = val terug op `quoteUrl`. */
   checkoutUrl: string;
   quoteUrl: string;
+  /** Effectief mailto-adres (env of `PUBLIC_STUDIO_CONTACT_EMAIL`). */
   email: string;
 };
 
@@ -27,7 +29,8 @@ export function readFlyerStudioCtaEnv(): FlyerStudioCtaConfig {
   const quoteUrl = process.env.NEXT_PUBLIC_STUDIO_QUOTE_URL?.trim() ?? "";
   const checkoutDirect = process.env.NEXT_PUBLIC_STUDIO_CHECKOUT_URL?.trim() ?? "";
   const checkoutUrl = checkoutDirect || quoteUrl;
-  const email = process.env.NEXT_PUBLIC_STUDIO_CONTACT_EMAIL?.trim() ?? "";
+  const emailFromEnv = process.env.NEXT_PUBLIC_STUDIO_CONTACT_EMAIL?.trim() ?? "";
+  const email = emailFromEnv || PUBLIC_STUDIO_CONTACT_EMAIL.trim() || "hello@example.com";
   return { meetingUrl, checkoutUrl, quoteUrl, email };
 }
 
@@ -41,7 +44,7 @@ export function ConceptFlyerExperience({
   appointmentsEnabled,
   webshopEnabled,
 }: ConceptFlyerExperienceProps) {
-  const { meetingUrl, checkoutUrl, email } = readFlyerEnv();
+  const { meetingUrl, checkoutUrl, email: contactEmail } = readFlyerEnv();
   const storageKey = useMemo(() => `gentrix-flyer-tour-${slug}`, [slug]);
   const [dismissedBar, setDismissedBar] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -56,6 +59,7 @@ export function ConceptFlyerExperience({
       if (sessionStorage.getItem(storageKey) === "1") {
         setTourOpen(false);
         setStep(0);
+        setDismissedBar(true);
         return;
       }
     } catch {
@@ -73,18 +77,18 @@ export function ConceptFlyerExperience({
     }
     setTourOpen(false);
     setStep(0);
+    setDismissedBar(true);
   }, [storageKey]);
 
   const mailStudio = useCallback(
     (subject: string) => {
-      if (!email) return;
-      window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+      window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}`;
     },
-    [email],
+    [contactEmail],
   );
 
-  const hasMeetingCta = Boolean(meetingUrl || email);
-  const hasOrderCta = Boolean(checkoutUrl || email);
+  const hasMeetingCta = Boolean(meetingUrl || contactEmail);
+  const hasOrderCta = Boolean(checkoutUrl || contactEmail);
   const hasAnyCta = hasMeetingCta || hasOrderCta;
 
   const steps: { title: string; body: string }[] = [
@@ -117,6 +121,7 @@ export function ConceptFlyerExperience({
 
   const showOverlay = tourOpen && step >= 0 && step < steps.length;
   const showFloatingActions = hasAnyCta && !showOverlay;
+  const showBottomIntroBar = !dismissedBar && !showOverlay;
 
   const fabWrap =
     "pointer-events-auto flex max-w-[min(100vw-2rem,18rem)] flex-col gap-2 rounded-2xl border border-zinc-200/90 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-zinc-600/90 dark:bg-zinc-900/95";
@@ -150,8 +155,8 @@ export function ConceptFlyerExperience({
 
   return (
     <>
-      {!dismissedBar ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-3 sm:p-4">
+      {showBottomIntroBar ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[10030] flex justify-center p-3 sm:p-4">
           <div className="pointer-events-auto flex max-w-lg flex-col gap-2 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/95">
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Concept-preview</p>
@@ -165,7 +170,7 @@ export function ConceptFlyerExperience({
               </button>
             </div>
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              De rondleiding start automatisch. Bestellen en een gesprek plannen doe je via de knoppen rechtsonder.
+              Je ziet een conceptversie van de site. Rechtsonder kun je bestellen of een persoonlijk gesprek plannen.
             </p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -179,22 +184,13 @@ export function ConceptFlyerExperience({
                 Rondleiding opnieuw
               </button>
             </div>
-            {!hasAnyCta ? (
-              <p className="text-[11px] text-amber-800 dark:text-amber-200">
-                Zet <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_CHECKOUT_URL</code> (of{" "}
-                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_QUOTE_URL</code>),{" "}
-                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_MEETING_URL</code> of{" "}
-                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_CONTACT_EMAIL</code> voor de
-                zwevende knoppen.
-              </p>
-            ) : null}
           </div>
         </div>
       ) : null}
 
       {showOverlay ? (
         <div
-          className="fixed inset-0 z-[110] flex items-end justify-center bg-black/45 p-4 sm:items-center"
+          className="fixed inset-0 z-[10060] flex items-end justify-center bg-black/45 p-4 sm:items-center"
           role="dialog"
           aria-modal="true"
           aria-labelledby="flyer-tour-title"
@@ -291,12 +287,28 @@ export function ConceptFlyerExperience({
         </div>
       ) : null}
 
+      {dismissedBar && !showOverlay ? (
+        <div className="pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-3 z-[10040] sm:left-4">
+          <button
+            type="button"
+            className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/95 px-3 py-2 text-xs font-medium text-zinc-800 shadow-lg backdrop-blur-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            onClick={() => {
+              setStep(0);
+              setTourOpen(true);
+            }}
+          >
+            <HelpCircle className="size-4 shrink-0 opacity-80" aria-hidden />
+            Concept-uitleg
+          </button>
+        </div>
+      ) : null}
+
       {showFloatingActions ? (
         <div
-          className={`pointer-events-none fixed right-3 z-[102] flex flex-col items-end sm:right-4 ${
-            dismissedBar
-              ? "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-              : "bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))]"
+          className={`pointer-events-none fixed right-3 z-[10050] flex flex-col items-end sm:right-4 ${
+            showBottomIntroBar
+              ? "bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))]"
+              : "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]"
           }`}
           role="complementary"
           aria-label="Bestellen en contact"

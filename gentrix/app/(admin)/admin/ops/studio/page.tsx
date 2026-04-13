@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Download, PanelTop } from "lucide-react";
+import { PanelTop } from "lucide-react";
 import { GeneratorForm } from "@/components/admin/generator-form";
 import { StudioTailwindWorkspace } from "@/components/admin/studio-tailwind-workspace";
 import { getParsedSiteDraftBySlug } from "@/lib/data/client-draft-site";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
-import { getFlyerScanSummary } from "@/lib/data/get-flyer-scan-summary";
 import { getClientSiteUrlsForAdminDossier } from "@/lib/data/client-preview-urls";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 import { formatSlugForDisplay } from "@/lib/slug";
@@ -29,10 +27,7 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
     const appointmentsEnabled = commercial?.appointments_enabled ?? false;
     const webshopEnabled = commercial?.webshop_enabled ?? false;
     const origin = await getRequestOrigin();
-    const [siteUrls, flyerScans] = await Promise.all([
-      getClientSiteUrlsForAdminDossier(existing.subfolder_slug, origin),
-      getFlyerScanSummary(existing.id),
-    ]);
+    const siteUrls = await getClientSiteUrlsForAdminDossier(existing.subfolder_slug, origin);
     let draftPublicPreviewToken: string | null = null;
     if (siteUrls?.previewAbsolute) {
       try {
@@ -43,102 +38,29 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
     }
 
     return (
-      <div className="studio-generator-scope flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3">
-        <div className="shrink-0 rounded-xl border border-neutral-200 bg-white/90 px-4 py-3 dark:border-zinc-600/80 dark:bg-zinc-900/60">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2 text-sm text-neutral-700 dark:text-zinc-300">
-              <PanelTop className="size-4 shrink-0 text-neutral-500 dark:text-zinc-400" aria-hidden />
-              <span className="font-semibold text-neutral-900 dark:text-zinc-50">Site-studio</span>
-              <span className="text-neutral-400 dark:text-zinc-600" aria-hidden>
-                ·
-              </span>
-              <span className="min-w-0 truncate font-medium text-neutral-800 dark:text-zinc-200">
-                {existing.name.trim() || formatSlugForDisplay(decodedSlug)}
-              </span>
-              <code className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-700 dark:bg-white/10 dark:text-zinc-300">
-                {decodedSlug}
-              </code>
-            </div>
-            <Link
-              href={`/admin/clients/${encodeURIComponent(decodedSlug)}`}
-              className="text-xs font-medium text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
-            >
-              Klantdossier →
-            </Link>
-          </div>
-          {siteUrls?.flyerQrAbsolute ? (
-            <p className="mt-2 text-xs text-neutral-600 dark:text-zinc-400">
-              Flyer / QR:{" "}
-              <a
-                href={siteUrls.flyerQrAbsolute}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="break-all font-mono text-indigo-800 underline-offset-2 hover:underline dark:text-indigo-300"
-              >
-                {siteUrls.flyerQrAbsolute}
-              </a>
-            </p>
-          ) : null}
-          {flyerScans ? (
-            <p className="mt-2 text-xs text-neutral-600 dark:text-zinc-400">
-              Flyer-scans:{" "}
-              <span className="font-medium text-neutral-800 dark:text-zinc-200">{flyerScans.total}</span> totaal
-              {flyerScans.lastScannedAt
-                ? ` · laatste ${new Intl.DateTimeFormat("nl-NL", { dateStyle: "short", timeStyle: "short" }).format(new Date(flyerScans.lastScannedAt))}`
-                : ""}
-            </p>
-          ) : null}
-          {existing ? (
-            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600 dark:text-zinc-400">
-              <span className="font-medium text-neutral-700 dark:text-zinc-300">Flyer PDF:</span>
-              <a
-                href={`/api/clients/${encodeURIComponent(existing.subfolder_slug)}/flyer-pdf?template=minimal`}
-                className="inline-flex items-center gap-1 text-violet-800 underline-offset-2 hover:underline dark:text-violet-300"
-              >
-                <Download className="size-3.5 shrink-0" aria-hidden />
-                rustig
-              </a>
-              <a
-                href={`/api/clients/${encodeURIComponent(existing.subfolder_slug)}/flyer-pdf?template=modern`}
-                className="inline-flex items-center gap-1 text-violet-800 underline-offset-2 hover:underline dark:text-violet-300"
-              >
-                <Download className="size-3.5 shrink-0" aria-hidden />
-                donker
-              </a>
-              <a
-                href={`/api/clients/${encodeURIComponent(existing.subfolder_slug)}/flyer-pdf?template=gentrix`}
-                className="inline-flex items-center gap-1 text-violet-800 underline-offset-2 hover:underline dark:text-violet-300"
-              >
-                <Download className="size-3.5 shrink-0" aria-hidden />
-                gentrix
-              </a>
-            </p>
-          ) : null}
-        </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <StudioTailwindWorkspace
-            subfolderSlug={existing.subfolder_slug}
-            initialName={existing.name}
-            initialDescription={existing.description}
-            initialStatus={existing.status}
-            initialSections={parsed.sections}
-            initialConfig={parsed.config}
-            initialPageType={parsed.pageType}
-            initialCustomCss={parsed.customCss}
-            initialCustomJs={parsed.customJs}
-            initialLogoSet={parsed.logoSet}
-            appointmentsEnabled={appointmentsEnabled}
-            webshopEnabled={webshopEnabled}
-            initialSiteIr={parsed.siteIr ?? null}
-            draftPublicPreviewToken={draftPublicPreviewToken}
-          />
-        </div>
+      <div className="studio-generator-scope flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+        <StudioTailwindWorkspace
+          subfolderSlug={existing.subfolder_slug}
+          initialName={existing.name}
+          initialDescription={existing.description}
+          initialStatus={existing.status}
+          initialSections={parsed.sections}
+          initialConfig={parsed.config}
+          initialPageType={parsed.pageType}
+          initialCustomCss={parsed.customCss}
+          initialCustomJs={parsed.customJs}
+          initialLogoSet={parsed.logoSet}
+          appointmentsEnabled={appointmentsEnabled}
+          webshopEnabled={webshopEnabled}
+          initialSiteIr={parsed.siteIr ?? null}
+          draftPublicPreviewToken={draftPublicPreviewToken}
+        />
       </div>
     );
   }
 
   return (
-    <div className="studio-generator-scope flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4">
+    <div className="studio-generator-scope flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-hidden">
       <div className="shrink-0 sales-os-glass-panel rounded-2xl border border-neutral-200 bg-white p-6 md:p-8 dark:border-zinc-600/80 dark:bg-zinc-900/50">
         <div className="flex flex-col gap-6">
           <div className="flex min-w-0 flex-1 items-center gap-4">

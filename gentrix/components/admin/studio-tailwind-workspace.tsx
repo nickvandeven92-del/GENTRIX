@@ -44,7 +44,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
   }, [router]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-800">
         <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-900/80">
           <button

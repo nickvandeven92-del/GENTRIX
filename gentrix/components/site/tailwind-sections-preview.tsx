@@ -100,6 +100,10 @@ export function TailwindSectionsPreview({
   const previewMatchParentWindowBreakpoints =
     viewportMode === "desktop" || (viewportMode === "auto" && parentWindowDesktop);
 
+  /** Mobiel-knop, of Autom. op smal browservenster: zelfde nav-polish in iframe als `studioMobileEditorFrame`. */
+  const studioMobileEditorFrame =
+    viewportMode === "mobile" || (viewportMode === "auto" && !parentWindowDesktop);
+
   const previewSections = useMemo(
     () =>
       composePublicMarketingTailwindSections(
@@ -125,6 +129,7 @@ export function TailwindSectionsPreview({
         appointmentsEnabled,
         webshopEnabled,
         previewMatchParentWindowBreakpoints,
+        studioMobileEditorFrame,
       }),
     [
       previewSections,
@@ -138,6 +143,7 @@ export function TailwindSectionsPreview({
       appointmentsEnabled,
       webshopEnabled,
       previewMatchParentWindowBreakpoints,
+      studioMobileEditorFrame,
     ],
   );
 

@@ -67,6 +67,19 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
 }`;
 
 /**
+ * Alleen in de HTML-editor bij **Mobiel**-preview (`data-gentrix-studio-mobile` op `<html>`).
+ * Veel AI-headers: desktop-`nav` met links blijft `flex` op smalle breedte naast de hamburger.
+ * Verberg de eerste directe `nav` onder `header` als er een menuknop (aria-label met “menu”) in de header zit.
+ */
+export const STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS = `html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) > nav:first-of-type {
+  display: none !important;
+}
+html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdnavigatie"],
+html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdmenu"] {
+  display: none !important;
+}`;
+
+/**
  * CSS voor `data-animation` (fade-up, slide-in-*, scale-in).
  * Onder de vouw: **CSS transitions** i.p.v. `animation-play-state: paused` + keyframes — die combinatie laat
  * content op keyframe 0% (opacity:0) hangen als IntersectionObserver in een iframe traag uitblijft, waardoor
@@ -1305,6 +1318,12 @@ export type BuildTailwindIframeSrcDocOptions = {
    * Zet dit aan om de layout te laten aansluiten op het **browservenster** (desktop vs mobiel), niet op de iframewidth.
    */
   previewMatchParentWindowBreakpoints?: boolean;
+  /**
+   * HTML-editor: zet `data-gentrix-studio-mobile` op `<html>` + extra CSS om dubbele desktop-nav
+   * naast hamburger te onderdrukken. Aan bij expliciete mobiele preview óf Autom. op smal
+   * browservenster (`device-width`); uit bij Desktop-preview of brede auto (geen effect op live `/site`).
+   */
+  studioMobileEditorFrame?: boolean;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -1397,9 +1416,12 @@ export function buildTailwindIframeSrcDoc(
     ? "width=1280, initial-scale=1"
     : "width=device-width, initial-scale=1";
 
+  const studioMobileAttr = options?.studioMobileEditorFrame ? ` data-gentrix-studio-mobile="1"` : "";
+  const studioMobileCss = options?.studioMobileEditorFrame ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n` : "";
+
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   return `<!DOCTYPE html>
-<html lang="nl">
+<html lang="nl"${studioMobileAttr}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
@@ -1415,7 +1437,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${animationCss}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
-${foucCssBlock}  </style>
+    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 </head>
 <body class="antialiased text-slate-900${radiusClass}">
