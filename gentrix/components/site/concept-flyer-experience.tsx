@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Calendar, ShoppingBag, X } from "lucide-react";
 
 type ConceptFlyerExperienceProps = {
   siteLabel: string;
@@ -10,12 +10,29 @@ type ConceptFlyerExperienceProps = {
   webshopEnabled: boolean;
 };
 
+export type FlyerStudioCtaConfig = {
+  meetingUrl: string;
+  /** Bestel-/checkout-link; leeg = val terug op `quoteUrl`. */
+  checkoutUrl: string;
+  quoteUrl: string;
+  email: string;
+};
+
+/**
+ * Publieke studio-CTA’s (flyer / concept `?flyer=1`). Zelfde keys als `readFlyerEnv()`;
+ * bruikbaar als je server-side wilt doorgeven i.p.v. build-time env.
+ */
+export function readFlyerStudioCtaEnv(): FlyerStudioCtaConfig {
+  const meetingUrl = process.env.NEXT_PUBLIC_STUDIO_MEETING_URL?.trim() ?? "";
+  const quoteUrl = process.env.NEXT_PUBLIC_STUDIO_QUOTE_URL?.trim() ?? "";
+  const checkoutDirect = process.env.NEXT_PUBLIC_STUDIO_CHECKOUT_URL?.trim() ?? "";
+  const checkoutUrl = checkoutDirect || quoteUrl;
+  const email = process.env.NEXT_PUBLIC_STUDIO_CONTACT_EMAIL?.trim() ?? "";
+  return { meetingUrl, checkoutUrl, quoteUrl, email };
+}
+
 function readFlyerEnv() {
-  return {
-    meetingUrl: process.env.NEXT_PUBLIC_STUDIO_MEETING_URL?.trim() ?? "",
-    quoteUrl: process.env.NEXT_PUBLIC_STUDIO_QUOTE_URL?.trim() ?? "",
-    email: process.env.NEXT_PUBLIC_STUDIO_CONTACT_EMAIL?.trim() ?? "",
-  };
+  return readFlyerStudioCtaEnv();
 }
 
 export function ConceptFlyerExperience({
@@ -24,22 +41,28 @@ export function ConceptFlyerExperience({
   appointmentsEnabled,
   webshopEnabled,
 }: ConceptFlyerExperienceProps) {
-  const { meetingUrl, quoteUrl, email } = readFlyerEnv();
+  const { meetingUrl, checkoutUrl, email } = readFlyerEnv();
   const storageKey = useMemo(() => `gentrix-flyer-tour-${slug}`, [slug]);
   const [dismissedBar, setDismissedBar] = useState(false);
-  /** Rondleiding alleen na expliciete start — niet `step === 0` als default (voorkomt overlay bij load + rare state). */
   const [tourOpen, setTourOpen] = useState(false);
   const [step, setStep] = useState(0);
 
-  useEffect(() => {
+  /**
+   * Concept-flyer preview: rondleiding meteen open (vóór paint waar mogelijk), behalve als
+   * de bezoeker deze sessie al op Klaar/Overslaan heeft afgerond (`sessionStorage`).
+   */
+  useLayoutEffect(() => {
     try {
       if (sessionStorage.getItem(storageKey) === "1") {
         setTourOpen(false);
         setStep(0);
+        return;
       }
     } catch {
-      /* ignore */
+      /* private mode / storage geblokkeerd → gewoon starten */
     }
+    setTourOpen(true);
+    setStep(0);
   }, [storageKey]);
 
   const finishTour = useCallback(() => {
@@ -60,7 +83,9 @@ export function ConceptFlyerExperience({
     [email],
   );
 
-  const hasAnyCta = Boolean(meetingUrl || quoteUrl || email);
+  const hasMeetingCta = Boolean(meetingUrl || email);
+  const hasOrderCta = Boolean(checkoutUrl || email);
+  const hasAnyCta = hasMeetingCta || hasOrderCta;
 
   const steps: { title: string; body: string }[] = [
     {
@@ -86,11 +111,19 @@ export function ConceptFlyerExperience({
       : []),
     {
       title: "Volgende stap",
-      body: "Plan een gesprek of vraag een offerte aan — dan maken we het samen af.",
+      body: "Ga door naar bestellen of plan een persoonlijk gesprek — dan maken we het samen af.",
     },
   ];
 
   const showOverlay = tourOpen && step >= 0 && step < steps.length;
+  const showFloatingActions = hasAnyCta && !showOverlay;
+
+  const fabWrap =
+    "pointer-events-auto flex max-w-[min(100vw-2rem,18rem)] flex-col gap-2 rounded-2xl border border-zinc-200/90 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:border-zinc-600/90 dark:bg-zinc-900/95";
+  const fabPrimary =
+    "inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-600/50 bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-600 dark:hover:bg-emerald-500";
+  const fabSecondary =
+    "inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700";
 
   useEffect(() => {
     if (!showOverlay) return;
@@ -132,7 +165,7 @@ export function ConceptFlyerExperience({
               </button>
             </div>
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              Scan je deze pagina via een flyer-QR? Start de korte rondleiding of ga direct naar contact.
+              De rondleiding start automatisch. Bestellen en een gesprek plannen doe je via de knoppen rechtsonder.
             </p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -143,33 +176,16 @@ export function ConceptFlyerExperience({
                   setTourOpen(true);
                 }}
               >
-                Start rondleiding
+                Rondleiding opnieuw
               </button>
-              {meetingUrl ? (
-                <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className={ctaClass}>
-                  Gesprek plannen
-                </a>
-              ) : email ? (
-                <button type="button" className={ctaClass} onClick={() => mailStudio("Gesprek aanvragen — website concept")}>
-                  Gesprek aanvragen
-                </button>
-              ) : null}
-              {quoteUrl ? (
-                <a href={quoteUrl} target="_blank" rel="noopener noreferrer" className={ctaPrimaryClass}>
-                  Offerte / kopen
-                </a>
-              ) : email ? (
-                <button type="button" className={ctaPrimaryClass} onClick={() => mailStudio("Offerte / aankoop website")}>
-                  Offerte / kopen
-                </button>
-              ) : null}
             </div>
             {!hasAnyCta ? (
               <p className="text-[11px] text-amber-800 dark:text-amber-200">
-                Zet <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_MEETING_URL</code>,{" "}
-                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_QUOTE_URL</code> of{" "}
-                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_CONTACT_EMAIL</code>{" "}
-                voor knoppen hier.
+                Zet <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_CHECKOUT_URL</code> (of{" "}
+                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_QUOTE_URL</code>),{" "}
+                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_MEETING_URL</code> of{" "}
+                <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">NEXT_PUBLIC_STUDIO_CONTACT_EMAIL</code> voor de
+                zwevende knoppen.
               </p>
             ) : null}
           </div>
@@ -182,11 +198,12 @@ export function ConceptFlyerExperience({
           role="dialog"
           aria-modal="true"
           aria-labelledby="flyer-tour-title"
-          onClick={finishTour}
+          onClick={() => finishTour()}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+            className="pointer-events-auto w-full max-w-md touch-manipulation rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <h2 id="flyer-tour-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               {steps[step]?.title}
@@ -194,23 +211,27 @@ export function ConceptFlyerExperience({
             <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{steps[step]?.body}</p>
             {step === steps.length - 1 && hasAnyCta ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                {meetingUrl ? (
-                  <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className={ctaClass}>
-                    Gesprek plannen
-                  </a>
-                ) : email ? (
-                  <button type="button" className={ctaClass} onClick={() => mailStudio("Gesprek — website concept")}>
-                    Gesprek mailen
-                  </button>
+                {hasMeetingCta ? (
+                  meetingUrl ? (
+                    <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className={ctaClass}>
+                      Plan een persoonlijk gesprek
+                    </a>
+                  ) : (
+                    <button type="button" className={ctaClass} onClick={() => mailStudio("Persoonlijk gesprek — website concept")}>
+                      Plan een persoonlijk gesprek
+                    </button>
+                  )
                 ) : null}
-                {quoteUrl ? (
-                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer" className={ctaPrimaryClass}>
-                    Offerte / kopen
-                  </a>
-                ) : email ? (
-                  <button type="button" className={ctaPrimaryClass} onClick={() => mailStudio("Offerte / aankoop website")}>
-                    Offerte mailen
-                  </button>
+                {hasOrderCta ? (
+                  checkoutUrl ? (
+                    <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className={ctaPrimaryClass}>
+                      Ga door naar bestellen
+                    </a>
+                  ) : (
+                    <button type="button" className={ctaPrimaryClass} onClick={() => mailStudio("Bestellen — website concept")}>
+                      Ga door naar bestellen
+                    </button>
+                  )
                 ) : null}
               </div>
             ) : null}
@@ -218,7 +239,10 @@ export function ConceptFlyerExperience({
               <button
                 type="button"
                 className="text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                onClick={finishTour}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  finishTour();
+                }}
               >
                 Overslaan
               </button>
@@ -227,7 +251,10 @@ export function ConceptFlyerExperience({
                   <button
                     type="button"
                     className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                    onClick={() => setStep((s) => Math.max(0, s - 1))}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStep((s) => Math.max(0, s - 1));
+                    }}
                   >
                     Terug
                   </button>
@@ -236,7 +263,10 @@ export function ConceptFlyerExperience({
                   <button
                     type="button"
                     className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                    onClick={() => setStep((s) => s + 1)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStep((s) => s + 1);
+                    }}
                   >
                     Volgende
                   </button>
@@ -244,7 +274,10 @@ export function ConceptFlyerExperience({
                   <button
                     type="button"
                     className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                    onClick={finishTour}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      finishTour();
+                    }}
                   >
                     Klaar
                   </button>
@@ -254,6 +287,47 @@ export function ConceptFlyerExperience({
             <p className="mt-3 text-center text-xs text-zinc-400">
               Stap {step + 1} van {steps.length}
             </p>
+          </div>
+        </div>
+      ) : null}
+
+      {showFloatingActions ? (
+        <div
+          className={`pointer-events-none fixed right-3 z-[102] flex flex-col items-end sm:right-4 ${
+            dismissedBar
+              ? "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+              : "bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(10.5rem+env(safe-area-inset-bottom,0px))]"
+          }`}
+          role="complementary"
+          aria-label="Bestellen en contact"
+        >
+          <div className={fabWrap}>
+            {hasOrderCta ? (
+              checkoutUrl ? (
+                <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className={fabPrimary}>
+                  <ShoppingBag className="size-4 shrink-0 opacity-90" aria-hidden />
+                  Ga door naar bestellen
+                </a>
+              ) : (
+                <button type="button" className={fabPrimary} onClick={() => mailStudio("Bestellen — website concept")}>
+                  <ShoppingBag className="size-4 shrink-0 opacity-90" aria-hidden />
+                  Ga door naar bestellen
+                </button>
+              )
+            ) : null}
+            {hasMeetingCta ? (
+              meetingUrl ? (
+                <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className={fabSecondary}>
+                  <Calendar className="size-4 shrink-0 opacity-80" aria-hidden />
+                  Plan een persoonlijk gesprek
+                </a>
+              ) : (
+                <button type="button" className={fabSecondary} onClick={() => mailStudio("Persoonlijk gesprek — website concept")}>
+                  <Calendar className="size-4 shrink-0 opacity-80" aria-hidden />
+                  Plan een persoonlijk gesprek
+                </button>
+              )
+            ) : null}
           </div>
         </div>
       ) : null}

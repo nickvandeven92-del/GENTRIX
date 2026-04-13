@@ -11,9 +11,12 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
+  Monitor,
+  PanelTop,
   Redo2,
   RefreshCw,
   Save,
+  Smartphone,
   Undo2,
 } from "lucide-react";
 import {
@@ -99,6 +102,8 @@ export function SiteHtmlEditor({
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [autoSaving, setAutoSaving] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  /** Live preview: iframe-viewport (zie `TailwindSectionsPreview.viewportMode`). */
+  const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("auto");
   const [stepsOpen, setStepsOpen] = useState(false);
   const customCss = initialCustomCss;
   const customJs = initialCustomJs;
@@ -604,7 +609,57 @@ export function SiteHtmlEditor({
             >
               <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Live preview</span>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Live preview</span>
+                    <div
+                      className="inline-flex rounded-lg border border-zinc-300 bg-zinc-50 p-0.5 dark:border-zinc-600 dark:bg-zinc-900/80"
+                      role="group"
+                      aria-label="Weergave preview"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setPreviewViewportMode("auto")}
+                        title="Automatisch: mobiel of desktop volgens je browservenster"
+                        className={cn(
+                          "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+                          previewViewportMode === "auto"
+                            ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                            : "text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+                        )}
+                      >
+                        <PanelTop className="size-4 shrink-0" aria-hidden />
+                        <span className="sr-only">Automatisch</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewViewportMode("mobile")}
+                        title="Mobiele weergave (smalle viewport)"
+                        className={cn(
+                          "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+                          previewViewportMode === "mobile"
+                            ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                            : "text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+                        )}
+                      >
+                        <Smartphone className="size-4 shrink-0" aria-hidden />
+                        <span className="sr-only">Mobiel</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewViewportMode("desktop")}
+                        title="Desktopweergave (brede layout in preview)"
+                        className={cn(
+                          "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+                          previewViewportMode === "desktop"
+                            ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                            : "text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+                        )}
+                      >
+                        <Monitor className="size-4 shrink-0" aria-hidden />
+                        <span className="sr-only">Desktop</span>
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
@@ -640,7 +695,7 @@ export function SiteHtmlEditor({
               </div>
               <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
                 <TailwindSectionsPreview
-                  key={previewKey}
+                  key={`${previewKey}-${previewViewportMode}`}
                   sections={sections}
                   pageConfig={config}
                   userCss={customCss}
@@ -651,6 +706,7 @@ export function SiteHtmlEditor({
                   appointmentsEnabled={appointmentsEnabled}
                   webshopEnabled={webshopEnabled}
                   composePlan={composePlan}
+                  viewportMode={previewViewportMode}
                   title={`Preview ${subfolderSlug}`}
                   className="h-full min-h-0 w-full rounded-none border-0 bg-white"
                   frameClassName="h-full min-h-[280px] w-full"

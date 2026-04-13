@@ -57,6 +57,13 @@ type TailwindSectionsPreviewProps = {
   webshopEnabled?: boolean;
   /** Optioneel: snapshot-volgorde + Site IR (editor/live-parity); geen layout-presets. */
   composePlan?: ComposePublicMarketingPlan | null;
+  /**
+   * Studio-editor: viewport / breakpoints in de iframe.
+   * - `auto`: sluit aan op browservenster (≥768px → vaste desktop-viewport in iframe).
+   * - `mobile`: smalle telefoonbreedte + `device-width` (mobiele Tailwind-breakpoints).
+   * - `desktop`: brede layout ongeacht paneelbreedte.
+   */
+  viewportMode?: "auto" | "mobile" | "desktop";
 };
 
 export function TailwindSectionsPreview({
@@ -77,6 +84,7 @@ export function TailwindSectionsPreview({
   appointmentsEnabled = true,
   webshopEnabled = true,
   composePlan = null,
+  viewportMode = "auto",
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -88,6 +96,9 @@ export function TailwindSectionsPreview({
     getStudioPreviewDesktopSnapshot,
     () => false,
   );
+
+  const previewMatchParentWindowBreakpoints =
+    viewportMode === "desktop" || (viewportMode === "auto" && parentWindowDesktop);
 
   const previewSections = useMemo(
     () =>
@@ -113,7 +124,7 @@ export function TailwindSectionsPreview({
         draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
         appointmentsEnabled,
         webshopEnabled,
-        previewMatchParentWindowBreakpoints: parentWindowDesktop,
+        previewMatchParentWindowBreakpoints,
       }),
     [
       previewSections,
@@ -126,7 +137,7 @@ export function TailwindSectionsPreview({
       draftPublicPreviewToken,
       appointmentsEnabled,
       webshopEnabled,
-      parentWindowDesktop,
+      previewMatchParentWindowBreakpoints,
     ],
   );
 
@@ -182,6 +193,17 @@ export function TailwindSectionsPreview({
           )
       : null;
 
+  const iframe = (
+    <iframe
+      ref={iframeRef}
+      title={title}
+      className={cn("w-full border-0 bg-white", frameClassName ?? "h-[min(72vh,800px)]")}
+      sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+      srcDoc={srcDoc}
+      style={autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : undefined}
+    />
+  );
+
   return (
     <PublishedTailwindNavBridge>
       <div
@@ -189,17 +211,19 @@ export function TailwindSectionsPreview({
         className={cn(
           "flex flex-col rounded-b-xl bg-white",
           documentHeightMode === "full" ? "overflow-visible" : "min-h-0 overflow-hidden",
+          viewportMode === "mobile" && documentHeightMode !== "full" && "overflow-y-auto",
           className,
         )}
       >
-        <iframe
-          ref={iframeRef}
-          title={title}
-          className={cn("w-full border-0 bg-white", frameClassName ?? "h-[min(72vh,800px)]")}
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-          srcDoc={srcDoc}
-          style={autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : undefined}
-        />
+        {viewportMode === "mobile" ? (
+          <div className="flex min-h-0 flex-1 justify-center overflow-y-auto bg-zinc-200/70 px-2 py-3 dark:bg-zinc-950/90">
+            <div className="flex w-full max-w-[390px] flex-col overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-lg ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-950 dark:ring-white/10">
+              {iframe}
+            </div>
+          </div>
+        ) : (
+          iframe
+        )}
       </div>
     </PublishedTailwindNavBridge>
   );
