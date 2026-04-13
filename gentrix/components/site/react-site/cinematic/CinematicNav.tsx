@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 import type { ReactSiteSection } from "@/lib/site/react-site-schema";
 import { CinematicNavMenuEntries } from "@/components/site/react-site/cinematic/cinematic-nav-menu";
@@ -9,6 +9,20 @@ import type { ResolveHref } from "./types";
 import { cn } from "@/lib/utils";
 
 type NavSection = Extract<ReactSiteSection, { type: "nav_overlay" }>;
+
+/** Server: mobiel aannemen zodat de inline menu-links nooit in de eerste HTML staan. */
+const LG = 1024;
+function useLgUp(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(`(min-width: ${LG}px)`);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(`(min-width: ${LG}px)`).matches,
+    () => false,
+  );
+}
 
 const fontSans = { fontFamily: "var(--site-font-sans)" } as const;
 const fontSerifLogo = { fontFamily: "var(--site-font-serif)" } as const;
@@ -29,24 +43,26 @@ function MobileNavDrawer({
   onClose,
   children,
   variant,
+  lgUp,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   variant: "floating" | "bar_light" | "bar_dark";
+  lgUp: boolean;
 }) {
-  useBodyScrollLock(open);
+  useBodyScrollLock(open && !lgUp);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || lgUp) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, lgUp, onClose]);
 
-  if (!open) return null;
+  if (!open || lgUp) return null;
 
   const backdrop =
     variant === "bar_light"
@@ -63,7 +79,7 @@ function MobileNavDrawer({
         : "border-l border-white/15 bg-zinc-950/98 text-white backdrop-blur-md";
 
   return (
-    <div className="pointer-events-auto md:hidden">
+    <div className="pointer-events-auto">
       <button
         type="button"
         className={cn("fixed inset-0 z-[80]", backdrop)}
@@ -99,18 +115,13 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
   const { logoText, links } = section.props;
   const barStyle = section.props.barStyle ?? "floating";
   const [mobileOpen, setMobileOpen] = useState(false);
+  const lgUp = useLgUp();
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   useEffect(() => {
-    if (!mobileOpen) return;
-    const mq = window.matchMedia("(min-width: 768px)");
-    const onChange = () => {
-      if (mq.matches) setMobileOpen(false);
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [mobileOpen]);
+    if (lgUp) setMobileOpen(false);
+  }, [lgUp]);
 
   const mobileLinkWrap = (node: ReactNode) => (
     <div
@@ -136,12 +147,17 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
           >
             {logoText}
           </span>
-          <nav className="hidden items-center gap-x-5 gap-y-2 text-[0.9375rem] md:flex md:text-sm" aria-label="Hoofdnavigatie">
+          <nav
+            className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
+            style={{ display: lgUp ? "flex" : "none" }}
+            aria-label="Hoofdnavigatie"
+          >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />
           </nav>
           <button
             type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100 md:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100"
+            style={{ display: lgUp ? "none" : "inline-flex" }}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Menu sluiten" : "Menu openen"}
             onClick={() => setMobileOpen((o) => !o)}
@@ -149,7 +165,7 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             {mobileOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
-        <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="bar_light">
+        <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="bar_light" lgUp={lgUp}>
           {mobileLinkWrap(<CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />)}
         </MobileNavDrawer>
       </header>
@@ -166,12 +182,17 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
           <span className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg" style={fontSerifLogo}>
             {logoText}
           </span>
-          <nav className="hidden items-center gap-x-5 gap-y-2 text-[0.9375rem] md:flex md:text-sm" aria-label="Hoofdnavigatie">
+          <nav
+            className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
+            style={{ display: lgUp ? "flex" : "none" }}
+            aria-label="Hoofdnavigatie"
+          >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />
           </nav>
           <button
             type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10 md:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
+            style={{ display: lgUp ? "none" : "inline-flex" }}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Menu sluiten" : "Menu openen"}
             onClick={() => setMobileOpen((o) => !o)}
@@ -179,7 +200,7 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             {mobileOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
-        <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="bar_dark">
+        <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="bar_dark" lgUp={lgUp}>
           {mobileLinkWrap(<CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />)}
         </MobileNavDrawer>
       </header>
@@ -191,21 +212,22 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-5 sm:pt-6">
       <MotionNavShell
         className={cn(
-          "pointer-events-auto flex w-full max-w-5xl flex-col gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md sm:px-5 sm:py-4 md:flex-row md:items-center md:justify-between md:gap-6",
+          "pointer-events-auto flex w-full max-w-5xl flex-col gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6",
           "border-white/15 bg-black/40",
         )}
         style={{ ...fontSans, borderColor: "rgba(255,255,255,0.14)" }}
       >
-        <div className="flex w-full items-center justify-between gap-3 md:contents">
+        <div className="flex w-full items-center justify-between gap-3 lg:contents">
           <span
-            className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg md:order-none"
+            className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg"
             style={fontSerifLogo}
           >
             {logoText}
           </span>
           <button
             type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10 md:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
+            style={{ display: lgUp ? "none" : "inline-flex" }}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Menu sluiten" : "Menu openen"}
             onClick={() => setMobileOpen((o) => !o)}
@@ -214,13 +236,14 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
           </button>
         </div>
         <nav
-          className="hidden items-center gap-x-6 gap-y-2 text-[0.9375rem] md:flex md:text-sm"
+          className="items-center gap-x-6 gap-y-2 text-[0.9375rem] lg:text-sm"
+          style={{ display: lgUp ? "flex" : "none" }}
           aria-label="Hoofdnavigatie"
         >
           <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />
         </nav>
       </MotionNavShell>
-      <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="floating">
+      <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="floating" lgUp={lgUp}>
         {mobileLinkWrap(<CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />)}
       </MobileNavDrawer>
     </header>
