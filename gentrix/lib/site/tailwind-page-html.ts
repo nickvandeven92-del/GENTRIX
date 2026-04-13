@@ -1070,6 +1070,22 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
 })();
 </script>`;
 
+/** Debug: klikken in iframe → parent (TailwindSectionsPreview post naar ingest). */
+const STUDIO_PREVIEW_CLICK_DEBUG_SCRIPT = `<script>
+(function(){
+  var SRC="studio-tailwind-preview";
+  function post(msg){try{if(window.parent!==window)window.parent.postMessage(Object.assign({source:SRC},msg),"*");}catch(e){}}
+  document.addEventListener("click",function(e){
+    var t=e.target;
+    var hdr=t&&t.closest?t.closest("header"):null;
+    var btn=t&&t.closest?t.closest("button"):null;
+    var a=t&&t.closest?t.closest("a[href]"):null;
+    var html=document.documentElement;
+    post({type:"studio-debug-click",phase:"capture",tag:t?t.nodeName:"",inHeader:!!hdr,btnAria:btn?String(btn.getAttribute("aria-label")||"").slice(0,120):"",hasAnchor:!!a,x:e.clientX,y:e.clientY,dp:!!e.defaultPrevented,studioMobile:html&&html.hasAttribute("data-gentrix-studio-mobile")});
+  },true);
+})();
+<\/script>`;
+
 /**
  * Gegenereerde one-pagers gebruiken vaak `href="/diensten"` of **absolute** `https://host/site/slug#x`
  * i.p.v. `#sectie`. In een `srcDoc`-iframe laadt dat de **hele Next-pagina opnieuw in de iframe**
@@ -1324,6 +1340,8 @@ export type BuildTailwindIframeSrcDocOptions = {
    * browservenster (`device-width`); uit bij Desktop-preview of brede auto (geen effect op live `/site`).
    */
   studioMobileEditorFrame?: boolean;
+  /** Tijdelijk: log klikken in preview-iframe (postMessage naar parent). */
+  studioPreviewClickDebug?: boolean;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -1418,6 +1436,7 @@ export function buildTailwindIframeSrcDoc(
 
   const studioMobileAttr = options?.studioMobileEditorFrame ? ` data-gentrix-studio-mobile="1"` : "";
   const studioMobileCss = options?.studioMobileEditorFrame ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n` : "";
+  const clickDebugBlock = options?.studioPreviewClickDebug ? STUDIO_PREVIEW_CLICK_DEBUG_SCRIPT : "";
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   return `<!DOCTYPE html>
@@ -1449,6 +1468,7 @@ ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
 ${buildLucideRuntimeScriptBlock()}
 ${bridge}
+${clickDebugBlock}
 ${userJsBlock}
 </body>
 </html>`;

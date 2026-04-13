@@ -102,6 +102,35 @@ export function PublicPublishedTailwind({
       if (typeof window !== "undefined") {
         doc = rewriteStudioDevOriginsInHtml(doc, window.location.origin);
       }
+      // #region agent log
+      {
+        const da = (doc.match(/data-animation="/g) ?? []).length;
+        const aos = (doc.match(/data-aos="/g) ?? []).length;
+        const hasRevealScript = doc.includes('querySelectorAll("[data-animation]"');
+        const reduced =
+          typeof window !== "undefined" &&
+          window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
+          body: JSON.stringify({
+            sessionId: "06cb80",
+            runId: "published-srcdoc",
+            hypothesisId: "H1-H4-H5",
+            location: "public-published-tailwind.tsx:buildDoc",
+            message: "published iframe srcdoc motion signals",
+            data: {
+              dataAnimationAttrCount: da,
+              dataAosAttrCount: aos,
+              hasRevealScript,
+              prefersReducedMotion: reduced,
+              srcDocLen: doc.length,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
       if (doc.length > MAX_SRC_DOC_CHARS) {
         doc = fallbackSrcDoc(
           documentTitle,

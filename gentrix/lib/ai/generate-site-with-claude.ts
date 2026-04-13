@@ -2140,6 +2140,37 @@ export function createGenerateSiteReadableStream(
           }
         }
 
+        // #region agent log
+        {
+          const joinedHtml = data.sections.map((s) => s.html).join("\n");
+          void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
+            body: JSON.stringify({
+              sessionId: "06cb80",
+              runId: "gen-stream",
+              hypothesisId: "H1-H3",
+              location: "generate-site-with-claude.ts:post-process",
+              message: "motion audit before complete",
+              data: {
+                dataAnimationAttrCount: (joinedHtml.match(/data-animation="/g) ?? []).length,
+                dataAosAttrCount: (joinedHtml.match(/data-aos="/g) ?? []).length,
+                selfReviewRan: reviewed.ran,
+                selfReviewRefined: reviewed.usedRefined,
+                briefHasLevendig: /\blevendig/i.test(description),
+                briefHasLevendigeSite: /\blevendige\b.*\b(website|site|presentatie)\b/i.test(description),
+                briefHasAnimatedOnScroll: /\banimated\s+on\s+scroll\b/i.test(description),
+                briefHasBeweegbareSecties: /\bbeweegbare\b.*\bsecties?\b/i.test(description),
+                briefHasScrollAnimNl: /scroll-animat/i.test(description),
+                briefHasDynamisch: /\bdynamisch/i.test(description),
+                descriptionLen: description.length,
+              },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+        }
+        // #endregion
+
         /** Journal + usage-log kunnen lang duren (extra Claude + DB); zonder keepalive knipt de stream vaak net vóór `complete`. */
         const stopPostProcessKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         try {
