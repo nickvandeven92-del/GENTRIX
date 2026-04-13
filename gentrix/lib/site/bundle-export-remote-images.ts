@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash } from "crypto";
 
 const IMG_SRC_RE = /<img\b[^>]*\bsrc=["']([^"']+)["']/gi;
 const SRCSET_RE = /\bsrcset=["']([^"']+)["']/gi;

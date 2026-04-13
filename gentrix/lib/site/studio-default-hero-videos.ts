@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 /**
  * Stille stock-loops (Pexels, direct .mp4). Gebruikt in AI-prompts als de klant een video-hero wil
  * zonder eigen URL — dan moet het model wél een echt `<video>` plaatsen (niet alleen CSS/SVG).
@@ -48,11 +46,17 @@ export function orderStudioDefaultHeroVideosForPrompt(orderSeed: string): string
   return urls;
 }
 
+function randomUuidForSeed(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  return `seed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+}
+
 /**
  * @param orderSeed — optioneel; bijv. `varianceNonce` per site-generatie. Zonder seed: willekeurige permutatie per aanroep.
  */
 export function getStudioDefaultHeroVideoPromptBlock(orderSeed?: string): string {
-  const seed = orderSeed?.trim() || randomUUID();
+  const seed = orderSeed?.trim() || randomUuidForSeed();
   const ordered = orderStudioDefaultHeroVideosForPrompt(seed);
   const list = ordered.map((u, i) => `${i + 1}. \`${u}\``).join("\n");
   return `=== STUDIO-VOORZIENE ACHTERGRONDVIDEO (geen eigen URL nodig) ===

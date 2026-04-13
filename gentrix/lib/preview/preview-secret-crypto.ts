@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 
 /** Genereert een niet-te-raden token voor `/site/{slug}?token=` (concept). */
 export function generatePreviewSecret(): string {
