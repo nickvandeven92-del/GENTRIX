@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Calendar, HelpCircle, ShoppingBag, X } from "lucide-react";
 import { PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
+import { buildPublicStudioOrderHref } from "@/lib/studio-order/build-public-order-href";
 
 type ConceptFlyerExperienceProps = {
   siteLabel: string;
   slug: string;
   appointmentsEnabled: boolean;
   webshopEnabled: boolean;
+  /** Concept-previewtoken (zelfde als `?token=` op de site) voor link naar bestelpagina. */
+  previewToken?: string | null;
+  /** `flyer=1` behouden op bestel-URL (flyer-flow). */
+  preserveFlyerQuery?: boolean;
 };
 
 export type FlyerStudioCtaConfig = {
@@ -43,8 +48,19 @@ export function ConceptFlyerExperience({
   slug,
   appointmentsEnabled,
   webshopEnabled,
+  previewToken = null,
+  preserveFlyerQuery = false,
 }: ConceptFlyerExperienceProps) {
-  const { meetingUrl, checkoutUrl, email: contactEmail } = readFlyerEnv();
+  const { meetingUrl, email: contactEmail } = readFlyerEnv();
+  const externalOrderUrl = process.env.NEXT_PUBLIC_STUDIO_CHECKOUT_URL?.trim() ?? "";
+  const orderHref = useMemo(() => {
+    if (externalOrderUrl) return externalOrderUrl;
+    return buildPublicStudioOrderHref(slug, {
+      previewToken: previewToken?.trim() || undefined,
+      flyer: preserveFlyerQuery,
+    });
+  }, [externalOrderUrl, slug, previewToken, preserveFlyerQuery]);
+  const orderIsExternal = Boolean(externalOrderUrl);
   const storageKey = useMemo(() => `gentrix-flyer-tour-${slug}`, [slug]);
   const [dismissedBar, setDismissedBar] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -88,8 +104,7 @@ export function ConceptFlyerExperience({
   );
 
   const hasMeetingCta = Boolean(meetingUrl || contactEmail);
-  const hasOrderCta = Boolean(checkoutUrl || contactEmail);
-  const hasAnyCta = hasMeetingCta || hasOrderCta;
+  const hasAnyCta = true;
 
   const steps: { title: string; body: string }[] = [
     {
@@ -218,17 +233,13 @@ export function ConceptFlyerExperience({
                     </button>
                   )
                 ) : null}
-                {hasOrderCta ? (
-                  checkoutUrl ? (
-                    <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className={ctaPrimaryClass}>
-                      Ga door naar bestellen
-                    </a>
-                  ) : (
-                    <button type="button" className={ctaPrimaryClass} onClick={() => mailStudio("Bestellen — website concept")}>
-                      Ga door naar bestellen
-                    </button>
-                  )
-                ) : null}
+                <a
+                  href={orderHref}
+                  {...(orderIsExternal ? { target: "_blank" as const, rel: "noopener noreferrer" } : {})}
+                  className={ctaPrimaryClass}
+                >
+                  Ga door naar bestellen
+                </a>
               </div>
             ) : null}
             <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
@@ -314,19 +325,14 @@ export function ConceptFlyerExperience({
           aria-label="Bestellen en contact"
         >
           <div className={fabWrap}>
-            {hasOrderCta ? (
-              checkoutUrl ? (
-                <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className={fabPrimary}>
-                  <ShoppingBag className="size-4 shrink-0 opacity-90" aria-hidden />
-                  Ga door naar bestellen
-                </a>
-              ) : (
-                <button type="button" className={fabPrimary} onClick={() => mailStudio("Bestellen — website concept")}>
-                  <ShoppingBag className="size-4 shrink-0 opacity-90" aria-hidden />
-                  Ga door naar bestellen
-                </button>
-              )
-            ) : null}
+            <a
+              href={orderHref}
+              {...(orderIsExternal ? { target: "_blank" as const, rel: "noopener noreferrer" } : {})}
+              className={fabPrimary}
+            >
+              <ShoppingBag className="size-4 shrink-0 opacity-90" aria-hidden />
+              Ga door naar bestellen
+            </a>
             {hasMeetingCta ? (
               meetingUrl ? (
                 <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className={fabSecondary}>

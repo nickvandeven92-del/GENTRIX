@@ -47,6 +47,48 @@ html.tw-ready body { visibility: visible; }
  */
 export const STUDIO_ALPINE_X_CLOAK_CSS = `[x-cloak]{display:none!important}`;
 
+/** [AOS](https://michalsnik.github.io/aos/) v2 — CDN in srcDoc/export (geen npm in gegenereerde pagina). */
+export const STUDIO_AOS_CSS_CDN_SRC = "https://unpkg.com/aos@2.3.4/dist/aos.css";
+export const STUDIO_AOS_JS_CDN_SRC = "https://unpkg.com/aos@2.3.4/dist/aos.js";
+
+/** Inline boot: draait na `defer` AOS-bundle op DOMContentLoaded (defer-scripts zijn dan geladen). */
+const STUDIO_AOS_INLINE_INIT = `(function(){function b(){if(!window.AOS)return;try{AOS.init({duration:720,once:true,offset:20,easing:"ease-out-cubic",disable:window.matchMedia("(prefers-reduced-motion: reduce)").matches});}catch(_){}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",b);else b();})();`;
+
+export function getStudioAosHtmlFragments(disabled: boolean): { headLink: string; bodyScripts: string } {
+  if (disabled) return { headLink: "", bodyScripts: "" };
+  return {
+    headLink: `  <link rel="stylesheet" href="${STUDIO_AOS_CSS_CDN_SRC}" crossorigin="anonymous"/>\n`,
+    bodyScripts: `<script defer src="${STUDIO_AOS_JS_CDN_SRC}" crossorigin="anonymous"></script>
+<script>${STUDIO_AOS_INLINE_INIT}</script>
+`,
+  };
+}
+
+/** [GSAP](https://gsap.com/) 3 — gratis core + veelgebruikte plugins (jsDelivr); geen Club-only bundles. */
+const STUDIO_GSAP_VERSION = "3.12.5";
+const STUDIO_GSAP_BASE = `https://cdn.jsdelivr.net/npm/gsap@${STUDIO_GSAP_VERSION}/dist`;
+export const STUDIO_GSAP_CORE_CDN_SRC = `${STUDIO_GSAP_BASE}/gsap.min.js`;
+export const STUDIO_GSAP_SCROLLTRIGGER_CDN_SRC = `${STUDIO_GSAP_BASE}/ScrollTrigger.min.js`;
+export const STUDIO_GSAP_FLIP_CDN_SRC = `${STUDIO_GSAP_BASE}/Flip.min.js`;
+export const STUDIO_GSAP_MOTIONPATH_CDN_SRC = `${STUDIO_GSAP_BASE}/MotionPathPlugin.min.js`;
+export const STUDIO_GSAP_OBSERVER_CDN_SRC = `${STUDIO_GSAP_BASE}/Observer.min.js`;
+
+/** Registreert plugins op `window` na `defer`-load volgorde. */
+const STUDIO_GSAP_INLINE_REGISTER = `(function(){function r(){try{var g=window.gsap;if(!g||typeof g.registerPlugin!=="function")return;if(window.ScrollTrigger)g.registerPlugin(window.ScrollTrigger);if(window.Flip)g.registerPlugin(window.Flip);if(window.MotionPathPlugin)g.registerPlugin(window.MotionPathPlugin);if(window.Observer)g.registerPlugin(window.Observer);}catch(_){}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",r);else r();})();`;
+
+export function getStudioGsapHtmlFragments(disabled: boolean): { bodyScripts: string } {
+  if (disabled) return { bodyScripts: "" };
+  return {
+    bodyScripts: `<script defer src="${STUDIO_GSAP_CORE_CDN_SRC}" crossorigin="anonymous"></script>
+<script defer src="${STUDIO_GSAP_SCROLLTRIGGER_CDN_SRC}" crossorigin="anonymous"></script>
+<script defer src="${STUDIO_GSAP_FLIP_CDN_SRC}" crossorigin="anonymous"></script>
+<script defer src="${STUDIO_GSAP_MOTIONPATH_CDN_SRC}" crossorigin="anonymous"></script>
+<script defer src="${STUDIO_GSAP_OBSERVER_CDN_SRC}" crossorigin="anonymous"></script>
+<script>${STUDIO_GSAP_INLINE_REGISTER}</script>
+`,
+  };
+}
+
 /**
  * Veel templates: vaste primary nav `fixed … z-50`, mobiel menu-backdrop `fixed inset-0 z-40`.
  * Dan blijft de balk en hamburger zichtbaar boven het open menu (iframe + smalle viewport).
@@ -867,6 +909,15 @@ export function sanitizeTailwindFragment(html: string): string {
       "stroke-linecap",
       "stroke-linejoin",
       "data-animation",
+      "data-aos",
+      "data-aos-offset",
+      "data-aos-delay",
+      "data-aos-duration",
+      "data-aos-easing",
+      "data-aos-mirror",
+      "data-aos-once",
+      "data-aos-anchor",
+      "data-aos-anchor-placement",
       "data-lucide",
       "data-studio-brand-mark",
       "data-studio-visibility",
@@ -1388,6 +1439,9 @@ export function buildTailwindIframeSrcDoc(
     "\n" +
     STUDIO_LASER_LINE_CSS;
   const scrollRevealScript = options?.disableScrollRevealAnimations ? "" : STUDIO_SCROLL_REVEAL_SCRIPT;
+  const motionDisabled = Boolean(options?.disableScrollRevealAnimations);
+  const { headLink: aosHeadLink, bodyScripts: aosBodyScripts } = getStudioAosHtmlFragments(motionDisabled);
+  const { bodyScripts: gsapBodyScripts } = getStudioGsapHtmlFragments(motionDisabled);
   const faviconLink = buildFaviconLinkTagForLogoSet(options?.logoSet);
   const headMetaExtras = [faviconLink && `  ${faviconLink}`, themeMeta && `  ${themeMeta}`]
     .filter(Boolean)
@@ -1458,11 +1512,11 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
-</head>
+${aosHeadLink}</head>
 <body class="antialiased text-slate-900${radiusClass}">
 ${twLoadingScript}${body}
 ${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
-${scrollRevealScript}
+${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}

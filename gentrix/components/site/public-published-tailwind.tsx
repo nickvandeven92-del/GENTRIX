@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
@@ -77,6 +77,7 @@ export function PublicPublishedTailwind({
   );
 
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
+  const lastAgentMotionSigRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
@@ -110,25 +111,29 @@ export function PublicPublishedTailwind({
         const reduced =
           typeof window !== "undefined" &&
           window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
-        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
-          body: JSON.stringify({
-            sessionId: "06cb80",
-            runId: "published-srcdoc",
-            hypothesisId: "H1-H4-H5",
-            location: "public-published-tailwind.tsx:buildDoc",
-            message: "published iframe srcdoc motion signals",
-            data: {
-              dataAnimationAttrCount: da,
-              dataAosAttrCount: aos,
-              hasRevealScript,
-              prefersReducedMotion: reduced,
-              srcDocLen: doc.length,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
+        const sig = `pub:${da}:${aos}:${hasRevealScript}:${reduced}:${doc.length}`;
+        if (lastAgentMotionSigRef.current !== sig) {
+          lastAgentMotionSigRef.current = sig;
+          void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
+            body: JSON.stringify({
+              sessionId: "06cb80",
+              runId: "post-fix",
+              hypothesisId: "H1-H4-H5",
+              location: "public-published-tailwind.tsx:buildDoc",
+              message: "published iframe srcdoc motion signals",
+              data: {
+                dataAnimationAttrCount: da,
+                dataAosAttrCount: aos,
+                hasRevealScript,
+                prefersReducedMotion: reduced,
+                srcDocLen: doc.length,
+              },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+        }
       }
       // #endregion
       if (doc.length > MAX_SRC_DOC_CHARS) {

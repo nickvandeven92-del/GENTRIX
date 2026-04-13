@@ -109,6 +109,8 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
           slug={slug}
           appointmentsEnabled={bundle.appointmentsEnabled}
           webshopEnabled={bundle.webshopEnabled}
+          previewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+          preserveFlyerQuery={showFlyer}
         />
       ) : null}
       <PublishedSiteView

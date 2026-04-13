@@ -91,6 +91,7 @@ export function TailwindSectionsPreview({
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastSrcDocMotionLogSigRef = useRef("");
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const [panelClipPx, setPanelClipPx] = useState<number | null>(null);
 
@@ -159,12 +160,15 @@ export function TailwindSectionsPreview({
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+    const sig = `prev:${da}:${aos}:${hasRevealScript}:${reduced}:${srcDoc.length}`;
+    if (lastSrcDocMotionLogSigRef.current === sig) return;
+    lastSrcDocMotionLogSigRef.current = sig;
     void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
       body: JSON.stringify({
         sessionId: "06cb80",
-        runId: "preview-srcdoc",
+        runId: "post-fix",
         hypothesisId: "H1-H4-H5",
         location: "tailwind-sections-preview.tsx:srcDoc",
         message: "preview iframe srcdoc motion signals",

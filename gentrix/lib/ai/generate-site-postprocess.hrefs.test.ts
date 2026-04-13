@@ -6,6 +6,7 @@ import {
   normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindPage,
   postProcessTailwindSectionsForStreamingPreview,
+  repairInternalLinksInHtml,
   repairSamePagePathHrefsInHtml,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
@@ -60,6 +61,60 @@ describe("repairSamePagePathHrefsInHtml", () => {
     const valid = new Set(["contact"]);
     const html = `<a href="mailto:info@voorbeeld.nl">Mail</a>`;
     expect(repairSamePagePathHrefsInHtml(html, valid)).toBe(html);
+  });
+
+  const marketingCross = {
+    marketingPageKeys: new Set(["wat-wij-doen", "werkwijze", "over-ons", "faq"]),
+    contactOnDedicatedSubpage: true,
+  } as const;
+
+  it("rewrites single-segment /over-ons to studio site base when key exists in marketingPages", () => {
+    const valid = new Set(["hero", "top"]);
+    const html = `<a href="/over-ons">Over ons</a>`;
+    const out = repairSamePagePathHrefsInHtml(html, valid, marketingCross);
+    expect(out).toBe(`<a href="__STUDIO_SITE_BASE__/over-ons">Over ons</a>`);
+  });
+
+  it("rewrites bogus /site/slug/subpath to home base when subpath is not a marketing key", () => {
+    const valid = new Set(["hero", "top"]);
+    const html = `<a href="/site/demo/verzonnen-pagina">X</a>`;
+    const out = repairSamePagePathHrefsInHtml(html, valid, marketingCross);
+    expect(out).toBe(`<a href="__STUDIO_SITE_BASE__">X</a>`);
+  });
+
+  it("leaves /site/slug/wat-wij-doen unchanged when key is valid", () => {
+    const valid = new Set(["hero", "top"]);
+    const html = `<a href="/site/demo/wat-wij-doen">Diensten</a>`;
+    expect(repairSamePagePathHrefsInHtml(html, valid, marketingCross)).toBe(html);
+  });
+});
+
+describe("repairInternalLinksInHtml marketing cross-page", () => {
+  const marketingCross = {
+    marketingPageKeys: new Set(["wat-wij-doen", "over-ons", "faq"]),
+    contactOnDedicatedSubpage: true,
+  } as const;
+
+  it("maps #over-ons to __STUDIO_SITE_BASE__/over-ons when that page exists", () => {
+    const valid = new Set(["hero", "top"]);
+    const html = `<a href="#over-ons">Over ons</a>`;
+    expect(repairInternalLinksInHtml(html, valid, marketingCross)).toBe(
+      `<a href="__STUDIO_SITE_BASE__/over-ons">Over ons</a>`,
+    );
+  });
+
+  it("maps #contact to contact placeholder on landing without contact section", () => {
+    const valid = new Set(["hero", "top"]);
+    const html = `<a href="#contact">Contact</a>`;
+    expect(repairInternalLinksInHtml(html, valid, marketingCross)).toBe(
+      `<a href="__STUDIO_CONTACT_PATH__">Contact</a>`,
+    );
+  });
+
+  it("keeps #contact when contact id exists on same page", () => {
+    const valid = new Set(["hero", "contact", "top"]);
+    const html = `<a href="#contact">Contact</a>`;
+    expect(repairInternalLinksInHtml(html, valid, marketingCross)).toBe(html);
   });
 });
 

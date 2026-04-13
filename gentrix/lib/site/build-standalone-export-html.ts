@@ -17,6 +17,8 @@ import {
   STUDIO_NAV_SCROLL_CONTRAST_CSS,
   STUDIO_NAV_SCROLL_CONTRAST_SCRIPT,
   STUDIO_SCROLL_REVEAL_SCRIPT,
+  getStudioAosHtmlFragments,
+  getStudioGsapHtmlFragments,
 } from "@/lib/site/tailwind-page-html";
 import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
@@ -122,6 +124,8 @@ export function buildStandaloneExportHtmlDocument(
   const userCssBlock = uCss ? `<style id="studio-user-css">\n${sanitizeUserSiteCss(uCss)}\n</style>\n  ` : "";
   const userJsBlock = uJs ? `\n${buildUserScriptTagForHtmlDocument(uJs)}` : "";
   const faviconLink = buildFaviconLinkTagForLogoSet(userAssets?.logoSet);
+  const aos = getStudioAosHtmlFragments(false);
+  const gsap = getStudioGsapHtmlFragments(false);
 
   return `<!DOCTYPE html>
 <html lang="nl">
@@ -143,10 +147,10 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
   </style>
-  ${userCssBlock}</head>
+  ${userCssBlock}${aos.headLink}</head>
 <body class="min-h-screen antialiased text-slate-900${radiusClass}">
 ${bodyInner}
-${STUDIO_SCROLL_REVEAL_SCRIPT}
+${STUDIO_SCROLL_REVEAL_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${buildLucideRuntimeScriptBlock()}${userJsBlock}
 </body>
@@ -174,7 +178,7 @@ Technisch
 - Styling: styles.css is lokaal; je site werkt ook als cdn.tailwindcss.com geblokkeerd is.
 - Interactiviteit: Alpine.js wordt van jsDelivr geladen (zelfde als in de Studio-preview). Zonder internet werken geen Alpine-micro-interacties (FAQ-uitklap, menu-toggle, enz.).
 - Iconen: Lucide (attribuut data-lucide) wordt van jsDelivr geladen en na load geïnitialiseerd — zonder internet verschijnen die pictogrammen niet.
-- Beweging: elementen met data-animation (fade-up, slide-in-left, …) animeren wanneer ze in beeld komen (Intersection Observer), met lichte stagger binnen dezelfde sectie — vergelijkbaar met scroll-entrance op moderne sites. Bij “verminder beweging” in het OS worden animaties uitgezet.
+- Beweging: elementen met \`data-animation\` (fade-up, slide-in-left, …) animeren wanneer ze in beeld komen (eigen Intersection Observer). **AOS** staat via unpkg (\`data-aos\`). **GSAP 3** staat via jsDelivr: \`gsap\`, **ScrollTrigger**, **Flip**, **MotionPathPlugin**, **Observer** — gebruik ze in **Eigen JS** (\`gsap.to\`, timelines, ScrollTrigger); **geen** eigen \`<script>\` in sectie-HTML. **Niet** \`data-aos\` en \`data-animation\` op hetzelfde element. Bij “verminder beweging” schakelt AOS uit; beperk zware GSAP in Eigen JS zelf.
 - Sticky/fixed top-nav: automatische donkere menu-tekst op lichte achtergrond (scroll) — zet \`data-studio-skip-nav-tone\` op een wrapper om dit uit te zetten.
 - Accent-lijnen: \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`--v\` (verticaal) — lijn “groeit” van ~72% naar 100% bij scroll (zelfde observer als data-animation). Optioneel \`[--studio-br-rgb:R_G_B]\` voor kleur.
 - Marquee/ticker: optioneel \`studio-marquee\` + \`studio-marquee-track\` met dubbele inhoud voor een oneindige horizontale band (logo’s of tekst); pauzeert automatisch bij “verminder beweging”.

@@ -6,6 +6,10 @@ import type {
   TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import { isLegacyTailwindPageConfig, slugifyToSectionId } from "@/lib/ai/tailwind-sections-schema";
+import {
+  STUDIO_CONTACT_PATH_PLACEHOLDER,
+  STUDIO_SITE_BASE_PLACEHOLDER,
+} from "@/lib/site/studio-section-visibility";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -188,19 +192,92 @@ const RESERVED_SINGLE_SEGMENT_PATHS = new Set(
 );
 
 /**
+ * Multi-page marketing (`marketingPages` + contact-subroute): onbekende fragmenten en verzonnen
+ * `/site/…/…`-subpaden wijzen naar echte studio-routes i.p.v. willekeurige `#hero`-fallbacks.
+ */
+export type MarketingCrossPageLinkContext = {
+  marketingPageKeys: Set<string>;
+  /** Contact staat op `/site/{slug}/contact`, niet als sectie op de huidige HTML-pagina. */
+  contactOnDedicatedSubpage: boolean;
+};
+
+function matchCanonicalMarketingPageKey(fragment: string, keys: Set<string>): string | null {
+  const f = fragment.trim();
+  if (!f) return null;
+  if (keys.has(f)) return f;
+  const fk = slugifyIdSegment(f);
+  for (const k of keys) {
+    if (slugifyIdSegment(k) === fk) return k;
+  }
+  return null;
+}
+
+function contactFragmentRefersToDedicatedSubpage(
+  fragment: string,
+  validIds: Set<string>,
+  cross: MarketingCrossPageLinkContext | undefined,
+): boolean {
+  if (!cross?.contactOnDedicatedSubpage || validIds.has("contact")) return false;
+  const t = fragment.trim().toLowerCase();
+  if (t === "contact" || t === "contact-us" || t === "contact_us") return true;
+  return slugifyIdSegment(fragment) === "contact";
+}
+
+/** `href` voor echte marketing-subroute of contactpagina; `null` = geen cross-match. */
+function crossPageHrefFromUnknownFragment(
+  fragment: string,
+  validIds: Set<string>,
+  cross: MarketingCrossPageLinkContext | undefined,
+): string | null {
+  if (!cross) return null;
+  if (cross.marketingPageKeys.size > 0) {
+    const mk = matchCanonicalMarketingPageKey(fragment, cross.marketingPageKeys);
+    if (mk) return `${STUDIO_SITE_BASE_PLACEHOLDER}/${mk}`;
+  }
+  if (contactFragmentRefersToDedicatedSubpage(fragment, validIds, cross)) {
+    return STUDIO_CONTACT_PATH_PLACEHOLDER;
+  }
+  return null;
+}
+
+function crossPageHrefFromSinglePathSegment(
+  segment: string,
+  validIds: Set<string>,
+  cross: MarketingCrossPageLinkContext | undefined,
+): string | null {
+  if (!cross) return null;
+  if (cross.marketingPageKeys.size > 0) {
+    const mk = matchCanonicalMarketingPageKey(segment, cross.marketingPageKeys);
+    if (mk) return `${STUDIO_SITE_BASE_PLACEHOLDER}/${mk}`;
+  }
+  if (contactFragmentRefersToDedicatedSubpage(segment, validIds, cross)) {
+    return STUDIO_CONTACT_PATH_PLACEHOLDER;
+  }
+  return null;
+}
+
+/**
  * Modellen zetten vaak `href="/site/slug"` of `https://…/site/slug` (zonder `#`) op elk menu-item.
  * In de srcDoc-iframe scrollt dat telkens naar boven → alle links voelen identiek. Zet om naar `#…`.
  * Ook `/diensten` → `#diensten` als die id bestaat.
  */
-export function repairSamePagePathHrefsInHtml(html: string, validIds: Set<string>): string {
+export function repairSamePagePathHrefsInHtml(
+  html: string,
+  validIds: Set<string>,
+  crossPage?: MarketingCrossPageLinkContext,
+): string {
   return html.replace(/href\s*=\s*(["'])([^"']*)\1/gi, (full, quote: string, inner: string) => {
-    const next = pathOrAbsoluteSiteHrefToHash(inner, validIds);
+    const next = pathOrAbsoluteSiteHrefToHash(inner, validIds, crossPage);
     if (next == null) return full;
     return `href=${quote}${next}${quote}`;
   });
 }
 
-function pathOrAbsoluteSiteHrefToHash(raw: string, validIds: Set<string>): string | null {
+function pathOrAbsoluteSiteHrefToHash(
+  raw: string,
+  validIds: Set<string>,
+  cross?: MarketingCrossPageLinkContext,
+): string | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.startsWith("#") || /^mailto:|^tel:|^javascript:/i.test(trimmed)) return null;
   if (trimmed.includes("__STUDIO_")) return null;
@@ -249,6 +326,8 @@ function pathOrAbsoluteSiteHrefToHash(raw: string, validIds: Set<string>): strin
   if (pl === "/site" || pl === "/site/") {
     if (hash) {
       if (hash === "top" || validIds.has(hash)) return `#${hash}`;
+      const crossH = crossPageHrefFromUnknownFragment(hash, validIds, cross);
+      if (crossH) return crossH;
       return `#${fb}`;
     }
     return validIds.has("top") ? `#top` : `#${fb}`;
@@ -256,9 +335,19 @@ function pathOrAbsoluteSiteHrefToHash(raw: string, validIds: Set<string>): strin
 
   if (pl.startsWith("/site/")) {
     const rest = pathname.slice("/site/".length).split("/").filter(Boolean);
-    if (rest.length > 1) return null;
+    if (rest.length > 1) {
+      if (cross?.marketingPageKeys.size) {
+        const sub = safeDecodeFragment(rest[1]!);
+        if (sub.toLowerCase() === "contact") return null;
+        if (matchCanonicalMarketingPageKey(sub, cross.marketingPageKeys)) return null;
+        return STUDIO_SITE_BASE_PLACEHOLDER;
+      }
+      return null;
+    }
     if (hash) {
       if (hash === "top" || validIds.has(hash)) return `#${hash}`;
+      const crossH = crossPageHrefFromUnknownFragment(hash, validIds, cross);
+      if (crossH) return crossH;
       return `#${fb}`;
     }
     return validIds.has("top") ? `#top` : `#${fb}`;
@@ -277,6 +366,8 @@ function pathOrAbsoluteSiteHrefToHash(raw: string, validIds: Set<string>): strin
     for (const vid of validIds) {
       if (slugifyIdSegment(vid) === segKey) return `#${vid}`;
     }
+    const crossSeg = crossPageHrefFromSinglePathSegment(seg, validIds, cross);
+    if (crossSeg) return crossSeg;
     return null;
   }
 
@@ -293,8 +384,13 @@ function safeDecodeFragment(s: string): string {
 
 /**
  * Vervangt `href="#onbekend"` door een geldige anker-id uit de pagina.
+ * Bij multi-page marketing: fragment dat een echte subroute is → `__STUDIO_SITE_BASE__/…` of contact-token.
  */
-export function repairInternalLinksInHtml(html: string, validIds: Set<string>): string {
+export function repairInternalLinksInHtml(
+  html: string,
+  validIds: Set<string>,
+  crossPage?: MarketingCrossPageLinkContext,
+): string {
   const fb = pickFallbackFragment(validIds);
   return html.replace(/href\s*=\s*(["'])(#[^"']*)\1/gi, (_m, quote: string, ref: string) => {
     const inner = ref.slice(1);
@@ -304,6 +400,10 @@ export function repairInternalLinksInHtml(html: string, validIds: Set<string>): 
     }
     if (frag === "top" || validIds.has(frag)) {
       return `href=${quote}#${frag}${quote}`;
+    }
+    const crossH = crossPageHrefFromUnknownFragment(frag, validIds, crossPage);
+    if (crossH) {
+      return `href=${quote}${crossH}${quote}`;
     }
     return `href=${quote}#${fb}${quote}`;
   });
@@ -355,15 +455,27 @@ export function ensureHeroRootMinViewportClass(html: string): string {
 export function postProcessClaudeTailwindMarketingSite(
   page: ClaudeTailwindMarketingSiteOutput,
 ): ClaudeTailwindMarketingSiteOutput {
-  const landing = postProcessClaudeTailwindPage({ config: page.config, sections: page.sections });
-  const contact = postProcessClaudeTailwindPage({ config: page.config, sections: page.contactSections });
   const marketingPagesRaw = page.marketingPages;
+  const marketingKeys =
+    marketingPagesRaw != null && Object.keys(marketingPagesRaw).length > 0
+      ? new Set(Object.keys(marketingPagesRaw))
+      : null;
+  const crossPage: MarketingCrossPageLinkContext | undefined =
+    marketingKeys != null && marketingKeys.size > 0
+      ? { marketingPageKeys: marketingKeys, contactOnDedicatedSubpage: true }
+      : undefined;
+
+  const landing = postProcessClaudeTailwindPage({ config: page.config, sections: page.sections }, { crossPage });
+  const contact = postProcessClaudeTailwindPage(
+    { config: page.config, sections: page.contactSections },
+    { crossPage },
+  );
   const marketingPages =
     marketingPagesRaw != null && Object.keys(marketingPagesRaw).length > 0
       ? Object.fromEntries(
           Object.entries(marketingPagesRaw).map(([k, secs]) => [
             k,
-            postProcessClaudeTailwindPage({ config: page.config, sections: secs }).sections,
+            postProcessClaudeTailwindPage({ config: page.config, sections: secs }, { crossPage }).sections,
           ]),
         )
       : undefined;
@@ -375,7 +487,15 @@ export function postProcessClaudeTailwindMarketingSite(
   };
 }
 
-export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): ClaudeTailwindPageOutput {
+export type PostProcessClaudeTailwindPageOptions = {
+  crossPage?: MarketingCrossPageLinkContext;
+};
+
+export function postProcessClaudeTailwindPage(
+  page: ClaudeTailwindPageOutput,
+  options?: PostProcessClaudeTailwindPageOptions,
+): ClaudeTailwindPageOutput {
+  const cross = options?.crossPage;
   const withIds = ensureUniqueSectionIds(page.sections);
   const combined = withIds.map((row) => withRootIdOnSectionHtml(row.html, row.id)).join("\n");
 
@@ -387,8 +507,8 @@ export function postProcessClaudeTailwindPage(page: ClaudeTailwindPageOutput): C
 
   const sectionsLinked = withIds.map((row) => {
     const html0 = withRootIdOnSectionHtml(row.html, row.id);
-    const html0b = repairSamePagePathHrefsInHtml(html0, validIds);
-    const html1 = repairInternalLinksInHtml(html0b, validIds);
+    const html0b = repairSamePagePathHrefsInHtml(html0, validIds, cross);
+    const html1 = repairInternalLinksInHtml(html0b, validIds, cross);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
     const html2c = stripDecorativeScrollCueMarkup(html2b);
