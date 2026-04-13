@@ -27,12 +27,15 @@ export function ConceptFlyerExperience({
   const { meetingUrl, quoteUrl, email } = readFlyerEnv();
   const storageKey = useMemo(() => `gentrix-flyer-tour-${slug}`, [slug]);
   const [dismissedBar, setDismissedBar] = useState(false);
+  /** Rondleiding alleen na expliciete start — niet `step === 0` als default (voorkomt overlay bij load + rare state). */
+  const [tourOpen, setTourOpen] = useState(false);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     try {
       if (sessionStorage.getItem(storageKey) === "1") {
-        queueMicrotask(() => setStep(-1));
+        setTourOpen(false);
+        setStep(0);
       }
     } catch {
       /* ignore */
@@ -45,7 +48,8 @@ export function ConceptFlyerExperience({
     } catch {
       /* ignore */
     }
-    setStep(-1);
+    setTourOpen(false);
+    setStep(0);
   }, [storageKey]);
 
   const mailStudio = useCallback(
@@ -86,7 +90,25 @@ export function ConceptFlyerExperience({
     },
   ];
 
-  const showOverlay = step >= 0 && step < steps.length;
+  const showOverlay = tourOpen && step >= 0 && step < steps.length;
+
+  useEffect(() => {
+    if (!showOverlay) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showOverlay]);
+
+  useEffect(() => {
+    if (!showOverlay) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") finishTour();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showOverlay, finishTour]);
 
   const ctaClass =
     "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700";
@@ -116,7 +138,10 @@ export function ConceptFlyerExperience({
               <button
                 type="button"
                 className="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                onClick={() => setStep(0)}
+                onClick={() => {
+                  setStep(0);
+                  setTourOpen(true);
+                }}
               >
                 Start rondleiding
               </button>
@@ -157,8 +182,12 @@ export function ConceptFlyerExperience({
           role="dialog"
           aria-modal="true"
           aria-labelledby="flyer-tour-title"
+          onClick={finishTour}
         >
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+          <div
+            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 id="flyer-tour-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               {steps[step]?.title}
             </h2>
