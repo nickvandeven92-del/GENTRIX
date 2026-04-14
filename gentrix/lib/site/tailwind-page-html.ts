@@ -29,6 +29,11 @@ import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-m
 import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
 import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
+import {
+  buildStudioAutoMobileNavHeaderHtml,
+  shouldInjectStudioAutoMobileNav,
+  STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
+} from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 export { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
@@ -233,26 +238,6 @@ export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 102
     background-color: rgb(15 23 42 / 0.94) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-  }
-  /*
-   * Dubbele sluit-X: veel templates zetten Lucide menu + x in één knop (x-show kapot) óf een tweede knop.
-   * Alleen in mobiele editor-preview — live site blijft model-markup volgen.
-   */
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="enu"] svg.lucide-x,
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="Menu"] svg.lucide-x,
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="menu"] svg.lucide-x,
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="enu"] [data-lucide="x"],
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="Menu"] [data-lucide="x"],
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="menu"] [data-lucide="x"] {
-    display: none !important;
-  }
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg.lucide-menu) + button:has(svg.lucide-x),
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg[class*="lucide-menu"]) + button:has(svg[class*="lucide-x"]) {
-    display: none !important;
-  }
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg.lucide-menu) ~ button:has(svg.lucide-x):not(:has(svg.lucide-menu)),
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg[class*="lucide-menu"]) ~ button:has(svg.lucide-x):not(:has(svg.lucide-menu)) {
-    display: none !important;
   }
 }`;
 
@@ -1669,6 +1654,11 @@ export function buildTailwindIframeSrcDoc(
   let body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {
     logoSet: options?.logoSet,
   });
+  let studioAutoMobileNavInjected = false;
+  if (sections.length > 0 && shouldInjectStudioAutoMobileNav(body)) {
+    body = `${buildStudioAutoMobileNavHeaderHtml(sections, pageConfig ?? null)}\n${body}`;
+    studioAutoMobileNavInjected = true;
+  }
   const slug = options?.publishedSlug?.trim();
   if (slug) {
     const previewTok = options?.draftPublicPreviewToken?.trim();
@@ -1763,6 +1753,8 @@ export function buildTailwindIframeSrcDoc(
     ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
     : "";
   const iframeShellAttr = ` data-gentrix-studio-iframe="1"`;
+  const autoNavDupCss = studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n` : "";
+  const bodyTopIdAttr = studioAutoMobileNavInjected ? ` id="top"` : "";
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   let out = `<!DOCTYPE html>
@@ -1783,10 +1775,10 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
-    ${studioMobileCss}${foucCssBlock}  </style>
+    ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>
-<body class="antialiased text-slate-900${radiusClass}">
+<body class="antialiased text-slate-900${radiusClass}"${bodyTopIdAttr}>
 ${twLoadingScript}${body}
 ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
 (function(){document.addEventListener("alpine:init",function(){

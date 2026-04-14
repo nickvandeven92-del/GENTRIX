@@ -27,6 +27,8 @@ De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-int
 
 **Mobiel togglen — één knop:** **één** \`type="button"\` met \`@click="open = !open"\` (of \`@click="menuOpen = !menuOpen"\`) en **alleen** het streepjes-icoon (Lucide \`menu\` of drie \`span\`-streepjes). **Geen** tweede losse X/sluitknop in de header naast de hamburger; sluiten = dezelfde knop opnieuw (optioneel icoon wisselen **binnen die ene knop** met \`x-show\`) en/of backdrop-klik.
 
+**Referentie in dit project:** bestand \`lib/site/studio-default-mobile-nav-snippet.ts\`, export \`STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET\` — complete \`<header>\` met werkend mobiel menu (één \`navOpen\`, backdrop \`z-[60]\`, sheet \`z-[70]\`, streepjes en × **in dezelfde** knop via \`x-show\`, \`x-cloak\`, Escape). Pas labels/hrefs/kleuren aan de briefing aan; behoud het **zelfde gedrag** (geen tweede menu-kolom naast de balk, geen \`open: true\` bij load).
+
 **Leesbaarheid:** transparante of glass header over wisselende achtergronden: zorg **functioneel** voor contrast (bijv. \`:class\` op scroll, \`@scroll.window\`) — **geen** verplichte nav-stijl.
 
 **Formulieren:** \`<form>\` met \`@submit.prevent\` mag voor UX (bijv. "bedankt"-toggle); echte server-POST is niet standaard — gebruik \`mailto:\`, \`tel:\`, \`https://\` of ankers naar \`#contact\` tenzij de briefing expliciet anders vraagt. Geen fictieve API-routes als harde afhankelijkheid.
