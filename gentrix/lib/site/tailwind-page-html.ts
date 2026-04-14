@@ -199,7 +199,8 @@ export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `html[data-gentrix-studio-ifra
 
 /**
  * Na Alpine init: nav-toggles die per ongeluk op `true` starten → `false`. Veel templates zetten `x-data` op
- * een wrapper **rond** header+menu; daarom elke `[x-data]` die een `<header>` bevat (niet in `<footer>`).
+ * een wrapper **rond** header+menu **of** op een kind **in** `<header>`; beide moeten mee (anders blijft
+ * `open: true` uit een factory ongezien en reageert het menu niet).
  */
 function buildStudioHeaderNavAlpineClampScript(): string {
   const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
@@ -212,32 +213,53 @@ function buildStudioHeaderNavAlpineClampScript(): string {
     }catch(_){}
     return el._x_dataStack&&el._x_dataStack[0];
   }
-  function clampOnce(){
+  function isHeaderNavScope(el){
+    if(el.closest("footer"))return false;
+    return el.tagName==="HEADER"
+      ||(el.querySelector&&el.querySelector("header"))
+      ||(el.closest&&el.closest("header"));
+  }
+  function clampOnce(aggressive){
     try{
       document.querySelectorAll("[x-data]").forEach(function(el){
-        if(el.closest("footer"))return;
-        var hasHeader=el.tagName==="HEADER"||(el.querySelector&&el.querySelector("header"));
-        if(!hasHeader)return;
+        if(!isHeaderNavScope(el))return;
         var raw=el.getAttribute("x-data");
         if(!raw)return;
         var d=readScope(el);
         if(!d)return;
         for(var i=0;i<KEYS.length;i++){
           var k=KEYS[i];
+          if(!Object.prototype.hasOwnProperty.call(d,k)||d[k]!==true)continue;
           var re=new RegExp("\\\\b"+k+"\\\\s*:\\\\s*true\\\\b");
-          if(!re.test(raw))continue;
+          if(aggressive===true||re.test(raw))d[k]=false;
+        }
+      });
+    }catch(_){}
+  }
+  function closeNavMenusFromEscape(){
+    try{
+      document.querySelectorAll("[x-data]").forEach(function(el){
+        if(!isHeaderNavScope(el))return;
+        var d=readScope(el);
+        if(!d)return;
+        for(var i=0;i<KEYS.length;i++){
+          var k=KEYS[i];
           if(Object.prototype.hasOwnProperty.call(d,k)&&d[k]===true)d[k]=false;
         }
       });
     }catch(_){}
   }
   function run(){
-    clampOnce();
-    setTimeout(clampOnce,60);
-    setTimeout(clampOnce,200);
-    setTimeout(clampOnce,400);
-    setTimeout(clampOnce,700);
+    clampOnce(true);
+    setTimeout(function(){clampOnce(false);},60);
+    setTimeout(function(){clampOnce(false);},200);
+    setTimeout(function(){clampOnce(false);},400);
+    setTimeout(function(){clampOnce(false);},700);
   }
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Escape")return;
+    closeNavMenusFromEscape();
+  });
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
   else run();
 })();
