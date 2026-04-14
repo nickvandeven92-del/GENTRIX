@@ -113,6 +113,8 @@ export const ALPINE_NAV_TOGGLE_KEYS = [
   "menuOpen",
   "navOpen",
   "mobileOpen",
+  "mOpen",
+  "nmOpen",
   "showMenu",
   "drawerOpen",
   "sidebarOpen",
@@ -122,6 +124,7 @@ export const ALPINE_NAV_TOGGLE_KEYS = [
   "isOpen",
   "showNav",
   "mobileMenuOpen",
+  "showMobileMenu",
   "showMobileNav",
   "sheetOpen",
   "burgerOpen",
@@ -133,6 +136,11 @@ export const ALPINE_NAV_TOGGLE_KEYS = [
   "navMenuOpen",
   "primaryNavOpen",
   "hamburgerOpen",
+  "offCanvasOpen",
+  "navigationOpen",
+  "mobileNavVisible",
+  "flyoutOpen",
+  "compactMenuOpen",
 ] as const;
 
 const ALPINE_NAV_TOGGLE_TRUE_RE = new RegExp(

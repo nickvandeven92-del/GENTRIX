@@ -158,6 +158,11 @@ describe("fixAlpineNavToggleDefaultsInXData", () => {
     const html = `<header x-data="{ navMenuOpen: true }">`;
     expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("navMenuOpen: false");
   });
+
+  it("past offCanvasOpen: true aan", () => {
+    const html = `<header x-data="{ offCanvasOpen: true }">`;
+    expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("offCanvasOpen: false");
+  });
 });
 
 describe("stripDecorativeScrollCueMarkup", () => {

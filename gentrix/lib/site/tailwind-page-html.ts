@@ -201,12 +201,18 @@ export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `html[data-gentrix-studio-ifra
  * Na Alpine init: nav-toggles die per ongeluk op `true` starten → `false`. Veel templates zetten `x-data` op
  * een wrapper **rond** header+menu **of** op een kind **in** `<header>`; beide moeten mee (anders blijft
  * `open: true` uit een factory ongezien en reageert het menu niet).
+ *
+ * Eerste ronde (**aggressive**): alle booleans `true` waarvan de sleutel op een mobiele nav lijkt — vangt
+ * `sidebarMenuOpen`, `x-data="initNav"` i.c.m. factory-keys buiten `ALPINE_NAV_TOGGLE_KEYS`, enz.
+ * Latere rondes: alleen nog als het `x-data`-attribuut letterlijk `key: true` bevat (gebruiker mag menu open houden).
  */
 function buildStudioHeaderNavAlpineClampScript(): string {
   const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
   return `<script defer>
 (function(){
   var KEYS=[${keysLiteral}];
+  var KEY_IDX={};
+  for(var kj=0;kj<KEYS.length;kj++)KEY_IDX[KEYS[kj]]=1;
   function readScope(el){
     try{
       if(window.Alpine&&typeof window.Alpine.$data==="function")return window.Alpine.$data(el);
@@ -219,20 +225,45 @@ function buildStudioHeaderNavAlpineClampScript(): string {
       ||(el.querySelector&&el.querySelector("header"))
       ||(el.closest&&el.closest("header"));
   }
+  function extraNavBoolKey(k){
+    if(typeof k!=="string"||k.length>64)return false;
+    if(KEY_IDX[k])return true;
+    if(k==="open")return true;
+    if(/^is(Open|MenuOpen|NavOpen|DrawerOpen)$/i.test(k))return true;
+    if(!/Open$/i.test(k))return false;
+    var kl=k.toLowerCase();
+    return kl.indexOf("menu")>=0||kl.indexOf("nav")>=0||kl.indexOf("drawer")>=0||kl.indexOf("sheet")>=0
+      ||kl.indexOf("sidebar")>=0||kl.indexOf("panel")>=0||kl.indexOf("overlay")>=0||kl.indexOf("burger")>=0
+      ||kl.indexOf("flyout")>=0||kl.indexOf("offcanvas")>=0||kl.indexOf("mobile")>=0||kl.indexOf("hamb")>=0;
+  }
+  function clampScopeData(aggressive,raw,d){
+    if(!d)return;
+    var i,k,re;
+    if(aggressive===true){
+      for(k in d){
+        if(!Object.prototype.hasOwnProperty.call(d,k))continue;
+        if(d[k]!==true)continue;
+        if(!extraNavBoolKey(k))continue;
+        d[k]=false;
+      }
+      return;
+    }
+    if(typeof raw!=="string"||!raw.trim())return;
+    for(i=0;i<KEYS.length;i++){
+      k=KEYS[i];
+      if(!Object.prototype.hasOwnProperty.call(d,k)||d[k]!==true)continue;
+      re=new RegExp("\\\\b"+k+"\\\\s*:\\\\s*true\\\\b");
+      if(re.test(raw))d[k]=false;
+    }
+  }
   function clampOnce(aggressive){
     try{
       document.querySelectorAll("[x-data]").forEach(function(el){
         if(!isHeaderNavScope(el))return;
         var raw=el.getAttribute("x-data");
-        if(!raw)return;
+        if(raw!=null&&typeof raw==="string"&&!raw.trim())return;
         var d=readScope(el);
-        if(!d)return;
-        for(var i=0;i<KEYS.length;i++){
-          var k=KEYS[i];
-          if(!Object.prototype.hasOwnProperty.call(d,k)||d[k]!==true)continue;
-          var re=new RegExp("\\\\b"+k+"\\\\s*:\\\\s*true\\\\b");
-          if(aggressive===true||re.test(raw))d[k]=false;
-        }
+        clampScopeData(aggressive,raw,d);
       });
     }catch(_){}
   }
@@ -242,9 +273,16 @@ function buildStudioHeaderNavAlpineClampScript(): string {
         if(!isHeaderNavScope(el))return;
         var d=readScope(el);
         if(!d)return;
-        for(var i=0;i<KEYS.length;i++){
-          var k=KEYS[i];
+        var i,k;
+        for(i=0;i<KEYS.length;i++){
+          k=KEYS[i];
           if(Object.prototype.hasOwnProperty.call(d,k)&&d[k]===true)d[k]=false;
+        }
+        for(k in d){
+          if(!Object.prototype.hasOwnProperty.call(d,k))continue;
+          if(d[k]!==true)continue;
+          if(!extraNavBoolKey(k))continue;
+          d[k]=false;
         }
       });
     }catch(_){}
@@ -255,13 +293,21 @@ function buildStudioHeaderNavAlpineClampScript(): string {
     setTimeout(function(){clampOnce(false);},200);
     setTimeout(function(){clampOnce(false);},400);
     setTimeout(function(){clampOnce(false);},700);
+    setTimeout(function(){clampOnce(true);clampOnce(false);},1200);
+  }
+  function runAfterLoad(){
+    clampOnce(true);
+    clampOnce(false);
+    setTimeout(function(){clampOnce(true);clampOnce(false);},40);
   }
   document.addEventListener("keydown",function(e){
     if(e.key!=="Escape")return;
     closeNavMenusFromEscape();
   });
+  try{window.__gentrixNavClamp=clampOnce;}catch(_){}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
   else run();
+  window.addEventListener("load",runAfterLoad);
 })();
 </script>`;
 }
@@ -1652,13 +1698,19 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
 ${aosHeadLink}</head>
 <body class="antialiased text-slate-900${radiusClass}">
 ${twLoadingScript}${body}
-${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
+${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
+(function(){document.addEventListener("alpine:init",function(){
+  queueMicrotask(function(){
+    try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
+  });
+});})();
+</script>
+<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${buildStudioHeaderNavAlpineClampScript()}
 ${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
-${buildLucideRuntimeScriptBlock()}
 ${bridge}
 ${userJsBlock}
 </body>

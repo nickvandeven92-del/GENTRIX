@@ -113,11 +113,12 @@ export function buildStandaloneExportHtmlDocument(
 
   const rootCssBlock = rootCss ? rootCss.replace(/\s+/g, " ") : "";
 
+  const lucideBlock = `${buildLucideRuntimeScriptBlock()}\n  `;
   const alpineScript = `<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>\n  `;
   const styleBlock =
     styleMode === "local_css"
-      ? `<link rel="stylesheet" href="styles.css"/>\n  ${alpineScript}`
-      : `<script src="https://cdn.tailwindcss.com"></script>\n  ${alpineScript}`;
+      ? `<link rel="stylesheet" href="styles.css"/>\n  `
+      : `<script src="https://cdn.tailwindcss.com"></script>\n  `;
 
   const uCss = userAssets?.css?.trim() ?? "";
   const uJs = userAssets?.js?.trim() ?? "";
@@ -152,7 +153,7 @@ export function buildStandaloneExportHtmlDocument(
 ${bodyInner}
 ${STUDIO_SCROLL_REVEAL_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
-${buildLucideRuntimeScriptBlock()}${userJsBlock}
+${lucideBlock}${alpineScript}${userJsBlock}
 </body>
 </html>`;
 }
