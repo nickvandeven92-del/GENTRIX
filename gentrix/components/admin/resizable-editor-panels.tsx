@@ -18,6 +18,10 @@ const SPLITTER_PX = 8;
 type ResizableEditorPanelsProps = {
   sidebar: ReactNode;
   main: ReactNode;
+  /**
+   * `both` = sleepbare twee kolommen. `sidebar` / `main` = één paneel op volle breedte (Lovable-achtige focus).
+   */
+  visiblePanels?: "both" | "sidebar" | "main";
   /** localStorage-key voor sidebarbreedte (default: zelfde als HTML-editor). */
   storageKey?: string;
   /** Default sidebar width on large screens (px). */
@@ -54,6 +58,7 @@ function boundsForHost(
 export function ResizableEditorPanels({
   sidebar,
   main,
+  visiblePanels = "both",
   storageKey = DEFAULT_STORAGE_KEY,
   defaultSidebarPx = 400,
   minSidebarPx = 260,
@@ -174,6 +179,10 @@ export function ResizableEditorPanels({
     [clamp, persist, sidebarWidth, hostWidth],
   );
 
+  const showBoth = visiblePanels === "both";
+  const showSidebar = visiblePanels === "both" || visiblePanels === "sidebar";
+  const showMain = visiblePanels === "both" || visiblePanels === "main";
+
   return (
     <div
       ref={hostRef}
@@ -184,7 +193,10 @@ export function ResizableEditorPanels({
     >
       <aside
         className={cn(
-          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:max-h-full lg:w-[var(--editor-sidebar-px)] lg:shrink-0 lg:overflow-y-auto lg:pl-4 lg:pt-3 lg:pr-1",
+          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:max-h-full lg:overflow-y-auto lg:pl-4 lg:pt-3 lg:pr-1",
+          showBoth && "lg:w-[var(--editor-sidebar-px)] lg:shrink-0",
+          !showSidebar && "hidden",
+          visiblePanels === "sidebar" && "lg:flex-1",
         )}
         style={
           {
@@ -203,9 +215,10 @@ export function ResizableEditorPanels({
         aria-valuemax={Math.round(effMaxSidebar)}
         tabIndex={0}
         className={cn(
-          "hidden shrink-0 cursor-col-resize self-stretch select-none lg:flex lg:w-2 lg:items-center lg:justify-center",
+          "hidden shrink-0 cursor-col-resize self-stretch select-none lg:w-2 lg:items-center lg:justify-center",
           "rounded-full bg-transparent hover:bg-zinc-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800",
           "dark:hover:bg-zinc-700/60",
+          showBoth ? "lg:flex" : "lg:hidden",
         )}
         onPointerDown={onSplitterPointerDown}
         onKeyDown={(e) => {
@@ -231,7 +244,13 @@ export function ResizableEditorPanels({
         />
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden lg:h-full lg:max-h-full lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden lg:pt-3 lg:pr-4">
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden lg:h-full lg:max-h-full lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden lg:pt-3 lg:pr-4",
+          !showMain && "hidden",
+          visiblePanels === "main" && "lg:flex-1",
+        )}
+      >
         {main}
       </div>
     </div>

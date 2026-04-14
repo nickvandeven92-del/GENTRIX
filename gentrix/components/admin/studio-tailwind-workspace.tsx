@@ -108,7 +108,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
             initialTailwindCompiledCss={props.initialTailwindCompiledCss ?? null}
           />
         ) : (
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <GeneratorForm
               initialSubfolderSlug={props.subfolderSlug}
               initialClientName={props.initialName}

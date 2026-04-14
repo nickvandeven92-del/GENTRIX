@@ -2,12 +2,26 @@
  * Automatische mobiele navigatie (Alpine): standaard **ingeklapt**, alleen op kleine viewports
  * de drie-strepjes-knop; desktop (`lg+`) toont het horizontale menu — geen hamburger op breed scherm.
  */
+import { ALPINE_NAV_TOGGLE_KEYS } from "@/lib/ai/generate-site-postprocess";
 import {
   isLegacyTailwindPageConfig,
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import { STUDIO_CONTACT_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
+
+/**
+ * Zelfde sleutels als `fixAlpineNavToggleDefaultsInXData`: als het model al Alpine-navstate in `x-data` zet,
+ * geen automatische header injecteren (anders dubbele navbar, vooral op desktop).
+ */
+const XDATA_HAS_NAV_TOGGLE_RE = new RegExp(
+  `\\bx-data\\s*=\\s*["'][^"']*\\b(?:${ALPINE_NAV_TOGGLE_KEYS.join("|")})\\s*:`,
+  "i",
+);
+
+/** Hamburger / mobiele menuknop: vaak `lg:hidden`, soms alleen `md:hidden` of `xl:hidden`. */
+const MOBILE_MENU_BUTTON_HIDDEN_RE =
+  /<button[^>]*\bclass\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b/i;
 
 /** Herken onze eigen geïnjecteerde balk (geen dubbele injectie). */
 const AUTO_NAV_ATTR = 'data-gentrix-auto-mobile-nav="1"';
@@ -34,9 +48,9 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   const idx = bodyInnerHtml.search(/<header\b/i);
   if (idx < 0) return true;
   const fromHeader = bodyInnerHtml.slice(idx, idx + 28_000);
-  /* Bestaand mobiel menu: knop alleen zichtbaar onder lg, of Alpine-navstate op de header. */
-  if (/<button[^>]*class\s*=\s*["'][^"']*\blg:hidden\b/i.test(fromHeader)) return false;
-  if (/\bx-data\s*=\s*["'][^"']*navOpen/i.test(fromHeader)) return false;
+  /* Bestaand mobiel menu: knop verborgen op brede breakpoints, of Alpine-navstate in x-data. */
+  if (MOBILE_MENU_BUTTON_HIDDEN_RE.test(fromHeader)) return false;
+  if (XDATA_HAS_NAV_TOGGLE_RE.test(fromHeader)) return false;
   return true;
 }
 

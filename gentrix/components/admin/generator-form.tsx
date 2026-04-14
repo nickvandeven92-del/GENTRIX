@@ -1,21 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertCircle,
+  ArrowLeft,
   Code2,
+  Columns2,
   ExternalLink,
   ImagePlus,
   Loader2,
   Maximize2,
   Minimize2,
   Monitor,
+  PanelLeft,
+  PanelRight,
   Send,
   X,
 } from "lucide-react";
 import { StudioThemeStylesHint } from "@/components/admin/studio-theme-styles-hint";
 import { DutchSpellcheckPanel } from "@/components/admin/dutch-spellcheck-panel";
-import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-panel";
+import { GenerationDetailsBody } from "@/components/admin/generation-details-body";
+import {
+  GenerationFeedbackPanel,
+  type StudioRightPaneMode,
+} from "@/components/admin/generation-feedback-panel";
 import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
@@ -40,6 +49,8 @@ import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-f
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
 import { cn } from "@/lib/utils";
+
+type StudioPanelLayout = "split" | "editor" | "preview";
 
 /** `true` = oude NDJSON-stream naar de browser; default = server-job + polling (stabieler bij lange runs). */
 const USE_LEGACY_NDJSON_STREAM = process.env.NEXT_PUBLIC_SITE_GENERATION_USE_STREAM === "true";
@@ -191,7 +202,23 @@ export function GeneratorForm({
   const [landingPageOnly, setLandingPageOnly] = useState(false);
   /** Chat + preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
+  /** `split` = twee kolommen; `editor` / `preview` = één paneel op volle breedte (binnen de studio-shell). */
+  const [panelLayout, setPanelLayout] = useState<StudioPanelLayout>("split");
+  /** Rechter paneel: live preview of uitgebreid logboek (Lovable-achtig). */
+  const [rightPaneMode, setRightPaneMode] = useState<StudioRightPaneMode>("preview");
+  const [portalReady, setPortalReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => setPortalReady(true), []);
+
+  const handleRightPaneModeChange = useCallback((mode: StudioRightPaneMode) => {
+    setRightPaneMode(mode);
+    if (mode === "details" && panelLayout === "editor") {
+      setPanelLayout("split");
+    }
+  }, [panelLayout]);
+
+  const descriptionLocked = existingDraftLocked || generatedTailwind != null;
 
   const canOpenSitePreviewTab = Boolean(slugFromUrl && isValidSubfolderSlug(slugFromUrl));
 
@@ -217,6 +244,7 @@ export function GeneratorForm({
 
   const uploadFile = useCallback(
     async (file: File) => {
+      if (descriptionLocked) return;
       if (file.size > 5 * 1024 * 1024) {
         setImageUploadError("Bestand te groot (max. 5 MB).");
         return;
@@ -249,25 +277,27 @@ export function GeneratorForm({
         setImageUploadError("Upload mislukt (netwerkfout).");
       }
     },
-    [slugFromUrl],
+    [slugFromUrl, descriptionLocked],
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      if (descriptionLocked) return;
       const files = Array.from(e.dataTransfer.files).slice(0, 8 - clientImages.length);
       for (const f of files) uploadFile(f);
     },
-    [uploadFile, clientImages.length],
+    [uploadFile, clientImages.length, descriptionLocked],
   );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (descriptionLocked) return;
       const files = Array.from(e.target.files ?? []).slice(0, 8 - clientImages.length);
       for (const f of files) uploadFile(f);
       e.target.value = "";
     },
-    [uploadFile, clientImages.length],
+    [uploadFile, clientImages.length, descriptionLocked],
   );
 
   useEffect(() => {
@@ -299,6 +329,7 @@ export function GeneratorForm({
     setDesignRationaleSkipReason(null);
     setStreamEndedWithoutComplete(false);
     setGenerationActivity([]);
+    setRightPaneMode("preview");
     setLoading(true);
     try {
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
@@ -502,31 +533,78 @@ export function GeneratorForm({
     }
   }
 
-  const descriptionLocked = existingDraftLocked || generatedTailwind != null;
-
   const fieldClass =
     "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20";
   const fieldLockedClass =
     "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-600 placeholder:text-slate-400 focus:border-slate-200 focus:ring-0";
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col",
-          previewFullscreen &&
-            "fixed inset-0 z-[1000] gap-0 overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
-        )}
+  const visiblePanelsProp =
+    panelLayout === "split" ? ("both" as const) : panelLayout === "editor" ? ("sidebar" as const) : ("main" as const);
+
+  const layoutBtnCls = (mode: StudioPanelLayout) =>
+    cn(
+      "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+      panelLayout === mode
+        ? "bg-indigo-100 text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100"
+        : "text-zinc-600 hover:bg-zinc-200/80 dark:text-zinc-400 dark:hover:bg-zinc-800",
+    );
+
+  const panelLayoutToggles = (
+    <div
+      className="flex items-center gap-0.5 rounded-lg border border-zinc-200 bg-white/95 p-0.5 shadow-sm dark:border-zinc-600 dark:bg-zinc-900/95"
+      role="group"
+      aria-label="Paneelweergave"
+    >
+      <button
+        type="button"
+        className={layoutBtnCls("split")}
+        onClick={() => setPanelLayout("split")}
+        title="Twee kolommen: briefing en preview"
       >
+        <Columns2 className="size-4 shrink-0" aria-hidden />
+        <span className="sr-only">Twee kolommen</span>
+      </button>
+      <button
+        type="button"
+        className={layoutBtnCls("editor")}
+        onClick={() => setPanelLayout("editor")}
+        title="Alleen briefing (tekstvelden)"
+      >
+        <PanelLeft className="size-4 shrink-0" aria-hidden />
+        <span className="sr-only">Alleen briefing</span>
+      </button>
+      <button
+        type="button"
+        className={layoutBtnCls("preview")}
+        onClick={() => setPanelLayout("preview")}
+        title="Alleen live preview"
+      >
+        <PanelRight className="size-4 shrink-0" aria-hidden />
+        <span className="sr-only">Alleen preview</span>
+      </button>
+    </div>
+  );
+
+  const editorFocusBar =
+    panelLayout === "editor" && !previewFullscreen ? (
+      <div className="sticky top-0 z-[2] -mx-0.5 mb-1 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2 py-1.5 shadow-sm backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/95">
+        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">Weergave</span>
+        {panelLayoutToggles}
+      </div>
+    ) : null;
+
+  const renderPanels = () => (
       <ResizableEditorPanels
         storageKey="gentrix-studio-generator-sidebar-px"
-        className={cn("min-h-0 flex-1", previewFullscreen && "min-h-0 overflow-hidden")}
+        className="min-h-0 flex-1"
+        visiblePanels={visiblePanelsProp}
         defaultSidebarPx={420}
         minSidebarPx={280}
         maxSidebarPx={560}
         minMainPx={480}
         sidebar={
           <div className="flex min-h-0 flex-col gap-5 pr-1">
+            {editorFocusBar}
             <form
               onSubmit={onSubmit}
               className="sales-os-glass-panel space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"
@@ -565,6 +643,86 @@ export function GeneratorForm({
             placeholder="Bijv. Jouw Bedrijfsnaam BV"
           />
         </div>
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/35 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/25">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-indigo-900 dark:text-indigo-100">
+            Referentie &amp; beelden
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="referenceStyleUrl" className="block text-sm font-medium text-slate-700">
+                Referentiesite <span className="font-normal text-slate-400">(optioneel)</span>
+              </label>
+              <input
+                id="referenceStyleUrl"
+                name="referenceStyleUrl"
+                type="url"
+                disabled={descriptionLocked}
+                className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
+                value={referenceStyleUrl}
+                onChange={(e) => setReferenceStyleUrl(e.target.value)}
+                placeholder="https://… — stijl/structuur als hint"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
+              </label>
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                className={cn(
+                  "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
+                  !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
+                  descriptionLocked && "pointer-events-none opacity-60",
+                )}
+              >
+                {clientImages.map((img, i) => (
+                  <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    {img.uploading ? (
+                      <div className="flex size-full items-center justify-center">
+                        <Loader2 className="size-4 animate-spin text-slate-400" />
+                      </div>
+                    ) : (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.url} alt={img.label} className="size-full object-cover" />
+                        <button
+                          type="button"
+                          disabled={descriptionLocked}
+                          onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {clientImages.length < 8 && (
+                  <button
+                    type="button"
+                    disabled={descriptionLocked}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ImagePlus className="size-5" />
+                    <span className="text-[10px] font-medium">Upload</span>
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple
+                  disabled={descriptionLocked}
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
+              {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
+            </div>
+          </div>
+        </div>
         <div>
           <div className="flex items-center gap-1.5">
             <label htmlFor="description" className="block text-sm font-medium text-slate-700">
@@ -584,7 +742,7 @@ export function GeneratorForm({
             name="description"
             required={!descriptionLocked}
             maxLength={4000}
-            rows={6}
+            rows={8}
             value={description}
             onChange={(e) => {
               if (descriptionLocked) return;
@@ -593,21 +751,6 @@ export function GeneratorForm({
             readOnly={descriptionLocked}
             className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
             placeholder="Kort of uitgebreid: doelgroep, aanbod, toon, CTA. Mag een zin; de Denklijn breidt uit op de server."
-          />
-        </div>
-        <div>
-          <label htmlFor="referenceStyleUrl" className="block text-sm font-medium text-slate-700">
-            Referentiesite <span className="font-normal text-slate-400">(optioneel)</span>
-          </label>
-          <input
-            id="referenceStyleUrl"
-            name="referenceStyleUrl"
-            type="url"
-            disabled={descriptionLocked}
-            className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
-            value={referenceStyleUrl}
-            onChange={(e) => setReferenceStyleUrl(e.target.value)}
-            placeholder="https://…"
           />
         </div>
         <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
@@ -625,60 +768,6 @@ export function GeneratorForm({
               Sneldere run; subpagina&apos;s later uitbreiden.
             </span>
           </label>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
-          </label>
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            className={cn(
-              "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-3",
-              clientImages.length < 8 && "hover:border-indigo-300",
-            )}
-          >
-            {clientImages.map((img, i) => (
-              <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                {img.uploading ? (
-                  <div className="flex size-full items-center justify-center">
-                    <Loader2 className="size-4 animate-spin text-slate-400" />
-                  </div>
-                ) : (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={img.label} className="size-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-            {clientImages.length < 8 && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400"
-              >
-                <ImagePlus className="size-5" />
-                <span className="text-[10px] font-medium">Upload</span>
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-          </div>
-          {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
         </div>
 
         <button
@@ -703,7 +792,10 @@ export function GeneratorForm({
         </button>
       </form>
 
-      {pipelineFeedback ? (
+      {loading ||
+      pipelineFeedback != null ||
+      generationActivity.length > 0 ||
+      generatedTailwind != null ? (
         <GenerationFeedbackPanel
           feedback={pipelineFeedback}
           designRationale={designRationale}
@@ -711,6 +803,12 @@ export function GeneratorForm({
           designRationaleSkipReason={designRationaleSkipReason}
           designContract={designContract}
           designContractWarning={designContractWarning}
+          rightPaneMode={rightPaneMode}
+          onRightPaneModeChange={handleRightPaneModeChange}
+          activityLog={generationActivity}
+          streamPhase={streamPhase}
+          loading={loading}
+          hasSiteOutput={generatedTailwind != null}
         />
       ) : null}
 
@@ -801,72 +899,111 @@ export function GeneratorForm({
         }
         main={
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-            <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                  <span>Live preview</span>
-                  {previewPendingUntilComplete ? (
-                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
-                      na voltooiing
+            {rightPaneMode === "details" ? (
+              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRightPaneModeChange("preview")}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                    >
+                      <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
+                      Terug naar preview
+                    </button>
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100">
+                      Details — Site genereren
                     </span>
-                  ) : null}
-                  {previewIsStreaming ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-                      tussentijds
-                    </span>
-                  ) : null}
-                  {generatedTailwind ? (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-100">
-                      definitief
-                    </span>
-                  ) : null}
-                  {streamEndedWithoutComplete ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-                      stream afgebroken
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={openSitePreviewInNewTab}
-                    disabled={!canOpenSitePreviewTab}
-                    title={
-                      canOpenSitePreviewTab
-                        ? "Open de site in een nieuw tabblad (/site/…, zelfde als live preview na opslaan)"
-                        : "Open studio via een klant met slug om /site in een tabblad te openen"
-                    }
-                    className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                  >
-                    <ExternalLink className="size-4 shrink-0" aria-hidden />
-                    <span className="sr-only">Open preview in nieuw tabblad</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewFullscreen((v) => !v)}
-                    title={previewFullscreen ? "Volledig scherm sluiten (Esc)" : "Volledig scherm"}
-                    className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                  >
-                    {previewFullscreen ? (
-                      <Minimize2 className="size-4 shrink-0" aria-hidden />
-                    ) : (
-                      <Maximize2 className="size-4 shrink-0" aria-hidden />
-                    )}
-                    <span className="sr-only">
-                      {previewFullscreen ? "Volledig scherm sluiten" : "Volledig scherm"}
-                    </span>
-                  </button>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1">
+                    {!previewFullscreen ? panelLayoutToggles : null}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFullscreen((v) => !v)}
+                      title={previewFullscreen ? "Volledig scherm sluiten (Esc)" : "Volledig scherm"}
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    >
+                      {previewFullscreen ? (
+                        <Minimize2 className="size-4 shrink-0" aria-hidden />
+                      ) : (
+                        <Maximize2 className="size-4 shrink-0" aria-hidden />
+                      )}
+                      <span className="sr-only">
+                        {previewFullscreen ? "Volledig scherm sluiten" : "Volledig scherm"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
-              {previewIsStreaming && streamingConfig == null ? (
-                <p className="mt-1 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">
-                  Wachten op <code className="font-mono">config</code> uit het model — tijdelijk placeholderkleuren tot de
-                  stream die keys heeft uitgestuurd.
-                </p>
-              ) : null}
-            </div>
-            {streamEndedWithoutComplete ? (
+            ) : (
+              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                    <span>Live preview</span>
+                    {previewPendingUntilComplete ? (
+                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
+                        na voltooiing
+                      </span>
+                    ) : null}
+                    {previewIsStreaming ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                        tussentijds
+                      </span>
+                    ) : null}
+                    {generatedTailwind ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-100">
+                        definitief
+                      </span>
+                    ) : null}
+                    {streamEndedWithoutComplete ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                        stream afgebroken
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1">
+                    {!previewFullscreen ? panelLayoutToggles : null}
+                    <button
+                      type="button"
+                      onClick={openSitePreviewInNewTab}
+                      disabled={!canOpenSitePreviewTab}
+                      title={
+                        canOpenSitePreviewTab
+                          ? "Open de site in een nieuw tabblad (/site/…, zelfde als live preview na opslaan)"
+                          : "Open studio via een klant met slug om /site in een tabblad te openen"
+                      }
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    >
+                      <ExternalLink className="size-4 shrink-0" aria-hidden />
+                      <span className="sr-only">Open preview in nieuw tabblad</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFullscreen((v) => !v)}
+                      title={previewFullscreen ? "Volledig scherm sluiten (Esc)" : "Volledig scherm"}
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    >
+                      {previewFullscreen ? (
+                        <Minimize2 className="size-4 shrink-0" aria-hidden />
+                      ) : (
+                        <Maximize2 className="size-4 shrink-0" aria-hidden />
+                      )}
+                      <span className="sr-only">
+                        {previewFullscreen ? "Volledig scherm sluiten" : "Volledig scherm"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                {previewIsStreaming && streamingConfig == null ? (
+                  <p className="mt-1 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">
+                    Wachten op <code className="font-mono">config</code> uit het model — tijdelijk placeholderkleuren tot de
+                    stream die keys heeft uitgestuurd.
+                  </p>
+                ) : null}
+              </div>
+            )}
+            {rightPaneMode === "preview" && streamEndedWithoutComplete ? (
               <p className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50">
                 De verbinding werd verbroken vóór de server <strong>generatie voltooid</strong> meldde. Rechts de laatst
                 ontvangen secties; gebruik <strong>Genereer opnieuw</strong> om op te kunnen slaan.
@@ -878,8 +1015,22 @@ export function GeneratorForm({
                 previewFullscreen && "rounded-lg border-zinc-300 dark:border-zinc-700",
               )}
             >
-              {(loading && !activeStudioPreviewPayload) ||
-              (!activeStudioPreviewPayload && error && generationActivity.length > 0) ? (
+              {rightPaneMode === "details" ? (
+                <GenerationDetailsBody
+                  feedback={pipelineFeedback}
+                  fallbackBrief={{ businessName: businessName.trim(), description: description.trim() }}
+                  designRationale={designRationale}
+                  designRationaleLoading={designRationaleLoading}
+                  designRationaleSkipReason={designRationaleSkipReason}
+                  designContract={designContract}
+                  designContractWarning={designContractWarning}
+                  activityLog={generationActivity}
+                  streamPhase={streamPhase}
+                  loading={loading}
+                />
+              ) : (
+              ((loading && !activeStudioPreviewPayload) ||
+                (!activeStudioPreviewPayload && error && generationActivity.length > 0)) ? (
                 <div className="flex min-h-[280px] flex-1 flex-col gap-0 overflow-hidden">
                   <div className="flex shrink-0 flex-col items-center gap-2 border-b border-zinc-100 bg-zinc-50/90 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
                     {loading ? (
@@ -945,12 +1096,39 @@ export function GeneratorForm({
                     ), inclusief studio-tokens die naar echte paden worden omgezet zodra er een slug is.
                   </p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         }
       />
-      </div>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {portalReady && previewFullscreen
+        ? createPortal(
+            <div className="fixed inset-0 z-[1000] flex flex-col overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200 bg-zinc-100 px-2 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Studio — volledig scherm</span>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {panelLayoutToggles}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFullscreen(false)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                  >
+                    <Minimize2 className="size-3.5" aria-hidden />
+                    Sluiten
+                  </button>
+                </div>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{renderPanels()}</div>
+            </div>,
+            document.body,
+          )
+        : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{renderPanels()}</div>
+          )}
     </div>
   );
 }
