@@ -54,6 +54,12 @@ type GeneratorFormProps = {
   onSiteSaved?: () => void;
   /** Concept: zelfde `?token=` als iframe voor `/site/…` in nieuw tabblad. */
   draftPublicPreviewToken?: string | null;
+  /**
+   * Zelfde schakels als `getPublishedSiteBySlug` → `/site/[slug]` (WYSIWYS-preview).
+   * Default false i.p.v. PublishedSiteView-defaults, zodat studio = live bij ontbrekende DB-waarden.
+   */
+  appointmentsEnabled?: boolean;
+  webshopEnabled?: boolean;
 };
 
 export function GeneratorForm({
@@ -63,6 +69,8 @@ export function GeneratorForm({
   existingDraftLocked = false,
   onSiteSaved,
   draftPublicPreviewToken = null,
+  appointmentsEnabled = false,
+  webshopEnabled = false,
 }: GeneratorFormProps) {
   const slugFromUrl = initialSubfolderSlug?.trim() || undefined;
 
@@ -1022,6 +1030,8 @@ export function GeneratorForm({
                   className="min-h-0 flex-1"
                   publishedSlug={slugFromUrl}
                   draftPublicPreviewToken={draftPublicPreviewToken}
+                  appointmentsEnabled={appointmentsEnabled}
+                  webshopEnabled={webshopEnabled}
                 />
               ) : (
                 <div className="flex min-h-[min(360px,50dvh)] flex-1 flex-col items-center justify-center gap-2 px-6 text-center">

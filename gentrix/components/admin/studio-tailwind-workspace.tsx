@@ -114,6 +114,8 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
               existingDraftLocked={false}
               onSiteSaved={onSiteSaved}
               draftPublicPreviewToken={props.draftPublicPreviewToken ?? null}
+              appointmentsEnabled={props.appointmentsEnabled ?? false}
+              webshopEnabled={props.webshopEnabled ?? false}
             />
           </div>
         )}

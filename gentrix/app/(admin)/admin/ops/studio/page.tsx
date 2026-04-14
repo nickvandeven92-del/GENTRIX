@@ -60,6 +60,10 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
     );
   }
 
+  const commercialForGenerator = decodedSlug ? await getClientCommercialBySlug(decodedSlug) : null;
+  const generatorAppointmentsEnabled = commercialForGenerator?.appointments_enabled ?? false;
+  const generatorWebshopEnabled = commercialForGenerator?.webshop_enabled ?? false;
+
   return (
     <div className="studio-generator-scope flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-hidden">
       <div className="shrink-0 sales-os-glass-panel rounded-2xl border border-neutral-200 bg-white p-6 md:p-8 dark:border-zinc-600/80 dark:bg-zinc-900/50">
@@ -133,6 +137,8 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
           initialClientName={existing?.name}
           initialClientDescription={existing?.description}
           existingDraftLocked={existingDraftLocked}
+          appointmentsEnabled={generatorAppointmentsEnabled}
+          webshopEnabled={generatorWebshopEnabled}
         />
       </div>
     </div>
