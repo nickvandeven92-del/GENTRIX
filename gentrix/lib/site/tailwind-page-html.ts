@@ -27,6 +27,7 @@ import {
 } from "@/lib/site/tailwind-contact-subpage";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
+import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import type { GeneratedLogoSet } from "@/types/logo";
 
@@ -1652,6 +1653,12 @@ export type BuildTailwindIframeSrcDocOptions = {
    * browservenster (`device-width`); uit bij Desktop-preview of brede auto (geen effect op live `/site`).
    */
   studioMobileEditorFrame?: boolean;
+  /**
+   * Client-only: `window.location.origin` — laadt Alpine/Lucide/AOS/GSAP/Tailwind-play via
+   * `/api/public/studio-preview-lib` (zelfde origin) i.p.v. jsDelivr/unpkg, zodat o.a. Edge Tracking Prevention
+   * Alpine niet blokkeert in sandboxed `srcDoc`.
+   */
+  previewScriptOrigin?: string | null;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -1721,6 +1728,10 @@ export function buildTailwindIframeSrcDoc(
     : `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}" onload="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)" onerror="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)"></script>
 <script>setTimeout(function(){var e=document.documentElement;if(e.classList.contains("tw-loading")){e.classList.remove("tw-loading");e.classList.add("tw-ready")}},4500)</script>
 `;
+  const studioTailwindPlayConsoleMute = useCompiledTailwind
+    ? ""
+    : `<script>(function(){var p=console.warn;console.warn=function(){var s="",i,a=arguments;for(i=0;i<a.length;i++)s+=String(a[i]);if(s.indexOf("cdn.tailwindcss.com")!==-1&&s.indexOf("should not be used in production")!==-1)return;p.apply(console,a);}})();</script>
+`;
 
   const contactSubpageNavRaw = options?.contactSubpageNav;
   const contactSubpageNav =
@@ -1754,7 +1765,7 @@ export function buildTailwindIframeSrcDoc(
   const iframeShellAttr = ` data-gentrix-studio-iframe="1"`;
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
-  return `<!DOCTYPE html>
+  let out = `<!DOCTYPE html>
 <html lang="nl"${iframeShellAttr}${studioMobileAttr}>
 <head>
   <meta charset="utf-8"/>
@@ -1777,7 +1788,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
 ${aosHeadLink}</head>
 <body class="antialiased text-slate-900${radiusClass}">
 ${twLoadingScript}${body}
-${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
+${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
 (function(){document.addEventListener("alpine:init",function(){
   queueMicrotask(function(){
     try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
@@ -1795,4 +1806,7 @@ ${bridge}
 ${userJsBlock}
 </body>
 </html>`;
+  const po = options?.previewScriptOrigin?.trim();
+  if (po) out = rewriteStudioPreviewExternalScripts(out, po);
+  return out;
 }

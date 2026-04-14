@@ -97,6 +97,7 @@ export function PublicPublishedTailwind({
         /* Scroll-reveal: `data-animation` + `.studio-border-reveal` + STUDIO_SCROLL_REVEAL_SCRIPT (tailwind-page-html).
          * Hero + eerste secties: CSS-vrijstelling; ~1,6s IO-fallback voorkomt stuck states in iframes. */
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
+        previewScriptOrigin: window.location.origin,
         ...(contactSubpageNav ? { contactSubpageNav } : {}),
       });
       if (typeof window !== "undefined") {

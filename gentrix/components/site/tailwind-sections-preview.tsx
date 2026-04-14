@@ -12,7 +12,8 @@ import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 import { cn } from "@/lib/utils";
 
-const STUDIO_PREVIEW_DESKTOP_MQ = "(min-width: 768px)";
+/** Gelijk aan Tailwind `lg:` (1024px) — veel sites gebruiken `lg:hidden` voor hamburger; 768px gaf “menu vast” bij smal venster. */
+const STUDIO_PREVIEW_DESKTOP_MQ = "(min-width: 1024px)";
 
 function subscribeStudioPreviewDesktopMq(onChange: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -59,7 +60,7 @@ type TailwindSectionsPreviewProps = {
   composePlan?: ComposePublicMarketingPlan | null;
   /**
    * Studio-editor: viewport / breakpoints in de iframe.
-   * - `auto`: sluit aan op browservenster (≥768px → vaste desktop-viewport in iframe).
+   * - `auto`: sluit aan op browservenster (≥1024px → vaste desktop-viewport in iframe; zelfde als Tailwind `lg:`).
    * - `mobile`: smalle telefoonbreedte + `device-width` (mobiele Tailwind-breakpoints).
    * - `desktop`: brede layout ongeacht paneelbreedte.
    */
@@ -107,6 +108,8 @@ export function TailwindSectionsPreview({
   const studioMobileEditorFrame =
     viewportMode === "mobile" || (viewportMode === "auto" && !parentWindowDesktop);
 
+  const previewScriptOrigin = typeof window !== "undefined" ? window.location.origin : "";
+
   const previewSections = useMemo(
     () =>
       composePublicMarketingTailwindSections(
@@ -134,6 +137,7 @@ export function TailwindSectionsPreview({
         previewMatchParentWindowBreakpoints,
         studioMobileEditorFrame,
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
+        previewScriptOrigin: previewScriptOrigin || undefined,
       }),
     [
       previewSections,
@@ -149,6 +153,7 @@ export function TailwindSectionsPreview({
       previewMatchParentWindowBreakpoints,
       studioMobileEditorFrame,
       compiledTailwindCss,
+      previewScriptOrigin,
     ],
   );
 
@@ -206,6 +211,7 @@ export function TailwindSectionsPreview({
 
   const iframe = (
     <iframe
+      key={`studio-preview-${String(previewMatchParentWindowBreakpoints)}-${String(studioMobileEditorFrame)}-${viewportMode}`}
       ref={iframeRef}
       title={title}
       className={cn("w-full border-0 bg-white", frameClassName ?? "h-[min(72vh,800px)]")}
