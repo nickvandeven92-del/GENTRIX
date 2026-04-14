@@ -1,6 +1,19 @@
 # GENTRIX
 
-Next.js-studio (sites, admin, portaal) met in **`apps/`** de aparte Vite-apps **webshop** (`chameleon`) en **boeking** (`booking`).
+Next.js-studio (sites, admin, portaal) op de **projectroot**. Daarnaast staan losse **Vite + React**-apps voor de webshop (**chameleon**) en boeking (**booking**).
+
+## Mappenstructuur (kort)
+
+| Pad | Rol |
+| --- | --- |
+| `app/` | Next.js **App Router** (routes, layouts, API waar van toepassing). |
+| `frontends/chameleon/`, `frontends/booking/` | Aparte Vite-SPA’s met **eigen** `package.json` en `npm install` in die map. Niet verwarren met `app/`. |
+| `components/`, `hooks/`, `lib/`, `types/` | Gedeelde code voor de **Next.js-app**. |
+| `supabase/` | Migraties en backend-config. |
+| `remotion/` | Remotion-video’s; scripts in root-`package.json` (`remotion:studio`, enz.). |
+| `scripts/` | Hulp-scripts (DB, PWA-iconen, …). |
+
+De root is **geen** npm-workspaces-monorepo: alleen de hoofdapp gebruikt `npm install` in deze map. Voor Chameleon of Booking: naar `frontends/<naam>/` gaan en daar installeren en `npm run dev`.
 
 ## Getting Started (studio)
 
@@ -8,31 +21,21 @@ Next.js-studio (sites, admin, portaal) met in **`apps/`** de aparte Vite-apps **
 cd gentrix   # of open deze map als projectroot in je editor
 npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Getting Started (Vite-frontends)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd frontends/booking    # of frontends/chameleon
+npm install
+npm run dev
+```
 
-## Learn More
+Poort en URL staan in de terminal-output van Vite (meestal anders dan `:3000`).
 
-To learn more about Next.js, take a look at the following resources:
+## Meer
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js-documentatie](https://nextjs.org/docs)
+- Deploy: o.a. [Vercel](https://vercel.com/docs) voor de Next-app; Vite-apps naar eigen hosting/build per project.

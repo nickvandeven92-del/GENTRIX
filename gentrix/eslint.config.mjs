@@ -6,7 +6,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["apps/chameleon/**/*.{js,jsx,ts,tsx}"],
+    files: ["frontends/chameleon/**/*.{js,jsx,ts,tsx}"],
     rules: {
       "@next/next/no-img-element": "off",
     },

@@ -25,7 +25,8 @@ out/remotion/
 
 # misc
 .DS_Store
-.tmp
+# Lokaal tijdelijk (scripts/build); alleen projectroot
+/.tmp/
 
 *.pem
 

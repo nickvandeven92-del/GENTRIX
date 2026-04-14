@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Menu, X } from "lucide-react";
 import type { ReactSiteSection } from "@/lib/site/react-site-schema";
 import { CinematicNavMenuEntries } from "@/components/site/react-site/cinematic/cinematic-nav-menu";
@@ -43,26 +44,24 @@ function MobileNavDrawer({
   onClose,
   children,
   variant,
-  lgUp,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   variant: "floating" | "bar_light" | "bar_dark";
-  lgUp: boolean;
 }) {
-  useBodyScrollLock(open && !lgUp);
+  useBodyScrollLock(open);
 
   useEffect(() => {
-    if (!open || lgUp) return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, lgUp, onClose]);
+  }, [open, onClose]);
 
-  if (!open || lgUp) return null;
+  if (!open) return null;
 
   const backdrop =
     variant === "bar_light"
@@ -78,29 +77,29 @@ function MobileNavDrawer({
         ? "border-l border-white/10 bg-zinc-950 text-white"
         : "border-l border-white/15 bg-zinc-950/98 text-white backdrop-blur-md";
 
-  return (
+  const closeBtnClass =
+    variant === "bar_light"
+      ? "rounded-lg p-2 text-zinc-900 hover:bg-zinc-100"
+      : "rounded-lg p-2 text-white hover:bg-white/15";
+
+  const ui = (
     <div className="pointer-events-auto">
       <button
         type="button"
-        className={cn("fixed inset-0 z-[80]", backdrop)}
+        className={cn("fixed inset-0 z-[200]", backdrop)}
         aria-label="Menu sluiten"
         onClick={onClose}
       />
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-[90] flex w-[min(100vw-2.5rem,18rem)] flex-col gap-4 border-l p-5 pt-6 shadow-2xl",
+          "fixed inset-y-0 right-0 z-[210] flex w-[min(100vw-2.5rem,18rem)] flex-col gap-4 border-l p-5 pt-6 shadow-2xl",
           sheet,
         )}
       >
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-semibold tracking-tight">Menu</span>
-          <button
-            type="button"
-            className="rounded-lg p-2 opacity-80 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
-            aria-label="Menu sluiten"
-            onClick={onClose}
-          >
-            <X className="size-5" aria-hidden />
+          <button type="button" className={closeBtnClass} aria-label="Menu sluiten" onClick={onClose}>
+            <X className="size-5" strokeWidth={2} aria-hidden />
           </button>
         </div>
         <nav className="flex flex-col gap-1 overflow-y-auto overscroll-contain" aria-label="Mobiel menu">
@@ -109,6 +108,9 @@ function MobileNavDrawer({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(ui, document.body);
 }
 
 export function CinematicNav({ section, resolveHref }: { section: NavSection; resolveHref: ResolveHref }) {
@@ -116,16 +118,18 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
   const barStyle = section.props.barStyle ?? "floating";
   const [mobileOpen, setMobileOpen] = useState(false);
   const lgUp = useLgUp();
+  const mobileMenuOpen = mobileOpen && !lgUp;
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
-  useEffect(() => {
-    if (lgUp) setMobileOpen(false);
-  }, [lgUp]);
-
-  const mobileLinkWrap = (node: ReactNode) => (
+  const mobileLinkWrap = (node: ReactNode, drawerTone: "light" | "dark") => (
     <div
-      className="contents [&_a]:block [&_a]:rounded-lg [&_a]:px-3 [&_a]:py-2.5 [&_a]:text-sm [&_a]:font-medium [&_details]:rounded-lg [&_details]:border [&_details]:border-zinc-200/80 [&_details]:p-2 dark:[&_details]:border-white/10"
+      className={cn(
+        "contents [&_a]:block [&_a]:rounded-lg [&_a]:px-3 [&_a]:py-2.5 [&_a]:text-sm [&_a]:font-medium [&_details]:rounded-lg [&_details]:border [&_details]:p-2",
+        drawerTone === "dark"
+          ? "[&_a]:!text-zinc-100 [&_summary]:!text-zinc-100 [&_details]:border-white/20"
+          : "[&_a]:!text-zinc-900 [&_summary]:!text-zinc-800 [&_details]:border-zinc-200/90",
+      )}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("a")) closeMobile();
       }}
@@ -158,15 +162,18 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             type="button"
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100"
             style={{ display: lgUp ? "none" : "inline-flex" }}
-            aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? "Menu sluiten" : "Menu openen"}
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
             onClick={() => setMobileOpen((o) => !o)}
           >
-            {mobileOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
+            {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
-        <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="bar_light" lgUp={lgUp}>
-          {mobileLinkWrap(<CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />)}
+        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_light">
+          {mobileLinkWrap(
+            <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />,
+            "light",
+          )}
         </MobileNavDrawer>
       </header>
     );
@@ -193,15 +200,18 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             type="button"
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
             style={{ display: lgUp ? "none" : "inline-flex" }}
-            aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? "Menu sluiten" : "Menu openen"}
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
             onClick={() => setMobileOpen((o) => !o)}
           >
-            {mobileOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
+            {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
-        <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="bar_dark" lgUp={lgUp}>
-          {mobileLinkWrap(<CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />)}
+        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_dark">
+          {mobileLinkWrap(
+            <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />,
+            "dark",
+          )}
         </MobileNavDrawer>
       </header>
     );
@@ -228,11 +238,11 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             type="button"
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
             style={{ display: lgUp ? "none" : "inline-flex" }}
-            aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? "Menu sluiten" : "Menu openen"}
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
             onClick={() => setMobileOpen((o) => !o)}
           >
-            {mobileOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
+            {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
         <nav
@@ -243,8 +253,11 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
           <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />
         </nav>
       </MotionNavShell>
-      <MobileNavDrawer open={mobileOpen} onClose={closeMobile} variant="floating" lgUp={lgUp}>
-        {mobileLinkWrap(<CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />)}
+      <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="floating">
+        {mobileLinkWrap(
+          <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />,
+          "dark",
+        )}
       </MobileNavDrawer>
     </header>
   );
