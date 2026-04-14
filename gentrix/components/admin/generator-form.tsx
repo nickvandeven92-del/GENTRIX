@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
-  ChevronRight,
   Code2,
   ExternalLink,
   ImagePlus,
@@ -17,6 +16,7 @@ import {
 import { StudioThemeStylesHint } from "@/components/admin/studio-theme-styles-hint";
 import { DutchSpellcheckPanel } from "@/components/admin/dutch-spellcheck-panel";
 import { GenerationFeedbackPanel } from "@/components/admin/generation-feedback-panel";
+import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { PublishedSiteView } from "@/components/site/published-site-view";
@@ -63,6 +63,8 @@ type GeneratorFormProps = {
    */
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
+  /** True in Site-studio workspace: FAQ zit in de header, niet dubbel in het formulier. */
+  hideFaqLauncher?: boolean;
 };
 
 export function GeneratorForm({
@@ -74,6 +76,7 @@ export function GeneratorForm({
   draftPublicPreviewToken = null,
   appointmentsEnabled = false,
   webshopEnabled = false,
+  hideFaqLauncher = false,
 }: GeneratorFormProps) {
   const slugFromUrl = initialSubfolderSlug?.trim() || undefined;
 
@@ -586,126 +589,23 @@ export function GeneratorForm({
               onSubmit={onSubmit}
               className="sales-os-glass-panel space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"
             >
-        <p className="rounded-lg border border-emerald-100 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
-          <strong>HTML + Tailwind</strong> — output is <code className="rounded bg-emerald-100 px-1">tailwind_sections</code>{" "}
-          (secties met HTML); dezelfde weergave in studio, concept-preview en live{" "}
-          <code className="rounded bg-emerald-100 px-1">/site/…</code>. Standaard draait generatie als{" "}
-          <strong>server-job</strong> (pollen i.p.v. lange browser-stream; volledige marketing-site blijft mogelijk). Losse{" "}
-          <strong>motion-promo</strong> (Remotion):{" "}
-          <code className="rounded bg-emerald-100 px-1">npm run remotion:studio</code> · render:{" "}
-          <code className="rounded bg-emerald-100 px-1">npm run remotion:render</code>.
-        </p>
-
-        <details className="group rounded-xl border border-slate-200 bg-slate-50/80 open:bg-slate-50">
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-2">
-              <ChevronRight
-                className="size-4 shrink-0 text-slate-500 transition-transform group-open:rotate-90"
-                aria-hidden
-              />
-              FAQ: site genereren, blueprints &amp; studio-links
-            </span>
-          </summary>
-          <div className="space-y-4 border-t border-slate-200 px-3 py-3 text-sm leading-relaxed text-slate-700">
-            <section>
-              <h3 className="text-sm font-semibold text-slate-900">Hoe genereer je?</h3>
-              <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-xs">
-                <li>
-                  Vul <strong>bedrijfsnaam</strong> en <strong>omschrijving</strong> (briefing) in. Tip: gebruik het vraagteken
-                  bij Omschrijving voor stijltermen en keywords.
-                </li>
-                <li>
-                  Optioneel: <strong>klantfoto&apos;s</strong> en een <strong>referentiesite</strong> voor sfeer/layout.
-                </li>
-                <li>
-                  Open je Site-studio via een klant (URL met <code className="rounded bg-slate-200 px-1 font-mono text-[11px]">slug</code>
-                  )? Dan hoort die slug bij <strong>opslaan</strong> al te kloppen.
-                </li>
-                <li>
-                  Klik <strong>Genereer site (HTML/Tailwind)</strong> en wacht tot de run klaar is; rechts zie je een{" "}
-                  <strong>activiteitenlog</strong> en verschijnt de preview pas wanneer de generatie volledig afgerond is.
-                </li>
-                <li>
-                  Controleer de preview rechts en sla op via het paneel linksonder (concept of publiceren). Zodra er een
-                  concept is, wordt de briefing hier <strong>vastgezet</strong> — verdere tekstwijzigingen via de tab{" "}
-                  <strong>Bewerken</strong> in site-studio.
-                </li>
-              </ol>
-              <p className="mt-3 text-xs text-slate-600">
-                <strong>Nieuwe volledige generaties</strong> (geen layout-upgrade) leveren een <strong>kleine site</strong>:
-                homepage (<code className="font-mono text-[11px]">/site/…</code>) met vaste subpagina&apos;s + een{" "}
-                <strong>aparte contactpagina</strong> met het formulier. De AI zet daarvoor o.a.{" "}
-                <code className="font-mono text-[11px]">__STUDIO_SITE_BASE__</code> en{" "}
-                <code className="font-mono text-[11px]">__STUDIO_CONTACT_PATH__</code> in de HTML; het platform vervangt
-                die door echte paden. Ontbreekt het contactblok in de model-JSON, vult de server een veilige default aan —
-                je ziet alsnog een werkende contactroute.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-sm font-semibold text-slate-900">Blueprints vs. links in de HTML</h3>
-              <p className="mt-2 text-xs text-slate-600">
-                Dat loopt <strong>niet</strong> alleen via blueprints, en <strong>placeholders zijn niet weg</strong>: in
-                opgeslagen sectie-HTML staan nog steeds vaste <strong>studio-tokens</strong> (zoals{" "}
-                <code className="font-mono text-[11px]">__STUDIO_PORTAL_PATH__</code>,{" "}
-                <code className="font-mono text-[11px]">__STUDIO_BOOKING_PATH__</code>,{" "}
-                <code className="font-mono text-[11px]">__STUDIO_SHOP_PATH__</code> — en bij meerdere pagina&apos;s{" "}
-                <code className="font-mono text-[11px]">__STUDIO_SITE_BASE__</code> /{" "}
-                <code className="font-mono text-[11px]">__STUDIO_CONTACT_PATH__</code>).                 Met klant-slug in preview/live worden bestaande boek- en webshop-tokens in opgeslagen HTML omgezet naar{" "}
-                <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code>{" "}
-                (geen <code className="font-mono text-[11px]">#</code> daarvoor); CRM bepaalt of de module actief is of een inactive-pagina toont.{" "}
-                <strong>Nieuwe generaties</strong> zetten die tokens niet meer automatisch in de output. Portaal kan bij export/preview nog{" "}
-                <code className="font-mono text-[11px]">#</code> zijn.
-              </p>
-              <p className="mt-2 text-xs text-slate-600">
-                Een <strong>blueprint</strong> in de project-snapshot (standaard{" "}
-                <code className="font-mono text-[11px]">studio_marketing_single_page</code>) beschrijft daarnaast{" "}
-                <strong>site-IR</strong>: welk type site + <strong>module-slots</strong> (o.a. portaal, boeken, webshop) —
-                vooral <strong>structuur en validatie</strong>. Dat is <strong>geen</strong> vervanging van die tokens: IR en
-                HTML lopen <strong>naast elkaar</strong>. Briefing + model bepalen nog steeds uitstraling en copy.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-sm font-semibold text-slate-900">Boeken &amp; webshop — wat genereert de AI wél?</h3>
-              <p className="mt-2 text-xs text-slate-600">
-                De generator bouwt <strong>geen</strong> volledig maatwerk-checkout of agenda-app in HTML en voegt na de
-                AI-run <strong>geen</strong> vaste secties <code className="font-mono text-[11px]">booking</code> /{" "}
-                <code className="font-mono text-[11px]">shop</code> meer toe — die zet je per klant aan via{" "}
-                <strong>Portaal-modules</strong> (schakelaars + knoppen “Standaard booking-/webshop-sectie”).{" "}
-                <strong>Site-IR</strong> kan nog route-keys voor die modules bevatten voor validatie; CRM bepaalt zichtbaarheid en of{" "}
-                <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code> actief is.
-              </p>
-            </section>
-            <section>
-              <h3 className="text-sm font-semibold text-slate-900">Wat zie je in de editor?</h3>
-              <p className="mt-2 text-xs text-slate-600">
-                In de <strong>bron</strong> (HTML-editor) blijven de <code className="font-mono text-[11px]">__STUDIO_…</code>
-                -strings vaak <strong>zichtbaar</strong> in <code className="font-mono">href</code> — dat hoort zo. In{" "}
-                <strong>preview en live</strong> worden ze omgezet; je ziet dan normale paden zoals{" "}
-                <code className="font-mono text-[11px]">/portal/…</code>, <code className="font-mono text-[11px]">/boek/…</code>,{" "}
-                <code className="font-mono text-[11px]">/winkel/…</code>. Zonder gepubliceerde slug kan de preview nog <code className="font-mono text-[11px]">#</code> tonen
-                (geen klantcontext).
-              </p>
-            </section>
-            <section>
-              <h3 className="text-sm font-semibold text-slate-900">Wat doe jij ermee in de editor?</h3>
-              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs text-slate-600">
-                <li>
-                  <strong>Laat studio-tokens in href&apos;s staan</strong> (zoals <code className="font-mono text-[11px]">__STUDIO_BOOKING_PATH__</code>
-                  ) als je wilt dat boek-, shop- en portaal-links automatisch naar het juiste pad voor <em>deze</em> klant blijven
-                  wijzen na publicatie.
-                </li>
-                <li>
-                  Alleen handmatig vervangen door concrete paden als je bewust één vaste link wilt; let op dat je dan geen
-                  verkeerde slug gebruikt.
-                </li>
-                <li>
-                  Zie je <code className="font-mono text-[11px]">#</code> in de preview: vaak omdat er nog geen klant-slug in de
-                  context zit, of het gaat om portaal-export — niet als signaal dat boek/webshop-route &quot;weg&quot; is.
-                </li>
-              </ul>
-            </section>
+        {!hideFaqLauncher ? (
+          <div className="flex justify-end">
+            <GeneratorStudioFaqLauncher />
           </div>
-        </details>
+        ) : null}
+        <p className="text-[11px] leading-snug text-slate-500">
+          Korte of lange briefing: de Denklijn vult aan op de server. Uitgebreide uitleg:{" "}
+          {hideFaqLauncher ? (
+            <>
+              zie <strong className="font-medium text-slate-600">FAQ generatie</strong> in de studio-balk.
+            </>
+          ) : (
+            <>
+              zie <strong className="font-medium text-slate-600">FAQ generatie</strong> (knop hierboven).
+            </>
+          )}
+        </p>
 
         <div>
           <label htmlFor="businessName" className="block text-sm font-medium text-slate-700">
@@ -742,7 +642,7 @@ export function GeneratorForm({
             name="description"
             required={!descriptionLocked}
             maxLength={4000}
-            rows={12}
+            rows={6}
             value={description}
             onChange={(e) => {
               if (descriptionLocked) return;
@@ -750,7 +650,7 @@ export function GeneratorForm({
             }}
             readOnly={descriptionLocked}
             className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
-            placeholder="Briefing: doelgroep, aanbod, USP’s, gewenste toon — wat moet de bezoeker doen (bellen, offerte, boeken)?"
+            placeholder="Kort of uitgebreid: doelgroep, aanbod, toon, CTA. Mag een zin; de Denklijn breidt uit op de server."
           />
         </div>
         <div>
@@ -778,10 +678,9 @@ export function GeneratorForm({
             className="mt-1 size-4 shrink-0 rounded border-slate-300 text-indigo-600"
           />
           <label htmlFor="landingPageOnly" className={cn("text-sm text-slate-700", descriptionLocked && "opacity-60")}>
-            <span className="font-medium text-slate-800">Compact: alleen landingspagina</span>
+            <span className="font-medium text-slate-800">Alleen landingspagina</span>
             <span className="mt-0.5 block text-xs font-normal text-slate-500">
-              Sla de vaste vier marketing-subpagina&apos;s + contact-JSON over in deze run — veel korter en minder kans op
-              stream-timeout. Subpagina&apos;s kun je later alsnog uitbreiden.
+              Sneldere run; subpagina&apos;s later uitbreiden.
             </span>
           </label>
         </div>
@@ -840,11 +739,6 @@ export function GeneratorForm({
           {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
         </div>
 
-        <p className="rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-xs text-slate-800">
-          Output wordt gevalideerd tegen het <strong className="font-medium">tailwind_sections</strong>-schema; denklijn
-          (rationale) gaat mee zoals voorheen. Optionele zelfreview staat standaard uit (
-          <code className="rounded bg-slate-100 px-1">ENABLE_SITE_SELF_REVIEW=1</code>).
-        </p>
         <button
           type="submit"
           disabled={loading}
@@ -861,7 +755,7 @@ export function GeneratorForm({
           ) : (
             <>
               <Send className="size-4" aria-hidden />
-              Genereer site (HTML/Tailwind)
+              Genereer site
             </>
           )}
         </button>
@@ -870,7 +764,6 @@ export function GeneratorForm({
       {pipelineFeedback ? (
         <GenerationFeedbackPanel
           feedback={pipelineFeedback}
-          defaultOpen={loading || !generatedTailwind}
           designRationale={designRationale}
           designRationaleLoading={designRationaleLoading}
           designRationaleSkipReason={designRationaleSkipReason}

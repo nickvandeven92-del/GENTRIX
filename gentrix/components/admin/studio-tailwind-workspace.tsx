@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil, Sparkles } from "lucide-react";
 import { GeneratorForm } from "@/components/admin/generator-form";
+import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
 import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
@@ -77,8 +78,9 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
           </button>
         </div>
         <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-          Zelfde plek voor itereren — bewerken chat, of volledige run uit briefing.
+          Bewerken of nieuwe generatie — zelfde plek.
         </p>
+        <GeneratorStudioFaqLauncher className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800" />
         <Link
           href={`/admin/clients/${encodeURIComponent(props.subfolderSlug)}`}
           className="ml-auto text-xs font-medium text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
@@ -116,6 +118,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
               draftPublicPreviewToken={props.draftPublicPreviewToken ?? null}
               appointmentsEnabled={props.appointmentsEnabled ?? false}
               webshopEnabled={props.webshopEnabled ?? false}
+              hideFaqLauncher
             />
           </div>
         )}
