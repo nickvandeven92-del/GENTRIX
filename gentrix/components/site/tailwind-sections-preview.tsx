@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import {
@@ -14,6 +22,8 @@ import { cn } from "@/lib/utils";
 
 /** Gelijk aan Tailwind `lg:` (1024px) — veel sites gebruiken `lg:hidden` voor hamburger; 768px gaf “menu vast” bij smal venster. */
 const STUDIO_PREVIEW_DESKTOP_MQ = "(min-width: 1024px)";
+/** Zelfde als `meta viewport` in `buildTailwindIframeSrcDoc` bij desktop-preview: iframe moet **fysiek** breed genoeg zijn — anders gebruiken browsers de paneelbreedte voor `min-width`-mediaqueries en blijft `lg:` “mobiel”. */
+const STUDIO_PREVIEW_DESKTOP_IFRAME_MIN_PX = 1280;
 
 function subscribeStudioPreviewDesktopMq(onChange: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -209,17 +219,34 @@ export function TailwindSectionsPreview({
           )
       : null;
 
+  const iframeStyle: CSSProperties = {
+    ...(autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : {}),
+    ...(previewMatchParentWindowBreakpoints
+      ? { width: STUDIO_PREVIEW_DESKTOP_IFRAME_MIN_PX, minWidth: STUDIO_PREVIEW_DESKTOP_IFRAME_MIN_PX }
+      : {}),
+  };
+
   const iframe = (
     <iframe
       key={`studio-preview-${String(previewMatchParentWindowBreakpoints)}-${String(studioMobileEditorFrame)}-${viewportMode}`}
       ref={iframeRef}
       title={title}
-      className={cn("w-full border-0 bg-white", frameClassName ?? "h-[min(72vh,800px)]")}
+      className={cn(
+        "border-0 bg-white",
+        previewMatchParentWindowBreakpoints ? "max-w-none shrink-0" : "w-full",
+        frameClassName ?? "h-[min(72vh,800px)]",
+      )}
       sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
       srcDoc={srcDoc}
-      style={autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : undefined}
+      style={Object.keys(iframeStyle).length > 0 ? iframeStyle : undefined}
     />
   );
+
+  const desktopWideScroll = previewMatchParentWindowBreakpoints ? (
+    <div className="min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden" style={{ scrollbarGutter: "stable" }}>
+      {iframe}
+    </div>
+  ) : null;
 
   return (
     <PublishedTailwindNavBridge>
@@ -238,6 +265,8 @@ export function TailwindSectionsPreview({
               {iframe}
             </div>
           </div>
+        ) : desktopWideScroll ? (
+          desktopWideScroll
         ) : (
           iframe
         )}

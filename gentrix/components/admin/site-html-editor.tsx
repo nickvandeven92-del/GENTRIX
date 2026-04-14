@@ -707,6 +707,13 @@ export function SiteHtmlEditor({
                     </button>
                   </div>
                 </div>
+                <p className="mt-1.5 max-w-[56rem] text-[10px] leading-snug text-zinc-500 dark:text-zinc-400">
+                  Preview toont je <strong>werkversie</strong>. Openbare{" "}
+                  <code className="rounded bg-zinc-200/80 px-1 font-mono text-[9px] dark:bg-zinc-800/80">/site/…</code> zonder
+                  token = <strong>gepubliceerde</strong> snapshot (niet automatisch het laatste concept). Desktop: bij een smalle
+                  kolom <strong>horizontaal scrollen</strong> — de preview is 1280px breed zodat{" "}
+                  <code className="font-mono text-[9px]">lg:</code>-nav klopt.
+                </p>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
                 <TailwindSectionsPreview
