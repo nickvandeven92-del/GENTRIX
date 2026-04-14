@@ -403,23 +403,8 @@ export function GeneratorForm({
       const decoder = new TextDecoder();
       let buffer = "";
       let streamStopped = false;
-      const streamT0 = Date.now();
-      const streamDiag = {
-        counts: {} as Record<string, number>,
-        sawComplete: false,
-        sawErrorNdjson: false,
-        lastType: "" as string,
-      };
-      const tickStreamDiag = (ev: GenerateSiteStreamNdjsonEvent) => {
-        if (ev.type === "keepalive") return;
-        streamDiag.lastType = ev.type;
-        streamDiag.counts[ev.type] = (streamDiag.counts[ev.type] ?? 0) + 1;
-        if (ev.type === "complete") streamDiag.sawComplete = true;
-        if (ev.type === "error") streamDiag.sawErrorNdjson = true;
-      };
 
       const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
-          tickStreamDiag(ev);
           if (ev.type === "keepalive") {
             return;
           }
@@ -508,51 +493,8 @@ export function GeneratorForm({
         );
       }
 
-      // #region agent log
-      void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-        body: JSON.stringify({
-          sessionId: "688ece",
-          hypothesisId: streamDiag.sawComplete ? "OK" : "H2",
-          location: "components/admin/generator-form.tsx:stream_reader_finished",
-          message: "client NDJSON stream read loop exited",
-          data: {
-            streamStopped,
-            sawComplete: streamDiag.sawComplete,
-            sawErrorNdjson: streamDiag.sawErrorNdjson,
-            resStatus: res.status,
-            resOk: res.ok,
-            elapsedMs: Date.now() - streamT0,
-            counts: streamDiag.counts,
-            lastType: streamDiag.lastType,
-            bufferRemainderChars: buffer.length,
-            endedWithoutComplete: !streamStopped,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-
       await reader.cancel().catch(() => {});
-    } catch (err) {
-      // #region agent log
-      void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-        body: JSON.stringify({
-          sessionId: "688ece",
-          hypothesisId: "H3",
-          location: "components/admin/generator-form.tsx:onSubmit_catch",
-          message: "generate-site stream fetch/read threw",
-          data: {
-            errName: err instanceof Error ? err.name : "unknown",
-            errMsg: err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
+    } catch {
       setError("Netwerkfout of server niet bereikbaar.");
     } finally {
       setLoading(false);

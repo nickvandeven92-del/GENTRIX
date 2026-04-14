@@ -30,12 +30,6 @@ import {
 import { getGenerationPackagePromptBlock } from "@/lib/ai/generation-packages";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-prompt";
-
-/**
- * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
- * zodat bindende instructies vóór het (vaak zeer lange) REFERENTIESITE-excerpt staan.
- */
-const SITE_GENERATION_DESIGN_CONTRACT_SLOT = "__GENTRIX_DESIGN_CONTRACT_SLOT__";
 import {
   ensureClaudeMarketingSiteJsonHasContactSections,
   normalizeClaudeSectionArraysInParsedJson,
@@ -59,6 +53,12 @@ import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import { finalizeBookingShopAfterAiGeneration } from "@/lib/site/append-booking-section-to-payload";
 import { INDUSTRY_KEYWORDS, INDUSTRY_PROFILES } from "@/lib/ai/site-generation-industry-data";
 import type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
+
+/**
+ * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
+ * zodat bindende instructies vóór het (vaak zeer lange) REFERENTIESITE-excerpt staan.
+ */
+const SITE_GENERATION_DESIGN_CONTRACT_SLOT = "__GENTRIX_DESIGN_CONTRACT_SLOT__";
 
 export type { GeneratedTailwindPage, MasterPromptPageConfig, TailwindSection };
 export type { HomepagePlan };
@@ -1999,26 +1999,6 @@ export function createGenerateSiteReadableStream(
           }
         }
 
-        // #region agent log
-        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-          body: JSON.stringify({
-            sessionId: "688ece",
-            hypothesisId: "H1",
-            location: "generate-site-with-claude.ts:after_claude_token_stream",
-            message: "Claude token stream ended",
-            data: {
-              elapsedMs: Date.now() - streamWallClockStartMs,
-              bufferLen: buffer.length,
-              stopReason: stop_reason,
-              outTok: usage?.output_tokens ?? null,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-
         const stopUsageKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         try {
           if (usage) {
@@ -2164,53 +2144,8 @@ export function createGenerateSiteReadableStream(
           }
         }
 
-        // #region agent log
-        {
-          const joinedHtml = data.sections.map((s) => s.html).join("\n");
-          void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
-            body: JSON.stringify({
-              sessionId: "06cb80",
-              runId: "gen-stream",
-              hypothesisId: "H1-H3",
-              location: "generate-site-with-claude.ts:post-process",
-              message: "motion audit before complete",
-              data: {
-                dataAnimationAttrCount: (joinedHtml.match(/data-animation="/g) ?? []).length,
-                dataAosAttrCount: (joinedHtml.match(/data-aos="/g) ?? []).length,
-                selfReviewRan: reviewed.ran,
-                selfReviewRefined: reviewed.usedRefined,
-                briefHasLevendig: /\blevendig/i.test(description),
-                briefHasLevendigeSite: /\blevendige\b.*\b(website|site|presentatie)\b/i.test(description),
-                briefHasAnimatedOnScroll: /\banimated\s+on\s+scroll\b/i.test(description),
-                briefHasBeweegbareSecties: /\bbeweegbare\b.*\bsecties?\b/i.test(description),
-                briefHasScrollAnimNl: /scroll-animat/i.test(description),
-                briefHasDynamisch: /\bdynamisch/i.test(description),
-                descriptionLen: description.length,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
-
         /** Journal + usage-log kunnen lang duren (extra Claude + DB); zonder keepalive knipt de stream vaak net vóór `complete`. */
         const stopPostProcessKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
-        // #region agent log
-        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-          body: JSON.stringify({
-            sessionId: "688ece",
-            hypothesisId: "H5",
-            location: "generate-site-with-claude.ts:before_onSuccess",
-            message: "entering onSuccess journal (keepalive active)",
-            data: { elapsedMs: Date.now() - streamWallClockStartMs },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         try {
           await streamOptions?.onSuccess?.(data);
         } catch (journalErr) {
@@ -2218,42 +2153,11 @@ export function createGenerateSiteReadableStream(
         } finally {
           stopPostProcessKeepalive();
         }
-        // #region agent log
-        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-          body: JSON.stringify({
-            sessionId: "688ece",
-            hypothesisId: "H5",
-            location: "generate-site-with-claude.ts:after_onSuccess",
-            message: "onSuccess finished, about to send complete",
-            data: { elapsedMs: Date.now() - streamWallClockStartMs },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
 
         send(controller, { type: "complete", outputFormat: "tailwind_sections", data });
         send(controller, { type: "status", message: "Generatie voltooid" });
         controller.close();
       } catch (error) {
-        // #region agent log
-        void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-          body: JSON.stringify({
-            sessionId: "688ece",
-            hypothesisId: "H4",
-            location: "generate-site-with-claude.ts:stream_outer_catch",
-            message: "ReadableStream start() threw",
-            data: {
-              errName: error instanceof Error ? error.name : "unknown",
-              errMsg: error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         send(controller, {
           type: "error",
           message: error instanceof Error ? error.message : "Onbekende fout",

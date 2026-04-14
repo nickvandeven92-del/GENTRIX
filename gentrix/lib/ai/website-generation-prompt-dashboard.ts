@@ -1,126 +1,131 @@
 import { buildWebsiteGenerationUserPrompt } from "@/lib/ai/generate-site-with-claude";
 import { GENERATION_PACKAGE_LABELS, getGenerationPackagePromptBlock, STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 
-/** Bestanden waar de generator-prompt uit bestaat (voor dashboard / documentatie). */
+/**
+ * Bronbestanden die de huidige site-generator vormen (admin prompt-pagina).
+ *
+ * De oude interpretatiepipeline (`build-site-config`, `score-prompt-signals`, …) staat onder
+ * `lib/ai/_archive/` en is uitgesloten van TypeScript-build (`tsconfig` exclude) — geen onderdeel
+ * van de actieve run.
+ */
 export const WEBSITE_PROMPT_SOURCE_FILES = [
   {
-    label: "User-bericht (alle §’s, variatie, JSON-formaat)",
+    label: "Site-generatie (user-bericht, stream, finalisatie)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:
-      "generateSiteWithClaude bouwt het user-bericht via buildWebsiteGenerationUserPrompt (o.a. STUDIO STRUCTUUR, variatie, packages — geen vaste Tailwind design-preset meer).",
+      "prepareGenerateSiteClaudeCall: kennis, referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; stream; finalizeGenerateSiteFromClaudeText; self-review + Unsplash; createGenerateSiteReadableStream voor NDJSON.",
   },
   {
-    label: "Site-config (prompt + vision-merge)",
-    path: "lib/ai/build-site-config.ts",
+    label: "System prompts (volledig vs minimal)",
+    path: "lib/ai/master-site-system-prompt.ts",
     description:
-      "buildSiteConfig: runPromptInterpretationPipeline (score-signalen + optioneel Claude PromptInterpretation → merge) → personality, brand_style, primary_goal, target_audience, site_intent; homepage-plan + apply-site-intent; mergeExtractedDesignIntoSiteConfig voor vision.",
+      "MASTER_SITE_SYSTEM_PROMPT / _MINIMAL — gekozen via minimalPrompt of SITE_GENERATION_MINIMAL_PROMPT.",
   },
   {
-    label: "Interpretatiepipeline (centraal brein)",
-    path: "lib/ai/interpret-prompt-pipeline.ts",
-    description:
-      "runPromptInterpretationPipeline — normalisatie, scorePromptSignals, merge met extract-prompt-interpretation-with-claude; resolve site intent + visuele mapping.",
-  },
-  {
-    label: "Signaalgroepen (NL/EN, frasen)",
-    path: "lib/ai/prompt-signal-groups.ts",
-    description: "TOKENS_* + PHRASE_PATTERNS + NEGATION_PATTERNS voor score-gebaseerde heuristiek.",
-  },
-  {
-    label: "Score prompt signalen",
-    path: "lib/ai/score-prompt-signals.ts",
-    description: "scorePromptSignals → HeuristicSignalProfile (geen first-match eindbeslissing).",
-  },
-  {
-    label: "Branche-bias (alleen bij ambiguïteit)",
-    path: "lib/ai/apply-industry-bias-if-ambiguous.ts",
-    description:
-      "applyIndustryVisualBiasIfAmbiguous + applyIndustryIntentBiasIfAmbiguous — subtiele industryHintId-duw (0.3–0.8 visueel; lichter op intent) alleen bij zwakke tokens of dichte top-2; geen harde mapping.",
-  },
-  {
-    label: "Claude: PromptInterpretation JSON",
-    path: "lib/ai/extract-prompt-interpretation-with-claude.ts",
-    description: "EXTRACT_PROMPT_INTERPRETATION_WITH_CLAUDE — semantische laag vóór merge.",
-  },
-  {
-    label: "Denklijn tijdens stream (admin UI)",
-    path: "lib/ai/generate-design-rationale-with-claude.ts",
-    description:
-      "JSON met rationale_nl + designcontract; bij referentie-URL verplicht `referenceVisualAxes` (9 assen). Contract → user-prompt + zelfreview + Unsplash-context. NDJSON design_rationale. Uit: SKIP_DESIGN_RATIONALE=1.",
-  },
-  {
-    label: "Studio prompt: archetypes + component-varianten (één bron)",
-    path: "lib/ai/studio-prompt-layout-maps.ts",
-    description:
-      "buildStudioPromptLayoutMaps — personality × theme × experienceModel; optioneel homepagePlan.compositionPlan.layoutArchetype vernauwt hero/features/testimonial/pricing-pools vóór per-sectie pick; faq/footer varieren. (Geen aparte map-config wrappers meer.)",
-  },
-  {
-    label: "Layout-archetypes prompttekst",
-    path: "lib/ai/layout-archetypes-prompt.ts",
-    description:
-      "buildLayoutArchetypesPromptBlock — compositionPlan (macro) boven sectie-map; slots + nav/hero-regels + section rhythm + banned patterns; sectionOrder uit siteConfig.sections.",
-  },
-  {
-    label: "Structuur-laag in de prompt",
-    path: "lib/ai/studio-structure-layer.ts",
-    description:
-      "buildStudioStructurePromptBlock — personality, site intent + homepage plan, lovable examples, config, archetypes, contract.",
-  },
-  {
-    label: "Design system contract (hard constraints)",
-    path: "lib/ai/premium-design-system-contract.ts",
-    description: "PREMIUM_DESIGN_SYSTEM_CONTRACT — preset-only spacing scale, variants, JSON output binding to §5.",
-  },
-  {
-    label: "Vision-extract referentiebeeld",
-    path: "lib/ai/extract-design-from-image.ts",
-    description: "extractDesignFromImage — eerste kennisbank-screenshot; merge in config. Uitzetten: DISABLE_DESIGN_EXTRACT=1.",
-  },
-  {
-    label: "Site studio (één productprompt)",
+    label: "Studio-blok (pakket / briefing in user-prompt)",
     path: "lib/ai/generation-packages.ts",
     description:
-      "getGenerationPackagePromptBlock(options.preserveLayoutUpgrade) — §0B vrije vs upgrade-structuurregels + portaal-mock + briefing (geen tiers meer).",
+      "getGenerationPackagePromptBlock — vaste productprompt (§0B) + preserve/upgrade-hints.",
   },
   {
-    label: "Minimale prompt-modus (env / API)",
-    path: "lib/ai/generate-site-with-claude.ts",
+    label: "Alpine / micro-interactie-instructies",
+    path: "lib/ai/interactive-alpine-prompt.ts",
+    description: "getAlpineInteractivityPromptBlock — variatie-seed voor hero-video volgorde e.d.",
+  },
+  {
+    label: "Denklijn + designcontract (voor bouw-prompt)",
+    path: "lib/ai/generate-design-rationale-with-claude.ts",
     description:
-      "SITE_GENERATION_MINIMAL_PROMPT=1 of options.minimalPrompt — buildMinimalWebsiteGenerationUserPrompt: geen volledige branche-/stijl-/variatieblokken; wél sector-router + anti-template; MASTER_SITE_SYSTEM_PROMPT_MINIMAL + §3B–§5-contract.",
+      "JSON rationale_nl + contract; bij fout of SKIP_DESIGN_RATIONALE gaat generatie door zonder contractinjectie.",
   },
   {
-    label: "Compacte studio-run (alleen landing)",
-    path: "lib/ai/generate-site-with-claude.ts",
+    label: "Designcontract-schema (Zod)",
+    path: "lib/ai/design-generation-contract.ts",
+    description: "Bindende velden + referenceVisualAxes wanneer referentie-excerpt aanwezig is.",
+  },
+  {
+    label: "Referentiesite voor prompt",
+    path: "lib/ai/fetch-reference-site-for-prompt.ts",
+    description: "HTML-excerpt voor stijl (zelfde bron voor Denklijn en bouw-prompt).",
+  },
+  {
+    label: "Brancheprofielen en sectie-hints",
+    path: "lib/ai/site-generation-industry-data.ts",
+    description: "detectIndustry, combinedIndustryProbeText — input voor sectie-IDs en feedback JSON.",
+  },
+  {
+    label: "JSON normalisatie en postprocessing",
+    path: "lib/ai/generate-site-postprocess.ts",
     description:
-      "SITE_GENERATION_LANDING_ONLY=1 of API `landing_page_only: true` / options.landingPageOnly — zelfde §3B–§5 maar zonder verplichte `marketingPages` + `contactSections` in één JSON (kortere output, minder timeout-risico).",
+      "postProcessClaudeTailwindPage / MarketingSite; ensureClaudeMarketingSiteJsonHasContactSections; upgrade-stable IDs.",
   },
   {
-    label: "Site-generatie output-limiet (streaming)",
-    path: "lib/ai/generate-site-with-claude.ts",
+    label: "Output-schema en mapping naar secties",
+    path: "lib/ai/tailwind-sections-schema.ts",
+    description: "Zod voor Claude-JSON; mapClaudeOutputToSections / mapClaudeMarketingSiteOutputToSections.",
+  },
+  {
+    label: "Marketing multi-page harde regels",
+    path: "lib/ai/validate-marketing-site-output.ts",
+    description: "validateMarketingSiteHardRules na schema-validatie.",
+  },
+  {
+    label: "HTML-validatie (homepage-plan)",
+    path: "lib/ai/validate-generated-page.ts",
+    description: "validateGeneratedPageHtml — o.a. dev-check na generatie in stream-pad.",
+  },
+  {
+    label: "Content claims (scan + rapport)",
+    path: "lib/ai/content-claim-diagnostics.ts",
+    description: "withContentClaimDiagnostics — buildContentClaimDiagnosticsReport op gegenereerde HTML.",
+  },
+  {
+    label: "Authority-beleid (copy)",
+    path: "lib/ai/content-authority-policy.ts",
+    description: "buildContentAuthorityPolicyBlock — gebruikt in prompts en zelfreview.",
+  },
+  {
+    label: "Optionele tweede LLM-pass (zelfreview)",
+    path: "lib/ai/self-review-site-generation.ts",
     description:
-      "prepareGenerateSiteClaudeCall: vaste max_tokens (DEFAULT_MAX_OUTPUT_TOKENS) voor de hoofd-stream — ruim genoeg voor marketing multi-page + zware secties; geen aparte agency-toggle meer.",
+      "applySelfReviewToGeneratedPage — standaard uit (ENABLE_SITE_SELF_REVIEW); DISABLE wint.",
   },
   {
-    label: "System-bericht (optioneel)",
+    label: "Unsplash-vervanging",
+    path: "lib/ai/unsplash-image-replace.ts",
+    description: "replaceUnsplashImagesInSections na succesvolle JSON (key via env).",
+  },
+  {
+    label: "NDJSON stream consumer (jobs)",
+    path: "lib/ai/consume-generate-site-readable-stream.ts",
+    description: "Leest createGenerateSiteReadableStream tot complete/error (geen browser-fetch).",
+  },
+  {
+    label: "System-bericht uit AI-kennis",
     path: "lib/data/ai-knowledge.ts",
     description:
-      "Actieve rijen uit ai_knowledge (behalve “Claude activiteit”): tekst als system context; optionele reference_image_urls als vision-blokken in het user-bericht vóór de opdracht.",
+      "getKnowledgeContextForClaude — actieve rijen als system + optionele vision-blokken vóór de opdracht.",
   },
   {
-    label: "API-route",
+    label: "API: synchrone generatie",
     path: "app/api/generate-site/route.ts",
-    description: "Ontvangt formulierdata en roept generateSiteWithClaude aan.",
+    description: "POST → generateSiteWithClaude (niet-streaming).",
   },
   {
-    label: "Output-schema (validatie)",
-    path: "lib/ai/tailwind-sections-schema.ts",
-    description: "Zod-schema voor config + sections na het Claude-antwoord.",
+    label: "API: NDJSON-stream",
+    path: "app/api/generate-site/stream/route.ts",
+    description: "POST → createGenerateSiteReadableStream; maxDuration 300s voor lange runs.",
   },
   {
-    label: "react_sections (alleen bestaande data)",
-    path: "lib/site/react-site-schema.ts",
+    label: "Legacy code (niet in TS-build)",
+    path: "lib/ai/_archive/",
     description:
-      "Zod voor oude react_sections JSON; studio genereert tailwind_sections. Publieke weergave ondersteunt beide.",
+      "Oude pipeline (site-intent, prompt-scoring, build-site-config, …). Niet geïmporteerd door de actieve generator; map staat in tsconfig exclude.",
+  },
+  {
+    label: "Output legacy vs studio",
+    path: "lib/site/react-site-schema.ts",
+    description: "Zod voor react_sections; studio levert tailwind_sections — weergave ondersteunt beide.",
   },
 ] as const;
 

@@ -3,9 +3,6 @@ import {
   createGenerateSiteReadableStream,
   type GenerateSitePromptOptions,
 } from "@/lib/ai/generate-site-with-claude";
-
-/** Langere runs: eerste model + design rationale + zelfreview + Unsplash. Zonder dit breekt Vercel de stream vaak af vóór `complete`. */
-export const maxDuration = 300;
 import {
   buildJournalFactsGenerateSite,
   tryAppendClaudeActivityJournal,
@@ -15,6 +12,9 @@ import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
 import { isValidSubfolderSlug } from "@/lib/slug";
+
+/** Langere runs: eerste model + design rationale + zelfreview + Unsplash. Zonder dit breekt Vercel de stream vaak af vóór `complete`. */
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();
@@ -56,26 +56,6 @@ export async function POST(request: Request) {
     ...(parsed.data.landing_page_only !== undefined ? { landingPageOnly: parsed.data.landing_page_only } : {}),
   };
   const hasPromptOpts = Object.keys(promptOpts).length > 0;
-
-  // #region agent log
-  void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "688ece" },
-    body: JSON.stringify({
-      sessionId: "688ece",
-      hypothesisId: "H1",
-      location: "app/api/generate-site/stream/route.ts:POST",
-      message: "stream route accepted",
-      data: {
-        landingPageOnly: Boolean(parsed.data.landing_page_only),
-        descLen: description.length,
-        maxDurationExport: 300,
-        hasRefUrl: Boolean(referenceStyleUrl?.trim()),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   const stream = createGenerateSiteReadableStream(
     businessName,
