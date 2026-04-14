@@ -189,12 +189,50 @@ html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[a
 }`;
 
 /**
- * Alle `buildTailwindIframeSrcDoc`-previews: vaste header boven site-eigen `fixed` overlays (stacking-fix).
- * Geen `display:none` op menuknoppen meer — te brede afstammingsselectors verbergden ook sluitknoppen **in**
- * het open paneel (`header > div:first-of-type … button`), waardoor het menu open bleef en tikken “niets” deden.
+ * iframe-preview: stacking t.o.v. volscherm-menu-backdrops.
+ *
+ * **Mobiel (≤1023px):** géén `z-index` op de **hele** `<header>` — veel AI-layouts zetten de mobiele
+ * linkkolom in dezelfde header-stacking; `z-index: 340` op `header` tilde die tekst óver de hero (doorzichtig,
+ * geen backdrop) en voelde als “menu werkt niet”. Alleen **menuknoppen** krijgen een hogere z.
+ *
+ * **Desktop (≥1024px) in iframe:** hele header weer boven typische overlays (zeldzamer issue).
  */
-export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `html[data-gentrix-studio-iframe="1"] header {
-  z-index: 340 !important;
+export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `@media (max-width: 1023px) {
+  /* Boven STUDIO_MOBILE_MENU_STACKING_FIX (≤261); niet 340 — minder “losse” stacking t.o.v. hero. */
+  html[data-gentrix-studio-iframe="1"] header {
+    z-index: 280 !important;
+  }
+  html[data-gentrix-studio-iframe="1"] header button[aria-label*="enu"],
+  html[data-gentrix-studio-iframe="1"] header button[aria-label*="Menu"],
+  html[data-gentrix-studio-iframe="1"] header button[aria-label*="menu"] {
+    position: relative;
+    z-index: 5 !important;
+  }
+}
+@media (min-width: 1024px) {
+  html[data-gentrix-studio-iframe="1"] header {
+    z-index: 340 !important;
+  }
+}`;
+
+/**
+ * Alleen **mobiele** HTML-editor-preview (`data-gentrix-studio-mobile` + iframe): vaak halftransparante
+ * `nav` / kolom over de hero — leesbaarheid + duidelijke “sheet” zonder live `/site` te wijzigen.
+ */
+export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 1023px) {
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header nav,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header [role="navigation"] {
+    background-color: rgb(15 23 42 / 0.94) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header > div[class*="fixed"].flex-col,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header > div[class*="absolute"].flex-col,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header > div[class*="inset-0"].flex {
+    background-color: rgb(15 23 42 / 0.94) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }`;
 
 /**
@@ -850,6 +888,25 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
 export function buildLucideRuntimeScriptBlock(): string {
   return `<script src="${STUDIO_LUCIDE_UMD_SRC}"></script>
 <script>try{typeof lucide!=="undefined"&&lucide.createIcons();}catch(e){}</script>`;
+}
+
+/** Na Alpine (x-show/x-for): iconen opnieuw initialiseren zodat `@click` op knoppen niet “verdwijnt”. */
+export function buildLucidePostAlpineRescanScript(): string {
+  return `<script defer>
+(function(){
+  function tick(){
+    try{if(typeof lucide!=="undefined"&&lucide.createIcons)lucide.createIcons();}catch(_){}
+  }
+  function run(){
+    tick();
+    setTimeout(tick,40);
+    setTimeout(tick,200);
+    setTimeout(tick,600);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+})();
+</script>`;
 }
 
 let alpineDomPurifyHookRegistered = false;
@@ -1671,7 +1728,9 @@ export function buildTailwindIframeSrcDoc(
     : "width=device-width, initial-scale=1";
 
   const studioMobileAttr = options?.studioMobileEditorFrame ? ` data-gentrix-studio-mobile="1"` : "";
-  const studioMobileCss = options?.studioMobileEditorFrame ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n` : "";
+  const studioMobileCss = options?.studioMobileEditorFrame
+    ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
+    : "";
   const iframeShellAttr = ` data-gentrix-studio-iframe="1"`;
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
@@ -1707,6 +1766,7 @@ ${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
 </script>
 <script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${buildStudioHeaderNavAlpineClampScript()}
+${buildLucidePostAlpineRescanScript()}
 ${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${contactSubpageScript}
