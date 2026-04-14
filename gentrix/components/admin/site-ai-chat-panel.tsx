@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Copy, Film, Loader2, MessageCircle, X } from "lucide-react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
-import type { SiteChatTurn } from "@/lib/ai/site-chat-with-claude";
+import type { SiteChatStreamNdjsonEvent, SiteChatTurn } from "@/lib/ai/site-chat-with-claude";
+import { consumeSiteChatNdjsonBuffer } from "@/lib/api/site-chat-stream-events";
 import { STUDIO_DEFAULT_SILENT_HERO_MP4_URLS } from "@/lib/site/studio-default-hero-videos";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +63,10 @@ export function SiteAiChatPanel({
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  /** Tussentijdse statusregels van de server (NDJSON `status`). */
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
+  /** Tekst uit het inkomende JSON-antwoord (`reply_preview`), voor een lopend gesprek. */
+  const [streamingReply, setStreamingReply] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copiedHeroUrlIndex, setCopiedHeroUrlIndex] = useState<number | null>(null);
   const [fileDragOver, setFileDragOver] = useState(false);
@@ -83,7 +88,7 @@ export function SiteAiChatPanel({
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [rows, loading]);
+  }, [rows, loading, streamingReply, streamingStatus]);
 
   const uploadFile = useCallback(
     async (file: File) => {
@@ -144,12 +149,18 @@ export function SiteAiChatPanel({
     setRows(nextRows);
     setInput("");
     setLoading(true);
+    setStreamingStatus("Verzoek wordt klaargezet…");
+    setStreamingReply("");
     setError(null);
 
+    let sawComplete = false;
+    let sawError = false;
+
     try {
-      const res = await fetch("/api/ai-site-chat", {
+      const res = await fetch("/api/ai-site-chat/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
         body: JSON.stringify({
           messages: apiMessages,
           sections,
@@ -159,38 +170,74 @@ export function SiteAiChatPanel({
           webshopEnabled,
         }),
       });
-      const payload = (await res.json()) as
-        | {
-            ok: true;
-            data: {
-              reply: string;
-              sections?: TailwindSection[];
-              config: TailwindPageConfig | null;
-            };
-          }
-        | { ok: false; error: string };
 
-      if (!res.ok || !payload.ok) {
-        setError(!payload.ok ? payload.error : "Chat mislukt.");
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("ndjson") && !ct.includes("x-ndjson")) {
+        const payload = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || payload.ok === false) {
+          setError(payload.error ?? "Chat mislukt.");
+          return;
+        }
+        setError("Onverwacht antwoordformaat van de server.");
         return;
       }
 
-      setRows((r) => [
-        ...r,
-        { id: crypto.randomUUID(), role: "assistant", content: payload.data.reply },
-      ]);
+      if (!res.body) {
+        setError("Geen response-stream van de server.");
+        return;
+      }
 
-      if (payload.data.sections?.length) {
-        onApplyAi({
-          sections: payload.data.sections,
-          config: payload.data.config ?? undefined,
-          label: text.slice(0, 100),
-        });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const handleNdjsonEvent = (ev: SiteChatStreamNdjsonEvent) => {
+        if (ev.type === "status") {
+          setStreamingStatus(ev.message);
+        }
+        if (ev.type === "reply_preview") {
+          setStreamingReply(ev.text);
+        }
+        if (ev.type === "complete") {
+          sawComplete = true;
+          setRows((r) => [
+            ...r,
+            { id: crypto.randomUUID(), role: "assistant", content: ev.data.reply },
+          ]);
+          if (ev.data.sections?.length) {
+            onApplyAi({
+              sections: ev.data.sections,
+              config: ev.data.config ?? undefined,
+              label: text.slice(0, 100),
+            });
+          }
+        }
+        if (ev.type === "error") {
+          sawError = true;
+          setError(ev.message);
+        }
+      };
+
+      while (!sawComplete && !sawError) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer = consumeSiteChatNdjsonBuffer(buffer, decoder.decode(value, { stream: true }), handleNdjsonEvent);
+      }
+      if (buffer.trim()) {
+        buffer = consumeSiteChatNdjsonBuffer(buffer, "\n", handleNdjsonEvent);
+      }
+
+      await reader.cancel().catch(() => {});
+
+      if (!sawComplete && !sawError) {
+        setError((prev) => prev ?? "Het antwoord werd niet afgerond (verbinding of time-out). Probeer opnieuw.");
       }
     } catch {
       setError("Netwerkfout.");
     } finally {
       setLoading(false);
+      setStreamingStatus(null);
+      setStreamingReply("");
     }
   }
 
@@ -291,7 +338,7 @@ export function SiteAiChatPanel({
         ref={listRef}
         className="mx-4 mt-3 flex min-h-[min(160px,28dvh)] flex-1 flex-col space-y-3 overflow-y-auto rounded-lg border border-zinc-200/80 bg-white p-3 dark:border-zinc-700/60 dark:bg-zinc-950/80"
       >
-        {rows.length === 0 && !loading && (
+        {rows.length === 0 && !loading && !streamingReply && (
           <div className="flex flex-1 flex-col justify-center gap-3 py-2">
             <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
               Stel een vraag of kies een voorstel.
@@ -332,9 +379,37 @@ export function SiteAiChatPanel({
           </div>
         ))}
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-            Claude denkt na…
+          <div
+            className={cn(
+              "rounded-lg px-3 py-2 text-sm",
+              "mr-4 border border-zinc-200/90 bg-white text-zinc-800 shadow-sm dark:border-zinc-600/80 dark:bg-zinc-900/90 dark:text-zinc-100",
+            )}
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Claude
+            </span>
+            {streamingReply.trim().length > 0 ? (
+              <div className="space-y-2">
+                <div className="whitespace-pre-wrap break-words leading-relaxed">{streamingReply}</div>
+                {streamingStatus ? (
+                  <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">{streamingStatus}</p>
+                ) : null}
+                <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  <span className="inline-flex size-1.5 animate-pulse rounded-full bg-indigo-500" aria-hidden />
+                  Bezig…
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-zinc-500" aria-hidden />
+                <p className="leading-relaxed text-zinc-800 dark:text-zinc-200">
+                  {streamingStatus ??
+                    "Even geduld — we sturen je site naar Claude; het antwoord verschijnt hier zodra de eerste woorden binnen zijn."}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

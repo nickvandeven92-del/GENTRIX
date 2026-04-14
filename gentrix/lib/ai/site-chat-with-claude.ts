@@ -8,6 +8,7 @@ import { getKnowledgeContextForClaude } from "@/lib/data/ai-knowledge";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { mergeTailwindSectionUpdates, tailwindSectionUpdateSchema } from "@/lib/ai/merge-tailwind-section-updates";
+import { extractPartialReplyFromStreamingSiteChatJson } from "@/lib/ai/site-chat-reply-extract";
 import {
   isLegacyTailwindPageConfig,
   masterPromptPageConfigSchema,
@@ -133,54 +134,19 @@ OUTPUT: uitsluitend **één** JSON-object, geen markdown-fences eromheen:
 }`;
 }
 
-export async function siteChatWithClaude(
-  messages: SiteChatTurn[],
+export function processSiteChatFromModelText(
+  modelText: string,
   sections: TailwindSection[],
   config: TailwindPageConfig | null | undefined,
-  attachmentUrls: string[],
-  studioModuleFlags?: SiteChatStudioModuleFlags,
-): Promise<SiteChatResult> {
-  const apiKey = getAnthropicApiKey();
-  if (!apiKey) {
-    return {
-      ok: false,
-      error: `ANTHROPIC_API_KEY ontbreekt in de omgeving. ${ANTHROPIC_KEY_MISSING_USER_HINT}`,
-    };
-  }
-
-  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
-  const client = new Anthropic({ apiKey });
-
-  const legacy = config != null && isLegacyTailwindPageConfig(config);
-  const currentPayload = buildSitePayload(sections, config);
-  const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
-  const system = [knowledge, buildChatSystemPrompt(legacy, studioModuleFlags)].filter(Boolean).join("\n\n---\n\n");
-  const claudeMessages = buildClaudeMessages(messages, currentPayload, attachmentUrls, userPrefixBlocks);
-
-  const message = await client.messages.create({
-    model,
-    max_tokens: clampMaxTokensNonStreaming(model, 24_576),
-    system,
-    messages: claudeMessages,
-  });
-
-  await logClaudeMessageUsage("site_chat", model, message.usage);
-
-  const textBlock = message.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
-  }
-
-  const parsedResult = parseModelJsonObject(textBlock.text);
+  stopReason: string | null | undefined,
+): SiteChatResult {
+  const parsedResult = parseModelJsonObject(modelText);
   if (!parsedResult.ok) {
-    const truncated =
-      message.stop_reason === "max_tokens"
-        ? " Antwoord mogelijk afgekapt (max_tokens)."
-        : "";
+    const truncated = stopReason === "max_tokens" ? " Antwoord mogelijk afgekapt (max_tokens)." : "";
     return {
       ok: false,
       error: `Antwoord is geen geldige JSON.${truncated}`,
-      rawText: textBlock.text,
+      rawText: modelText,
     };
   }
   const parsed = parsedResult.value;
@@ -190,7 +156,7 @@ export async function siteChatWithClaude(
     return {
       ok: false,
       error: `JSON voldoet niet aan het schema: ${validated.error.message}`,
-      rawText: textBlock.text,
+      rawText: modelText,
     };
   }
 
@@ -226,8 +192,204 @@ export async function siteChatWithClaude(
 
   const mergeResult = mergeTailwindSectionUpdates(sections, sectionUpdates ?? []);
   if (!mergeResult.ok) {
-    return { ok: false, error: mergeResult.error, rawText: textBlock.text };
+    return { ok: false, error: mergeResult.error, rawText: modelText };
   }
 
   return { ok: true, reply, sections: mergeResult.sections, config: nextConfig };
+}
+
+export type SiteChatClaudeRequest = {
+  client: Anthropic;
+  model: string;
+  system: string;
+  messages: MessageParam[];
+  sections: TailwindSection[];
+  config: TailwindPageConfig | null | undefined;
+};
+
+export async function buildSiteChatClaudeRequest(
+  messages: SiteChatTurn[],
+  sections: TailwindSection[],
+  config: TailwindPageConfig | null | undefined,
+  attachmentUrls: string[],
+  studioModuleFlags?: SiteChatStudioModuleFlags,
+): Promise<{ ok: true; req: SiteChatClaudeRequest } | { ok: false; error: string }> {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) {
+    return {
+      ok: false,
+      error: `ANTHROPIC_API_KEY ontbreekt in de omgeving. ${ANTHROPIC_KEY_MISSING_USER_HINT}`,
+    };
+  }
+
+  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const client = new Anthropic({ apiKey });
+
+  const legacy = config != null && isLegacyTailwindPageConfig(config);
+  const currentPayload = buildSitePayload(sections, config);
+  const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
+  const system = [knowledge, buildChatSystemPrompt(legacy, studioModuleFlags)].filter(Boolean).join("\n\n---\n\n");
+  const claudeMessages = buildClaudeMessages(messages, currentPayload, attachmentUrls, userPrefixBlocks);
+
+  return { ok: true, req: { client, model, system, messages: claudeMessages, sections, config } };
+}
+
+export async function siteChatWithClaude(
+  messages: SiteChatTurn[],
+  sections: TailwindSection[],
+  config: TailwindPageConfig | null | undefined,
+  attachmentUrls: string[],
+  studioModuleFlags?: SiteChatStudioModuleFlags,
+): Promise<SiteChatResult> {
+  const built = await buildSiteChatClaudeRequest(messages, sections, config, attachmentUrls, studioModuleFlags);
+  if (!built.ok) {
+    return { ok: false, error: built.error };
+  }
+  const { client, model, system, messages: claudeMessages, sections: secs, config: cfg } = built.req;
+
+  const message = await client.messages.create({
+    model,
+    max_tokens: clampMaxTokensNonStreaming(model, 24_576),
+    system,
+    messages: claudeMessages,
+  });
+
+  await logClaudeMessageUsage("site_chat", model, message.usage);
+
+  const textBlock = message.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
+  }
+
+  return processSiteChatFromModelText(textBlock.text, secs, cfg, message.stop_reason);
+}
+
+export type SiteChatStreamNdjsonEvent =
+  | { type: "status"; message: string }
+  | { type: "reply_preview"; text: string }
+  | {
+      type: "complete";
+      data: {
+        reply: string;
+        sections?: TailwindSection[];
+        config: TailwindPageConfig | null;
+      };
+    }
+  | { type: "error"; message: string; rawText?: string };
+
+export type CreateSiteChatReadableStreamOptions = {
+  /** Na succesvol parsen; o.a. voor activity-journal (mag falen zonder de stream te breken). */
+  onSuccess?: (data: {
+    reply: string;
+    sections?: TailwindSection[];
+    config: TailwindPageConfig | null | undefined;
+  }) => Promise<void>;
+};
+
+/**
+ * NDJSON-stream: status + `reply_preview` (tekst uit het JSON-antwoord) + `complete` of `error`.
+ */
+export function createSiteChatReadableStream(
+  messages: SiteChatTurn[],
+  sections: TailwindSection[],
+  config: TailwindPageConfig | null | undefined,
+  attachmentUrls: string[],
+  studioModuleFlags?: SiteChatStudioModuleFlags,
+  streamOptions?: CreateSiteChatReadableStreamOptions,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const send = (controller: ReadableStreamDefaultController<Uint8Array>, event: SiteChatStreamNdjsonEvent) => {
+    controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+  };
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        send(controller, { type: "status", message: "Je verzoek wordt verstuurd naar Claude…" });
+
+        const built = await buildSiteChatClaudeRequest(messages, sections, config, attachmentUrls, studioModuleFlags);
+        if (!built.ok) {
+          send(controller, { type: "error", message: built.error });
+          controller.close();
+          return;
+        }
+
+        const { client, model, system, messages: claudeMessages, sections: secs, config: cfg } = built.req;
+
+        send(controller, { type: "status", message: "Claude werkt aan je antwoord — even geduld." });
+
+        const stream = client.messages.stream({
+          model,
+          max_tokens: clampMaxTokensNonStreaming(model, 24_576),
+          system,
+          messages: claudeMessages,
+        });
+
+        let fullText = "";
+        let lastPreview = "";
+
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            fullText += event.delta.text;
+            const preview = extractPartialReplyFromStreamingSiteChatJson(fullText);
+            if (preview !== lastPreview) {
+              lastPreview = preview;
+              send(controller, { type: "reply_preview", text: preview });
+            }
+          }
+        }
+
+        const finalMessage = await stream.finalMessage();
+        await logClaudeMessageUsage("site_chat", model, finalMessage.usage);
+
+        const textBlock = finalMessage.content.find((b) => b.type === "text");
+        if (!textBlock || textBlock.type !== "text") {
+          send(controller, { type: "error", message: "Geen tekst-antwoord van Claude ontvangen." });
+          controller.close();
+          return;
+        }
+
+        const result = processSiteChatFromModelText(textBlock.text, secs, cfg, finalMessage.stop_reason);
+        if (!result.ok) {
+          send(controller, { type: "error", message: result.error, rawText: result.rawText });
+          controller.close();
+          return;
+        }
+
+        if (streamOptions?.onSuccess) {
+          try {
+            await streamOptions.onSuccess({
+              reply: result.reply,
+              sections: result.sections,
+              config: result.config ?? null,
+            });
+          } catch {
+            /* journal of logging mag de chat niet breken */
+          }
+        }
+
+        send(controller, {
+          type: "complete",
+          data: {
+            reply: result.reply,
+            sections: result.sections,
+            config: result.config ?? null,
+          },
+        });
+        controller.close();
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Claude-streaming mislukt.";
+        try {
+          send(controller, { type: "error", message });
+        } catch {
+          /* stream gesloten */
+        }
+        try {
+          controller.close();
+        } catch {
+          /* */
+        }
+      }
+    },
+  });
 }

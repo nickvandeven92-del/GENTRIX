@@ -186,13 +186,18 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
  * Alleen in de HTML-editor bij **Mobiel**-preview (`data-gentrix-studio-mobile` op `<html>`).
  * Veel AI-headers: desktop-`nav` met links blijft `flex` op smalle breedte naast de hamburger.
  * Verberg de eerste directe `nav` onder `header` als er een menuknop (aria-label met “menu”) in de header zit.
+ *
+ * Alleen binnen `max-width: 1023px`: anders kan (bij zeldzame viewport/resize) de horizontale desktop-nav
+ * onterecht verborgen blijven zodra `data-gentrix-studio-mobile` aan staat.
  */
-export const STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS = `html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) > nav:first-of-type {
-  display: none !important;
-}
-html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdnavigatie"],
-html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdmenu"] {
-  display: none !important;
+export const STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS = `@media (max-width: 1023px) {
+  html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) > nav:first-of-type {
+    display: none !important;
+  }
+  html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdnavigatie"],
+  html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdmenu"] {
+    display: none !important;
+  }
 }`;
 
 /**
@@ -219,6 +224,32 @@ export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `@media (max-width: 1023px) {
 @media (min-width: 1024px) {
   html[data-gentrix-studio-iframe="1"] header {
     z-index: 340 !important;
+  }
+}`;
+
+/**
+ * Alpine `x-show` zet inline `display`, waardoor Tailwind responsive `*-hidden` op hetzelfde element verliest:
+ * mobiele sheet/drawer blijft zichtbaar op desktop terwijl `lg:hidden` / `xl:hidden` bedoeld is om die te verbergen.
+ * Alleen binnen `<header>` — voorkomt dat het mobiele menu op breed scherm “open” blijft staan.
+ */
+export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 640px) {
+  html[data-gentrix-studio-iframe="1"] header .sm\\:hidden {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
+  html[data-gentrix-studio-iframe="1"] header .md\\:hidden {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  html[data-gentrix-studio-iframe="1"] header .lg\\:hidden {
+    display: none !important;
+  }
+}
+@media (min-width: 1280px) {
+  html[data-gentrix-studio-iframe="1"] header .xl\\:hidden {
+    display: none !important;
   }
 }`;
 
@@ -1785,6 +1816,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
+    ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>
