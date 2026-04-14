@@ -233,6 +233,26 @@ export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 102
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
+  /*
+   * Dubbele sluit-X: veel templates zetten Lucide menu + x in één knop (x-show kapot) óf een tweede knop.
+   * Alleen in mobiele editor-preview — live site blijft model-markup volgen.
+   */
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="enu"] svg.lucide-x,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="Menu"] svg.lucide-x,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="menu"] svg.lucide-x,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="enu"] [data-lucide="x"],
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="Menu"] [data-lucide="x"],
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button[aria-label*="menu"] [data-lucide="x"] {
+    display: none !important;
+  }
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg.lucide-menu) + button:has(svg.lucide-x),
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg[class*="lucide-menu"]) + button:has(svg[class*="lucide-x"]) {
+    display: none !important;
+  }
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg.lucide-menu) ~ button:has(svg.lucide-x):not(:has(svg.lucide-menu)),
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header button:has(svg[class*="lucide-menu"]) ~ button:has(svg.lucide-x):not(:has(svg.lucide-menu)) {
+    display: none !important;
+  }
 }`;
 
 /**
