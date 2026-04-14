@@ -35,6 +35,7 @@ import {
   buildStudioAutoMobileNavHeaderHtml,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
+  STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
 } from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
@@ -161,7 +162,7 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_LASER_LINE_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
-    ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ` : ""}
+    ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n    ` : ""}
   </style>
   ${userCssBlock}${aos.headLink}</head>
 <body class="min-h-screen antialiased text-slate-900${radiusClass}"${studioAutoMobileNavInjected ? ` id="top"` : ""}>

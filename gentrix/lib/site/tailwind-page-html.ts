@@ -33,6 +33,7 @@ import {
   buildStudioAutoMobileNavHeaderHtml,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
+  STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
 } from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
@@ -238,6 +239,13 @@ export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 102
     background-color: rgb(15 23 42 / 0.94) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+  /* Mobiel menu: expliciet licht op donker (body heeft text-slate-900; links verdwijnen anders). */
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header nav[aria-label="Mobiel menu"] a:not([class*="bg-white"]) {
+    color: rgb(248 250 252) !important;
+  }
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header nav[aria-label="Mobiel menu"] a[class*="bg-white"] {
+    color: rgb(15 23 42) !important;
   }
 }`;
 
@@ -1753,7 +1761,9 @@ export function buildTailwindIframeSrcDoc(
     ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
     : "";
   const iframeShellAttr = ` data-gentrix-studio-iframe="1"`;
-  const autoNavDupCss = studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n` : "";
+  const autoNavDupCss = studioAutoMobileNavInjected
+    ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n`
+    : "";
   const bodyTopIdAttr = studioAutoMobileNavInjected ? ` id="top"` : "";
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
