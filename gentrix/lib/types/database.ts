@@ -458,6 +458,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      site_generation_jobs: {
+        Row: {
+          id: string;
+          client_id: string | null;
+          created_at: string;
+          updated_at: string;
+          status: string;
+          request_json: Json;
+          progress_message: string | null;
+          result_json: Json | null;
+          error_message: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          client_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          status?: string;
+          request_json?: Json;
+          progress_message?: string | null;
+          result_json?: Json | null;
+          error_message?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          client_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          status?: string;
+          request_json?: Json;
+          progress_message?: string | null;
+          result_json?: Json | null;
+          error_message?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+        };
+        Relationships: [];
+      };
       ai_knowledge: {
         Row: {
           id: string;

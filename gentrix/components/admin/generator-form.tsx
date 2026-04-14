@@ -41,6 +41,9 @@ import { isValidSubfolderSlug } from "@/lib/slug";
 import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
 import { cn } from "@/lib/utils";
 
+/** `true` = oude NDJSON-stream naar de browser; default = server-job + polling (stabieler bij lange runs). */
+const USE_LEGACY_NDJSON_STREAM = process.env.NEXT_PUBLIC_SITE_GENERATION_USE_STREAM === "true";
+
 type ApiOk = { ok: true; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage };
 type ApiErr = { ok: false; error: string; rawText?: string };
 
@@ -97,6 +100,7 @@ export function GeneratorForm({
   const [streamEndedWithoutComplete, setStreamEndedWithoutComplete] = useState(false);
 
   const streamJsonBufferRef = useRef("");
+  const pollAbortRef = useRef(false);
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
   /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
@@ -270,6 +274,12 @@ export function GeneratorForm({
     setDescription(initialClientDescription?.trim() ?? "");
   }, [slugFromUrl, initialClientName, initialClientDescription, existingDraftLocked]);
 
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current = true;
+    };
+  }, []);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -304,6 +314,61 @@ export function GeneratorForm({
         body.reference_style_url = refTrim;
       }
       body.landing_page_only = landingPageOnly;
+
+      if (!USE_LEGACY_NDJSON_STREAM) {
+        const startRes = await fetch("/api/generate-site/jobs", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const startPayload = (await startRes.json()) as
+          | { ok: true; jobId: string }
+          | { ok: false; error: string };
+        if (!startRes.ok || !startPayload.ok || !("jobId" in startPayload)) {
+          setError(!startPayload.ok ? startPayload.error : "Job start mislukt.");
+          return;
+        }
+        appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
+        pollAbortRef.current = false;
+        for (let i = 0; i < 300; i++) {
+          if (pollAbortRef.current) break;
+          if (i > 0) await new Promise((r) => setTimeout(r, 2000));
+          const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, { credentials: "include" });
+          const jp = (await jr.json()) as
+            | {
+                ok: true;
+                job: {
+                  status: string;
+                  progress_message: string | null;
+                  error_message: string | null;
+                  result: GeneratedTailwindPage | null;
+                };
+              }
+            | { ok: false; error: string };
+          if (!jr.ok || !jp.ok) {
+            setError(!jp.ok ? jp.error : "Jobstatus ophalen mislukt.");
+            return;
+          }
+          const { job } = jp;
+          if (job.progress_message) {
+            setStreamPhase(job.progress_message);
+            appendGenerationActivity(job.progress_message);
+          }
+          if (job.status === "succeeded" && job.result) {
+            setGeneratedTailwind(job.result);
+            setStreamPhase("Generatie voltooid");
+            appendGenerationActivity("Klaar — resultaat geladen.");
+            return;
+          }
+          if (job.status === "failed") {
+            setError(job.error_message ?? "Generatie mislukt.");
+            return;
+          }
+        }
+        setError("Polling gestopt (timeout na ~10 min). Probeer opnieuw of gebruik de legacy-stream (NEXT_PUBLIC_SITE_GENERATION_USE_STREAM).");
+        return;
+      }
 
       const res = await fetch("/api/generate-site/stream", {
         method: "POST",
@@ -524,7 +589,9 @@ export function GeneratorForm({
         <p className="rounded-lg border border-emerald-100 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
           <strong>HTML + Tailwind</strong> — output is <code className="rounded bg-emerald-100 px-1">tailwind_sections</code>{" "}
           (secties met HTML); dezelfde weergave in studio, concept-preview en live{" "}
-          <code className="rounded bg-emerald-100 px-1">/site/…</code>. Losse <strong>motion-promo</strong> (Remotion):{" "}
+          <code className="rounded bg-emerald-100 px-1">/site/…</code>. Standaard draait generatie als{" "}
+          <strong>server-job</strong> (pollen i.p.v. lange browser-stream; volledige marketing-site blijft mogelijk). Losse{" "}
+          <strong>motion-promo</strong> (Remotion):{" "}
           <code className="rounded bg-emerald-100 px-1">npm run remotion:studio</code> · render:{" "}
           <code className="rounded bg-emerald-100 px-1">npm run remotion:render</code>.
         </p>
