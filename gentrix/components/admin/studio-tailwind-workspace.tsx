@@ -29,6 +29,8 @@ export type StudioTailwindWorkspaceProps = {
   webshopEnabled?: boolean;
   initialSiteIr?: SiteIrV1 | null;
   draftPublicPreviewToken?: string | null;
+  /** Uit snapshot: inline in iframe-preview i.p.v. Play CDN. */
+  initialTailwindCompiledCss?: string | null;
 };
 
 /**
@@ -101,6 +103,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
             webshopEnabled={props.webshopEnabled ?? true}
             initialSiteIr={props.initialSiteIr ?? null}
             draftPublicPreviewToken={props.draftPublicPreviewToken ?? null}
+            initialTailwindCompiledCss={props.initialTailwindCompiledCss ?? null}
           />
         ) : (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">

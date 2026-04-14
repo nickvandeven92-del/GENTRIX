@@ -143,6 +143,21 @@ describe("fixAlpineNavToggleDefaultsInXData", () => {
     const html = `<div x-data="{ drawerOpen: true }">`;
     expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("drawerOpen: false");
   });
+
+  it("past isOpen: true aan", () => {
+    const html = `<div x-data="{ isOpen: true }">`;
+    expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("isOpen: false");
+  });
+
+  it("past mobileMenuOpen: true aan", () => {
+    const html = `<header x-data="{ mobileMenuOpen: true }">`;
+    expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("mobileMenuOpen: false");
+  });
+
+  it("past navMenuOpen: true aan", () => {
+    const html = `<header x-data="{ navMenuOpen: true }">`;
+    expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("navMenuOpen: false");
+  });
 });
 
 describe("stripDecorativeScrollCueMarkup", () => {

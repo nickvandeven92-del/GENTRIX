@@ -174,7 +174,7 @@ export function GeneratorForm({
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
   /** Geen marketingPages + contact in één run — merkbaar korter (minder timeout-risico). */
   const [landingPageOnly, setLandingPageOnly] = useState(false);
-  /** Preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
+  /** Chat + preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -493,9 +493,16 @@ export function GeneratorForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          previewFullscreen &&
+            "fixed inset-0 z-[1000] gap-0 overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
+        )}
+      >
       <ResizableEditorPanels
         storageKey="gentrix-studio-generator-sidebar-px"
-        className="min-h-0 flex-1"
+        className={cn("min-h-0 flex-1", previewFullscreen && "min-h-0 overflow-hidden")}
         defaultSidebarPx={420}
         minSidebarPx={280}
         maxSidebarPx={560}
@@ -883,13 +890,7 @@ export function GeneratorForm({
           </div>
         }
         main={
-          <div
-            className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
-              previewFullscreen &&
-                "fixed inset-0 z-[1000] gap-0 overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
-            )}
-          >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
             <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
@@ -1037,6 +1038,7 @@ export function GeneratorForm({
           </div>
         }
       />
+      </div>
     </div>
   );
 }

@@ -96,7 +96,20 @@ export async function getParsedSiteDraftBySlug(slug: string): Promise<ParsedStor
       draft_snapshot_id: row.draft_snapshot_id,
       published_snapshot_id: row.published_snapshot_id,
     });
-    return parseStoredSiteData(raw);
+    const parsed = parseStoredSiteData(raw);
+    if (!parsed || parsed.kind !== "tailwind") return parsed;
+    if (parsed.tailwindCompiledCss != null && parsed.tailwindCompiledCss.trim() !== "") return parsed;
+    const payload = publishedPayloadFromSiteJson(raw, row.name, row.generation_package);
+    if (!payload || payload.kind !== "tailwind") return parsed;
+    const ensured = await ensureTailwindCompiledCssOnPublishedPayload(payload, row.name);
+    if (
+      ensured.kind !== "tailwind" ||
+      ensured.tailwindCompiledCss == null ||
+      ensured.tailwindCompiledCss.trim() === ""
+    ) {
+      return parsed;
+    }
+    return { ...parsed, tailwindCompiledCss: ensured.tailwindCompiledCss };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) return null;

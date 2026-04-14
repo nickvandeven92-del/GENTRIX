@@ -108,8 +108,37 @@ export function withRootIdOnSectionHtml(html: string, stableId: string): string 
  * Modellen zetten soms per ongeluk `open: true` / `menuOpen: true` in `x-data`, waardoor het mobiele menu
  * fullscreen opent vóór interactie. Corrigeer bekende toggles naar `false` (alleen binnen `x-data`-waarden).
  */
-const ALPINE_NAV_TOGGLE_TRUE_RE =
-  /\b(open|menuOpen|navOpen|mobileOpen|showMenu|drawerOpen|sidebarOpen|panelOpen|mobileNavOpen|sideMenuOpen)\s*:\s*true\b/g;
+export const ALPINE_NAV_TOGGLE_KEYS = [
+  "open",
+  "menuOpen",
+  "navOpen",
+  "mobileOpen",
+  "showMenu",
+  "drawerOpen",
+  "sidebarOpen",
+  "panelOpen",
+  "mobileNavOpen",
+  "sideMenuOpen",
+  "isOpen",
+  "showNav",
+  "mobileMenuOpen",
+  "showMobileNav",
+  "sheetOpen",
+  "burgerOpen",
+  "isMenuOpen",
+  "navDrawerOpen",
+  "menuExpanded",
+  "overlayOpen",
+  "overlayVisible",
+  "navMenuOpen",
+  "primaryNavOpen",
+  "hamburgerOpen",
+] as const;
+
+const ALPINE_NAV_TOGGLE_TRUE_RE = new RegExp(
+  `\\b(${ALPINE_NAV_TOGGLE_KEYS.join("|")})\\s*:\\s*true\\b`,
+  "g",
+);
 
 export function fixAlpineNavToggleDefaultsInXData(html: string): string {
   const fixInner = (inner: string) => inner.replace(ALPINE_NAV_TOGGLE_TRUE_RE, "$1: false");

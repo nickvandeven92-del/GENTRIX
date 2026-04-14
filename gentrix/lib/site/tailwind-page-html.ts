@@ -3,6 +3,7 @@
  */
 import DOMPurify from "isomorphic-dompurify";
 import {
+  ALPINE_NAV_TOGGLE_KEYS,
   fixAlpineNavToggleDefaultsInXData,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
@@ -93,18 +94,84 @@ export function getStudioGsapHtmlFragments(disabled: boolean): { bodyScripts: st
  * Veel templates: vaste primary nav `fixed … z-50`, mobiel menu-backdrop `fixed inset-0 z-40`.
  * Dan blijft de balk en hamburger zichtbaar boven het open menu (iframe + smalle viewport).
  * Deze fix verhoogt typische full-screen / full-height menu-lagen op kleine viewports — alleen in srcDoc.
+ *
+ * **Geen** brede selector `body .fixed.inset-0 { … }`: hero’s gebruiken vaak `fixed inset-0` + gradient/video
+ * **zonder** menu-z; `!important` til die dan boven de content → zwarte balk. Alleen bekende overlay-z-lagen.
+ *
+ * Z-waarden **> 220**: `STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS` zet `header` op 220; lagere z-index liet backdrop
+ * en sheet **onder** de header vallen (hamburger/sluit icoon tegelijk, geen collapse).
+ *
+ * **Geen** `z-10`/`z-20` op alle `inset-0`-lagen: dat tilde willekeurige hero/sectie-overlays naar 260 (“zwarte
+ * balk overal”). Alleen `z-30+` op `inset-0` / zijpanelen — **geen** `bg-black`-substring (matcht te vaak
+ * hero/sectie-dims in preview). Hero: `revert` zodat hero-gradients niet worden verstoord.
+ *
+ * Menu-backdrop blijft ≤261; `STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS` zet **header** hoger zodat hamburger/sluit
+ * klikbaar blijven (anders vangt de overlay pointer-events boven de balk).
  */
 export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
-  body .fixed.inset-0 {
-    z-index: 200 !important;
+  body .fixed.inset-0:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.inset-0[class*="z-[30"],
+  body .fixed.inset-0[class*="z-[40"],
+  body .fixed.inset-0[class*="z-[45"],
+  body .fixed.inset-0[class*="z-[50"],
+  body .fixed.inset-0[class*="z-[55"],
+  body .fixed.inset-0[class*="z-[60"],
+  body .fixed.inset-0[class*="z-[70"],
+  body .fixed.inset-0[class*="z-[80"],
+  body .fixed.inset-0[class*="z-[90"],
+  body .fixed.inset-0[class*="z-[100"],
+  body .fixed.inset-0[class*="z-[120"] {
+    z-index: 260 !important;
   }
-  body .fixed.top-0.bottom-0.right-0,
-  body .fixed.top-0.bottom-0.left-0,
-  body .fixed.top-0.right-0.h-full,
-  body .fixed.top-0.left-0.h-full,
-  body .fixed.top-0.right-0.min-h-screen,
-  body .fixed.top-0.left-0.min-h-screen {
-    z-index: 201 !important;
+  body .fixed.top-0.bottom-0.right-0:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.top-0.bottom-0.right-0[class*="z-[5"],
+  body .fixed.top-0.bottom-0.right-0[class*="z-[6"],
+  body .fixed.top-0.bottom-0.right-0[class*="z-[7"],
+  body .fixed.top-0.bottom-0.right-0[class*="z-[8"],
+  body .fixed.top-0.bottom-0.left-0:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.top-0.bottom-0.left-0[class*="z-[5"],
+  body .fixed.top-0.bottom-0.left-0[class*="z-[6"],
+  body .fixed.top-0.bottom-0.left-0[class*="z-[7"],
+  body .fixed.top-0.bottom-0.left-0[class*="z-[8"],
+  body .fixed.top-0.right-0.h-full:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.top-0.right-0.h-full[class*="z-[5"],
+  body .fixed.top-0.right-0.h-full[class*="z-[6"],
+  body .fixed.top-0.right-0.h-full[class*="z-[7"],
+  body .fixed.top-0.right-0.h-full[class*="z-[8"],
+  body .fixed.top-0.left-0.h-full:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.top-0.left-0.h-full[class*="z-[5"],
+  body .fixed.top-0.left-0.h-full[class*="z-[6"],
+  body .fixed.top-0.left-0.h-full[class*="z-[7"],
+  body .fixed.top-0.left-0.h-full[class*="z-[8"],
+  body .fixed.top-0.right-0.min-h-screen:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.top-0.right-0.min-h-screen[class*="z-[5"],
+  body .fixed.top-0.right-0.min-h-screen[class*="z-[6"],
+  body .fixed.top-0.right-0.min-h-screen[class*="z-[7"],
+  body .fixed.top-0.right-0.min-h-screen[class*="z-[8"],
+  body .fixed.top-0.left-0.min-h-screen:is(.z-30,.z-40,.z-50,.z-60),
+  body .fixed.top-0.left-0.min-h-screen[class*="z-[5"],
+  body .fixed.top-0.left-0.min-h-screen[class*="z-[6"],
+  body .fixed.top-0.left-0.min-h-screen[class*="z-[7"],
+  body .fixed.top-0.left-0.min-h-screen[class*="z-[8"] {
+    z-index: 261 !important;
+  }
+  body section#hero .fixed.inset-0,
+  body #hero .fixed.inset-0 {
+    z-index: revert !important;
+  }
+  body section#hero .fixed.top-0.bottom-0.right-0,
+  body section#hero .fixed.top-0.bottom-0.left-0,
+  body section#hero .fixed.top-0.right-0.h-full,
+  body section#hero .fixed.top-0.left-0.h-full,
+  body section#hero .fixed.top-0.right-0.min-h-screen,
+  body section#hero .fixed.top-0.left-0.min-h-screen,
+  body #hero .fixed.top-0.bottom-0.right-0,
+  body #hero .fixed.top-0.bottom-0.left-0,
+  body #hero .fixed.top-0.right-0.h-full,
+  body #hero .fixed.top-0.left-0.h-full,
+  body #hero .fixed.top-0.right-0.min-h-screen,
+  body #hero .fixed.top-0.left-0.min-h-screen {
+    z-index: revert !important;
   }
 }`;
 
@@ -120,6 +187,62 @@ html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[a
 html[data-gentrix-studio-mobile="1"] header:has(button[aria-label*="enu"]) nav[aria-label="Hoofdmenu"] {
   display: none !important;
 }`;
+
+/**
+ * Alle `buildTailwindIframeSrcDoc`-previews: vaste header boven site-eigen `fixed` overlays (stacking-fix).
+ * Geen `display:none` op menuknoppen meer — te brede afstammingsselectors verbergden ook sluitknoppen **in**
+ * het open paneel (`header > div:first-of-type … button`), waardoor het menu open bleef en tikken “niets” deden.
+ */
+export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `html[data-gentrix-studio-iframe="1"] header {
+  z-index: 340 !important;
+}`;
+
+/**
+ * Na Alpine init: nav-toggles die per ongeluk op `true` starten → `false`. Veel templates zetten `x-data` op
+ * een wrapper **rond** header+menu; daarom elke `[x-data]` die een `<header>` bevat (niet in `<footer>`).
+ */
+function buildStudioHeaderNavAlpineClampScript(): string {
+  const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
+  return `<script defer>
+(function(){
+  var KEYS=[${keysLiteral}];
+  function readScope(el){
+    try{
+      if(window.Alpine&&typeof window.Alpine.$data==="function")return window.Alpine.$data(el);
+    }catch(_){}
+    return el._x_dataStack&&el._x_dataStack[0];
+  }
+  function clampOnce(){
+    try{
+      document.querySelectorAll("[x-data]").forEach(function(el){
+        if(el.closest("footer"))return;
+        var hasHeader=el.tagName==="HEADER"||(el.querySelector&&el.querySelector("header"));
+        if(!hasHeader)return;
+        var raw=el.getAttribute("x-data");
+        if(!raw)return;
+        var d=readScope(el);
+        if(!d)return;
+        for(var i=0;i<KEYS.length;i++){
+          var k=KEYS[i];
+          var re=new RegExp("\\\\b"+k+"\\\\s*:\\\\s*true\\\\b");
+          if(!re.test(raw))continue;
+          if(Object.prototype.hasOwnProperty.call(d,k)&&d[k]===true)d[k]=false;
+        }
+      });
+    }catch(_){}
+  }
+  function run(){
+    clampOnce();
+    setTimeout(clampOnce,60);
+    setTimeout(clampOnce,200);
+    setTimeout(clampOnce,400);
+    setTimeout(clampOnce,700);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+})();
+</script>`;
+}
 
 /**
  * CSS voor `data-animation` (fade-up, slide-in-*, scale-in).
@@ -921,6 +1044,15 @@ export function sanitizeTailwindFragment(html: string): string {
       "data-lucide",
       "data-studio-brand-mark",
       "data-studio-visibility",
+      /** Compose / nav / contrast — anders strip DOMPurify ze weg (`ALLOW_DATA_ATTR: false`). */
+      "data-studio-skip-nav-tone",
+      "data-studio-module",
+      "data-studio-module-link",
+      "data-studio-nav-module",
+      "data-studio-module-cta",
+      "data-studio-feature-zone",
+      /** Ankers / secties in client-HTML. */
+      "data-section",
       "name",
       "value",
       "placeholder",
@@ -1120,22 +1252,6 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
   window.addEventListener("resize",function(){measure();});
 })();
 </script>`;
-
-/** Debug: klikken in iframe → parent (TailwindSectionsPreview post naar ingest). */
-const STUDIO_PREVIEW_CLICK_DEBUG_SCRIPT = `<script>
-(function(){
-  var SRC="studio-tailwind-preview";
-  function post(msg){try{if(window.parent!==window)window.parent.postMessage(Object.assign({source:SRC},msg),"*");}catch(e){}}
-  document.addEventListener("click",function(e){
-    var t=e.target;
-    var hdr=t&&t.closest?t.closest("header"):null;
-    var btn=t&&t.closest?t.closest("button"):null;
-    var a=t&&t.closest?t.closest("a[href]"):null;
-    var html=document.documentElement;
-    post({type:"studio-debug-click",phase:"capture",tag:t?t.nodeName:"",inHeader:!!hdr,btnAria:btn?String(btn.getAttribute("aria-label")||"").slice(0,120):"",hasAnchor:!!a,x:e.clientX,y:e.clientY,dp:!!e.defaultPrevented,studioMobile:html&&html.hasAttribute("data-gentrix-studio-mobile")});
-  },true);
-})();
-<\/script>`;
 
 /**
  * Gegenereerde one-pagers gebruiken vaak `href="/diensten"` of **absolute** `https://host/site/slug#x`
@@ -1391,8 +1507,6 @@ export type BuildTailwindIframeSrcDocOptions = {
    * browservenster (`device-width`); uit bij Desktop-preview of brede auto (geen effect op live `/site`).
    */
   studioMobileEditorFrame?: boolean;
-  /** Tijdelijk: log klikken in preview-iframe (postMessage naar parent). */
-  studioPreviewClickDebug?: boolean;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -1490,11 +1604,11 @@ export function buildTailwindIframeSrcDoc(
 
   const studioMobileAttr = options?.studioMobileEditorFrame ? ` data-gentrix-studio-mobile="1"` : "";
   const studioMobileCss = options?.studioMobileEditorFrame ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n` : "";
-  const clickDebugBlock = options?.studioPreviewClickDebug ? STUDIO_PREVIEW_CLICK_DEBUG_SCRIPT : "";
+  const iframeShellAttr = ` data-gentrix-studio-iframe="1"`;
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   return `<!DOCTYPE html>
-<html lang="nl"${studioMobileAttr}>
+<html lang="nl"${iframeShellAttr}${studioMobileAttr}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
@@ -1510,19 +1624,20 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${animationCss}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
+    ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>
 <body class="antialiased text-slate-900${radiusClass}">
 ${twLoadingScript}${body}
 ${tailwindCdnScripts}<script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
+${buildStudioHeaderNavAlpineClampScript()}
 ${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
 ${buildLucideRuntimeScriptBlock()}
 ${bridge}
-${clickDebugBlock}
 ${userJsBlock}
 </body>
 </html>`;

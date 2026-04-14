@@ -27,9 +27,6 @@ function getStudioPreviewDesktopSnapshot(): boolean {
 
 export { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 
-/** Agent-debug: iframe klikken → NDJSON ingest (alleen development). */
-const ENABLE_STUDIO_PREVIEW_CLICK_DEBUG = process.env.NODE_ENV === "development";
-
 type TailwindSectionsPreviewProps = {
   sections: TailwindSection[];
   pageConfig?: TailwindPageConfig | null;
@@ -67,6 +64,8 @@ type TailwindSectionsPreviewProps = {
    * - `desktop`: brede layout ongeacht paneelbreedte.
    */
   viewportMode?: "auto" | "mobile" | "desktop";
+  /** Server-build Tailwind CSS: gezet → geen Play CDN in srcDoc (minder console-warnings bij remount). */
+  compiledTailwindCss?: string | null;
 };
 
 export function TailwindSectionsPreview({
@@ -88,10 +87,10 @@ export function TailwindSectionsPreview({
   webshopEnabled = true,
   composePlan = null,
   viewportMode = "auto",
+  compiledTailwindCss,
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastSrcDocMotionLogSigRef = useRef("");
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const [panelClipPx, setPanelClipPx] = useState<number | null>(null);
 
@@ -134,7 +133,7 @@ export function TailwindSectionsPreview({
         webshopEnabled,
         previewMatchParentWindowBreakpoints,
         studioMobileEditorFrame,
-        studioPreviewClickDebug: ENABLE_STUDIO_PREVIEW_CLICK_DEBUG,
+        compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
       }),
     [
       previewSections,
@@ -149,41 +148,9 @@ export function TailwindSectionsPreview({
       webshopEnabled,
       previewMatchParentWindowBreakpoints,
       studioMobileEditorFrame,
+      compiledTailwindCss,
     ],
   );
-
-  // #region agent log
-  useEffect(() => {
-    const da = (srcDoc.match(/data-animation="/g) ?? []).length;
-    const aos = (srcDoc.match(/data-aos="/g) ?? []).length;
-    const hasRevealScript = srcDoc.includes('querySelectorAll("[data-animation]"');
-    const reduced =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
-    const sig = `prev:${da}:${aos}:${hasRevealScript}:${reduced}:${srcDoc.length}`;
-    if (lastSrcDocMotionLogSigRef.current === sig) return;
-    lastSrcDocMotionLogSigRef.current = sig;
-    void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "06cb80" },
-      body: JSON.stringify({
-        sessionId: "06cb80",
-        runId: "post-fix",
-        hypothesisId: "H1-H4-H5",
-        location: "tailwind-sections-preview.tsx:srcDoc",
-        message: "preview iframe srcdoc motion signals",
-        data: {
-          dataAnimationAttrCount: da,
-          dataAosAttrCount: aos,
-          hasRevealScript,
-          prefersReducedMotion: reduced,
-          srcDocLen: srcDoc.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, [srcDoc]);
-  // #endregion
 
   useEffect(() => {
     queueMicrotask(() => setMeasuredHeight(null));
@@ -221,64 +188,6 @@ export function TailwindSectionsPreview({
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [previewPostMessageBridge, autoResizeFromPostMessage, maxMeasuredHeight, srcDoc]);
-
-  // #region agent log
-  useEffect(() => {
-    if (!previewPostMessageBridge || !ENABLE_STUDIO_PREVIEW_CLICK_DEBUG) return;
-    const onMsg = (event: MessageEvent) => {
-      if (event.source !== iframeRef.current?.contentWindow) return;
-      const d = event.data as Record<string, unknown> | null;
-      if (!d || d.source !== "studio-tailwind-preview" || d.type !== "studio-debug-click") return;
-      void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c94dd3" },
-        body: JSON.stringify({
-          sessionId: "c94dd3",
-          hypothesisId: "H2-H4",
-          location: "tailwind-sections-preview.tsx:iframe-click",
-          message: "iframe studio-debug-click",
-          data: d,
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, [previewPostMessageBridge, srcDoc]);
-  // #endregion
-
-  // #region agent log
-  useEffect(() => {
-    if (!ENABLE_STUDIO_PREVIEW_CLICK_DEBUG) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const onPd = (e: PointerEvent) => {
-      const top = document.elementFromPoint(e.clientX, e.clientY);
-      const ifr = iframeRef.current;
-      const hitIframe = !!(ifr && top && (top === ifr || ifr.contains(top as Node)));
-      void fetch("http://127.0.0.1:7380/ingest/00ec8e83-ff50-4a98-8102-2ae76b9c5e1c", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c94dd3" },
-        body: JSON.stringify({
-          sessionId: "c94dd3",
-          hypothesisId: "H1",
-          location: "tailwind-sections-preview.tsx:pointerdown",
-          message: "preview container elementFromPoint",
-          data: {
-            topTag: top?.nodeName,
-            topClass: top && "className" in top ? String((top as HTMLElement).className).slice(0, 120) : "",
-            hitIframe,
-            viewportMode,
-            studioMobileEditorFrame,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    };
-    el.addEventListener("pointerdown", onPd, true);
-    return () => el.removeEventListener("pointerdown", onPd, true);
-  }, [srcDoc, viewportMode, studioMobileEditorFrame]);
-  // #endregion
 
   const autoResizeHeightPx =
     autoResizeFromPostMessage && measuredHeight != null

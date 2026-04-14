@@ -63,6 +63,8 @@ type SiteHtmlEditorProps = {
   initialSiteIr?: SiteIrV1 | null;
   /** Alleen concept: iframe-nav zet `?token=` op `/site/…`-links (zelfde als publieke concept-URL). */
   draftPublicPreviewToken?: string | null;
+  /** Gecompileerde Tailwind uit snapshot — preview zonder Play CDN als aanwezig. */
+  initialTailwindCompiledCss?: string | null;
 };
 
 export function SiteHtmlEditor({
@@ -80,6 +82,7 @@ export function SiteHtmlEditor({
   webshopEnabled = true,
   initialSiteIr = null,
   draftPublicPreviewToken = null,
+  initialTailwindCompiledCss = null,
 }: SiteHtmlEditorProps) {
   const [hist, dispatch] = useReducer(
     siteHistoryReducer,
@@ -573,8 +576,15 @@ export function SiteHtmlEditor({
       )}
       </div>
 
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          previewFullscreen &&
+            "fixed inset-0 z-[1000] gap-0 overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
+        )}
+      >
       <ResizableEditorPanels
-        className="flex-1 min-h-0"
+        className={cn("min-h-0 flex-1", previewFullscreen && "min-h-0 overflow-hidden")}
         defaultSidebarPx={400}
         minSidebarPx={280}
         maxSidebarPx={560}
@@ -609,8 +619,7 @@ export function SiteHtmlEditor({
             <div
               className={cn(
                 "flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 lg:min-h-[200px]",
-                previewFullscreen &&
-                  "fixed inset-0 z-[1000] m-0 min-h-0 rounded-none border-0 bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3",
+                previewFullscreen && "lg:min-h-0",
               )}
             >
               <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
@@ -713,6 +722,7 @@ export function SiteHtmlEditor({
                   webshopEnabled={webshopEnabled}
                   composePlan={composePlan}
                   viewportMode={previewViewportMode}
+                  compiledTailwindCss={initialTailwindCompiledCss}
                   title={`Preview ${subfolderSlug}`}
                   className="h-full min-h-0 w-full rounded-none border-0 bg-white"
                   frameClassName="h-full min-h-[280px] w-full"
@@ -725,6 +735,7 @@ export function SiteHtmlEditor({
           </div>
         }
       />
+      </div>
     </div>
   );
 }
