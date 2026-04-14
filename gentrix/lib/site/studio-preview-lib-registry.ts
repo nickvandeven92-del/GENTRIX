@@ -37,6 +37,24 @@ export function isStudioPreviewLibName(name: string): boolean {
   return Object.prototype.hasOwnProperty.call(STUDIO_PREVIEW_LIB_UPSTREAM, name);
 }
 
+const STUDIO_PREVIEW_LIB_PATH = "/api/public/studio-preview-lib";
+
+/**
+ * `crossorigin="anonymous"` + sandbox-iframe (document `origin` = `null`) ⇒ browser eist CORS op de
+ * script/link-response. Zonder strippen falen GSAP/AOS (en soms de hele laadpipeline) → Alpine/menu werkt nergens.
+ */
+export function stripCrossoriginOnStudioPreviewLibTags(html: string): string {
+  return html.replace(
+    /<(script|link)\b([^>]*\/api\/public\/studio-preview-lib[^>]*)>/gi,
+    (_full, tag: string, attrs: string) => {
+      const cleaned = attrs
+        .replace(/\s+crossorigin\s*=\s*"anonymous"/gi, "")
+        .replace(/\s+crossorigin\s*=\s*'anonymous'/gi, "");
+      return `<${tag}${cleaned}>`;
+    },
+  );
+}
+
 /** Vervangt bekende CDN-URL’s in volledige srcDoc-HTML door `/api/public/studio-preview-lib?…` op `origin`. */
 export function rewriteStudioPreviewExternalScripts(html: string, origin: string): string {
   const o = origin.trim().replace(/\/$/, "");
@@ -46,8 +64,9 @@ export function rewriteStudioPreviewExternalScripts(html: string, origin: string
   let out = html;
   for (const [name, url] of entries) {
     if (!url || !out.includes(url)) continue;
-    const proxy = `${o}/api/public/studio-preview-lib?name=${encodeURIComponent(name)}`;
+    const proxy = `${o}${STUDIO_PREVIEW_LIB_PATH}?name=${encodeURIComponent(name)}`;
     out = out.split(url).join(proxy);
   }
+  out = stripCrossoriginOnStudioPreviewLibTags(out);
   return out;
 }
