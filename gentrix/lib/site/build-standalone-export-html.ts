@@ -37,6 +37,7 @@ import {
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import {
   buildStudioAutoMobileNavHeaderHtml,
+  extractHeaderNavLinks,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
@@ -106,10 +107,16 @@ export function buildStandaloneExportHtmlDocument(
     sectionSource.length > 0 &&
     shouldInjectStudioAutoMobileNav(bodyInner)
   ) {
-    bodyInner = `${buildStudioAutoMobileNavHeaderHtml(sectionSource, pageConfig ?? null, {
-      logoSet: userAssets?.logoSet,
-      navBrandLabel: docTitle.trim() || null,
-    })}\n${bodyInner}`;
+    const existingHeaderLinks = extractHeaderNavLinks(bodyInner);
+    bodyInner = `${buildStudioAutoMobileNavHeaderHtml(
+      sectionSource,
+      pageConfig ?? null,
+      {
+        logoSet: userAssets?.logoSet,
+        navBrandLabel: docTitle.trim() || null,
+      },
+      existingHeaderLinks,
+    )}\n${bodyInner}`;
     studioAutoMobileNavInjected = true;
   }
 

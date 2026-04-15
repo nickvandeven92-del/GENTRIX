@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import {
   buildStudioAutoMobileNavHeaderHtml,
+  extractHeaderNavLinks,
   headerAppearsDesigned,
   headerHasWiredAlpineMobileMenuToggle,
   shouldInjectStudioAutoMobileNav,
@@ -114,6 +115,22 @@ describe("shouldInjectStudioAutoMobileNav", () => {
   });
 });
 
+describe("extractHeaderNavLinks", () => {
+  it("haalt nav-links uit het eerste header-nav", () => {
+    const html = `
+<header>
+  <nav aria-label="Hoofdmenu">
+    <a href="#diensten">Diensten</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+</header>`;
+    expect(extractHeaderNavLinks(html)).toEqual([
+      { href: "#diensten", label: "Diensten" },
+      { href: "#faq", label: "FAQ" },
+    ]);
+  });
+});
+
 describe("buildStudioAutoMobileNavHeaderHtml merk", () => {
   const masterConfig = {
     style: "Dark-first, filmisch en brutaal editorial. Full-bleed hero.",
@@ -132,5 +149,21 @@ describe("buildStudioAutoMobileNavHeaderHtml merk", () => {
     const html = buildStudioAutoMobileNavHeaderHtml([], masterConfig, null);
     expect(html).toContain(">Website<");
     expect(html).not.toContain("Dark-first");
+  });
+
+  it("gebruikt bestaande header-links in de mobiele injectie", () => {
+    const html = buildStudioAutoMobileNavHeaderHtml(
+      [],
+      masterConfig,
+      { navBrandLabel: "Gentrix" },
+      [
+        { href: "#diensten", label: "Diensten" },
+        { href: "#faq", label: "FAQ" },
+      ],
+    );
+    expect(html).toContain('href="#diensten"');
+    expect(html).toContain('Diensten');
+    expect(html).toContain('href="#faq"');
+    expect(html).toContain('FAQ');
   });
 });

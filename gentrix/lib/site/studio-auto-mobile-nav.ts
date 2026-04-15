@@ -89,6 +89,35 @@ function escapeHtmlText(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function extractHeaderNavLinks(bodyInnerHtml: string): { href: string; label: string }[] {
+  const headerMatch = bodyInnerHtml.match(/<header\b[^>]*>[\s\S]*?<\/header>/i);
+  const headerHtml = headerMatch?.[0] ?? bodyInnerHtml;
+  const navMatch = headerHtml.match(/<nav\b[^>]*>[\s\S]*?<\/nav>/i);
+  const navHtml = navMatch?.[0] ?? headerHtml;
+  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+  const out: { href: string; label: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = anchorRe.exec(navHtml)) !== null) {
+    const attrs = m[1];
+    const href = attrs.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1]?.trim();
+    if (!href) continue;
+    if (/^javascript:/i.test(href)) continue;
+    const label = stripHtmlTags(m[2]);
+    if (!label) continue;
+    out.push({ href, label });
+  }
+  return out;
+}
+
 /** Zelfde normalisatie als `buildStudioSinglePageInternalNavScript` (`slugifyNavKey`) voor `#hash`-links. */
 function studioNavHashFromSectionName(name: string): string {
   return name
@@ -259,20 +288,24 @@ export function buildStudioAutoMobileNavHeaderHtml(
   sections: TailwindSection[],
   pageConfig?: TailwindPageConfig | null,
   brandOpts?: StudioAutoMobileNavBrandOptions | null,
+  existingNavLinks?: { href: string; label: string }[] | null,
 ): string {
   const brandBlock = buildAutoNavBrandBlock(pageConfig ?? null, brandOpts ?? null);
-  const items = sections
-    .map((s) => {
-      const hash = studioNavHashFromSectionName(s.sectionName);
-      if (!hash) return null;
-      const label = escapeHtmlText(s.sectionName.trim().slice(0, 48) || hash);
-      return { href: `#${hash}`, label };
-    })
-    .filter((x): x is { href: string; label: string } => x != null);
+  const sourceLinks =
+    existingNavLinks && existingNavLinks.length > 0
+      ? existingNavLinks.map((link) => ({ href: link.href, label: escapeHtmlText(link.label.trim().slice(0, 48) || link.href) }))
+      : sections
+          .map((s) => {
+            const hash = studioNavHashFromSectionName(s.sectionName);
+            if (!hash) return null;
+            const label = escapeHtmlText(s.sectionName.trim().slice(0, 48) || hash);
+            return { href: `#${hash}`, label };
+          })
+          .filter((x): x is { href: string; label: string } => x != null);
 
   const unique: { href: string; label: string }[] = [];
   const seen = new Set<string>();
-  for (const it of items) {
+  for (const it of sourceLinks) {
     if (seen.has(it.href)) continue;
     seen.add(it.href);
     unique.push(it);

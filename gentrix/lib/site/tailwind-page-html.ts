@@ -31,6 +31,7 @@ import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-l
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import {
   buildStudioAutoMobileNavHeaderHtml,
+  extractHeaderNavLinks,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
@@ -1749,10 +1750,16 @@ export function buildTailwindIframeSrcDoc(
   });
   let studioAutoMobileNavInjected = false;
   if (sections.length > 0 && shouldInjectStudioAutoMobileNav(body)) {
-    body = `${buildStudioAutoMobileNavHeaderHtml(sections, pageConfig ?? null, {
-      logoSet: options?.logoSet,
-      navBrandLabel: options?.navBrandLabel?.trim() || null,
-    })}\n${body}`;
+    const existingHeaderLinks = extractHeaderNavLinks(body);
+    body = `${buildStudioAutoMobileNavHeaderHtml(
+      sections,
+      pageConfig ?? null,
+      {
+        logoSet: options?.logoSet,
+        navBrandLabel: options?.navBrandLabel?.trim() || null,
+      },
+      existingHeaderLinks,
+    )}\n${body}`;
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();
