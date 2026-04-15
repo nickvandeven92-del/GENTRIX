@@ -65,17 +65,18 @@ export function headerAppearsDesigned(scanSlice: string): boolean {
   const openM = w.match(/^<header\b[^>]{0,4000}>/i);
   const openTag = openM?.[0] ?? "";
   if (
-    /backdrop-blur|bg-gradient|\bfrom-\w+|via-\w+|\bto-\w+|shadow-(2xl|xl|lg)|ring-1|border-white\/|border-zinc\/|bg-slate-950\/|bg-black\/|mix-blend-/i.test(
+    /backdrop-blur|bg-gradient|\bfrom-\w+|via-\w+|\bto-\w+|shadow-(2xl|xl|lg)|\b(shadow-sm|shadow-md|shadow-lg|shadow-xl)\b|ring-1|border-b|border-white\/|border-zinc\/|bg-slate-950\/|bg-black\/|mix-blend-/i.test(
       w,
     )
   ) {
     return true;
   }
-  if (openTag.length >= 140) return true;
+  if (openTag.length >= 130) return true;
   if (/<img\b/i.test(w)) return true;
+  if (/<svg\b/i.test(w) || /\bdata-lucide\s*=/i.test(w)) return true;
   const hrefLinks = w.match(/<a\b[^>]*\bhref\s*=/gi) ?? [];
-  if (hrefLinks.length >= 3) return true;
-  if (/<nav\b/i.test(w) && hrefLinks.length >= 2 && /\b(lg|xl):flex\b/i.test(w)) return true;
+  if (hrefLinks.length >= 2) return true;
+  if (/<nav\b/i.test(w) && hrefLinks.length >= 1 && /\b(lg|xl):flex\b/i.test(w)) return true;
   return false;
 }
 
@@ -128,24 +129,42 @@ function studioNavHashFromSectionName(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-const MOBILE_TOGGLE_INDICATOR_RE = /<button\b[^>]*\b(?:class\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b[^"']*["']|aria-label\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)[^"']*["'])/i;
-const MOBILE_MENU_NAV_RE = /<nav\b[^>]*\baria-label\s*=\s*["'][^"']*(?:Mobiel menu|Mobile menu)[^"']*["'][^>]*>/i;
-const MOBILE_SHEET_INDICATOR_RE = /<(?:nav|div)\b[^>]*\b(?:x-show\b|x-cloak\b|aria-label\s*=\s*["'](?:Mobiel menu|Mobile menu)["']|class\s*=\s*["'][^"']*\blg:hidden\b[^"']*["'])/i;
+/** Eerste site-`<header>` (meestal hero-nav); beperkte lengte i.v.m. performance. */
+function sliceFirstHeaderHtml(bodyInnerHtml: string): string {
+  const idx = bodyInnerHtml.search(/<header\b/i);
+  if (idx < 0) return "";
+  return bodyInnerHtml.slice(idx, Math.min(bodyInnerHtml.length, idx + 32_000));
+}
 
+/**
+ * Vaste top-nav zonder `<header>` (div/role=banner) — niet overschrijven met de utilitaire balk.
+ */
+function bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml: string): boolean {
+  const probe = bodyInnerHtml.slice(0, 14_000);
+  if (/\brole\s*=\s*["']banner["']/i.test(probe)) return true;
+  const navIdx = probe.search(/<nav\b/i);
+  if (navIdx < 0 || navIdx > 7_000) return false;
+  const beforeNav = probe.slice(0, navIdx);
+  return /\b(fixed|sticky)\b/i.test(beforeNav) && /\btop-0\b/i.test(beforeNav);
+}
+
+/**
+ * `true` = utilitaire auto-navbar **injecteren** (alleen bij gebrek aan bruikbare bestaande top-nav).
+ *
+ * Beleid: zodra er al een vaste/sticky `<header>` is met echte `href`-links, of de header er “designed”
+ * uitziet, of er vroeg in de body al een vaste top-`<nav>` staat, **niet** injecteren — anders verdwijnt
+ * de AI-layout achter duplicate-CSS en blijft alleen de zwarte fallback-balk over.
+ */
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
-  const idx = bodyInnerHtml.search(/<header\b/i);
-  if (idx < 0) return true;
-  /* x-data kan op een wrapper staan die niet vlak voor <header> staat; scan daarom de hele body. */
-  const scanSlice = bodyInnerHtml;
-  if (headerHasWiredAlpineMobileMenuToggle(scanSlice)) return false;
-  const headerLooksDesigned = headerAppearsDesigned(scanSlice);
-  const headerContainsMobileToggleIndicator =
-    MOBILE_TOGGLE_INDICATOR_RE.test(scanSlice) || MOBILE_MENU_NAV_RE.test(scanSlice);
-  const headerContainsMobileSheet = MOBILE_SHEET_INDICATOR_RE.test(scanSlice);
-  if (headerLooksDesigned && headerContainsMobileSheet) return false;
-  const headerAppearsDesignedButBrokenMobileToggle = headerLooksDesigned && headerContainsMobileToggleIndicator;
-  if (headerLooksDesigned && !headerAppearsDesignedButBrokenMobileToggle) return false;
+  const win = sliceFirstHeaderHtml(bodyInnerHtml);
+  if (!win) {
+    return !bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml);
+  }
+  if (headerHasWiredAlpineMobileMenuToggle(bodyInnerHtml)) return false;
+  if (headerAppearsDesigned(bodyInnerHtml)) return false;
+  const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
+  if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1) return false;
   return true;
 }
 
