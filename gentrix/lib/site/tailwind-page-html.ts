@@ -304,6 +304,14 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
   html[data-gentrix-studio-iframe="1"] [role="banner"] > aside[class*="fixed"][class*="lg:hidden"] {
     display: none !important;
   }
+  /*
+   * Sheet vaak **sibling** van `<header>` onder `section.w-full` (niet `header > div`) — zelfde x-show/inline-issue.
+   */
+  html[data-gentrix-studio-iframe="1"] section.w-full > div[class*="fixed"][class*="lg:hidden"],
+  html[data-gentrix-studio-iframe="1"] section.w-full > aside[class*="fixed"][class*="lg:hidden"],
+  html[data-gentrix-studio-iframe="1"] section[class*="w-full"] > div[class*="fixed"][class*="inset"][class*="lg:hidden"] {
+    display: none !important;
+  }
 }
 @media (min-width: 1280px) {
   html[data-gentrix-studio-iframe="1"] .xl\\:hidden {
@@ -1779,11 +1787,46 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
       root.querySelector('button[aria-label*="menu"]')
     );
   }
+  function panelXShowOutsideHeader(sec,hdr){
+    if(!sec||!sec.querySelector||!hdr)return false;
+    var nodes=sec.querySelectorAll("[x-show]");
+    var i,n;
+    for(i=0;i<nodes.length;i++){
+      n=nodes[i];
+      if(n&&!hdr.contains(n))return true;
+    }
+    return false;
+  }
+  /** x-show op sheet **naast** header: zelfde scope moet op section, niet alleen op header. */
+  function repairSectionNavScope(Alp){
+    var secs=document.querySelectorAll("section.w-full,section[class*='w-full']");
+    var si,sec,hdr,btn,ck,m,key,allow;
+    allow={navOpen:1,menuOpen:1,open:1,mobileOpen:1,drawerOpen:1,menuVisible:1,mobileMenuOpen:1};
+    for(si=0;si<secs.length;si++){
+      sec=secs[si];
+      if(!sec||sec.getAttribute("data-gentrix-auto-mobile-nav")==="1")continue;
+      if(sec.getAttribute("x-data"))continue;
+      hdr=sec.querySelector("header");
+      if(!hdr)continue;
+      btn=findMobileMenuBtn(hdr);
+      if(!btn)continue;
+      if(btn.closest("[x-data]"))continue;
+      if(!panelXShowOutsideHeader(sec,hdr))continue;
+      ck=(btn.getAttribute("@click")||btn.getAttribute("x-on:click")||"").trim();
+      if(!ck)continue;
+      m=/^\\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*=/.exec(ck);
+      key=m?m[1]:"navOpen";
+      if(!allow[key])key="navOpen";
+      sec.setAttribute("x-data","{ "+key+": false }");
+      Alp.initTree(sec);
+    }
+  }
   function repairRoot(h,Alp){
     if(!h||h.getAttribute("data-gentrix-auto-mobile-nav")==="1")return false;
     if(h.getAttribute("x-data"))return false;
     var btn=findMobileMenuBtn(h);
     if(!btn)return false;
+    if(btn.closest("[x-data]"))return false;
     var ck=(btn.getAttribute("@click")||btn.getAttribute("x-on:click")||"").trim();
     if(!ck)return false;
     var m=/^\\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*=/.exec(ck);
@@ -1798,6 +1841,7 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
     try{
       var Alp=window.Alpine;
       if(!Alp||typeof Alp.initTree!=="function")return;
+      repairSectionNavScope(Alp);
       var roots=document.querySelectorAll("header,[role='banner']");
       var i;
       for(i=0;i<roots.length;i++)repairRoot(roots[i],Alp);
@@ -1809,7 +1853,11 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
       }
     }catch(e){try{console.warn("[gentrix-nav-repair]",e);}catch(_){}}
   }
-  document.addEventListener("alpine:initialized",function(){queueMicrotask(repair);});
+  document.addEventListener("alpine:initialized",function(){
+    queueMicrotask(repair);
+    setTimeout(repair,140);
+    setTimeout(repair,420);
+  });
 })();
 <\/script>`;
 }
@@ -1826,6 +1874,21 @@ function buildStudioIframeNavResetOnDesktopViewportScript(): string {
   if(document.documentElement.getAttribute("data-gentrix-studio-iframe")!=="1")return;
   var mq=window.matchMedia("(min-width:1024px)");
   var KEYS=[${keysLiteral}];
+  function sectionHasMobileHeaderNav(sec){
+    if(!sec||sec.tagName!=="SECTION"||!sec.querySelector)return false;
+    var cls=(sec.className&&String(sec.className))||"";
+    if(cls.indexOf("w-full")<0)return false;
+    var hdr=sec.querySelector("header");
+    if(!hdr)return false;
+    return !!(
+      hdr.querySelector('button[class*="sm:hidden"]')||
+      hdr.querySelector('button[class*="md:hidden"]')||
+      hdr.querySelector('button[class*="lg:hidden"]')||
+      hdr.querySelector('button[aria-label*="enu"]')||
+      hdr.querySelector('button[aria-label*="Menu"]')||
+      hdr.querySelector('button[aria-label*="menu"]')
+    );
+  }
   function isNavChrome(el){
     if(!el||el.closest("footer"))return false;
     if(el.tagName==="HEADER")return true;
@@ -1834,6 +1897,7 @@ function buildStudioIframeNavResetOnDesktopViewportScript(): string {
       var c=(el.className&&String(el.className))||"";
       if(c.indexOf("fixed")>=0&&c.indexOf("top-0")>=0)return true;
     }
+    if(el.tagName==="SECTION"&&sectionHasMobileHeaderNav(el))return true;
     return false;
   }
   function extraNavBoolKey(k){
