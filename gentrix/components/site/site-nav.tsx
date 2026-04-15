@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import type { GeneratedSite, SiteNavigation } from "@/lib/ai/generated-site-schema";
 import { SiteRemoteImage } from "@/components/site/site-remote-image";
@@ -21,6 +21,34 @@ function defaultNav(site: GeneratedSite): SiteNavigation {
 export function SiteNav({ site }: { site: GeneratedSite }) {
   const [open, setOpen] = useState(false);
   const nav = site.navigation ?? defaultNav(site);
+
+  // Close menu when viewport size changes (md breakpoint at 768px)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const handleChange = () => {
+      if (mq.matches) {
+        setOpen(false);
+      }
+    };
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, []);
+
+  // Close menu when user scrolls
+  useEffect(() => {
+    let scrollTimeout: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setOpen(false);
+      }, 100);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--site-fg)]/12 bg-[var(--site-bg)]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--site-bg)]/88">

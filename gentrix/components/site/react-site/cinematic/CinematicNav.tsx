@@ -127,6 +127,22 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
     setMobileOpen(false);
   }, [lgUp, section]);
 
+  // Close menu when user scrolls (handles internal navigation in single-page sites)
+  useEffect(() => {
+    let scrollTimeout: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setMobileOpen(false);
+      }, 100);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
+
   const mobileLinkWrap = (node: ReactNode, drawerTone: "light" | "dark") => (
     <div
       className={cn(
