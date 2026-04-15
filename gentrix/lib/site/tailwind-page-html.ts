@@ -248,7 +248,7 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
     display: none !important;
   }
   /*
-   * Alpine `x-show` wint soms van `lg:hidden` op een ander element dan waar de utility zit;
+   * Alpine \`x-show\` wint soms van \`lg:hidden\` op een ander element dan waar de utility zit;
    * expliciet het mobiele menu verbergen op desktop-preview (≥1024 in iframe).
    */
   html[data-gentrix-studio-iframe="1"] nav[aria-label="Mobiel menu"],
