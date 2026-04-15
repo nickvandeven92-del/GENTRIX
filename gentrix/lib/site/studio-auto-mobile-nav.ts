@@ -152,6 +152,21 @@ section > header > div.fixed.inset-0,
 section > header [class*="fixed"][class*="inset-0"] {
   display: none !important;
 }
+
+/* Zorg dat het mobiel sheet menu van de auto-navbar GESLOTEN blijft (niet zichtbaar bij load) */
+#gentrix-site-mobile-sheet {
+  display: none !important;
+}
+
+/* Desktop (lg+): zorg dat het menu volledig verborgen is */
+@media (min-width: 1024px) {
+  #gentrix-site-mobile-sheet,
+  #gentrix-auto-site-header [class*="lg:hidden"],
+  #gentrix-auto-site-header button.lg\\:hidden,
+  #gentrix-auto-site-header button[class*="lg:hidden"] {
+    display: none !important;
+  }
+}
 `;
 
 function defaultBrandLabel(pageConfig: TailwindPageConfig | null | undefined): string {
