@@ -242,24 +242,12 @@ header[data-gentrix-auto-mobile-nav="1"] #gentrix-site-mobile-sheet a[class*="bg
 }`;
 
 /**
- * CSS die ALTIJD geladen wordt voor gegenereerde sites - verbergt ALLEEN gegenereerde sidebars
- * ONAFHANKELIJK van of de auto-navbar wordt geïnjecteerd
+ * Was: `display:none!important` op `section > header` fixed/inset-lagen om oude AI-sidebars te verbergen.
+ * Dat brak **alle** mobiele menu’s: niet alleen tegen Alpine `x-show`, ook tegen `:class` / `hidden`, en
+ * elke selector was te breed. Bewust leeg — gebruik auto-nav (`shouldInjectStudioAutoMobileNav`) of
+ * editor-self-review i.p.v. globale header-CSS.
  */
-export const STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS = `
-/*
- * Verberg oude AI-artefacten (rechter-sidebar, losse overlay) in section-headers.
- * :not([x-show]) is verplicht: anders wint display:none!important altijd van Alpine x-show (inline,
- * geen important) — mobiel menu opent nooit en lijkt de hamburger dood.
- */
-#hero > header > div.fixed.top-0.right-0:not([x-show]),
-section > header > div.fixed.top-0.right-0:not([x-show]),
-#hero > header > div.fixed.inset-0:not([x-show]),
-section > header > div.fixed.inset-0:not([x-show]),
-#hero > header [class*="fixed"][class*="inset-0"]:not([x-show]),
-section > header [class*="fixed"][class*="inset-0"]:not([x-show]) {
-  display: none !important;
-}
-`;
+export const STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS = "";
 
 const NAV_BRAND_TEXT_MAX = 48;
 

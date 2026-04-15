@@ -435,12 +435,13 @@ export function buildStudioHeaderNavAlpineClampScript(): string {
     setTimeout(function(){clampOnce(false);},200);
     setTimeout(function(){clampOnce(false);},400);
     setTimeout(function(){clampOnce(false);},700);
-    setTimeout(function(){clampOnce(true);clampOnce(false);},1200);
+    /* Geen aggressive meer op 1200ms: dat zette een door de gebruiker geopend menu weer op false. */
+    setTimeout(function(){clampOnce(false);},1200);
   }
   function runAfterLoad(){
     clampOnce(true);
     clampOnce(false);
-    setTimeout(function(){clampOnce(true);clampOnce(false);},40);
+    setTimeout(function(){clampOnce(false);},40);
   }
   document.addEventListener("keydown",function(e){
     if(e.key!=="Escape")return;
@@ -1953,15 +1954,13 @@ ${aosHeadLink}</head>
 ${twLoadingScript}${body}
 ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
 (function(){
-  function clampNav(){
-    try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
-  }
-  document.addEventListener("alpine:init",function(){
-    queueMicrotask(clampNav);
-  });
   document.addEventListener("alpine:initialized",function(){
-    queueMicrotask(clampNav);
-    setTimeout(clampNav,0);
+    queueMicrotask(function(){
+      try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
+    });
+    setTimeout(function(){
+      try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(false);}catch(_){}
+    },0);
   });
 })();
 </script>

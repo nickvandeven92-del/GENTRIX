@@ -188,15 +188,13 @@ ${STUDIO_SCROLL_REVEAL_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${lucideBlock}<script>
 (function(){
-  function clampNav(){
-    try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
-  }
-  document.addEventListener("alpine:init",function(){
-    queueMicrotask(clampNav);
-  });
   document.addEventListener("alpine:initialized",function(){
-    queueMicrotask(clampNav);
-    setTimeout(clampNav,0);
+    queueMicrotask(function(){
+      try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
+    });
+    setTimeout(function(){
+      try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(false);}catch(_){}
+    },0);
   });
 })();
 </script>
