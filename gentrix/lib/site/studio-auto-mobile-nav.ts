@@ -76,9 +76,29 @@ body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
   display: none !important;
 }
 
-/* Verberg ALLE headers en navs in ALLE gegenereerde secties - niet de auto-geïnjecteerde */
+/* Verberg de rechterkant navbars - fixed positioning right-0 */
+div.fixed.top-0.right-0,
+div[class*="fixed"][class*="top-0"][class*="right-0"],
+/* Alle fixed els met lage/hoge width aan rechterkant */
+div[class*="fixed"][class*="right-0"][class*="w-"],
+/* Sidebar-achtige divs */
+div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
+div[class*="fixed"][class*="right-0"][class*="z-"],
+/* Alpine-based mobiele menu drawers */
+div[class*="fixed"][x-show],
+/* Alles in secties dat fixed/sticky is */
+section div[class*="fixed"],
+section div[class*="sticky"] {
+  display: none !important;
+}
+
+/* Verberg ALLE gegenereerde navbars */
 section header,
-section nav {
+section nav,
+body > header:not([${AUTO_NAV_ATTR}]),
+body > nav,
+nav[aria-label*="enu"],
+nav[aria-label*="Menu"] {
   display: none !important;
 }
 
