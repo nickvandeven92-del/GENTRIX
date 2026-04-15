@@ -122,6 +122,10 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [resolveHref]);
+
   const mobileLinkWrap = (node: ReactNode, drawerTone: "light" | "dark") => (
     <div
       className={cn(
