@@ -144,7 +144,12 @@ header[data-gentrix-auto-mobile-nav="1"] #gentrix-site-mobile-sheet a[class*="bg
 export const STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS = `
 /* Verberg ENKEL de rechterkant sidebar in gegenereerde sections */
 #hero > header > div.fixed.top-0.right-0,
-section > header > div.fixed.top-0.right-0 {
+section > header > div.fixed.top-0.right-0,
+/* Verberg ook de donkere backdrop/overlay achter het menu */
+#hero > header > div.fixed.inset-0,
+section > header > div.fixed.inset-0,
+#hero > header [class*="fixed"][class*="inset-0"],
+section > header [class*="fixed"][class*="inset-0"] {
   display: none !important;
 }
 `;
