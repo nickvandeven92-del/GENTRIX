@@ -34,6 +34,7 @@ import {
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
+  STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS,
 } from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
@@ -1845,6 +1846,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
+    ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>

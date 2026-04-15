@@ -137,6 +137,36 @@ header[data-gentrix-auto-mobile-nav="1"] #gentrix-site-mobile-sheet a[class*="bg
   color: rgb(15 23 42) !important;
 }`;
 
+/**
+ * CSS die ALTIJD geladen wordt voor gegenereerde sites - verbergt alle gegenereerde navs/sidebars
+ * ONAFHANKELIJK van of de auto-navbar wordt geïnjecteerd
+ */
+export const STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS = `
+/* KRITISCH: Verberg de rechterkant navbar/sidebar - exact selector */
+header.fixed.top-0.right-0,
+div.fixed.top-0.right-0,
+#hero > header > div.fixed.top-0.right-0,
+#hero header div.fixed.top-0.right-0,
+/* Alle gegenereerde navbars */
+section header,
+section nav,
+body > header:not([data-gentrix-auto-mobile-nav]),
+body > nav,
+header nav,
+nav[aria-label*="enu"],
+nav[aria-label*="Menu"],
+/* Fixed positioned navs/menus */
+div[class*="fixed"][class*="top-0"][class*="right-0"],
+div[class*="fixed"][class*="top-0"][class*="left-0"],
+div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
+div[class*="fixed"][class*="inset-y-0"][class*="left-0"],
+/* Mobiele sheets/modals */
+div[x-show][class*="fixed"],
+div[x-show][class*="inset"] {
+  display: none !important;
+}
+`;
+
 function defaultBrandLabel(pageConfig: TailwindPageConfig | null | undefined): string {
   if (!pageConfig) return "Website";
   if (isLegacyTailwindPageConfig(pageConfig)) {
