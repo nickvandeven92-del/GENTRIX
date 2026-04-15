@@ -66,6 +66,10 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
     });
   }, [pathname]);
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   const toggleGroup = useCallback((label: string) => {
     setOpenGroups((prev) => {
       const next = new Set(prev);
