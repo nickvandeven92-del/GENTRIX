@@ -20,6 +20,7 @@ const XDATA_HAS_NAV_TOGGLE_RE = new RegExp(
   `\\bx-data\\s*=\\s*["'][^"']*\\b(?:${ALPINE_NAV_TOGGLE_KEYS.join("|")})\\s*:`,
   "i",
 );
+const GENERIC_XDATA_RE = /\bx-data\s*=\s*["'][^"']*["']/i;
 
 /** Alpine / x-html: klik-handler op dezelfde `<button>`-tag (attribuutvolgorde willekeurig). */
 const BUTTON_HAS_ALPINE_CLICK_RE = /@click|x-on:click/i;
@@ -28,14 +29,14 @@ const BUTTON_HAS_ALPINE_CLICK_RE = /@click|x-on:click/i;
 const BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE = /\b(?:sm|md|lg|xl|2xl):hidden\b/i;
 
 /**
- * Echte werkende mobiele toggle: `x-data` met bekende nav-boolean **en** een menuknop (`*:hidden` of
- * menu-achtige aria) met `@click` / `x-on:click` op die knop.
+ * Echte werkende mobiele toggle: `x-data` met een Alpine mobiele-toggleknop (`*:hidden` of menu-achtige aria)
+ * en `@click` / `x-on:click` op die knop.
  *
- * Voorheen sloegen we inject al af bij alleen `lg:hidden` of `aria-label="Menu"` — veel AI-output
- * ziet er zo uit maar mist handlers of deelt geen scope met `x-data` → “knoppen doen niets”.
+ * Deze detectie is bewust generieker dan alleen de bekende toggle-keys, zodat valide custom Alpine-staten
+ * zoals `x-data="{ menuVisible: false }"` ook niet onterecht worden overschreven.
  */
 export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolean {
-  if (!XDATA_HAS_NAV_TOGGLE_RE.test(fromHeader)) return false;
+  if (!GENERIC_XDATA_RE.test(fromHeader)) return false;
   const buttonRe = /<button\b[^>]{0,8000}>/gi;
   let m: RegExpExecArray | null;
   while ((m = buttonRe.exec(fromHeader)) !== null) {
@@ -135,9 +136,8 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
   const idx = bodyInnerHtml.search(/<header\b/i);
   if (idx < 0) return true;
-  /* x-data staat vaak op een parent vóór <header> — meenemen in de scan. */
-  const scanStart = Math.max(0, idx - 6_000);
-  const scanSlice = bodyInnerHtml.slice(scanStart, idx + 28_000);
+  /* x-data kan op een wrapper staan die niet vlak voor <header> staat; scan daarom de hele body. */
+  const scanSlice = bodyInnerHtml;
   if (headerHasWiredAlpineMobileMenuToggle(scanSlice)) return false;
   const headerLooksDesigned = headerAppearsDesigned(scanSlice);
   const headerContainsMobileToggleIndicator =

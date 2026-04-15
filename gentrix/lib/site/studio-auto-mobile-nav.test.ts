@@ -32,6 +32,16 @@ describe("headerHasWiredAlpineMobileMenuToggle", () => {
       </header>`;
     expect(headerHasWiredAlpineMobileMenuToggle(html)).toBe(false);
   });
+
+  it("is true bij custom x-data variabele met menuknop en @click", () => {
+    const html = `
+      <div x-data="{ menuVisible: false }">
+        <header class="fixed inset-x-0 top-0 z-50">
+          <button type="button" class="md:hidden" @click="menuVisible = !menuVisible" aria-label="Menu">☰</button>
+        </header>
+      </div>`;
+    expect(headerHasWiredAlpineMobileMenuToggle(html)).toBe(true);
+  });
 });
 
 describe("shouldInjectStudioAutoMobileNav", () => {
@@ -49,6 +59,16 @@ describe("shouldInjectStudioAutoMobileNav", () => {
       <header x-data="{ menuOpen: false }" class="fixed top-0 z-50 w-full">
         <button type="button" class="inline-flex md:hidden" @click="menuOpen = !menuOpen" aria-label="Open menu">☰</button>
       </header>`;
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+  });
+
+  it("injecteert niet als er een custom Alpine-togglevariabele is met @click", () => {
+    const html = `
+      <div x-data="{ menuVisible: false }">
+        <header class="fixed inset-x-0 top-0 z-50 w-full">
+          <button type="button" class="md:hidden" @click="menuVisible = !menuVisible" aria-label="Menu">☰</button>
+        </header>
+      </div>`;
     expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
   });
 
