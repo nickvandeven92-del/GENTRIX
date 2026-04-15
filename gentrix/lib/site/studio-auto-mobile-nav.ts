@@ -98,15 +98,22 @@ function studioNavHashFromSectionName(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
+const MOBILE_TOGGLE_INDICATOR_RE = /<button\b[^>]*\b(?:class\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b[^"']*["']|aria-label\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)[^"']*["'])/i;
+const MOBILE_MENU_NAV_RE = /<nav\b[^>]*\baria-label\s*=\s*["'][^"']*(?:Mobiel menu|Mobile menu)[^"']*["'][^>]*>/i;
+
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
-  if (/data-gentrix-auto-mobile-nav\s*=/i.test(bodyInnerHtml)) return false;
+  if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
   const idx = bodyInnerHtml.search(/<header\b/i);
   if (idx < 0) return true;
   /* x-data staat vaak op een parent vóór <header> — meenemen in de scan. */
   const scanStart = Math.max(0, idx - 6_000);
   const scanSlice = bodyInnerHtml.slice(scanStart, idx + 28_000);
   if (headerHasWiredAlpineMobileMenuToggle(scanSlice)) return false;
-  if (headerAppearsDesigned(scanSlice)) return false;
+  const headerLooksDesigned = headerAppearsDesigned(scanSlice);
+  const headerContainsMobileToggleIndicator =
+    MOBILE_TOGGLE_INDICATOR_RE.test(scanSlice) || MOBILE_MENU_NAV_RE.test(scanSlice);
+  const headerAppearsDesignedButBrokenMobileToggle = headerLooksDesigned && headerContainsMobileToggleIndicator;
+  if (headerLooksDesigned && !headerAppearsDesignedButBrokenMobileToggle) return false;
   return true;
 }
 

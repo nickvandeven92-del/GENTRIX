@@ -81,7 +81,23 @@ describe("shouldInjectStudioAutoMobileNav", () => {
     expect(shouldInjectStudioAutoMobileNav(`<section><p>Alleen tekst</p></section>`)).toBe(true);
   });
 
-  it("injecteert niet bij een rijke AI-header (blur + links) ook al mist de mobiele @click", () => {
+  it("injecteert niet bij een rijke AI-header zonder mobiele toggle", () => {
+    const html = `
+<header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-slate-950/70 shadow-lg backdrop-blur-xl">
+  <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <span class="font-bold text-white">Merk</span>
+    <nav class="hidden gap-8 text-sm lg:flex" aria-label="Hoofdmenu">
+      <a href="#a">A</a><a href="#b">B</a><a href="#c">C</a>
+    </nav>
+    <button type="button" class="hidden lg:block" aria-label="Skip">Skip</button>
+  </div>
+</header>
+<section id="hero">…</section>`;
+    expect(headerAppearsDesigned(html)).toBe(true);
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+  });
+
+  it("injecteert bij een rijke AI-header met een gebroken mobiele toggle", () => {
     const html = `
 <header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-slate-950/70 shadow-lg backdrop-blur-xl">
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -94,7 +110,7 @@ describe("shouldInjectStudioAutoMobileNav", () => {
 </header>
 <section id="hero">…</section>`;
     expect(headerAppearsDesigned(html)).toBe(true);
-    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(true);
   });
 });
 
