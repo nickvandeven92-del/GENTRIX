@@ -233,39 +233,54 @@ export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `@media (max-width: 1023px) {
  * Alleen binnen `<header>` — voorkomt dat het mobiele menu op breed scherm “open” blijft staan.
  */
 export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 640px) {
-  html[data-gentrix-studio-iframe="1"] header .sm\\:hidden {
+  html[data-gentrix-studio-iframe="1"] .sm\\:hidden {
     display: none !important;
   }
 }
 @media (min-width: 768px) {
-  html[data-gentrix-studio-iframe="1"] header .md\\:hidden {
+  html[data-gentrix-studio-iframe="1"] .md\\:hidden {
     display: none !important;
   }
 }
 @media (min-width: 1024px) {
-  html[data-gentrix-studio-iframe="1"] header .lg\\:hidden {
+  html[data-gentrix-studio-iframe="1"] .lg\\:hidden,
+  html[data-gentrix-studio-iframe="1"] .xl\\:hidden {
     display: none !important;
   }
   /*
-   * Alpine \`x-show\` wint soms van \`lg:hidden\` op een **ander** element dan waar de utility zit;
-   * expliciet het verticale mobiele linkblok verbergen op desktop-preview (≥1024 in iframe).
-   * Ook buiten \`<header>\` (portal / drawer-wrapper): horizontale nav blijft de enige op desktop.
+   * Alpine `x-show` wint soms van `lg:hidden` op een ander element dan waar de utility zit;
+   * expliciet het mobiele menu verbergen op desktop-preview (≥1024 in iframe).
    */
   html[data-gentrix-studio-iframe="1"] nav[aria-label="Mobiel menu"],
-  html[data-gentrix-studio-iframe="1"] nav[aria-label="Mobile menu"] {
+  html[data-gentrix-studio-iframe="1"] nav[aria-label="Mobile menu"],
+  html[data-gentrix-studio-iframe="1"] div[aria-label="Mobiel menu"],
+  html[data-gentrix-studio-iframe="1"] div[aria-label="Mobile menu"] {
     display: none !important;
   }
   html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(nav[aria-label="Mobiel menu"]),
-  html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(nav[aria-label="Mobile menu"]) {
+  html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(nav[aria-label="Mobile menu"]),
+  html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(div[aria-label="Mobiel menu"]),
+  html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(div[aria-label="Mobile menu"]) {
     display: none !important;
   }
 }
 @media (min-width: 1280px) {
-  html[data-gentrix-studio-iframe="1"] header .xl\\:hidden {
+  html[data-gentrix-studio-iframe="1"] .xl\\:hidden {
     display: none !important;
   }
 }`;
 
+export const STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 1024px) {
+  .lg\\:hidden,
+  .xl\\:hidden {
+    display: none !important;
+  }
+}`;
+
+/**
+ * Alleen **mobiele** HTML-editor-preview (`data-gentrix-studio-mobile` + iframe): vaak halftransparante
+ * `nav` / kolom over de hero — leesbaarheid + duidelijke “sheet” zonder live `/site` te wijzigen.
+ */
 /**
  * Alleen **mobiele** HTML-editor-preview (`data-gentrix-studio-mobile` + iframe): vaak halftransparante
  * `nav` / kolom over de hero — leesbaarheid + duidelijke “sheet” zonder live `/site` te wijzigen.
