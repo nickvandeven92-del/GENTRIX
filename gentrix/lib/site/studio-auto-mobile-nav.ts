@@ -129,6 +129,7 @@ function studioNavHashFromSectionName(name: string): string {
 
 const MOBILE_TOGGLE_INDICATOR_RE = /<button\b[^>]*\b(?:class\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b[^"']*["']|aria-label\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)[^"']*["'])/i;
 const MOBILE_MENU_NAV_RE = /<nav\b[^>]*\baria-label\s*=\s*["'][^"']*(?:Mobiel menu|Mobile menu)[^"']*["'][^>]*>/i;
+const MOBILE_SHEET_INDICATOR_RE = /<(?:nav|div)\b[^>]*\b(?:x-show\b|x-cloak\b|aria-label\s*=\s*["'](?:Mobiel menu|Mobile menu)["']|class\s*=\s*["'][^"']*\blg:hidden\b[^"']*["'])/i;
 
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
@@ -141,6 +142,8 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   const headerLooksDesigned = headerAppearsDesigned(scanSlice);
   const headerContainsMobileToggleIndicator =
     MOBILE_TOGGLE_INDICATOR_RE.test(scanSlice) || MOBILE_MENU_NAV_RE.test(scanSlice);
+  const headerContainsMobileSheet = MOBILE_SHEET_INDICATOR_RE.test(scanSlice);
+  if (headerLooksDesigned && headerContainsMobileSheet) return false;
   const headerAppearsDesignedButBrokenMobileToggle = headerLooksDesigned && headerContainsMobileToggleIndicator;
   if (headerLooksDesigned && !headerAppearsDesignedButBrokenMobileToggle) return false;
   return true;

@@ -113,6 +113,29 @@ describe("shouldInjectStudioAutoMobileNav", () => {
     expect(headerAppearsDesigned(html)).toBe(true);
     expect(shouldInjectStudioAutoMobileNav(html)).toBe(true);
   });
+
+  it("injecteert niet als er al een bestaande mobiele sheet in de header zit", () => {
+    const html = `
+<header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-slate-950/70 shadow-lg backdrop-blur-xl" x-data="{ menuOpen: false }">
+  <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <span class="font-bold text-white">Merk</span>
+    <nav class="hidden gap-8 text-sm lg:flex" aria-label="Hoofdmenu">
+      <a href="#a">A</a><a href="#b">B</a><a href="#c">C</a>
+    </nav>
+    <button type="button" class="lg:hidden" @click="menuOpen = !menuOpen" aria-label="Menu">☰</button>
+  </div>
+  <div x-show="menuOpen" x-cloak class="fixed inset-x-0 top-16 bg-slate-950 lg:hidden">
+    <nav class="flex flex-col gap-2" aria-label="Mobiel menu">
+      <a href="#a">A</a>
+      <a href="#b">B</a>
+      <a href="#c">C</a>
+    </nav>
+  </div>
+</header>
+<section id="hero">…</section>`;
+    expect(headerAppearsDesigned(html)).toBe(true);
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+  });
 });
 
 describe("extractHeaderNavLinks", () => {
