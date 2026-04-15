@@ -190,12 +190,15 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
-        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_light">
-          {mobileLinkWrap(
-            <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />,
-            "light",
-          )}
-        </MobileNavDrawer>
+        {/* Only render mobile drawer on mobile */}
+        {!lgUp && (
+          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_light">
+            {mobileLinkWrap(
+              <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />,
+              "light",
+            )}
+          </MobileNavDrawer>
+        )}
       </header>
     );
   }
@@ -228,12 +231,15 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
             {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
           </button>
         </div>
-        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_dark">
-          {mobileLinkWrap(
-            <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />,
-            "dark",
-          )}
-        </MobileNavDrawer>
+        {/* Only render mobile drawer on mobile */}
+        {!lgUp && (
+          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_dark">
+            {mobileLinkWrap(
+              <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />,
+              "dark",
+            )}
+          </MobileNavDrawer>
+        )}
       </header>
     );
   }
@@ -274,12 +280,15 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
           <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />
         </nav>
       </MotionNavShell>
-      <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="floating">
-        {mobileLinkWrap(
-          <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />,
-          "dark",
-        )}
-      </MobileNavDrawer>
+      {/* Only render mobile drawer on mobile */}
+      {!lgUp && (
+        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="floating">
+          {mobileLinkWrap(
+            <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />,
+            "dark",
+          )}
+        </MobileNavDrawer>
+      )}
     </header>
   );
 }
