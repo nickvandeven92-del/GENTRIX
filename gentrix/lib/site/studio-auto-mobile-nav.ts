@@ -246,14 +246,17 @@ header[data-gentrix-auto-mobile-nav="1"] #gentrix-site-mobile-sheet a[class*="bg
  * ONAFHANKELIJK van of de auto-navbar wordt geïnjecteerd
  */
 export const STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS = `
-/* Verberg ENKEL de rechterkant sidebar in gegenereerde sections */
-#hero > header > div.fixed.top-0.right-0,
-section > header > div.fixed.top-0.right-0,
-/* Verberg ook de donkere backdrop/overlay achter het menu */
-#hero > header > div.fixed.inset-0,
-section > header > div.fixed.inset-0,
-#hero > header [class*="fixed"][class*="inset-0"],
-section > header [class*="fixed"][class*="inset-0"] {
+/*
+ * Verberg oude AI-artefacten (rechter-sidebar, losse overlay) in section-headers.
+ * :not([x-show]) is verplicht: anders wint display:none!important altijd van Alpine x-show (inline,
+ * geen important) — mobiel menu opent nooit en lijkt de hamburger dood.
+ */
+#hero > header > div.fixed.top-0.right-0:not([x-show]),
+section > header > div.fixed.top-0.right-0:not([x-show]),
+#hero > header > div.fixed.inset-0:not([x-show]),
+section > header > div.fixed.inset-0:not([x-show]),
+#hero > header [class*="fixed"][class*="inset-0"]:not([x-show]),
+section > header [class*="fixed"][class*="inset-0"]:not([x-show]) {
   display: none !important;
 }
 `;

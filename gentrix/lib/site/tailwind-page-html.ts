@@ -57,6 +57,15 @@ html.tw-ready body { visibility: visible; }
  */
 export const STUDIO_ALPINE_X_CLOAK_CSS = `[x-cloak]{display:none!important}`;
 
+/** Klik raakt de BUTTON i.p.v. inner spans (Alpine + sommige browsers). */
+export const STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS = `@media (max-width: 1023px) {
+  header button[class*="lg:hidden"] > span,
+  header button[class*="md:hidden"] > span,
+  header button[class*="sm:hidden"] > span {
+    pointer-events: none !important;
+  }
+}`;
+
 /** [AOS](https://michalsnik.github.io/aos/) v2 — CDN in srcDoc/export (geen npm in gegenereerde pagina). */
 export const STUDIO_AOS_CSS_CDN_SRC = "https://unpkg.com/aos@2.3.4/dist/aos.css";
 export const STUDIO_AOS_JS_CDN_SRC = "https://unpkg.com/aos@2.3.4/dist/aos.js";
@@ -1740,6 +1749,60 @@ export type BuildTailwindIframeSrcDocOptions = {
   navBrandLabel?: string | null;
 };
 
+/**
+ * AI-headers met @click op de hamburger maar **zonder** `x-data` op de header of een ancestor:
+ * Alpine bindt directives dan niet → knoppen doen niets. Repareer met minimale scope + `initTree`.
+ */
+function buildAlpineMobileHeaderScopeRepairScript(): string {
+  return `<script>
+(function(){
+  function findMobileMenuBtn(root){
+    if(!root||!root.querySelector)return null;
+    return (
+      root.querySelector('button[class*="sm:hidden"]')||
+      root.querySelector('button[class*="md:hidden"]')||
+      root.querySelector('button[class*="lg:hidden"]')||
+      root.querySelector('button[class*="xl:hidden"]')||
+      root.querySelector('button[aria-label*="enu"]')||
+      root.querySelector('button[aria-label*="Menu"]')||
+      root.querySelector('button[aria-label*="menu"]')
+    );
+  }
+  function repairRoot(h,Alp){
+    if(!h||h.getAttribute("data-gentrix-auto-mobile-nav")==="1")return false;
+    if(h.getAttribute("x-data"))return false;
+    var btn=findMobileMenuBtn(h);
+    if(!btn)return false;
+    var ck=(btn.getAttribute("@click")||btn.getAttribute("x-on:click")||"").trim();
+    if(!ck)return false;
+    var m=/^\\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*=/.exec(ck);
+    var key=m?m[1]:"navOpen";
+    var allow={navOpen:1,menuOpen:1,open:1,mobileOpen:1,drawerOpen:1,menuVisible:1,mobileMenuOpen:1};
+    if(!allow[key])key="navOpen";
+    h.setAttribute("x-data","{ "+key+": false }");
+    Alp.initTree(h);
+    return true;
+  }
+  function repair(){
+    try{
+      var Alp=window.Alpine;
+      if(!Alp||typeof Alp.initTree!=="function")return;
+      var roots=document.querySelectorAll("header,[role='banner']");
+      var i;
+      for(i=0;i<roots.length;i++)repairRoot(roots[i],Alp);
+      var bars=document.querySelectorAll('body > div[class*="fixed"][class*="top-0"]');
+      for(i=0;i<bars.length;i++){
+        var d=bars[i];
+        if(d.closest("header")||d.closest('[role="banner"]'))continue;
+        repairRoot(d,Alp);
+      }
+    }catch(e){try{console.warn("[gentrix-nav-repair]",e);}catch(_){}}
+  }
+  document.addEventListener("alpine:initialized",function(){queueMicrotask(repair);});
+})();
+<\/script>`;
+}
+
 export function buildTailwindIframeSrcDoc(
   sections: TailwindSection[],
   pageConfig?: TailwindPageConfig | null,
@@ -1872,6 +1935,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}
+    ${STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS}
     /* Vaste top-nav (fixed) + hash-scroll: zonder padding komen koppen onder de balk (afgeknipt, "overlap"). */
     html { scroll-padding-top: 5.5rem; }
     body { font-family: ${fontStack}; }
@@ -1902,6 +1966,7 @@ ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptB
 })();
 </script>
 <script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
+${buildAlpineMobileHeaderScopeRepairScript()}
 ${buildStudioHeaderNavAlpineClampScript()}
 ${buildLucidePostAlpineRescanScript()}
 ${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
