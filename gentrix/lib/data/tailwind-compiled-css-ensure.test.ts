@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
-import {
-  ensureTailwindCompiledCssOnPublishedPayload,
-  tailwindSectionsPayloadFromPublishedTailwind,
-} from "@/lib/data/tailwind-compiled-css-attach";
+import { ensureTailwindCompiledCssOnPublishedPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-sections-payload-from-published";
 import type { PublishedSitePayload } from "@/lib/site/project-published-payload";
 
 const minimalTailwindPublished = (overrides?: Partial<Extract<PublishedSitePayload, { kind: "tailwind" }>>) =>

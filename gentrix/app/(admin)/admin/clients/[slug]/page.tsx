@@ -300,8 +300,9 @@ export default async function ClientOverviewPage({ params }: PageProps) {
       <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Concept vs live</p>
         <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
-          <strong>Concept opslaan</strong> wijzigt alleen de draft-pointer. <strong>Publiceren naar live</strong> doe je
-          expliciet vanuit de editor. Bekijk het concept zonder de live site te wijzigen via concept-preview.
+          <strong>Concept opslaan</strong> wijzigt alleen de draft-pointer. <strong>Live zetten</strong> doe je in de
+          HTML-editor (knop naast concept opslaan), in het klantportaal onder <em>Website</em>, of via het
+          productie-board. Bekijk het concept zonder de live site te wijzigen via concept-preview.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-sm font-medium">
           <Link

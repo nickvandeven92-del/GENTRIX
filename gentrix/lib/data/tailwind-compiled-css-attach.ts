@@ -1,7 +1,10 @@
 import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import type { PublishedSitePayload } from "@/lib/site/project-published-payload";
+import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-sections-payload-from-published";
 import { buildTailwindCompiledCssBundle } from "@/lib/site/build-tailwind-compiled-css";
 import { SNAPSHOT_TAILWIND_COMPILED_CSS_MAX } from "@/lib/site/project-snapshot-constants";
+
+export { tailwindSectionsPayloadFromPublishedTailwind };
 
 function projectRootDir(): string {
   return process.cwd();
@@ -35,24 +38,6 @@ export async function attachCompiledTailwindCssToPayload(
     console.warn("[attachCompiledTailwindCssToPayload]", e instanceof Error ? e.message : e);
     return payload;
   }
-}
-
-/** Strikte `tailwind_sections`-shape voor de CLI-build (zelfde velden als snapshot → payload). */
-export function tailwindSectionsPayloadFromPublishedTailwind(
-  p: Extract<PublishedSitePayload, { kind: "tailwind" }>,
-): TailwindSectionsPayload {
-  return {
-    format: "tailwind_sections",
-    sections: p.sections,
-    ...(p.config != null ? { config: p.config } : {}),
-    ...(p.customCss != null && p.customCss !== "" ? { customCss: p.customCss } : {}),
-    ...(p.customJs != null && p.customJs !== "" ? { customJs: p.customJs } : {}),
-    ...(p.logoSet != null ? { logoSet: p.logoSet } : {}),
-    ...(p.contactSections != null && p.contactSections.length > 0 ? { contactSections: p.contactSections } : {}),
-    ...(p.marketingPages != null && Object.keys(p.marketingPages).length > 0
-      ? { marketingPages: p.marketingPages }
-      : {}),
-  };
 }
 
 /**

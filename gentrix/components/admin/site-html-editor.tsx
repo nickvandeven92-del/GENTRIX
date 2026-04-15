@@ -15,6 +15,7 @@ import {
   PanelTop,
   Redo2,
   RefreshCw,
+  Rocket,
   Save,
   Smartphone,
   Undo2,
@@ -108,6 +109,9 @@ export function SiteHtmlEditor({
   /** Live preview: iframe-viewport (zie `TailwindSectionsPreview.viewportMode`). */
   const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("auto");
   const [stepsOpen, setStepsOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<string | null>(null);
+  const [publishErr, setPublishErr] = useState<string | null>(null);
   const customCss = initialCustomCss;
   const customJs = initialCustomJs;
   const [pageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
@@ -339,6 +343,46 @@ export function SiteHtmlEditor({
     await persistDraft({ silent: false });
   }
 
+  const publishLive = useCallback(async () => {
+    setPublishErr(null);
+    setPublishMsg(null);
+    if (persistFingerprint !== lastSavedFingerprintRef.current) {
+      await persistDraft({ silent: true });
+      if (persistFingerprint !== lastSavedFingerprintRef.current) {
+        setPublishErr("Kon het concept niet opslaan — probeer opnieuw of gebruik Concept opslaan.");
+        return;
+      }
+    }
+    setPublishing(true);
+    try {
+      const res = await fetch(`/api/clients/${encodeURIComponent(subfolderSlug)}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        data?: { visibility_hint?: string | null; is_publicly_visible?: boolean };
+      };
+      if (!res.ok || !json.ok) {
+        setPublishErr(json.error ?? "Publiceren mislukt.");
+        return;
+      }
+      setPublishMsg(
+        json.data?.visibility_hint ??
+          (json.data?.is_publicly_visible === false
+            ? "Live-inhoud bijgewerkt. Publieke /site/… volgt zodra de klantstatus Actief is."
+            : "Live-inhoud bijgewerkt — bezoekers zien deze snapshot op de publieke site."),
+      );
+      setPreviewKey((k) => k + 1);
+    } catch {
+      setPublishErr("Netwerkfout bij publiceren.");
+    } finally {
+      setPublishing(false);
+    }
+  }, [persistFingerprint, persistDraft, subfolderSlug]);
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-900">
       <div className="shrink-0 space-y-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 md:px-5">
@@ -470,17 +514,33 @@ export function SiteHtmlEditor({
           </button>
           <button
             type="button"
-            disabled={saving || autoSaving}
+            disabled={saving || autoSaving || publishing}
             onClick={() => void save()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-sm font-medium text-white hover:bg-blue-950 disabled:opacity-60 dark:bg-blue-800 dark:hover:bg-blue-900"
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
             Concept opslaan
           </button>
+          <button
+            type="button"
+            disabled={saving || autoSaving || publishing}
+            onClick={() => void publishLive()}
+            title="Zet de huidige concept-snapshot live op /site/… (zelfde als klantportaal)"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-700 bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60 dark:border-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+          >
+            {publishing ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Rocket className="size-4" aria-hidden />
+            )}
+            Live zetten
+          </button>
         </div>
         <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
           Wijzigingen worden na {AUTOSAVE_DEBOUNCE_MS / 1000} s stilte automatisch als concept opgeslagen (zoals Lovable).
-          Handmatig opslaan blijft mogelijk; snapshots tonen label <span className="font-mono">Auto-save</span>.
+          Handmatig opslaan blijft mogelijk; snapshots tonen label <span className="font-mono">Auto-save</span>.{" "}
+          <strong className="font-medium text-zinc-600 dark:text-zinc-300">Live zetten</strong> publiceert het concept
+          naar de publieke site (los van concept opslaan).
         </p>
       </div>
 
@@ -526,6 +586,16 @@ export function SiteHtmlEditor({
           ) : null}
         </div>
       )}
+      {publishErr ? (
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          {publishErr}
+        </p>
+      ) : null}
+      {publishMsg ? (
+        <p className="text-sm text-emerald-800 dark:text-emerald-200" role="status">
+          {publishMsg}
+        </p>
+      ) : null}
       {saveError && (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {saveError}

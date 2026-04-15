@@ -55,13 +55,12 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
 }
 
 /**
- * Verbergt op mobiel een eventuele tweede `<header>` in de eerste sectie (vaak de AI-hero-nav),
- * zodat alleen de automatische balk zichtbaar is.
+ * Verbergt een eventuele tweede `<header>` in de eerste sectie (vaak de AI-hero-nav) zodra de
+ * automatische balk is geïnjecteerd — op **alle** breakpoints. Alleen “op mobiel” verbergen gaf
+ * dubbele nav + open mobiel paneel in desktop-studio-preview.
  */
-export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `@media (max-width: 1023px) {
-  body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
-    display: none !important;
-  }
+export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
+  display: none !important;
 }`;
 
 /**

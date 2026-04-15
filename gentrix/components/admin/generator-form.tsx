@@ -41,7 +41,7 @@ import {
   tryExtractStreamingTailwindConfig,
 } from "@/lib/ai/stream-json-section-extractor";
 import { publishedPayloadFromParsed, type PublishedSitePayload } from "@/lib/site/project-published-payload";
-import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-compiled-css-attach";
+import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-sections-payload-from-published";
 import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";

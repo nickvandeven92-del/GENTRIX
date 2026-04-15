@@ -246,6 +246,19 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
   html[data-gentrix-studio-iframe="1"] header .lg\\:hidden {
     display: none !important;
   }
+  /*
+   * Alpine `x-show` wint soms van `lg:hidden` op een **ander** element dan waar de utility zit;
+   * expliciet het verticale mobiele linkblok verbergen op desktop-preview (≥1024 in iframe).
+   * Ook buiten `<header>` (portal / drawer-wrapper): horizontale nav blijft de enige op desktop.
+   */
+  html[data-gentrix-studio-iframe="1"] nav[aria-label="Mobiel menu"],
+  html[data-gentrix-studio-iframe="1"] nav[aria-label="Mobile menu"] {
+    display: none !important;
+  }
+  html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(nav[aria-label="Mobiel menu"]),
+  html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(nav[aria-label="Mobile menu"]) {
+    display: none !important;
+  }
 }
 @media (min-width: 1280px) {
   html[data-gentrix-studio-iframe="1"] header .xl\\:hidden {
@@ -1823,11 +1836,18 @@ ${aosHeadLink}</head>
 <body class="antialiased text-slate-900${radiusClass}"${bodyTopIdAttr}>
 ${twLoadingScript}${body}
 ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
-(function(){document.addEventListener("alpine:init",function(){
-  queueMicrotask(function(){
+(function(){
+  function clampNav(){
     try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
+  }
+  document.addEventListener("alpine:init",function(){
+    queueMicrotask(clampNav);
   });
-});})();
+  document.addEventListener("alpine:initialized",function(){
+    queueMicrotask(clampNav);
+    setTimeout(clampNav,0);
+  });
+})();
 </script>
 <script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${buildStudioHeaderNavAlpineClampScript()}
