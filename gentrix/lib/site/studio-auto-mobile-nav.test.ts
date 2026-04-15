@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import {
   buildStudioAutoMobileNavHeaderHtml,
+  headerAppearsDesigned,
   headerHasWiredAlpineMobileMenuToggle,
   shouldInjectStudioAutoMobileNav,
 } from "@/lib/site/studio-auto-mobile-nav";
@@ -78,6 +79,22 @@ describe("shouldInjectStudioAutoMobileNav", () => {
 
   it("injecteert nog wel als er geen header en geen patroon is (lege one-pager)", () => {
     expect(shouldInjectStudioAutoMobileNav(`<section><p>Alleen tekst</p></section>`)).toBe(true);
+  });
+
+  it("injecteert niet bij een rijke AI-header (blur + links) ook al mist de mobiele @click", () => {
+    const html = `
+<header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-slate-950/70 shadow-lg backdrop-blur-xl">
+  <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <span class="font-bold text-white">Merk</span>
+    <nav class="hidden gap-8 text-sm lg:flex" aria-label="Hoofdmenu">
+      <a href="#a">A</a><a href="#b">B</a><a href="#c">C</a>
+    </nav>
+    <button type="button" class="lg:hidden" aria-label="Menu">☰</button>
+  </div>
+</header>
+<section id="hero">…</section>`;
+    expect(headerAppearsDesigned(html)).toBe(true);
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
   });
 });
 

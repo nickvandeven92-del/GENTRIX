@@ -51,6 +51,33 @@ export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolea
   return false;
 }
 
+/**
+ * Gegenereerde hero/site-header die er **visueel uitgebreid** uitziet — dan géén utilitaire
+ * `data-gentrix-auto-mobile-nav`-balk injecteren (die verbergt de echte header via duplicate-CSS
+ * en voelt als “zwarte balk met tekst”).
+ */
+export function headerAppearsDesigned(scanSlice: string): boolean {
+  const relIdx = scanSlice.search(/<header\b/i);
+  if (relIdx < 0) return false;
+  /** Eerste ~22k vanaf `<header>`: blur/gradient zitten vaak op een inner `div`, niet op de open tag. */
+  const w = scanSlice.slice(relIdx, Math.min(scanSlice.length, relIdx + 22_000));
+  const openM = w.match(/^<header\b[^>]{0,4000}>/i);
+  const openTag = openM?.[0] ?? "";
+  if (
+    /backdrop-blur|bg-gradient|\bfrom-\w+|via-\w+|\bto-\w+|shadow-(2xl|xl|lg)|ring-1|border-white\/|border-zinc\/|bg-slate-950\/|bg-black\/|mix-blend-/i.test(
+      w,
+    )
+  ) {
+    return true;
+  }
+  if (openTag.length >= 140) return true;
+  if (/<img\b/i.test(w)) return true;
+  const hrefLinks = w.match(/<a\b[^>]*\bhref\s*=/gi) ?? [];
+  if (hrefLinks.length >= 3) return true;
+  if (/<nav\b/i.test(w) && hrefLinks.length >= 2 && /\b(lg|xl):flex\b/i.test(w)) return true;
+  return false;
+}
+
 /** Herken onze eigen geïnjecteerde balk (geen dubbele injectie). */
 const AUTO_NAV_ATTR = 'data-gentrix-auto-mobile-nav="1"';
 
@@ -79,6 +106,7 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   const scanStart = Math.max(0, idx - 6_000);
   const scanSlice = bodyInnerHtml.slice(scanStart, idx + 28_000);
   if (headerHasWiredAlpineMobileMenuToggle(scanSlice)) return false;
+  if (headerAppearsDesigned(scanSlice)) return false;
   return true;
 }
 
