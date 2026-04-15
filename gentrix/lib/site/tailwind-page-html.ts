@@ -936,6 +936,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     for(var i=0;i<list.length;i++){
       var el=list[i];
       if(el.closest("[data-studio-skip-nav-tone]"))continue;
+      if(el.getAttribute&&el.getAttribute("data-gentrix-auto-mobile-nav")==="1")continue;
       var st=getComputedStyle(el);
       if(st.position!=="fixed"&&st.position!=="sticky")continue;
       var r=el.getBoundingClientRect();

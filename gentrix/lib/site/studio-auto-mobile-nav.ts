@@ -100,13 +100,8 @@ div[class*="fixed"][class*="right-0"][class*="w-"],
 /* Sidebar-achtige divs */
 div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
 div[class*="fixed"][class*="right-0"][class*="z-"],
-/* Alpine-based mobiele menu drawers */
+/* Alpine-based mobiele menu drawers (niet elke section-fixed: breekt hero-video/gradient-lagen). */
 div[class*="fixed"][x-show],
-/* Alles in secties dat fixed/sticky is */
-section div[class*="fixed"],
-section div[class*="sticky"] {
-  display: none !important;
-}
 
 /* Verberg ALLE gegenereerde navbars */
 section header,
@@ -243,7 +238,7 @@ export function buildStudioAutoMobileNavHeaderHtml(
       <a href="${STUDIO_CONTACT_PATH_PLACEHOLDER}" class="rounded-full bg-white px-4 py-3.5 text-center text-sm font-semibold text-slate-900 shadow-md transition hover:bg-white/95" @click="navOpen = false">Contact</a>
     </nav>`;
 
-  return `<header id="gentrix-auto-site-header" ${AUTO_NAV_ATTR} class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
+  return `<header id="gentrix-auto-site-header" ${AUTO_NAV_ATTR} data-studio-skip-nav-tone class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
     <a href="#top" class="shrink-0 text-lg font-semibold tracking-tight text-white">${brand}</a>
     ${desktopNavBlock}
