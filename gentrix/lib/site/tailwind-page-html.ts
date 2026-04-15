@@ -294,6 +294,16 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
   html[data-gentrix-studio-iframe="1"] body > div.pointer-events-auto:has(div[aria-label="Mobile menu"]) {
     display: none !important;
   }
+  /*
+   * Veel AI-headers: sheet/backdrop als direct kind van header met lg:hidden — x-show inline wint anders
+   * van losse utility-regels; expliciet verbergen op desktop-preview.
+   */
+  html[data-gentrix-studio-iframe="1"] header > div[class*="fixed"][class*="inset"][class*="lg:hidden"],
+  html[data-gentrix-studio-iframe="1"] header > aside[class*="fixed"][class*="lg:hidden"],
+  html[data-gentrix-studio-iframe="1"] [role="banner"] > div[class*="fixed"][class*="inset"][class*="lg:hidden"],
+  html[data-gentrix-studio-iframe="1"] [role="banner"] > aside[class*="fixed"][class*="lg:hidden"] {
+    display: none !important;
+  }
 }
 @media (min-width: 1280px) {
   html[data-gentrix-studio-iframe="1"] .xl\\:hidden {
@@ -1804,6 +1814,73 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
 <\/script>`;
 }
 
+/**
+ * Studio/preview: bij Tailwind `lg`+ (iframe 1280 of smal venster → breed) alle mobiele nav-toggle-state
+ * in header/banner resetten. Zo blijft een op mobiel geopend menu niet “plakken” bij desktop-weergave,
+ * en wint geen oude Alpine-state over `lg:hidden` (x-show inline).
+ */
+function buildStudioIframeNavResetOnDesktopViewportScript(): string {
+  const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
+  return `<script defer>
+(function(){
+  if(document.documentElement.getAttribute("data-gentrix-studio-iframe")!=="1")return;
+  var mq=window.matchMedia("(min-width:1024px)");
+  var KEYS=[${keysLiteral}];
+  function isNavChrome(el){
+    if(!el||el.closest("footer"))return false;
+    if(el.tagName==="HEADER")return true;
+    if(el.getAttribute&&String(el.getAttribute("role")||"").toLowerCase()==="banner")return true;
+    if(el.parentElement===document.body){
+      var c=(el.className&&String(el.className))||"";
+      if(c.indexOf("fixed")>=0&&c.indexOf("top-0")>=0)return true;
+    }
+    return false;
+  }
+  function extraNavBoolKey(k){
+    if(typeof k!=="string"||k.length>64)return false;
+    var i,kl=k.toLowerCase();
+    for(i=0;i<KEYS.length;i++)if(KEYS[i]===k)return true;
+    if(k==="open")return true;
+    if(/^is(Open|MenuOpen|NavOpen|DrawerOpen)$/i.test(k))return true;
+    if(!/Open$/i.test(k))return false;
+    return kl.indexOf("menu")>=0||kl.indexOf("nav")>=0||kl.indexOf("drawer")>=0||kl.indexOf("sheet")>=0
+      ||kl.indexOf("sidebar")>=0||kl.indexOf("panel")>=0||kl.indexOf("overlay")>=0||kl.indexOf("burger")>=0
+      ||kl.indexOf("flyout")>=0||kl.indexOf("offcanvas")>=0||kl.indexOf("mobile")>=0||kl.indexOf("hamb")>=0;
+  }
+  function closeNavScopes(){
+    if(!mq.matches)return;
+    var Alp=window.Alpine;
+    if(!Alp||typeof Alp.$data!=="function")return;
+    document.querySelectorAll("[x-data]").forEach(function(el){
+      if(!isNavChrome(el))return;
+      var d;
+      try{d=Alp.$data(el);}catch(_){return;}
+      if(!d)return;
+      var i,k;
+      for(i=0;i<KEYS.length;i++){
+        k=KEYS[i];
+        if(Object.prototype.hasOwnProperty.call(d,k)&&d[k]===true)d[k]=false;
+      }
+      for(k in d){
+        if(!Object.prototype.hasOwnProperty.call(d,k))continue;
+        if(d[k]!==true)continue;
+        if(!extraNavBoolKey(k))continue;
+        d[k]=false;
+      }
+    });
+  }
+  function tick(){ closeNavScopes(); }
+  mq.addEventListener("change",tick);
+  window.addEventListener("resize",tick,{passive:true});
+  document.addEventListener("alpine:initialized",function(){
+    queueMicrotask(tick);
+    setTimeout(tick,80);
+    setTimeout(tick,400);
+  });
+})();
+<\/script>`;
+}
+
 export function buildTailwindIframeSrcDoc(
   sections: TailwindSection[],
   pageConfig?: TailwindPageConfig | null,
@@ -1967,6 +2044,7 @@ ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptB
 <script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
 ${buildAlpineMobileHeaderScopeRepairScript()}
 ${buildStudioHeaderNavAlpineClampScript()}
+${buildStudioIframeNavResetOnDesktopViewportScript()}
 ${buildLucidePostAlpineRescanScript()}
 ${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
