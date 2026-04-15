@@ -67,9 +67,20 @@ export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[$
 
 /* Force hide Alpine mobile sheets/drawers on desktop (lg+) — x-show inline display overrides lg:hidden */
 @media (min-width: 1024px) {
+  /* Mobiele backdrop en sheet in header */
+  header[${AUTO_NAV_ATTR}] > div:has([x-show]):is(.fixed, [class*="fixed"]),
+  header[${AUTO_NAV_ATTR}] [class*="lg:hidden"][x-show],
+  header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet,
+  /* Hamburger knop verbergen op desktop */
+  header[${AUTO_NAV_ATTR}] button.lg\\:hidden,
+  header[${AUTO_NAV_ATTR}] button[class*="lg:hidden"],
+  /* Mobiele nav buiten header */
+  body > div[class*="fixed"][class*="inset"][class*="lg:hidden"],
+  body > div[class*="fixed"][class*="inset"][x-show],
+  body > div.pointer-events-auto:has(nav[aria-label="Mobiel menu"]),
+  body > div.pointer-events-auto:has(nav[aria-label="Mobile menu"]),
   body > header[${AUTO_NAV_ATTR}] ~ * div[class*="fixed"][class*="inset"][class*="lg:hidden"],
   body > header[${AUTO_NAV_ATTR}] ~ * nav[class*="lg:hidden"],
-  body > div[class*="fixed"][class*="inset"][class*="lg:hidden"],
   body > nav[class*="lg:hidden"],
   body > header[${AUTO_NAV_ATTR}] ~ * [role="navigation"].lg\\:hidden {
     display: none !important;
