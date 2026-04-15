@@ -102,11 +102,7 @@ nav[aria-label*="Menu"] {
   display: none !important;
 }
 
-/* Altijd verbergen: de backdrop en mobile sheet van de geïnjecteerde navbar */
-#gentrix-auto-site-header .fixed.inset-0,
-#gentrix-site-mobile-sheet {
-  display: none !important;
-}
+/* VERBERG NIET: backdrop en mobile sheet — Alpine x-show moet die kunnen schakelen! */
 
 /* Force hide Alpine mobile sheets/drawers on desktop (lg+) — x-show inline display overrides lg:hidden */
 @media (min-width: 1024px) {
