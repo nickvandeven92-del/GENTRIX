@@ -58,9 +58,22 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
  * Verbergt een eventuele tweede `<header>` in de eerste sectie (vaak de AI-hero-nav) zodra de
  * automatische balk is geïnjecteerd — op **alle** breakpoints. Alleen “op mobiel” verbergen gaf
  * dubbele nav + open mobiel paneel in desktop-studio-preview.
+ *
+ * Ook: Alpine x-show doet inline display, dus we moeten forceren dat mobiele elementen op lg+ verborgen zijn.
  */
 export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
   display: none !important;
+}
+
+/* Force hide Alpine mobile sheets/drawers on desktop (lg+) — x-show inline display overrides lg:hidden */
+@media (min-width: 1024px) {
+  body > header[${AUTO_NAV_ATTR}] ~ * div[class*="fixed"][class*="inset"][class*="lg:hidden"],
+  body > header[${AUTO_NAV_ATTR}] ~ * nav[class*="lg:hidden"],
+  body > div[class*="fixed"][class*="inset"][class*="lg:hidden"],
+  body > nav[class*="lg:hidden"],
+  body > header[${AUTO_NAV_ATTR}] ~ * [role="navigation"].lg\\:hidden {
+    display: none !important;
+  }
 }`;
 
 /**
