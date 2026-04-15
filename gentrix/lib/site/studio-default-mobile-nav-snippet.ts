@@ -12,7 +12,7 @@
  * (drie gelijke streepjes gesloten, dun kruis uit twee lijnen open — **dezelfde** knop), backdrop + sheet
  * met hogere `z-index` dan de balk, `x-cloak`, Escape sluit.
  */
-export const STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET = `<header id="site-header" data-studio-skip-nav-tone class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
+export const STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET = `<header id="site-header" data-studio-skip-nav-tone class="fixed inset-x-0 top-0 z-[80] border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
     <a href="#top" class="shrink-0 text-lg font-semibold tracking-tight text-white">Jouw merk</a>
     <nav class="hidden items-center gap-8 text-sm font-medium lg:flex" aria-label="Hoofdmenu">
