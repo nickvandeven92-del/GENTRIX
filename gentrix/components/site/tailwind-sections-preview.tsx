@@ -18,6 +18,7 @@ import {
 import { isStudioPreviewPostMessage } from "@/lib/site/preview-post-message";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
+import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 /** Gelijk aan Tailwind `lg:` (1024px) — veel sites gebruiken `lg:hidden` voor hamburger; 768px gaf “menu vast” bij smal venster. */
@@ -123,7 +124,7 @@ export function TailwindSectionsPreview({
   const previewSections = useMemo(
     () =>
       composePublicMarketingTailwindSections(
-        sections,
+        filterSectionsForPublicSite(sections),
         {
           appointmentsEnabled,
           webshopEnabled,

@@ -40,7 +40,8 @@ import {
 import {
   tryExtractStreamingTailwindConfig,
 } from "@/lib/ai/stream-json-section-extractor";
-import { publishedPayloadFromParsed } from "@/lib/site/project-published-payload";
+import { publishedPayloadFromParsed, type PublishedSitePayload } from "@/lib/site/project-published-payload";
+import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-compiled-css-attach";
 import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
@@ -191,6 +192,65 @@ export function GeneratorForm({
     if (streamEndedWithoutComplete && streamingLivePreviewPayload) return streamingLivePreviewPayload;
     return null;
   }, [completedGeneratorPreviewPayload, streamEndedWithoutComplete, streamingLivePreviewPayload]);
+
+  /** Zelfde gecompileerde Tailwind als `/site` (geen Play CDN) zodra de server-build klaar is. */
+  const [generatorPreviewCompiledCss, setGeneratorPreviewCompiledCss] = useState<string | null>(null);
+
+  useEffect(() => {
+    const p = activeStudioPreviewPayload;
+    if (!p || p.kind !== "tailwind") {
+      setGeneratorPreviewCompiledCss(null);
+      return;
+    }
+    if (p.tailwindCompiledCss?.trim()) {
+      setGeneratorPreviewCompiledCss(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const tw = tailwindSectionsPayloadFromPublishedTailwind(p);
+        const { tailwindCompiledCss: _strip, ...payloadForCompile } = tw;
+        void _strip;
+        const res = await fetch("/api/admin/tailwind-compile-preview", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentTitle: p.clientName?.trim() || businessName.trim() || "Website",
+            payload: payloadForCompile,
+          }),
+          signal: controller.signal,
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          tailwindCompiledCss?: string;
+          error?: string;
+        };
+        if (cancelled || !json.ok || !json.tailwindCompiledCss?.trim()) return;
+        setGeneratorPreviewCompiledCss(json.tailwindCompiledCss.trim());
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [activeStudioPreviewPayload, businessName]);
+
+  const generatorViewPayload = useMemo((): PublishedSitePayload | null => {
+    const base = activeStudioPreviewPayload;
+    if (!base || base.kind !== "tailwind") return base;
+    const mergedCss = generatorPreviewCompiledCss?.trim() || base.tailwindCompiledCss?.trim();
+    if (!mergedCss) return base;
+    if (base.tailwindCompiledCss?.trim() === mergedCss) return base;
+    return { ...base, tailwindCompiledCss: mergedCss };
+  }, [activeStudioPreviewPayload, generatorPreviewCompiledCss]);
 
   const previewIsStreaming = Boolean(streamEndedWithoutComplete && streamingSections.length > 0);
   const previewPendingUntilComplete = Boolean(loading && !generatedTailwind && !streamEndedWithoutComplete);
@@ -1077,9 +1137,9 @@ export function GeneratorForm({
                     )}
                   </div>
                 </div>
-              ) : activeStudioPreviewPayload ? (
+              ) : generatorViewPayload ? (
                 <PublishedSiteView
-                  payload={activeStudioPreviewPayload}
+                  payload={generatorViewPayload}
                   className="min-h-0 flex-1"
                   publishedSlug={slugFromUrl}
                   draftPublicPreviewToken={draftPublicPreviewToken}
