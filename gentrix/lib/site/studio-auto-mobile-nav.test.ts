@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { TailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import {
+  buildStudioAutoMobileNavHeaderHtml,
   headerHasWiredAlpineMobileMenuToggle,
   shouldInjectStudioAutoMobileNav,
 } from "@/lib/site/studio-auto-mobile-nav";
@@ -76,5 +78,26 @@ describe("shouldInjectStudioAutoMobileNav", () => {
 
   it("injecteert nog wel als er geen header en geen patroon is (lege one-pager)", () => {
     expect(shouldInjectStudioAutoMobileNav(`<section><p>Alleen tekst</p></section>`)).toBe(true);
+  });
+});
+
+describe("buildStudioAutoMobileNavHeaderHtml merk", () => {
+  const masterConfig = {
+    style: "Dark-first, filmisch en brutaal editorial. Full-bleed hero.",
+    theme: { primary: "#0f172a", accent: "#a855f7" },
+    font: "Inter, system-ui, sans-serif",
+  } satisfies TailwindPageConfig;
+
+  it("zet geen style-briefing in de navbar; wel expliciet navBrandLabel", () => {
+    const html = buildStudioAutoMobileNavHeaderHtml([], masterConfig, { navBrandLabel: "Gentrix" });
+    expect(html).toContain(">Gentrix<");
+    expect(html).not.toContain("Dark-first");
+    expect(html).not.toContain("filmisch");
+  });
+
+  it("valt terug op korte fallback zonder navBrandLabel (geen style-regel)", () => {
+    const html = buildStudioAutoMobileNavHeaderHtml([], masterConfig, null);
+    expect(html).toContain(">Website<");
+    expect(html).not.toContain("Dark-first");
   });
 });

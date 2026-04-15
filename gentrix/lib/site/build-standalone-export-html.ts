@@ -106,7 +106,10 @@ export function buildStandaloneExportHtmlDocument(
     sectionSource.length > 0 &&
     shouldInjectStudioAutoMobileNav(bodyInner)
   ) {
-    bodyInner = `${buildStudioAutoMobileNavHeaderHtml(sectionSource, pageConfig ?? null)}\n${bodyInner}`;
+    bodyInner = `${buildStudioAutoMobileNavHeaderHtml(sectionSource, pageConfig ?? null, {
+      logoSet: userAssets?.logoSet,
+      navBrandLabel: docTitle.trim() || null,
+    })}\n${bodyInner}`;
     studioAutoMobileNavInjected = true;
   }
 

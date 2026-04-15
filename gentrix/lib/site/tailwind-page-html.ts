@@ -1733,6 +1733,10 @@ export type BuildTailwindIframeSrcDocOptions = {
    * Alpine niet blokkeert in sandboxed `srcDoc`.
    */
   previewScriptOrigin?: string | null;
+  /**
+   * Korte merknaam voor de geïnjecteerde auto-navbar (niet `config.style` — dat is een briefing).
+   */
+  navBrandLabel?: string | null;
 };
 
 export function buildTailwindIframeSrcDoc(
@@ -1745,7 +1749,10 @@ export function buildTailwindIframeSrcDoc(
   });
   let studioAutoMobileNavInjected = false;
   if (sections.length > 0 && shouldInjectStudioAutoMobileNav(body)) {
-    body = `${buildStudioAutoMobileNavHeaderHtml(sections, pageConfig ?? null)}\n${body}`;
+    body = `${buildStudioAutoMobileNavHeaderHtml(sections, pageConfig ?? null, {
+      logoSet: options?.logoSet,
+      navBrandLabel: options?.navBrandLabel?.trim() || null,
+    })}\n${body}`;
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();

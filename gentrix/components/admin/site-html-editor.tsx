@@ -800,6 +800,7 @@ export function SiteHtmlEditor({
                   composePlan={composePlan}
                   viewportMode={previewViewportMode}
                   compiledTailwindCss={initialTailwindCompiledCss}
+                  navBrandLabel={initialName.trim() || subfolderSlug}
                   title={`Preview ${subfolderSlug}`}
                   className="h-full min-h-0 w-full rounded-none border-0 bg-white"
                   frameClassName="h-full min-h-[280px] w-full"

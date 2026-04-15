@@ -39,6 +39,8 @@ type PublicPublishedTailwindProps = {
   webshopEnabled?: boolean;
   /** Zonder `pageOrigin` — die zet de client in `useEffect` vóór `buildTailwindIframeSrcDoc`. */
   contactSubpageNavBase?: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null;
+  /** Korte merknaam voor de auto-topnavbar (klantnaam); niet `documentTitle` met subpagina-suffix. */
+  navBrandLabel?: string | null;
 };
 
 function fallbackSrcDoc(documentTitle: string, body: string): string {
@@ -67,6 +69,7 @@ export function PublicPublishedTailwind({
   appointmentsEnabled = true,
   webshopEnabled = true,
   contactSubpageNavBase = null,
+  navBrandLabel = null,
 }: PublicPublishedTailwindProps) {
   const filtered = useMemo(
     () =>
@@ -98,6 +101,7 @@ export function PublicPublishedTailwind({
          * Hero + eerste secties: CSS-vrijstelling; ~1,6s IO-fallback voorkomt stuck states in iframes. */
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
         previewScriptOrigin: window.location.origin,
+        navBrandLabel: navBrandLabel?.trim() || undefined,
         ...(contactSubpageNav ? { contactSubpageNav } : {}),
       });
       if (typeof window !== "undefined") {
@@ -135,6 +139,7 @@ export function PublicPublishedTailwind({
     compiledTailwindCss,
     contactSubpageNavBase,
     draftPublicPreviewToken,
+    navBrandLabel,
   ]);
 
   const iframeStyle: CSSProperties = embedded

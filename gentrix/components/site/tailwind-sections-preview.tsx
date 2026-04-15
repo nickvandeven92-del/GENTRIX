@@ -78,6 +78,8 @@ type TailwindSectionsPreviewProps = {
   viewportMode?: "auto" | "mobile" | "desktop";
   /** Server-build Tailwind CSS: gezet → geen Play CDN in srcDoc (minder console-warnings bij remount). */
   compiledTailwindCss?: string | null;
+  /** Korte merknaam in de auto-geïnjecteerde top-navbar (niet `config.style`). */
+  navBrandLabel?: string | null;
 };
 
 export function TailwindSectionsPreview({
@@ -100,6 +102,7 @@ export function TailwindSectionsPreview({
   composePlan = null,
   viewportMode = "auto",
   compiledTailwindCss,
+  navBrandLabel,
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -149,6 +152,7 @@ export function TailwindSectionsPreview({
         studioMobileEditorFrame,
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
         previewScriptOrigin: previewScriptOrigin || undefined,
+        navBrandLabel: navBrandLabel?.trim() || undefined,
       }),
     [
       previewSections,
@@ -165,6 +169,7 @@ export function TailwindSectionsPreview({
       studioMobileEditorFrame,
       compiledTailwindCss,
       previewScriptOrigin,
+      navBrandLabel,
     ],
   );
 

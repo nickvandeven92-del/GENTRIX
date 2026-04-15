@@ -8,7 +8,9 @@ import {
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
+import { STUDIO_BRAND_MARK_ATTR } from "@/lib/site/brand-logo-inject";
 import { STUDIO_CONTACT_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
+import type { GeneratedLogoSet } from "@/types/logo";
 
 /**
  * Zelfde sleutels als `fixAlpineNavToggleDefaultsInXData`: als het model al Alpine-navstate in `x-data` zet,
@@ -170,22 +172,60 @@ section > header [class*="fixed"][class*="inset-0"] {
 }
 `;
 
+const NAV_BRAND_TEXT_MAX = 48;
+
+function clampNavBrandText(s: string): string {
+  const t = s.replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  return t.length <= NAV_BRAND_TEXT_MAX ? t : t.slice(0, NAV_BRAND_TEXT_MAX).trimEnd();
+}
+
 function defaultBrandLabel(pageConfig: TailwindPageConfig | null | undefined): string {
   if (!pageConfig) return "Website";
   if (isLegacyTailwindPageConfig(pageConfig)) {
     const t = pageConfig.themeName.trim();
-    return t.length > 0 ? t.slice(0, 80) : "Website";
+    return clampNavBrandText(t.length > 0 ? t : "Website") || "Website";
   }
-  const raw = pageConfig.style.trim().split(/\n+/)[0]?.trim() ?? "";
-  if (raw.length > 0) return raw.slice(0, 48);
+  /* `style` is een lange ontwerpbriefing — nooit als zichtbaar merk in de balk. */
   return "Website";
+}
+
+export type StudioAutoMobileNavBrandOptions = {
+  /** Zichtbare merktekst (bv. klant- of sitenaam uit de studio). */
+  navBrandLabel?: string | null;
+  /** Premium-logo: zelfde primary-SVG als elders in de site. */
+  logoSet?: GeneratedLogoSet | null;
+};
+
+function resolveNavBrandText(
+  pageConfig: TailwindPageConfig | null | undefined,
+  brandOpts?: StudioAutoMobileNavBrandOptions | null,
+): string {
+  const explicit = clampNavBrandText(brandOpts?.navBrandLabel?.trim() ?? "");
+  if (explicit) return explicit;
+  return defaultBrandLabel(pageConfig);
+}
+
+function buildAutoNavBrandBlock(
+  pageConfig: TailwindPageConfig | null | undefined,
+  brandOpts?: StudioAutoMobileNavBrandOptions | null,
+): string {
+  const label = resolveNavBrandText(pageConfig, brandOpts);
+  const primary = brandOpts?.logoSet?.variants?.primary?.trim();
+  if (primary) {
+    const aria = escapeHtmlText(brandOpts?.logoSet?.brandName?.trim() || label);
+    return `<a href="#top" class="inline-flex min-w-0 shrink-0 items-center focus-visible:outline focus-visible:ring-2 focus-visible:ring-white/35 rounded-sm" aria-label="${aria}"><span class="inline-flex h-8 max-w-[min(100%,280px)] min-w-0 items-center text-white [&_svg]:h-8 [&_svg]:max-h-8 [&_svg]:w-auto" ${STUDIO_BRAND_MARK_ATTR}="1">${primary}</span></a>`;
+  }
+  const esc = escapeHtmlText(label);
+  return `<a href="#top" class="min-w-0 max-w-[min(100%,12rem)] shrink-0 truncate text-lg font-semibold tracking-tight text-white sm:max-w-[min(100%,16rem)]" title="${esc}">${esc}</a>`;
 }
 
 export function buildStudioAutoMobileNavHeaderHtml(
   sections: TailwindSection[],
   pageConfig?: TailwindPageConfig | null,
+  brandOpts?: StudioAutoMobileNavBrandOptions | null,
 ): string {
-  const brand = escapeHtmlText(defaultBrandLabel(pageConfig ?? null));
+  const brandBlock = buildAutoNavBrandBlock(pageConfig ?? null, brandOpts ?? null);
   const items = sections
     .map((s) => {
       const hash = studioNavHashFromSectionName(s.sectionName);
@@ -239,8 +279,8 @@ export function buildStudioAutoMobileNavHeaderHtml(
     </nav>`;
 
   return `<header id="gentrix-auto-site-header" ${AUTO_NAV_ATTR} data-studio-skip-nav-tone class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
-  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
-    <a href="#top" class="shrink-0 text-lg font-semibold tracking-tight text-white">${brand}</a>
+  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 md:gap-4 md:px-6">
+    ${brandBlock}
     ${desktopNavBlock}
     <button type="button" class="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white ring-1 ring-white/15 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden" @click="navOpen = !navOpen" :aria-expanded="navOpen.toString()" aria-controls="gentrix-site-mobile-sheet">
       <span class="sr-only">Menu</span>

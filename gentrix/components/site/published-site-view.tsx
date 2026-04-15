@@ -143,6 +143,7 @@ export function PublishedSiteView({
           logoSet={payload.logoSet}
           compiledTailwindCss={payload.tailwindCompiledCss}
           documentTitle={iframeTitle}
+          navBrandLabel={docTitle}
           embedded={visibility === "portal"}
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
