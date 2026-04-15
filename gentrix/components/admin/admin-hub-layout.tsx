@@ -70,6 +70,14 @@ export function AdminHubLayout({ children }: AdminHubLayoutProps) {
     setMobileOpen(false);
   }, [pathname]);
 
+  // Close menu when viewport size changes (lg breakpoint at 1024px)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handleChange = () => setMobileOpen(false);
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, []);
+
   const toggleGroup = useCallback((label: string) => {
     setOpenGroups((prev) => {
       const next = new Set(prev);
