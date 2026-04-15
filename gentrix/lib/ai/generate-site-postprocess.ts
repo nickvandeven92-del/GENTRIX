@@ -161,6 +161,57 @@ export function fixAlpineNavToggleDefaultsInXData(html: string): string {
   return out;
 }
 
+function escapeRegExpKey(k: string): string {
+  return k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** `x-show`-expressie gebruikt bekende nav-toggle (incl. losse `open`). */
+function xShowExpressionUsesNavToggle(expr: string): boolean {
+  const e = expr.trim();
+  if (!e) return false;
+  for (const k of ALPINE_NAV_TOGGLE_KEYS) {
+    if (new RegExp(`\\b${escapeRegExpKey(k)}\\b`).test(e)) return true;
+  }
+  return /\bopen\b/.test(e);
+}
+
+/**
+ * Veel AI-markup: mobiele backdrop/sheet `fixed` + `inset-*` + `x-show="navOpen"` maar **zonder** `lg:hidden`.
+ * Dan blijft het paneel op desktop zichtbaar (Alpine inline wint van incomplete responsive utilities).
+ * Voegt alleen `lg:hidden` toe wanneer het patroon duidelijk menu/overlay is.
+ */
+export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
+  return html.replace(/<(div|aside)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
+    if (!/\bx-show\s*=/i.test(attrs)) return full;
+    const showM = /\bx-show\s*=\s*["']([^"']*)["']/i.exec(attrs);
+    if (!showM || !xShowExpressionUsesNavToggle(showM[1])) return full;
+
+    const clsDouble = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs);
+    const clsSingle = /\bclass\s*=\s*'([^']*)'/i.exec(attrs);
+    const quote: '"' | "'" = clsDouble ? '"' : clsSingle ? "'" : ("" as '"' | "'");
+    const clsRaw = clsDouble?.[1] ?? clsSingle?.[1] ?? "";
+    if (!clsRaw) return full;
+
+    const cls = clsRaw;
+    if (!/\bfixed\b/.test(cls)) return full;
+    if (!/\binset-0\b|\binset-x-0\b/.test(cls)) return full;
+    if (/\blg:hidden\b/.test(cls)) return full;
+
+    const blob = `${attrs} ${cls}`.toLowerCase();
+    const menuish =
+      /backdrop|bg-slate-9|bg-black\/|from-slate|to-slate|via-slate|ring-white|shadow-\[0_2|site-mobile|mobile-sheet|drawer|sheet|z-\[6|z-\[7|z-\[8|z-\[9|z-\[1\d|z-60|z-50|z-45|z-40/.test(blob) ||
+      /\b(id|aria-controls)\s*=\s*["'][^"']*(mobile|menu|sheet|drawer|nav)/i.test(attrs);
+    if (!menuish) return full;
+
+    const newCls = `${cls} lg:hidden`.replace(/\s+/g, " ").trim();
+    const nextAttrs = attrs.replace(
+      quote === '"' ? /\bclass\s*=\s*"[^"]*"/i : /\bclass\s*=\s*'[^']*'/i,
+      quote === '"' ? `class="${newCls}"` : `class='${newCls}'`,
+    );
+    return `<${tag}${nextAttrs}>`;
+  });
+}
+
 /** Inline tags waar modellen vaak alleen “SCROLL” / “Scroll” in zetten (case-insensitive strip). */
 const DECORATIVE_SCROLL_CUE_TAG =
   "span|p|div|a|button|strong|em|label|h1|h2|h3|h4|h5|h6|small|i|b|kbd|aside|blockquote|cite|abbr|figcaption|time";
@@ -568,7 +619,8 @@ export function postProcessClaudeTailwindPage(
     const html1 = repairInternalLinksInHtml(html0b, validIds, cross);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
-    const html2c = stripDecorativeScrollCueMarkup(html2b);
+    const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2b);
+    const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2c) : html2c;
     return { ...row, html: html3 };
   });

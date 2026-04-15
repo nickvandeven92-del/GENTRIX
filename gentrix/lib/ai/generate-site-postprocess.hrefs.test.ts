@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectHtmlElementIds,
+  ensureAlpineMobileOverlayHasLgHidden,
   ensureClaudeMarketingSiteJsonHasContactSections,
   fixAlpineNavToggleDefaultsInXData,
   normalizeClaudeSectionArraysInParsedJson,
@@ -162,6 +163,36 @@ describe("fixAlpineNavToggleDefaultsInXData", () => {
   it("past offCanvasOpen: true aan", () => {
     const html = `<header x-data="{ offCanvasOpen: true }">`;
     expect(fixAlpineNavToggleDefaultsInXData(html)).toContain("offCanvasOpen: false");
+  });
+});
+
+describe("ensureAlpineMobileOverlayHasLgHidden", () => {
+  it("voegt lg:hidden toe op mobiele backdrop zonder lg:hidden", () => {
+    const html = `<div class="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-md" x-show="navOpen" x-cloak></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toMatch(/class="[^"]*\blg:hidden\b/);
+  });
+
+  it("voegt lg:hidden toe op sheet met nav-toggle x-show", () => {
+    const html = `<div id="site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] border-t" x-show="menuOpen" x-cloak></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toContain("lg:hidden");
+  });
+
+  it("wijzigt niet als lg:hidden al aanwezig is", () => {
+    const html = `<div class="fixed inset-0 z-[60] lg:hidden" x-show="navOpen"></div>`;
+    expect(ensureAlpineMobileOverlayHasLgHidden(html)).toBe(html);
+  });
+
+  it("wijzigt geen hero zonder menu-markers (alleen z-10)", () => {
+    const html = `<div class="fixed inset-0 z-10" x-show="open"></div>`;
+    expect(ensureAlpineMobileOverlayHasLgHidden(html)).toBe(html);
+  });
+
+  it("ondersteunt enkel aanhalingstekens rond class", () => {
+    const html = `<div class='fixed inset-0 z-[60] backdrop-blur' x-show='open'></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toContain("lg:hidden");
   });
 });
 
