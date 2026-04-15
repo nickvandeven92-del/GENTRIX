@@ -23,6 +23,14 @@ const XDATA_HAS_NAV_TOGGLE_RE = new RegExp(
 const MOBILE_MENU_BUTTON_HIDDEN_RE =
   /<button[^>]*\bclass\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b/i;
 
+/** Mobiele menu-button met aria-label, ook zonder responsive hidden utility. */
+const MOBILE_MENU_BUTTON_ARIA_LABEL_RE =
+  /<button[^>]*\baria-label\s*=\s*["'][^"']*enu[^"']*["'][^>]*>/i;
+
+/** Bestaande mobiele navigatie met ARIA-label in nav. */
+const MOBILE_MENU_NAV_LABEL_RE =
+  /<nav[^>]*\baria-label\s*=\s*["'](?:Mobiel menu|Mobile menu)["'][^>]*>/i;
+
 /** Herken onze eigen geïnjecteerde balk (geen dubbele injectie). */
 const AUTO_NAV_ATTR = 'data-gentrix-auto-mobile-nav="1"';
 
@@ -50,6 +58,8 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   const fromHeader = bodyInnerHtml.slice(idx, idx + 28_000);
   /* Bestaand mobiel menu: knop verborgen op brede breakpoints, of Alpine-navstate in x-data. */
   if (MOBILE_MENU_BUTTON_HIDDEN_RE.test(fromHeader)) return false;
+  if (MOBILE_MENU_BUTTON_ARIA_LABEL_RE.test(fromHeader)) return false;
+  if (MOBILE_MENU_NAV_LABEL_RE.test(fromHeader)) return false;
   if (XDATA_HAS_NAV_TOGGLE_RE.test(fromHeader)) return false;
   return true;
 }
@@ -61,7 +71,8 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
  *
  * Ook: Alpine x-show doet inline display, dus we moeten forceren dat mobiele elementen op lg+ verborgen zijn.
  */
-export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
+export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[${AUTO_NAV_ATTR}] ~ header,
+body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
   display: none !important;
 }
 

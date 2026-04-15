@@ -19,6 +19,22 @@ describe("shouldInjectStudioAutoMobileNav", () => {
     expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
   });
 
+  it("injecteert niet als er al een menu button met aria-label in de header staat", () => {
+    const html = `
+      <header class="fixed top-0 z-50 w-full">
+        <button type="button" aria-label="Open menu">☰</button>
+      </header>`;
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+  });
+
+  it("injecteert niet als er al een bestaande mobiel menu nav aanwezig is", () => {
+    const html = `
+      <header class="fixed top-0 z-50 w-full">
+        <nav aria-label="Mobiel menu"></nav>
+      </header>`;
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+  });
+
   it("injecteert nog wel als er geen header en geen patroon is (lege one-pager)", () => {
     expect(shouldInjectStudioAutoMobileNav(`<section><p>Alleen tekst</p></section>`)).toBe(true);
   });
