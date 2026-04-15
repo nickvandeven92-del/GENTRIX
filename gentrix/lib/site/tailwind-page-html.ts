@@ -305,7 +305,8 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
     display: none !important;
   }
   /*
-   * Sheet vaak **sibling** van `<header>` onder `section.w-full` (niet `header > div`) — zelfde x-show/inline-issue.
+   * Sheet vaak sibling van header naast section.w-full (niet header > div) — zelfde x-show/inline-issue.
+   * Geen backticks in deze comment: staat in een TS-template-string.
    */
   html[data-gentrix-studio-iframe="1"] section.w-full > div[class*="fixed"][class*="lg:hidden"],
   html[data-gentrix-studio-iframe="1"] section.w-full > aside[class*="fixed"][class*="lg:hidden"],
