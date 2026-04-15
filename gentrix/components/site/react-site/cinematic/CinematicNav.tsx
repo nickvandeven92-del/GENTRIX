@@ -134,7 +134,7 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         setMobileOpen(false);
-      }, 100);
+      }, 50);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {

@@ -26,9 +26,7 @@ export function SiteNav({ site }: { site: GeneratedSite }) {
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
     const handleChange = () => {
-      if (mq.matches) {
-        setOpen(false);
-      }
+      setOpen(false);
     };
     mq.addEventListener("change", handleChange);
     return () => mq.removeEventListener("change", handleChange);
@@ -41,7 +39,7 @@ export function SiteNav({ site }: { site: GeneratedSite }) {
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         setOpen(false);
-      }, 100);
+      }, 50);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
