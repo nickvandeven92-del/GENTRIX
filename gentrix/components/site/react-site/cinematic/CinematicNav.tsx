@@ -122,9 +122,10 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
+  // Close menu when viewport size changes (desktop ↔ mobile) or when navigating
   useEffect(() => {
     setMobileOpen(false);
-  }, [resolveHref]);
+  }, [lgUp, section]);
 
   const mobileLinkWrap = (node: ReactNode, drawerTone: "light" | "dark") => (
     <div
