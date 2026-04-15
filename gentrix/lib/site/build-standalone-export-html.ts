@@ -14,6 +14,9 @@ import {
   STUDIO_MARQUEE_CSS,
   STUDIO_ALPINE_X_CLOAK_CSS,
   STUDIO_MOBILE_MENU_STACKING_FIX_CSS,
+  STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS,
+  STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS,
+  buildStudioHeaderNavAlpineClampScript,
   STUDIO_NAV_SCROLL_CONTRAST_CSS,
   STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS,
   STUDIO_NAV_SCROLL_CONTRAST_SCRIPT,
@@ -145,7 +148,7 @@ export function buildStandaloneExportHtmlDocument(
   const gsap = getStudioGsapHtmlFragments(false);
 
   return `<!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" data-gentrix-studio-iframe="1">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -162,6 +165,8 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_MARQUEE_CSS}
     ${STUDIO_LASER_LINE_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
+    ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
+    ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n    ` : ""}
@@ -171,7 +176,21 @@ export function buildStandaloneExportHtmlDocument(
 ${bodyInner}
 ${STUDIO_SCROLL_REVEAL_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
-${lucideBlock}${alpineScript}${userJsBlock}
+${lucideBlock}<script>
+(function(){
+  function clampNav(){
+    try{if(typeof window.__gentrixNavClamp==="function")window.__gentrixNavClamp(true);}catch(_){}
+  }
+  document.addEventListener("alpine:init",function(){
+    queueMicrotask(clampNav);
+  });
+  document.addEventListener("alpine:initialized",function(){
+    queueMicrotask(clampNav);
+    setTimeout(clampNav,0);
+  });
+})();
+</script>
+${alpineScript}${buildStudioHeaderNavAlpineClampScript()}${userJsBlock}
 </body>
 </html>`;
 }

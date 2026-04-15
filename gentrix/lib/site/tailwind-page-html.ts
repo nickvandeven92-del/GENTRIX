@@ -204,26 +204,46 @@ export const STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS = `@media (max-width: 1023px) {
 /**
  * iframe-preview: stacking t.o.v. volscherm-menu-backdrops.
  *
- * **Mobiel (≤1023px):** géén `z-index` op de **hele** `<header>` — veel AI-layouts zetten de mobiele
- * linkkolom in dezelfde header-stacking; `z-index: 340` op `header` tilde die tekst óver de hero (doorzichtig,
- * geen backdrop) en voelde als “menu werkt niet”. Alleen **menuknoppen** krijgen een hogere z.
+ * **Mobiel (≤1023px):** `STUDIO_MOBILE_MENU_STACKING_FIX_CSS` tilt menu-backdrops naar **≤261** binnen
+ * dezelfde stacking-context als de balk. De hamburger-knop moet **daarboven** (275) liggen, anders vangt
+ * de sibling-overlay alle klikken (“menu doet niets”, icoon blijft hangen).
+ *
+ * Ook **hele** `header` / `[role="banner"]` / vaste top-balk-`div` op 280 t.o.v. de pagina — veel AI-sites
+ * gebruiken geen `<header>`-tag; zonder deze regel blijft backdrop (260) boven een `z-50`-balk.
  *
  * **Desktop (≥1024px) in iframe:** hele header weer boven typische overlays (zeldzamer issue).
  */
 export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `@media (max-width: 1023px) {
   /* Boven STUDIO_MOBILE_MENU_STACKING_FIX (≤261); niet 340 — minder “losse” stacking t.o.v. hero. */
-  html[data-gentrix-studio-iframe="1"] header {
+  html[data-gentrix-studio-iframe="1"] header,
+  html[data-gentrix-studio-iframe="1"] [role="banner"] {
     z-index: 280 !important;
   }
+  /* Div-navbar (geen <header>): eerste vaste top-balk met lg:hidden menuknop — zelfde stacking als header. */
+  html[data-gentrix-studio-iframe="1"] body > div[class*="fixed"][class*="top-0"]:has(button.sm\\:hidden),
+  html[data-gentrix-studio-iframe="1"] body > div[class*="fixed"][class*="top-0"]:has(button.md\\:hidden),
+  html[data-gentrix-studio-iframe="1"] body > div[class*="fixed"][class*="top-0"]:has(button.lg\\:hidden) {
+    z-index: 280 !important;
+  }
+  /*
+   * Klikbaar boven backdrop/sheet (≤261): oude z-index:5 was onder de gestackte overlay → taps deden niets.
+   */
   html[data-gentrix-studio-iframe="1"] header button[aria-label*="enu"],
   html[data-gentrix-studio-iframe="1"] header button[aria-label*="Menu"],
-  html[data-gentrix-studio-iframe="1"] header button[aria-label*="menu"] {
+  html[data-gentrix-studio-iframe="1"] header button[aria-label*="menu"],
+  html[data-gentrix-studio-iframe="1"] [role="banner"] button[aria-label*="enu"],
+  html[data-gentrix-studio-iframe="1"] [role="banner"] button[aria-label*="Menu"],
+  html[data-gentrix-studio-iframe="1"] [role="banner"] button[aria-label*="menu"],
+  html[data-gentrix-studio-iframe="1"] body > div[class*="fixed"][class*="top-0"]:has(button.sm\\:hidden) button.sm\\:hidden,
+  html[data-gentrix-studio-iframe="1"] body > div[class*="fixed"][class*="top-0"]:has(button.md\\:hidden) button.md\\:hidden,
+  html[data-gentrix-studio-iframe="1"] body > div[class*="fixed"][class*="top-0"]:has(button.lg\\:hidden) button.lg\\:hidden {
     position: relative;
-    z-index: 5 !important;
+    z-index: 275 !important;
   }
 }
 @media (min-width: 1024px) {
-  html[data-gentrix-studio-iframe="1"] header {
+  html[data-gentrix-studio-iframe="1"] header,
+  html[data-gentrix-studio-iframe="1"] [role="banner"] {
     z-index: 340 !important;
   }
 }`;
@@ -318,7 +338,7 @@ export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 102
  * `sidebarMenuOpen`, `x-data="initNav"` i.c.m. factory-keys buiten `ALPINE_NAV_TOGGLE_KEYS`, enz.
  * Latere rondes: alleen nog als het `x-data`-attribuut letterlijk `key: true` bevat (gebruiker mag menu open houden).
  */
-function buildStudioHeaderNavAlpineClampScript(): string {
+export function buildStudioHeaderNavAlpineClampScript(): string {
   const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
   return `<script defer>
 (function(){
