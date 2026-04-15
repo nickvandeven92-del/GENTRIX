@@ -76,6 +76,12 @@ body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
   display: none !important;
 }
 
+/* Verberg ALLE headers en navs in ALLE gegenereerde secties - niet de auto-geïnjecteerde */
+section header,
+section nav {
+  display: none !important;
+}
+
 /* Altijd verbergen: de backdrop en mobile sheet van de geïnjecteerde navbar */
 #gentrix-auto-site-header .fixed.inset-0,
 #gentrix-site-mobile-sheet {
