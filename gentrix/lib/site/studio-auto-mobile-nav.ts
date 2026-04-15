@@ -19,17 +19,35 @@ const XDATA_HAS_NAV_TOGGLE_RE = new RegExp(
   "i",
 );
 
-/** Hamburger / mobiele menuknop: vaak `lg:hidden`, soms alleen `md:hidden` of `xl:hidden`. */
-const MOBILE_MENU_BUTTON_HIDDEN_RE =
-  /<button[^>]*\bclass\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b/i;
+/** Alpine / x-html: klik-handler op dezelfde `<button>`-tag (attribuutvolgorde willekeurig). */
+const BUTTON_HAS_ALPINE_CLICK_RE = /@click|x-on:click/i;
 
-/** Mobiele menu-button met aria-label voor menu (ook expansie-buttons). */
-const MOBILE_MENU_BUTTON_ARIA_LABEL_RE =
-  /<button[^>]*\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|open|sluiten|close|openen|menu|expand|collapse)[^"']*["'][^>]*>/i;
+/** `lg:hidden`-achtige menuknop in class. */
+const BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE = /\b(?:sm|md|lg|xl|2xl):hidden\b/i;
 
-/** Bestaande mobiele navigatie met ARIA-label in nav. */
-const MOBILE_MENU_NAV_LABEL_RE =
-  /<nav[^>]*\baria-label\s*=\s*["'](?:Mobiel menu|Mobile menu|Menu|Main menu|Hoofd|navigat)[^"']*["'][^>]*>/i;
+/**
+ * Echte werkende mobiele toggle: `x-data` met bekende nav-boolean **en** een menuknop (`*:hidden` of
+ * menu-achtige aria) met `@click` / `x-on:click` op die knop.
+ *
+ * Voorheen sloegen we inject al af bij alleen `lg:hidden` of `aria-label="Menu"` — veel AI-output
+ * ziet er zo uit maar mist handlers of deelt geen scope met `x-data` → “knoppen doen niets”.
+ */
+export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolean {
+  if (!XDATA_HAS_NAV_TOGGLE_RE.test(fromHeader)) return false;
+  const buttonRe = /<button\b[^>]{0,8000}>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = buttonRe.exec(fromHeader)) !== null) {
+    const tag = m[0];
+    const looksMobileControl =
+      BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE.test(tag) ||
+      /\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)/i.test(
+        tag,
+      );
+    if (!looksMobileControl) continue;
+    if (BUTTON_HAS_ALPINE_CLICK_RE.test(tag)) return true;
+  }
+  return false;
+}
 
 /** Herken onze eigen geïnjecteerde balk (geen dubbele injectie). */
 const AUTO_NAV_ATTR = 'data-gentrix-auto-mobile-nav="1"';
@@ -55,12 +73,10 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (/data-gentrix-auto-mobile-nav\s*=/i.test(bodyInnerHtml)) return false;
   const idx = bodyInnerHtml.search(/<header\b/i);
   if (idx < 0) return true;
-  const fromHeader = bodyInnerHtml.slice(idx, idx + 28_000);
-  /* Bestaand mobiel menu: knop verborgen op brede breakpoints, of Alpine-navstate in x-data. */
-  if (MOBILE_MENU_BUTTON_HIDDEN_RE.test(fromHeader)) return false;
-  if (MOBILE_MENU_BUTTON_ARIA_LABEL_RE.test(fromHeader)) return false;
-  if (MOBILE_MENU_NAV_LABEL_RE.test(fromHeader)) return false;
-  if (XDATA_HAS_NAV_TOGGLE_RE.test(fromHeader)) return false;
+  /* x-data staat vaak op een parent vóór <header> — meenemen in de scan. */
+  const scanStart = Math.max(0, idx - 6_000);
+  const scanSlice = bodyInnerHtml.slice(scanStart, idx + 28_000);
+  if (headerHasWiredAlpineMobileMenuToggle(scanSlice)) return false;
   return true;
 }
 
@@ -97,9 +113,18 @@ section header,
 section nav,
 body > header:not([${AUTO_NAV_ATTR}]),
 body > nav,
-nav[aria-label*="enu"],
-nav[aria-label*="Menu"] {
+/* Niet de geïnjecteerde sheet (#gentrix-site-mobile-sheet); die heeft ook aria-label met "menu". */
+body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="enu"],
+body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="Menu"],
+section nav[aria-label*="enu"],
+section nav[aria-label*="Menu"] {
   display: none !important;
+}
+
+/* Geïnjecteerde mobiele sheet: expliciet tonen (wint van bovenstaande nav-*-regels). */
+header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet nav[aria-label="Mobiel menu"],
+header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet nav[aria-label="Mobile menu"] {
+  display: flex !important;
 }
 
 /* VERBERG NIET: backdrop en mobile sheet — Alpine x-show moet die kunnen schakelen! */
