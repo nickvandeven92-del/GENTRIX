@@ -182,9 +182,8 @@ function xShowExpressionUsesNavToggle(expr: string): boolean {
  */
 export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
   return html.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
-    if (!/\bx-show\s*=/i.test(attrs)) return full;
     const showM = /\bx-show\s*=\s*["']([^"']*)["']/i.exec(attrs);
-    if (!showM || !xShowExpressionUsesNavToggle(showM[1])) return full;
+    const hasAlpineNavShow = !!showM && xShowExpressionUsesNavToggle(showM[1]);
 
     const clsDouble = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs);
     const clsSingle = /\bclass\s*=\s*'([^']*)'/i.exec(attrs);
@@ -207,6 +206,12 @@ export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
       /backdrop|bg-slate-9|bg-black\/|from-slate|to-slate|via-slate|ring-white|shadow-\[0_2|site-mobile|mobile-sheet|drawer|sheet|z-\[6|z-\[7|z-\[8|z-\[9|z-\[1\d|z-60|z-50|z-45|z-40/.test(blob) ||
       /\b(id|aria-controls)\s*=\s*["'][^"']*(mobile|menu|sheet|drawer|nav)/i.test(attrs);
     if (!menuish) return full;
+    /**
+     * Ook statische side-drawers (zonder x-show) komen voor uit model-output als "tweede nav kolom".
+     * Die moeten nooit op desktop zichtbaar blijven naast de hoofdnav.
+     */
+    const staticSideDrawerLikelyMenu = !showM && isSideDrawer && menuish;
+    if (!hasAlpineNavShow && !staticSideDrawerLikelyMenu) return full;
 
     const newCls = `${cls} lg:hidden`.replace(/\s+/g, " ").trim();
     const nextAttrs = attrs.replace(

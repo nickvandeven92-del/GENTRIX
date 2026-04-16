@@ -201,6 +201,17 @@ describe("ensureAlpineMobileOverlayHasLgHidden", () => {
     const out = ensureAlpineMobileOverlayHasLgHidden(html);
     expect(out).toContain("lg:hidden");
   });
+
+  it("voegt lg:hidden toe op statische rechter nav-drawer zonder x-show", () => {
+    const html = `<div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5"></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toContain("lg:hidden");
+  });
+
+  it("wijzigt geen statisch sidepanel zonder menu-markers", () => {
+    const html = `<div class="fixed top-0 right-0 h-full w-16 z-10"></div>`;
+    expect(ensureAlpineMobileOverlayHasLgHidden(html)).toBe(html);
+  });
 });
 
 describe("ensureAlpineMobileToggleButtonHasLgHidden", () => {
