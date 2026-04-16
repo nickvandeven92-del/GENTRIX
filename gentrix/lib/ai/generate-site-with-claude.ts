@@ -1235,7 +1235,7 @@ function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
   return `**Accent-lijn / kader “uitgroeien” bij scroll (\`studio-border-reveal\`):** Zelfde idee als professionele sites waar een lijn **~72% → 100%** loopt zodra het blok in beeld komt. Zet een **lege** \`<div>\` met exact \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`studio-border-reveal studio-border-reveal--v\` (verticaal) plus Tailwind voor maat (\`w-full max-w-xl mx-auto mt-6 h-1\` bij \`--h\`; \`min-h-[6rem] w-1 shrink-0\` bij \`--v\`). **Geen** \`<script>\` in secties — de studio levert CSS + observer.
 - **Kleur:** op diezelfde \`div\` optioneel \`[--studio-br-rgb:212_175_55]\` (goud), \`[--studio-br-rgb:34_197_94]\`, enz., en/of \`[--studio-br-a:0.85]\`.
 - **Waar:** onder \`h2\`/\`h3\`, tussen kop en paragraaf, onder prijs-/USP-kaarten — waar een **editoriale / premium** lijn past.
-- **Verplicht** als de briefing vraagt om **rand**, **randen**, **border**, **kader**, **omlijning**, **gouden/teken accent-lijn**, **lijntjes die meebewegen / meegroeien met scroll**, of vergelijkbare UI-motion: **minstens 3** reveals op de landing (\`--h\` en/of \`--v\`). Combineer met \`data-animation\`; **niet** op \`studio-marquee-track\` plakken.
+- **Verplicht** als de briefing vraagt om **rand**, **randen**, **border**, **kader**, **omlijning**, **gouden/teken accent-lijn**, **lijntjes die meebewegen / meegroeien met scroll**, of vergelijkbare UI-motion: **minstens 3** reveals op de landing (\`--h\` en/of \`--v\`). Combineer met \`data-animation\`; **niet** op horizontaal scrollende ticker-/logo-banden plakken.
 - **Laser (\`studio-laser-*\`):** blijft een **aparte, zeldzame** sfeer-optie (cyber/neon/sci-fi) — **niet** verplicht en **niet** als vervanging van border-reveal voor normale winkel-/retail-/premium-briefings.`;
 }
 
@@ -1275,11 +1275,8 @@ ${tailList}
 `;
 }
 
-function buildMarqueeStudioPromptLine(marqueeForbidden: boolean): string {
-  if (marqueeForbidden) {
-    return `- **Marquee/ticker:** **verboden** op deze one-pager — geen \`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`, of oneindig horizontaal scrollende logo-/tekstbanden. Toon logo's/trust **stilstaand** (grid of vaste rij). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL in de briefing.`;
-  }
-  return `- Optioneel \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing — zie border-reveal-blok hierboven; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL.`;
+function buildMarqueeForbiddenPromptLine(): string {
+  return `- **Marquee/ticker (verboden):** geen \`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`, of oneindig horizontaal scrollende logo-/tekstbanden. Toon logo's/trust **stilstaand** (grid, flex-wrap of vaste rij). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL in de briefing.`;
 }
 
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
@@ -1446,7 +1443,7 @@ ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLan
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
 ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
-${buildMarqueeStudioPromptLine(strictLanding)}
+${buildMarqueeForbiddenPromptLine()}
 
 ${section3Tail}${section3HeroHeight}
 
@@ -1574,19 +1571,10 @@ ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
 ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
-${
-  strictLanding
-    ? `${buildMarqueeStudioPromptLine(true)}
+${buildMarqueeForbiddenPromptLine()}
 
 **Laserlijn / scan (optioneel — alleen passende sfeer):** **Standaard: geen** \`studio-laser-*\`. Gebruik liever \`studio-border-reveal\` + \`data-animation\`. Zet een laser **alleen** als de klant **duidelijk** futuristisch/neon/sci-fi vraagt (woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn**, of expliciete \`Stijl: …\`). **Niet** op donker thema of “branche is X” alleen. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` parent; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal).
 
-`
-    : `**Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
-
-**Laserlijn / scan (optioneel — alleen passende sfeer):** **Standaard: geen** \`studio-laser-*\`. Gebruik liever \`studio-border-reveal\` + \`data-animation\` + marquee voor “premium dynamiek”. Zet een laser **alleen** als de klant **duidelijk** futuristisch/neon/sci-fi vraagt (woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn**, of expliciete \`Stijl: …\`). **Niet** op donker thema of “branche is X” alleen. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` parent; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal).
-
-`
-}
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
 **Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik Unsplash/gradient + motion zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
@@ -2185,7 +2173,11 @@ export function createGenerateSiteReadableStream(
     async start(controller) {
       const streamWallClockStartMs = Date.now();
       try {
-        send(controller, { type: "status", message: "Generatie gestart" });
+        send(controller, {
+          type: "status",
+          message:
+            "Generatie gestart — briefing en context worden voorbereid (kan ½–2 min duren bij referentiesite of zware context).",
+        });
 
         const prepared = await prepareGenerateSiteClaudeCall(
           businessName,

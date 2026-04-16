@@ -21,6 +21,8 @@ import {
   STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS,
   STUDIO_NAV_SCROLL_CONTRAST_SCRIPT,
   STUDIO_SCROLL_REVEAL_SCRIPT,
+  STUDIO_SITE_CREDIT_BODY_HTML,
+  STUDIO_SITE_CREDIT_CSS,
   getStudioAosHtmlFragments,
   getStudioGsapHtmlFragments,
 } from "@/lib/site/tailwind-page-html";
@@ -180,11 +182,13 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
+    ${STUDIO_SITE_CREDIT_CSS}
     ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n    ` : ""}
   </style>
   ${userCssBlock}${aos.headLink}</head>
 <body class="min-h-screen antialiased text-slate-900${radiusClass}"${studioAutoMobileNavInjected ? ` id="top"` : ""}>
 ${bodyInner}
+${STUDIO_SITE_CREDIT_BODY_HTML}
 ${STUDIO_SCROLL_REVEAL_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${lucideBlock}<script>
@@ -228,7 +232,7 @@ Technisch
 - Beweging: elementen met \`data-animation\` (fade-up, slide-in-left, …) animeren wanneer ze in beeld komen (eigen Intersection Observer). **AOS** staat via unpkg (\`data-aos\`). **GSAP 3** staat via jsDelivr: \`gsap\`, **ScrollTrigger**, **Flip**, **MotionPathPlugin**, **Observer** — gebruik ze in **Eigen JS** (\`gsap.to\`, timelines, ScrollTrigger); **geen** eigen \`<script>\` in sectie-HTML. **Niet** \`data-aos\` en \`data-animation\` op hetzelfde element. Bij “verminder beweging” schakelt AOS uit; beperk zware GSAP in Eigen JS zelf.
 - Sticky/fixed top-nav: automatische donkere menu-tekst op lichte achtergrond (scroll) — zet \`data-studio-skip-nav-tone\` op een wrapper om dit uit te zetten.
 - Accent-lijnen: \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`--v\` (verticaal) — lijn “groeit” van ~72% naar 100% bij scroll (zelfde observer als data-animation). Optioneel \`[--studio-br-rgb:R_G_B]\` voor kleur.
-- Marquee/ticker: optioneel \`studio-marquee\` + \`studio-marquee-track\` met dubbele inhoud voor een oneindige horizontale band (logo’s of tekst); pauzeert automatisch bij “verminder beweging”.
+- Horizontale ticker (\`studio-marquee\`): wordt **niet** meer gegenereerd; bestaande geëxporteerde pagina’s kunnen de klassen nog bevatten — de bundel levert nog compatibiliteits-CSS; pauzeert bij “verminder beweging”.
 - Premium merk-SVG: alleen als de site is gegenereerd met ENABLE_BRAND_LOGO_SYSTEM=1 in .env.local; het logo hoort dan als inline-SVG of img in index.html te staan (niet als los bestand in images/). Ontbrak het in de model-HTML, dan voegt de export/publicatie automatisch het primary-SVG toe na de eerste header/nav/section (attribuut data-studio-brand-mark).
 - Eigen JS/CSS uit de HTML-editor staan in index.html; controleer die code voordat je publiceert.
 - Lettertypen: Google Fonts worden nog van fonts.googleapis.com geladen (eenmalige download door de browser).

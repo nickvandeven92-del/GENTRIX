@@ -542,6 +542,77 @@ export function stripDecorativeScrollCueMarkup(html: string): string {
   return s;
 }
 
+function stripBalancedSameNameTag(
+  html: string,
+  openStart: number,
+  openTagLength: number,
+  tagName: string,
+): string | null {
+  const start = openStart;
+  const afterOpen = start + openTagLength;
+  const tag = tagName.toLowerCase();
+  let depth = 1;
+  let pos = afterOpen;
+  while (pos < html.length && depth > 0) {
+    const rest = html.slice(pos);
+    const openRe = new RegExp(`<${tag}\\b`, "i");
+    const closeRe = new RegExp(`</${tag}\\s*>`, "i");
+    const om = openRe.exec(rest);
+    const cm = closeRe.exec(rest);
+    if (!cm) return null;
+    const oi = om ? om.index : Number.POSITIVE_INFINITY;
+    const ci = cm.index;
+    if (om && oi < ci) {
+      depth += 1;
+      pos += oi + om[0].length;
+    } else {
+      depth -= 1;
+      pos += ci + cm[0].length;
+      if (depth === 0) {
+        return html.slice(0, start) + html.slice(pos);
+      }
+    }
+  }
+  return null;
+}
+
+/** Buitenste `studio-marquee`-wrapper (niet `studio-marquee-track`). */
+const STUDIO_MARQUEE_OUTER_OPEN_RE =
+  /<(div|section)\b[^>]*\bclass\s*=\s*"(?:studio-marquee(?!-track\b)|[^"]*\sstudio-marquee(?!-track\b))[^"]*"[^>]*>/i;
+
+const STUDIO_MARQUEE_TRACK_OPEN_RE =
+  /<(div|section)\b[^>]*\bclass\s*=\s*"[^"]*\bstudio-marquee-track\b[^"]*"[^>]*>/i;
+
+/**
+ * Verwijdert ticker/marquee-markup uit sectie-HTML (model output + legacy).
+ * CSS (`STUDIO_MARQUEE_CSS`) blijft voor oude exports; nieuwe generaties mogen dit niet meer gebruiken.
+ */
+export function stripStudioMarqueeMarkupFromHtml(html: string): string {
+  if (!html) return html;
+  let s = html.replace(/<\s*marquee\b[^>]*>[\s\S]*?<\/\s*marquee\s*>/gi, "");
+  if (!/\bstudio-marquee\b|\bstudio-marquee-track\b/i.test(s)) return s;
+
+  let guard = 0;
+  while (guard++ < 80) {
+    const m = STUDIO_MARQUEE_OUTER_OPEN_RE.exec(s);
+    if (!m) break;
+    const next = stripBalancedSameNameTag(s, m.index, m[0].length, m[1]);
+    if (next == null) break;
+    s = next;
+  }
+
+  guard = 0;
+  while (guard++ < 80) {
+    const m = STUDIO_MARQUEE_TRACK_OPEN_RE.exec(s);
+    if (!m) break;
+    const next = stripBalancedSameNameTag(s, m.index, m[0].length, m[1]);
+    if (next == null) break;
+    s = next;
+  }
+
+  return s;
+}
+
 export function mergeDuplicateClassOnChromeTags(html: string): string {
   return html.replace(/<(nav|header)(\s[^>]*?)>/gi, (full, tag: string, inner: string) => {
     const doubleQuoted = [...inner.matchAll(/\bclass\s*=\s*"([^"]*)"/gi)];
@@ -897,12 +968,31 @@ export type PostProcessClaudeTailwindPageOptions = {
   crossPage?: MarketingCrossPageLinkContext;
 };
 
+/**
+ * Verwijdert secties die typisch door het model als **ticker/marquee** of **losse CTA-band** worden toegevoegd,
+ * terwijl het studio-contract (strikte landing) die verbiedt — het model negeert dat soms nog.
+ * Ook zonder strikte modus: deze rijen worden uit de definitieve HTML gehaald zodat preview + export consistent zijn.
+ */
+export function shouldStripGeneratorTickerOrIntermediateCtaSectionId(id: string): boolean {
+  const s = id.trim().toLowerCase();
+  if (/^(marquee-strip|logo-marquee|logo-ticker|ticker|ticker-strip|tickertape|cta-band)$/i.test(s)) return true;
+  if ((s.includes("marquee") || s.includes("ticker")) && (s.includes("strip") || s.includes("band") || s.includes("tape")))
+    return true;
+  return false;
+}
+
+function filterGeneratorStudioProductSections(
+  sections: ClaudeTailwindPageOutput["sections"],
+): ClaudeTailwindPageOutput["sections"] {
+  return sections.filter((row) => !shouldStripGeneratorTickerOrIntermediateCtaSectionId(row.id));
+}
+
 export function postProcessClaudeTailwindPage(
   page: ClaudeTailwindPageOutput,
   options?: PostProcessClaudeTailwindPageOptions,
 ): ClaudeTailwindPageOutput {
   const cross = options?.crossPage;
-  const withIds = ensureUniqueSectionIds(page.sections);
+  const withIds = ensureUniqueSectionIds(filterGeneratorStudioProductSections(page.sections));
   const combined = withIds.map((row) => withRootIdOnSectionHtml(row.html, row.id)).join("\n");
 
   const validIds = new Set(withIds.map((s) => s.id));
@@ -921,7 +1011,8 @@ export function postProcessClaudeTailwindPage(
     const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0);
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
-    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2c) : html2c;
+    const html2d = stripStudioMarqueeMarkupFromHtml(html2c);
+    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2d) : html2d;
     return { ...row, html: html3 };
   });
 

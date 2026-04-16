@@ -111,6 +111,17 @@ export function getStudioGsapHtmlFragments(disabled: boolean): { bodyScripts: st
   };
 }
 
+/** Doel-URL voor de hoek-signatuur; één plek om aan te passen. */
+export const STUDIO_SITE_CREDIT_URL = "https://arvonto.nl";
+
+/**
+ * Subtiele vaste hoek-signatuur (Arvonto). Studio injecteert dit in iframe + export — los van model-HTML.
+ * `z-index` bewust onder typische nav (`~50`) en menu-overlays.
+ */
+export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;left:max(0.65rem, env(safe-area-inset-left, 0px));bottom:max(0.65rem, env(safe-area-inset-bottom, 0px));z-index:28;margin:0;font-family:ui-sans-serif, system-ui, sans-serif;font-size:10px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;line-height:1;color:rgba(15,23,42,0.38);pointer-events:none}[data-studio-site-credit] a{color:inherit;text-decoration:none;pointer-events:auto;outline-offset:3px}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(15,23,42,0.62)}}@media (prefers-color-scheme:dark){[data-studio-site-credit]{color:rgba(248,250,252,0.32)}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(248,250,252,0.55)}}}`;
+
+export const STUDIO_SITE_CREDIT_BODY_HTML = `<div data-studio-site-credit translate="no"><a href="${STUDIO_SITE_CREDIT_URL}" target="_blank" rel="noopener noreferrer" aria-label="Website door Arvonto">Arvonto</a></div>`;
+
 /**
  * Veel templates: vaste primary nav `fixed … z-50`, mobiel menu-backdrop `fixed inset-0 z-40`.
  * Dan blijft de balk en hamburger zichtbaar boven het open menu (iframe + smalle viewport).
@@ -708,10 +719,9 @@ export const STUDIO_BORDER_REVEAL_DISABLED_CSS = `
 }`;
 
 /**
- * Horizontale marquee/ticker (vergelijkbaar met Lovable `MarqueeStrip`): pure CSS.
- * Markup: buitenste `div.studio-marquee` + binnen `div.studio-marquee-track` met **twee identieke**
- * blokken inhoud achter elkaar (zelfde logo's/teksten dubbel), zodat `translateX(-50%)` naadloos loopt.
- * Snelheid: optioneel class `studio-marquee--slow` / `studio-marquee--fast` op de track.
+ * Legacy horizontale ticker-CSS (niet meer in prompts/generator); behouden voor oudere gepubliceerde HTML.
+ * Markup was: buitenste `div.studio-marquee` + `div.studio-marquee-track` met dubbele inhoud; snelheid via
+ * `studio-marquee--slow` / `studio-marquee--fast` op de track.
  */
 export const STUDIO_MARQUEE_CSS = `@media (prefers-reduced-motion: no-preference) {
   .studio-marquee {
@@ -2109,11 +2119,13 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
+    ${STUDIO_SITE_CREDIT_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>
 <body class="antialiased text-slate-900${radiusClass}"${bodyTopIdAttr}>
 ${twLoadingScript}${body}
+${STUDIO_SITE_CREDIT_BODY_HTML}
 ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>
 (function(){
   document.addEventListener("alpine:initialized",function(){

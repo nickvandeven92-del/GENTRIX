@@ -5,6 +5,14 @@ import { z } from "zod";
  * naast de briefing (branche, inhoud, doelgroep, CTA).
  * Gebruik `unspecified` alleen als het excerpt dat echt niet ondersteunt (niet als luie default).
  */
+const motionStyleFieldSchema = z
+  .union([
+    z.enum(["static_minimal", "scroll_reveal", "expressive", "unspecified"]),
+    /** Legacy uit oudere rationale-contracten; wordt genormaliseerd naar `scroll_reveal`. */
+    z.literal("marquee_forward"),
+  ])
+  .transform((v) => (v === "marquee_forward" ? "scroll_reveal" : v));
+
 export const referenceVisualAxesSchema = z.object({
   layoutRhythm: z.enum(["tight", "balanced", "airy", "editorial_mosaic", "unspecified"]),
   themeMode: z.enum(["light", "dark", "mixed", "unspecified"]),
@@ -21,7 +29,7 @@ export const referenceVisualAxesSchema = z.object({
   /** Vrije maar concrete beschrijving: bv. split 50/50, centered copy + full-bleed media, asymmetrische overlay. */
   heroComposition: z.string().min(8).max(500),
   sectionDensity: z.enum(["compact", "medium", "sparse", "unspecified"]),
-  motionStyle: z.enum(["static_minimal", "scroll_reveal", "expressive", "marquee_forward", "unspecified"]),
+  motionStyle: motionStyleFieldSchema,
   borderTreatment: z.enum(["none_minimal", "accent_lines", "border_reveal_forward", "frame_heavy", "unspecified"]),
   cardStyle: z.enum(["flat", "soft_shadow", "glass_blur", "bordered_tile", "unspecified"]),
 });
@@ -260,8 +268,8 @@ export function buildDesignContractPromptInjection(
       : contract.motionLevel === "subtle"
         ? "Subtiele motion (spaarzaam `data-animation`, lichte border-reveal waar passend)."
         : contract.motionLevel === "moderate"
-          ? "Merkbare maar nette motion (meerdere `data-animation`, border-reveal/marquee waar de briefing dat ondersteunt)."
-          : "Sterke motion passend bij de briefing (ruim `data-animation`, border-reveal, evt. `studio-marquee`).";
+          ? "Merkbare maar nette motion (meerdere `data-animation`, border-reveal waar de briefing dat ondersteunt; geen scrollende tickers)."
+          : "Sterke motion passend bij de briefing (ruim `data-animation`, border-reveal; geen scrollende tickers of logo-banden).";
 
   const paletteNl =
     contract.paletteMode === "light"

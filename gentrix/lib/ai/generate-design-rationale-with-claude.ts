@@ -50,7 +50,7 @@ Object met exact deze keys (enum-waarden exact zoals hieronder):
 - \`typographyDirection\`: \`"sans_modern"\` | \`"sans_humanist"\` | \`"serif_editorial"\` | \`"mixed_pairing"\` | \`"mono_accent"\` | \`"unspecified"\`
 - \`heroComposition\`: string (8–500 tekens) — compositie **principe** (split, centered + media, overlay, asymmetrisch …), geen pixel-maten uit excerpt kopiëren.
 - \`sectionDensity\`: \`"compact"\` | \`"medium"\` | \`"sparse"\` | \`"unspecified"\`
-- \`motionStyle\`: \`"static_minimal"\` | \`"scroll_reveal"\` | \`"expressive"\` | \`"marquee_forward"\` | \`"unspecified"\`
+- \`motionStyle\`: \`"static_minimal"\` | \`"scroll_reveal"\` | \`"expressive"\` | \`"unspecified"\` — **geen** tickers/marquee; gebruik **niet** \`"marquee_forward"\` (legacy wordt server-side naar \`scroll_reveal\` gemapt).
 - \`borderTreatment\`: \`"none_minimal"\` | \`"accent_lines"\` | \`"border_reveal_forward"\` | \`"frame_heavy"\` | \`"unspecified"\`
 - \`cardStyle\`: \`"flat"\` | \`"soft_shadow"\` | \`"glass_blur"\` | \`"bordered_tile"\` | \`"unspecified"\`
 

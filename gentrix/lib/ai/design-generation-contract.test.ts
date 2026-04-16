@@ -33,6 +33,21 @@ describe("designGenerationContractSchema", () => {
     }
   });
 
+  it("mapt legacy motionStyle marquee_forward naar scroll_reveal", () => {
+    const raw = {
+      heroVisualSubject: "12345678",
+      paletteMode: "dark" as const,
+      imageryMustReflect: ["x"],
+      motionLevel: "moderate" as const,
+      referenceVisualAxes: { ...sampleAxes, motionStyle: "marquee_forward" as const },
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.referenceVisualAxes?.motionStyle).toBe("scroll_reveal");
+    }
+  });
+
   it("normaliseert heroImageSearchHints van array naar string", () => {
     const raw = {
       heroVisualSubject: "Hero met kappersstoelen en spiegelwand.",
@@ -158,6 +173,7 @@ describe("buildDesignContractPromptInjection", () => {
     expect(block).toContain("ZELFCONTROLE");
     expect(block).toContain("BEELDEN");
     expect(block).toContain("lege belofte");
+    expect(block).not.toContain("studio-marquee");
   });
 
   it("voegt assen- en rolverdeling toe wanneer referenceVisualAxes gezet is", () => {

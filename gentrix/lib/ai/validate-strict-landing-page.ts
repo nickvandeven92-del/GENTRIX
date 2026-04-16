@@ -1,6 +1,8 @@
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 
-const MARQUEE_OR_TICKER_RE = /(\bstudio-marquee(?:-track)?\b|<\s*marquee\b)/i;
+/** Ticker/marquee in class/id-tekst (model gebruikt vaak `marquee-strip` i.p.v. `studio-marquee`). */
+const MARQUEE_OR_TICKER_RE =
+  /(\bstudio-marquee(?:-track)?\b|\bmarquee-strip\b|\bmarquee-ticker\b|\blogo-ticker\b|<\s*marquee\b)/i;
 
 /** Sectie-id's die op een strikte one-pager niet voorkomen. */
 const FORBIDDEN_STRICT_LANDING_IDS = new Set([

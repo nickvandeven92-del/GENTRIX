@@ -199,13 +199,73 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     },
   );
 
-  let lastProgressWrite = 0;
+  /** Alleen voor `type: "status"` uit de stream (niet voor generation_meta/tokens), om snelle status-runs niet weg te smoren. */
+  let lastStreamStatusThrottleAt = 0;
+  let sectionCount = 0;
+  let tokenChars = 0;
+  let lastTokenProgressAt = 0;
+  let lastKeepaliveProgressAt = 0;
+  let lastSectionProgressAt = 0;
+
+  const writeProgress = (message: string) => {
+    const trimmed = message.trim().slice(0, 500);
+    if (!trimmed) return;
+    void updateJob(jobId, { progress_message: trimmed });
+  };
+
   const onEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
+    const now = Date.now();
     if (ev.type === "status") {
-      const now = Date.now();
-      if (now - lastProgressWrite < 2_500) return;
-      lastProgressWrite = now;
-      void updateJob(jobId, { progress_message: ev.message });
+      if (now - lastStreamStatusThrottleAt < 2_500) return;
+      lastStreamStatusThrottleAt = now;
+      writeProgress(ev.message);
+      return;
+    }
+    if (ev.type === "generation_meta") {
+      writeProgress("Briefing geïnterpreteerd (branche, stijl, paginastructuur).");
+      return;
+    }
+    if (ev.type === "design_rationale") {
+      if (ev.text != null && ev.text.trim().length > 0) {
+        writeProgress(`Denklijn ontvangen (${ev.text.length} tekens); designcontract gekoppeld.`);
+      } else {
+        const skip = ev.skipReason?.trim().slice(0, 160);
+        writeProgress(skip ? `Denklijn overgeslagen: ${skip}` : "Denklijn overgeslagen of leeg.");
+      }
+      return;
+    }
+    if (ev.type === "keepalive") {
+      if (now - lastKeepaliveProgressAt < 8_000) return;
+      lastKeepaliveProgressAt = now;
+      writeProgress("Server werkt nog (langere stap) — even geduld…");
+      return;
+    }
+    if (ev.type === "section_complete") {
+      sectionCount += 1;
+      if (now - lastSectionProgressAt < 5_000) return;
+      lastSectionProgressAt = now;
+      writeProgress(
+        `HTML-secties vormen zich… (${sectionCount} sectie${sectionCount === 1 ? "" : "s"} in concept)`,
+      );
+      return;
+    }
+    if (ev.type === "token") {
+      tokenChars += ev.content.length;
+      if (now - lastTokenProgressAt < 12_000) return;
+      lastTokenProgressAt = now;
+      const kb = Math.max(1, Math.round(tokenChars / 1024));
+      writeProgress(`Model schrijft JSON/HTML… (~${kb}k tekens ontvangen)`);
+      return;
+    }
+    if (ev.type === "self_review") {
+      writeProgress(
+        ev.ran
+          ? ev.refined
+            ? "Zelfreview toegepast — concept bijgewerkt."
+            : "Zelfreview afgerond (geen wijziging)."
+          : "Zelfreview overgeslagen.",
+      );
+      return;
     }
   };
 

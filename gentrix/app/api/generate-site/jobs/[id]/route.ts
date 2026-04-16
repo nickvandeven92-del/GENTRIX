@@ -31,6 +31,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         error_message: job.error_message,
         result: job.result_json,
         created_at: job.created_at,
+        updated_at: job.updated_at,
         started_at: job.started_at,
         completed_at: job.completed_at,
       },

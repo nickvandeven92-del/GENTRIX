@@ -350,7 +350,7 @@ Rust, water, vakmanschap en serieuze uitrusting — **niet** dezelfde vibe als e
 - **Compositie:** wissel **split** (foto + copy), **editoriale** banden, horizontale USP-rij met \`studio-border-reveal--h\` onder koppen — **niet** overal dezelfde drie ronde kaarten met hetzelfde icoon-patroon.
 - **Shop/nav:** \`shop\`-sectie komt server-side; zet webshop-placeholder in nav/footer. Categorie-denkrichting: hengels, molens, kunstaas, lijn, kleding, accessoires — alleen als het de briefing volgt.
 - **Galerij:** echte hengel-/natuur-scènes; geen “random nature leaf” zonder visserij-context.
-- **Motion:** bij briefing over dynamiek/interactie: \`data-animation\`, \`studio-marquee\` met vaktermen, \`studio-border-reveal\` — geen cyber-laser tenzij de klant dat expliciet zo noemt.`,
+- **Motion:** bij briefing over dynamiek/interactie: \`data-animation\`, \`data-aos\`, \`studio-border-reveal\` — **geen** scrollende ticker/marquee; geen cyber-laser tenzij de klant dat expliciet zo noemt.`,
   },
   {
     id: "bakery",

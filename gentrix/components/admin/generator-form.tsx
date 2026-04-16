@@ -118,6 +118,7 @@ export function GeneratorForm({
 
   const streamJsonBufferRef = useRef("");
   const pollAbortRef = useRef(false);
+  const lastPolledJobProgressRef = useRef<string | null>(null);
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
   /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
@@ -435,7 +436,10 @@ export function GeneratorForm({
         } else {
           appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
           pollAbortRef.current = false;
-          for (let i = 0; i < 300; i++) {
+          lastPolledJobProgressRef.current = null;
+          /** ~16 min: lange Claude-runs + zelfreview/Unsplash ruim boven client-timeout houden. */
+          const maxJobPolls = 480;
+          for (let i = 0; i < maxJobPolls; i++) {
             if (pollAbortRef.current) break;
             if (i > 0) await new Promise((r) => setTimeout(r, 2000));
             const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, {
@@ -450,6 +454,7 @@ export function GeneratorForm({
                     progress_message: string | null;
                     error_message: string | null;
                     result: GeneratedTailwindPage | null;
+                    updated_at?: string;
                   };
                 }
               | { ok: false; error: string };
@@ -458,9 +463,13 @@ export function GeneratorForm({
               return;
             }
             const { job } = jp;
-            if (job.progress_message) {
-              setStreamPhase(job.progress_message);
-              appendGenerationActivity(job.progress_message);
+            const msg = job.progress_message?.trim() ?? "";
+            if (msg && msg !== lastPolledJobProgressRef.current) {
+              lastPolledJobProgressRef.current = msg;
+              setStreamPhase(msg);
+              appendGenerationActivity(msg);
+            } else if (job.status === "running" && job.updated_at && i > 0 && i % 15 === 0) {
+              appendGenerationActivity(`Server nog bezig (laatste update ${new Date(job.updated_at).toLocaleTimeString()}).`);
             }
             if (job.status === "succeeded" && job.result) {
               setGeneratedTailwind(job.result);
@@ -473,7 +482,9 @@ export function GeneratorForm({
               return;
             }
           }
-          setError("Polling gestopt (timeout na ~10 min). Probeer opnieuw of gebruik de legacy-stream (NEXT_PUBLIC_SITE_GENERATION_USE_STREAM).");
+          setError(
+            "Polling gestopt (timeout na ~16 min). Controleer de job in de database of probeer opnieuw; voor maximale live-feedback: NEXT_PUBLIC_SITE_GENERATION_USE_STREAM.",
+          );
           return;
         }
       }
