@@ -355,6 +355,7 @@ const stateKey =
     new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(scopeHtml)
   ) ??
   "navOpen";
+  let out = scopeHtml;
 
   /** Zorg voor een scope als er nergens een bruikbare x-data state staat. */
   if (!extractFirstNavToggleKeyFromXDataScope(out)) {
