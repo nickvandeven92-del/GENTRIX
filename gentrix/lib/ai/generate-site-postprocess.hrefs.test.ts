@@ -234,6 +234,12 @@ describe("ensureAlpineMobileToggleButtonHasLgHidden", () => {
 });
 
 describe("repairBrokenMobileDrawer", () => {
+  it("matches provided drawer class pattern (fixed/right-0/h-full)", () => {
+    const drawerClass =
+      "fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5";
+    expect(/fixed[^"]*right-0[^"]*h-full/.test(drawerClass)).toBe(true);
+  });
+
   it("wiret broken hamburger + drawer + backdrop met navOpen", () => {
     const html = `<section id="hero">
   <header class="relative z-30 w-full">
@@ -247,6 +253,18 @@ describe("repairBrokenMobileDrawer", () => {
     expect(out).toContain('@click="navOpen = !navOpen"');
     expect(out).toContain('x-show="navOpen"');
     expect(out).toContain('@click="navOpen = false"');
+  });
+
+  it("wiret drawer ook wanneer class-volgorde afwijkt", () => {
+    const html = `<section id="hero">
+  <header class="relative z-30 w-full">
+    <button type="button" class="w-10 h-10 lg:hidden" aria-label="Menu"></button>
+  </header>
+  <div class="fixed inset-0 bg-black/60 z-[60]"></div>
+  <div class="right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5 fixed top-0"></div>
+</section>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-show="navOpen"');
   });
 
   it("repareert section-loze markup met aria-controls menuknop", () => {

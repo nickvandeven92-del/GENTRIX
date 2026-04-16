@@ -210,6 +210,31 @@ function logRepairBrokenMobileDrawer(...args: unknown[]): void {
   console.log(...args);
 }
 
+function classLooksLikeSideDrawer(cls: string): boolean {
+  if (!/\bfixed\b/i.test(cls)) return false;
+  if (!/\b(?:right-0|left-0)\b/i.test(cls)) return false;
+  return (
+    /\bh-full\b/i.test(cls) ||
+    /\binset-y-0\b/i.test(cls) ||
+    (/\btop-0\b/i.test(cls) && /\bbottom-0\b/i.test(cls))
+  );
+}
+
+function findSideDrawerOpenTagIndex(html: string): number {
+  const re = /<(div|aside|nav)\b([^>]*)>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const attrs = m[2] ?? "";
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    if (classLooksLikeSideDrawer(cls)) return m.index;
+  }
+  return -1;
+}
+
+function htmlHasSideDrawerElement(html: string): boolean {
+  return findSideDrawerOpenTagIndex(html) >= 0;
+}
+
 function menuButtonHintScore(attrs: string): number {
   let score = 0;
   if (/\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs)) score += 6;
@@ -256,10 +281,7 @@ function pickMenuButtonOrdinalCandidates(scopeHtml: string, buttonMatches: RegEx
     return out;
   }
 
-  const drawerOpenTag = /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.exec(
-    scopeHtml,
-  );
-  const drawerIdx = drawerOpenTag?.index ?? -1;
+  const drawerIdx = findSideDrawerOpenTagIndex(scopeHtml);
   if (drawerIdx >= 0) {
     const beforeDrawer = scored.filter((r) => r.index >= 0 && r.index < drawerIdx);
     if (beforeDrawer.length === 1) {
@@ -301,10 +323,7 @@ function injectNavStateScope(html: string, stateKey: string): string {
 }
 
 function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
-  const hasSideDrawer =
-    /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.test(
-      scopeHtml,
-    );
+  const hasSideDrawer = htmlHasSideDrawerElement(scopeHtml);
   if (!hasSideDrawer) return scopeHtml;
 
   const buttonMatches = [...scopeHtml.matchAll(/<button\b([^>]*)>/gi)];
@@ -375,7 +394,9 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
  * 3) voeg ontbrekende Alpine wiring toe met idempotente checks.
  */
 export function repairBrokenMobileDrawer(html: string): string {
-  const drawerMatch = html.match(/class\s*=\s*["']([^"']*\bfixed\b[^"']*\bright-0\b[^"']*\bh-full\b[^"']*)["']/i);
+  const drawerMatch = html.match(
+    /class\s*=\s*["'](?=[^"']*\bfixed\b)(?=[^"']*\bright-0\b)(?=[^"']*\bh-full\b)[^"']*["']/i,
+  );
   logRepairBrokenMobileDrawer("[repair] aangeroepen, html lengte:", html.length);
   logRepairBrokenMobileDrawer("[repair] drawer regex match:", drawerMatch?.[1] ?? null);
 
