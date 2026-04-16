@@ -143,6 +143,21 @@ function sliceFirstSectionHtml(bodyInnerHtml: string): string {
   return bodyInnerHtml.slice(idx, Math.min(bodyInnerHtml.length, idx + 32_000));
 }
 
+function classLooksLikeSideDrawer(classValue: string): boolean {
+  const cls = classValue.trim();
+  if (!cls) return false;
+  if (!/\bfixed\b/.test(cls)) return false;
+  if (!/\b(?:right-0|left-0)\b/.test(cls)) return false;
+  return /\bh-full\b|\binset-y-0\b|(?:\btop-0\b[\s\S]*\bbottom-0\b)/.test(cls);
+}
+
+function classLooksLikeDrawerBackdrop(classValue: string): boolean {
+  const cls = classValue.trim();
+  if (!cls) return false;
+  if (!/\bfixed\b/.test(cls) || !/\binset-0\b/.test(cls)) return false;
+  return /bg-(?:black|slate|zinc|neutral|gray)|backdrop|opacity-\d+/i.test(cls);
+}
+
 /**
  * Vaste top-nav zonder `<header>` (div/role=banner) — niet overschrijven met de utilitaire balk.
  */
@@ -160,16 +175,61 @@ function bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml: string): boolean {
  * In dat geval wél auto-nav injecteren, ook als de header verder vaste links bevat.
  */
 function headerHasLikelyBrokenMobileDrawer(headerSlice: string): boolean {
-  const hasSideDrawer =
-    /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.test(
-      headerSlice,
-    );
+  const hasSideDrawer = /<(?:div|aside|nav)\b([^>]*)>/gi.test(headerSlice)
+    ? [...headerSlice.matchAll(/<(?:div|aside|nav)\b([^>]*)>/gi)].some((m) => {
+        const attrs = m[1] ?? "";
+        const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+        return classLooksLikeSideDrawer(cls);
+      })
+    : false;
   if (!hasSideDrawer) return false;
   const hasMenuShow = /\bx-show\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["']/i.test(headerSlice);
   const hasMenuToggle = /<button\b[^>]*(?:@click|x-on:click)\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["'][^>]*>/i.test(
     headerSlice,
   );
   return !hasMenuShow || !hasMenuToggle;
+}
+
+function bodyHasLikelyBrokenMobileDrawer(bodyInnerHtml: string): boolean {
+  const headerSlice = sliceFirstHeaderHtml(bodyInnerHtml);
+  if (headerSlice && headerHasLikelyBrokenMobileDrawer(headerSlice) && !headerHasWiredAlpineMobileMenuToggle(headerSlice)) {
+    return true;
+  }
+  const firstSection = sliceFirstSectionHtml(bodyInnerHtml);
+  return !!(
+    firstSection &&
+    headerHasLikelyBrokenMobileDrawer(firstSection) &&
+    !headerHasWiredAlpineMobileMenuToggle(firstSection)
+  );
+}
+
+export function stripLikelyBrokenMobileDrawerBlocks(html: string): string {
+  return html.replace(/<(div|aside|nav)\b([^>]*)>[\s\S]*?<\/\1>/gi, (full, _tag: string, attrs: string) => {
+    if (/\b(id|data-gentrix-auto-mobile-nav)\s*=\s*["'](?:gentrix-site-mobile-sheet|1)["']/i.test(attrs)) return full;
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    const isBrokenDrawer = classLooksLikeSideDrawer(cls);
+    const isBrokenBackdrop = classLooksLikeDrawerBackdrop(cls);
+    if (!isBrokenDrawer && !isBrokenBackdrop) return full;
+    if (/\bx-show\s*=/.test(attrs)) return full;
+    return "";
+  });
+}
+
+/**
+ * Broken-drawer-pad: verwijder fragiele AI-header/panelen en laat daarna één robuuste auto-nav injecteren.
+ * Dit is bewust betrouwbaarder dan per-template regex repareren van willekeurige markup.
+ */
+export function replaceBrokenDrawerChromeWithAutoNavSource(bodyInnerHtml: string): string {
+  if (!bodyHasLikelyBrokenMobileDrawer(bodyInnerHtml)) return bodyInnerHtml;
+  let out = bodyInnerHtml;
+
+  out = out.replace(/<header\b[\s\S]*?<\/header>/gi, (header) => {
+    if (headerHasLikelyBrokenMobileDrawer(header)) return "";
+    return header;
+  });
+
+  out = stripLikelyBrokenMobileDrawerBlocks(out);
+  return out;
 }
 
 /**

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import {
   buildStudioAutoMobileNavHeaderHtml,
+  stripLikelyBrokenMobileDrawerBlocks,
   extractHeaderNavLinks,
   headerAppearsDesigned,
   headerHasWiredAlpineMobileMenuToggle,
@@ -141,7 +142,7 @@ describe("shouldInjectStudioAutoMobileNav", () => {
     expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
   });
 
-  it("injecteert niet bij een rijke AI-header met gebroken mobiele toggle", () => {
+  it("injecteert niet bij een rijke AI-header met gebroken mobiele toggle maar zonder drawer", () => {
     const html = `
 <header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-slate-950/70 shadow-lg backdrop-blur-xl">
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -197,6 +198,20 @@ describe("shouldInjectStudioAutoMobileNav", () => {
 </header>
 <section id="hero">…</section>`;
     expect(shouldInjectStudioAutoMobileNav(html)).toBe(true);
+  });
+});
+
+describe("stripLikelyBrokenMobileDrawerBlocks", () => {
+  it("verwijdert vaste broken drawer + bijbehorende backdrop", () => {
+    const html = `<section id="hero">
+  <div class="fixed inset-0 bg-black/60 z-[60]"></div>
+  <div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5"></div>
+  <div class="relative">content</div>
+</section>`;
+    const out = stripLikelyBrokenMobileDrawerBlocks(html);
+    expect(out).not.toContain("right-0 h-full w-72");
+    expect(out).not.toContain("fixed inset-0 bg-black/60");
+    expect(out).toContain("content");
   });
 });
 
