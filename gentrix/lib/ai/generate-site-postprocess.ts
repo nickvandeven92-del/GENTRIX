@@ -210,13 +210,76 @@ function logRepairBrokenMobileDrawer(...args: unknown[]): void {
   console.log(...args);
 }
 
-function attrsLookLikeMenuButton(attrs: string): boolean {
-  return (
-    /\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs) ||
-    /\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|burger|open|openen|sluit|close|navigat)/i.test(attrs) ||
-    /\baria-controls\s*=\s*["'][^"']*(?:mobile|menu|drawer|sheet|nav)/i.test(attrs) ||
-    /\bclass\s*=\s*["'][^"']*(?:menu|hamburger|burger|nav-toggle|drawer-toggle|mobile-toggle)[^"']*["']/i.test(attrs)
+function menuButtonHintScore(attrs: string): number {
+  let score = 0;
+  if (/\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs)) score += 6;
+  if (/\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|burger|open|openen|sluit|close|navigat)/i.test(attrs)) {
+    score += 6;
+  }
+  if (/\baria-controls\s*=\s*["'][^"']*(?:mobile|menu|drawer|sheet|nav)/i.test(attrs)) score += 6;
+  if (/\bclass\s*=\s*["'][^"']*(?:menu|hamburger|burger|nav-toggle|drawer-toggle|mobile-toggle)[^"']*["']/i.test(attrs)) {
+    score += 5;
+  }
+  if (
+    /\bclass\s*=\s*["'][^"']*(?:\bh-(?:8|9|10|11|12)\b|\bw-(?:8|9|10|11|12)\b|\bsize-(?:8|9|10|11|12)\b|\baspect-square\b)[^"']*["']/i.test(
+      attrs,
+    )
+  ) {
+    score += 2;
+  }
+  if (/\btype\s*=\s*["']button["']/i.test(attrs)) score += 1;
+  return score;
+}
+
+function pickMenuButtonOrdinalCandidates(scopeHtml: string, buttonMatches: RegExpMatchArray[]): Set<number> {
+  const out = new Set<number>();
+  if (buttonMatches.length === 0) return out;
+  const scored = buttonMatches.map((m, ordinal) => ({
+    ordinal,
+    attrs: m[1] ?? "",
+    index: m.index ?? -1,
+    score: menuButtonHintScore(m[1] ?? ""),
+  }));
+
+  const strong = scored.filter((r) => r.score >= 6);
+  if (strong.length > 0) {
+    for (const row of strong) out.add(row.ordinal);
+    return out;
+  }
+
+  const likely = scored.filter((r) => r.score >= 3);
+  if (likely.length > 0) {
+    const topScore = Math.max(...likely.map((r) => r.score));
+    for (const row of likely) {
+      if (row.score === topScore) out.add(row.ordinal);
+    }
+    return out;
+  }
+
+  const drawerOpenTag = /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.exec(
+    scopeHtml,
   );
+  const drawerIdx = drawerOpenTag?.index ?? -1;
+  if (drawerIdx >= 0) {
+    const beforeDrawer = scored.filter((r) => r.index >= 0 && r.index < drawerIdx);
+    if (beforeDrawer.length === 1) {
+      out.add(beforeDrawer[0]!.ordinal);
+      return out;
+    }
+    if (beforeDrawer.length > 1) {
+      const iconSized = beforeDrawer.filter((r) =>
+        /\b(?:\bh-(?:8|9|10|11|12)\b|\bw-(?:8|9|10|11|12)\b|\bsize-(?:8|9|10|11|12)\b|\baspect-square\b)/i.test(r.attrs),
+      );
+      if (iconSized.length > 0) {
+        const pick = iconSized[iconSized.length - 1]!;
+        out.add(pick.ordinal);
+        return out;
+      }
+    }
+  }
+
+  if (scored.length === 1) out.add(0);
+  return out;
 }
 
 function injectNavStateScope(html: string, stateKey: string): string {
@@ -245,10 +308,8 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
   if (!hasSideDrawer) return scopeHtml;
 
   const buttonMatches = [...scopeHtml.matchAll(/<button\b([^>]*)>/gi)];
-  if (buttonMatches.length === 0) return scopeHtml;
-  const hasMenuButton = buttonMatches.some((m) => attrsLookLikeMenuButton(m[1] ?? ""));
-  const allowSingleButtonFallback = !hasMenuButton && buttonMatches.length === 1;
-  if (!hasMenuButton && !allowSingleButtonFallback) return scopeHtml;
+  const buttonCandidates = pickMenuButtonOrdinalCandidates(scopeHtml, buttonMatches);
+  if (buttonCandidates.size === 0) return scopeHtml;
 
   const stateKey =
     extractFirstNavToggleKeyFromXDataScope(scopeHtml) ??
@@ -265,8 +326,7 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
   let buttonIdx = -1;
   out = out.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
     buttonIdx += 1;
-    const isCandidate = attrsLookLikeMenuButton(attrs) || (allowSingleButtonFallback && buttonIdx === 0);
-    if (!isCandidate) return full;
+    if (!buttonCandidates.has(buttonIdx)) return full;
     if (/(?:@click|x-on:click)\s*=/.test(attrs)) return full;
     const expandedAttr = /\baria-expanded\s*=/.test(attrs) ? "" : ` :aria-expanded="${stateKey}.toString()"`;
     return `<button${attrs} @click="${stateKey} = !${stateKey}"${expandedAttr}>`;
