@@ -184,6 +184,11 @@ export function replaceBrokenDrawerChromeWithAutoNavSource(bodyInnerHtml: string
 
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
+  // Als er al x-show met bekende nav toggle key aanwezig is, niet injecteren
+  const hasAnyWiredXShow = ALPINE_NAV_TOGGLE_KEYS.some((k) =>
+    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(bodyInnerHtml),
+  );
+  if (hasAnyWiredXShow) return false;
   const win = sliceFirstHeaderHtml(bodyInnerHtml);
   if (!win) {
     const firstSection = sliceFirstSectionHtml(bodyInnerHtml);
