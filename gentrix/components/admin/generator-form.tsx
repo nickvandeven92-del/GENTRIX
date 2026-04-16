@@ -438,7 +438,10 @@ export function GeneratorForm({
           for (let i = 0; i < 300; i++) {
             if (pollAbortRef.current) break;
             if (i > 0) await new Promise((r) => setTimeout(r, 2000));
-            const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, { credentials: "include" });
+            const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, {
+              credentials: "include",
+              cache: "no-store",
+            });
             const jp = (await jr.json()) as
               | {
                   ok: true;
