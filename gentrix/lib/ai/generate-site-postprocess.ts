@@ -194,6 +194,22 @@ function extractFirstNavToggleKeyFromInteractiveMarkup(html: string): string | n
   return null;
 }
 
+function shouldLogRepairBrokenMobileDrawer(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const w = window as Window & { __gentrixDebugMobileDrawerRepair?: boolean };
+    if (w.__gentrixDebugMobileDrawerRepair === true) return true;
+    return /(?:\?|&)debugRepairMobileDrawer=1(?:&|$)/.test(window.location.search);
+  } catch {
+    return false;
+  }
+}
+
+function logRepairBrokenMobileDrawer(...args: unknown[]): void {
+  if (!shouldLogRepairBrokenMobileDrawer()) return;
+  console.log(...args);
+}
+
 function attrsLookLikeMenuButton(attrs: string): boolean {
   return (
     /\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs) ||
@@ -299,10 +315,16 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
  * 3) voeg ontbrekende Alpine wiring toe met idempotente checks.
  */
 export function repairBrokenMobileDrawer(html: string): string {
+  const drawerMatch = html.match(/class\s*=\s*["']([^"']*\bfixed\b[^"']*\bright-0\b[^"']*\bh-full\b[^"']*)["']/i);
+  logRepairBrokenMobileDrawer("[repair] aangeroepen, html lengte:", html.length);
+  logRepairBrokenMobileDrawer("[repair] drawer regex match:", drawerMatch?.[1] ?? null);
+
   const sectionRepaired = html.replace(/<section\b[\s\S]*?<\/section>/gi, (section) =>
     repairBrokenMobileDrawerInScope(section),
   );
-  return repairBrokenMobileDrawerInScope(sectionRepaired);
+  const out = repairBrokenMobileDrawerInScope(sectionRepaired);
+  logRepairBrokenMobileDrawer("[repair] output gewijzigd:", out !== html);
+  return out;
 }
 
 /**
