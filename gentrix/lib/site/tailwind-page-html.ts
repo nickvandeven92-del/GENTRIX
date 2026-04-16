@@ -5,6 +5,7 @@ import DOMPurify from "isomorphic-dompurify";
 import {
   ALPINE_NAV_TOGGLE_KEYS,
   ensureAlpineMobileOverlayHasLgHidden,
+  ensureAlpineMobileToggleButtonHasLgHidden,
   fixAlpineNavToggleDefaultsInXData,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
@@ -1183,7 +1184,9 @@ export function sanitizeTailwindFragment(html: string): string {
   }
 
   const htmlForSanitize = stripDecorativeScrollCueMarkup(
-    ensureAlpineMobileOverlayHasLgHidden(fixAlpineNavToggleDefaultsInXData(html)),
+    ensureAlpineMobileOverlayHasLgHidden(
+      ensureAlpineMobileToggleButtonHasLgHidden(fixAlpineNavToggleDefaultsInXData(html)),
+    ),
   );
 
   DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {

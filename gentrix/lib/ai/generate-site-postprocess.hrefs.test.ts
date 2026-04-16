@@ -256,6 +256,29 @@ describe("postProcessTailwindSectionsForStreamingPreview", () => {
     );
     expect(out[0]?.html).toContain("open: false");
   });
+
+  it("voegt desktop-hide utilities toe op mobiele sheet + backdrop + toggle", () => {
+    const out = postProcessTailwindSectionsForStreamingPreview(
+      [
+        {
+          id: "hero",
+          sectionName: "Hero",
+          html: `<section id="hero" x-data="{ menuOpen: false }">
+  <header>
+    <button type="button" class="w-10 h-10" @click="menuOpen = !menuOpen" aria-controls="site-mobile-sheet" aria-label="Menu">Menu</button>
+    <div x-show="menuOpen" class="fixed inset-0 z-[60] bg-black/60"></div>
+    <div x-show="menuOpen" class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]"></div>
+  </header>
+</section>`,
+        },
+      ],
+      null,
+    );
+    const html = out[0]?.html ?? "";
+    expect(html).toMatch(/<button[^>]*class="[^"]*\blg:hidden\b/);
+    expect(html).toMatch(/class="[^"]*\binset-0\b[^"]*\blg:hidden\b/);
+    expect(html).toMatch(/class="[^"]*\btop-0\b[^"]*\bright-0\b[^"]*\bh-full\b[^"]*\blg:hidden\b/);
+  });
 });
 
 describe("postProcessClaudeTailwindPage path href integration", () => {
