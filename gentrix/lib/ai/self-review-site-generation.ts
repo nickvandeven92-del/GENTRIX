@@ -244,13 +244,29 @@ Als de markup **duidelijk** afwijkt van deze stijl (bijv. luxe flyer i.p.v. indu
 `
     : "";
 
+  const b = "`";
+  const strictOrderLine =
+    pi?.compactLandingIncludesFaq === true
+      ? `${b}hero${b} → ${b}stats${b}/${b}brands${b} → ${b}steps${b}/${b}features${b} → ${b}faq${b} → ${b}footer${b}`
+      : `${b}hero${b} → ${b}stats${b}/${b}brands${b} → ${b}steps${b}/${b}features${b} → ${b}footer${b} (geen ${b}faq${b} in pass 1)`;
+
+  const strictLandingBlock =
+    pi?.strictLandingPageContract === true
+      ? `=== ONE-PAGER STUDIO-CONTRACT (deze run) ===
+- Behoud **exact ${pi.compactLandingIncludesFaq === true ? "5" : "4"}** secties met **dezelfde \`id\`'s in dezelfde volgorde** als het concept (${strictOrderLine}).
+- **Geen** \`studio-marquee\`, \`studio-marquee-track\` of \`<marquee>\` in de HTML — verwijder die als ze voorkomen.
+- **Eind-CTA** hoort in \`footer\`; geen aparte \`cta\`-sectie toevoegen.
+
+`
+      : "";
+
   return `=== BEDRIJF ===
 ${params.businessName.trim()}
 
 === BRIEFING ===
 ${params.description.trim()}
 
-${referenceBlock}${designContractBlock}${pipelineBlock}
+${referenceBlock}${designContractBlock}${pipelineBlock}${strictLandingBlock}
 
 === AUTOMATISCHE CHECKS (validator) ===
 Fouten:

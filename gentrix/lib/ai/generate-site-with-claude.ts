@@ -41,6 +41,7 @@ import {
 import { tryExtractCompletedSections } from "@/lib/ai/stream-json-section-extractor";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
+import { validateStrictLandingPageContract } from "@/lib/ai/validate-strict-landing-page";
 import { validateGeneratedPageHtml, type HomepagePlan } from "@/lib/ai/validate-generated-page";
 import {
   applySelfReviewToGeneratedPage,
@@ -53,7 +54,10 @@ import { maybeEnhanceHero } from "@/lib/ai/enhance-hero-section";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import { finalizeBookingShopAfterAiGeneration } from "@/lib/site/append-booking-section-to-payload";
 import { INDUSTRY_KEYWORDS, INDUSTRY_PROFILES } from "@/lib/ai/site-generation-industry-data";
-import type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
+import {
+  type IndustryProfile,
+  industryProfilePrefersCompactLandingFaq,
+} from "@/lib/ai/site-generation-industry-data";
 
 /**
  * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
@@ -95,6 +99,11 @@ export type GenerationPipelineFeedback = {
     };
     /** `true` bij SITE_GENERATION_MINIMAL_PROMPT of `minimalPrompt` in options. */
     minimalPrompt?: boolean;
+    /** `landingPageOnly` + geen upgrade: strikte 5-sectie-landingspagina (studio-contract). */
+    landingPageOnly?: boolean;
+    strictLandingPageContract?: boolean;
+    /** Of strikte one-pager \`faq\` in de sectielijst heeft (FAQ-keywords in naam+briefing). */
+    compactLandingIncludesFaq?: boolean;
   };
 };
 
@@ -210,6 +219,39 @@ export function analyzeBriefingForSections(description: string): string[] {
     }
   }
   return extra.sort((a, b) => b.weight - a.weight).map((m) => m.id);
+}
+
+/**
+ * Of de strikte one-pager een `faq`-sectie krijgt — **deterministisch**:
+ * 1) FAQ-trefwoorden in naam+briefing (zelfde regex als `EXTRA_SECTION_KEYWORDS.faq`), of
+ * 2) gedetecteerd brancheprofiel waar `sections` al `faq` bevat (studio-standaard voor die sector).
+ */
+export function shouldIncludeCompactLandingFaq(industryProbeText: string): boolean {
+  if (EXTRA_SECTION_KEYWORDS.faq.keywords.test(industryProbeText)) return true;
+  return industryProfilePrefersCompactLandingFaq(detectIndustry(industryProbeText));
+}
+
+/**
+ * Vaste volgorde voor **landingPageOnly** (nieuwe site, geen upgrade):
+ * hero → bewijs → werkwijze/diensten → [faq als briefing FAQ vraagt] → footer.
+ * **4** secties zonder FAQ-signalen; **5** met (max. 5 secties totaal).
+ */
+export function buildCompactLandingSectionIds(description: string): readonly string[] {
+  const prefersLogos =
+    EXTRA_SECTION_KEYWORDS.brands.keywords.test(description) ||
+    /\b(logo|logos|merken|partners?|leveranciers?)\b/i.test(description);
+  const proofId = prefersLogos ? "brands" : "stats";
+  const middleId = /\b(werkwijze|stappenplan|stappen|in\s+\d+\s+stappen|hoe\s+wij\s+werken|proces|aanpak)\b/i.test(
+    description,
+  )
+    ? "steps"
+    : "features";
+  const core: string[] = ["hero", proofId, middleId];
+  if (shouldIncludeCompactLandingFaq(description)) {
+    core.push("faq");
+  }
+  core.push("footer");
+  return core as readonly string[];
 }
 
 /**
@@ -816,6 +858,16 @@ Doel: gezichten en rollen. Layout vrij (kaarten, rij, editorial). Zonder namen i
 Doel: verhaal en vertrouwen. Split, kolom of lang lopende tekst — wat bij tone of branche past; minstens één sterk beeld als het helpt.`);
   }
 
+  if (sectionIds.has("stats")) {
+    blocks.push(`**=== BEWIJS / CIJFERS (id: "stats") ===**
+Korte KPI-rij of bullets die **direct** uit de briefing volgen — **geen** verzonnen percentages of volumes (CONTENT AUTHORITY). Als er geen harde cijfers zijn: kwalitatieve indicatoren (“snelle responstijd”, “vaste contactpersoon”) zonder nep-stats.`);
+  }
+
+  if (sectionIds.has("steps")) {
+    blocks.push(`**=== WERKWIJZE (id: "steps") ===**
+3–5 duidelijke stappen (van eerste contact tot oplevering/afronding). Houd het scanbaar; geen tweede feature-kaartenmuur — dat hoort bij \`features\` als je die i.p.v. stappen kiest.`);
+  }
+
   return blocks.length > 0
     ? `\n\n=== BRANCHE-SECTIES (kort — jij ontwerpt de uitwerking) ===\n\n${blocks.join("\n\n")}\n`
     : "";
@@ -1131,6 +1183,49 @@ function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
 - **Laser (\`studio-laser-*\`):** blijft een **aparte, zeldzame** sfeer-optie (cyber/neon/sci-fi) — **niet** verplicht en **niet** als vervanging van border-reveal voor normale winkel-/retail-/premium-briefings.`;
 }
 
+function buildStrictLandingPageComposerMarkdown(includeFaq: boolean): string {
+  const countLine = includeFaq
+    ? "**5** rijen in `sections` (exact deze volgorde)"
+    : "**4** rijen in `sections` (exact deze volgorde — **zonder** `faq`)";
+
+  const navAnchors = includeFaq
+    ? "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#faq`, `#footer`"
+    : "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#footer`";
+
+  const faqDetect = `**FAQ wel of niet:** de server zet \`faq\` in de sectielijst als **(a)** naam+briefing FAQ-trefwoorden bevat (**faq**, **veelgestelde vragen**, **veel gestelde**, **vragen en antwoorden**, **help center** / **helpcentrum** — zelfde regex als elders), **of (b)** het gedetecteerde **brancheprofiel** impliciet FAQ wil: zijn standaard-\`sections\` bevat \`faq\`, **of** het profiel heeft \`compactLandingDefaultFaq\` (lokale dienst: kapper, garage, horeca, sportschool, …). Voldoet geen van beide → **geen** \`faq\`-sectie en **geen** \`#faq\` in de nav.`;
+
+  const tailList = includeFaq
+    ? `4. \`faq\` — **max. 6** vragen (bij voorkeur \`<details><summary>…\` per vraag).
+5. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen).`
+    : `4. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). In deze run: **geen** \`faq\`-rij (geen FAQ-signalen in naam+briefing).`;
+
+  return `
+=== STRIKTE LANDINGS — STUDIO (max. 5 secties, vaste volgorde) ===
+
+${faqDetect}
+
+**Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan — \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
+
+1. \`hero\` — kop, subkop, **max. 2** primaire CTA-links (\`<a>\` met button-styling), **max. 3** social-proof-items (sterren, badges, korte trust — alleen uit de briefing, geen fictie). Eventuele **"wij zijn anders"**-boodschap: **alleen** in de hero, geen aparte differentiator-sectie.
+2. \`stats\` **of** \`brands\` — precies **één** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen.
+3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide.
+${tailList}
+
+**Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie.
+
+**Nav-ankers:** alleen ${navAnchors} — **geen** \`#over-ons\`.
+
+**Herhaling-check (concept):** elke sectie unieke rol; twee blokken met dezelfde boodschap → het zwakkere schrappen.
+`;
+}
+
+function buildMarqueeStudioPromptLine(marqueeForbidden: boolean): string {
+  if (marqueeForbidden) {
+    return `- **Marquee/ticker:** **verboden** op deze one-pager — geen \`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`, of oneindig horizontaal scrollende logo-/tekstbanden. Toon logo's/trust **stilstaand** (grid of vaste rij). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL in de briefing.`;
+  }
+  return `- Optioneel \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing — zie border-reveal-blok hierboven; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL.`;
+}
+
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
 function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTailInput): string {
   if (input.marketingMultiPage && !input.preserve) {
@@ -1241,6 +1336,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
     options?.sectionIdsHint,
   );
   const marketingMultiPage = !preserve && !landingPageOnly;
+  const strictLanding = landingPageOnly && !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
@@ -1272,13 +1368,14 @@ ${section1}=== KERN (technisch) ===
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
 2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\` (zie §3B).
 3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (contact-subpagina: minstens één sectie met <form>; **niet** op de homepage)" : ""}.
-4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : "Geen vast sjabloon — de briefing is leidend."}
+4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : strictLanding ? "**Strikte one-pager:** exact **4 of 5** secties (zie STRIKTE LANDINGS: FAQ alleen bij FAQ-signalen in naam+briefing) in de volgorde van de opdrachtregel — geen extra secties." : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
 
 ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet in de HTML zichtbaar terugkomen. ${preserve ? "" : "Oranje alleen als het inhoudelijk past."}
 
 === 3. PAGINA → HTML (Tailwind) ===
+${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(combinedIndustryProbeText(businessName, description))) : ""}
 
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** sterke eerste indruk met **kop + korte waardepropositie**; **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) als dat past bij de briefing — tenzij de briefing expliciet een tekst-only hero wil. **Verboden:** elk decoratief scroll-label (**SCROLL**, **Scroll**, verticaal of horizontaal, muisicoon/streepje **zonder** echte link/anker) — dat blijft bij video-loops in beeld en oogt als sjabloon-rommel.
@@ -1288,7 +1385,7 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
 ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
-- Optioneel \`data-lucide\`, marquee (\`studio-marquee\` / \`studio-marquee-track\` + dubbele inhoud). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing — zie border-reveal-blok hierboven; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL.
+${buildMarqueeStudioPromptLine(strictLanding)}
 
 ${section3Tail}${section3HeroHeight}
 
@@ -1333,10 +1430,14 @@ export function buildWebsiteGenerationUserPrompt(
     options?.sectionIdsHint,
   );
   const marketingMultiPage = !preserve && !landingPageOnly;
+  const strictLanding = landingPageOnly && !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
 
   const industryProbe = combinedIndustryProbeText(businessName, description);
-  const detectedSections = new Set(options?.sectionIdsHint ?? buildSectionIdsFromBriefing(industryProbe));
+  const sectionIdsForBlocks = strictLanding
+    ? [...buildCompactLandingSectionIds(industryProbe)]
+    : (options?.sectionIdsHint ?? buildSectionIdsFromBriefing(industryProbe));
+  const detectedSections = new Set(sectionIdsForBlocks);
   const brancheSectionBlocks = buildBrancheSectionPromptBlocks(detectedSections);
   const industryHint = buildIndustryPromptHint(businessName, description);
 
@@ -1385,8 +1486,8 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 **Kleur in HTML:** laat \`config.theme\` ook in de markup terugkomen (achtergronden, accenten, CTA) — niet alleen in metadata. Als de briefing warm beige/zand vraagt, vermijd een volledig koud-grijs default-palet tenzij dat bewust past.
 
 === 3. PAGINA COMPOSEREN → HTML (Tailwind) ===
-
-**Vrijheid:** hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan).
+${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(industryProbe)) : ""}
+**Vrijheid:** ${strictLanding ? "Binnen de **vijf** vaste secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s." : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
 **Navigatie (${marketingMultiPage ? "multi-page: landing + 4 subpagina's + contact" : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? "“Wat wij doen”, “Werkwijze”, “Over ons”, “FAQ”: gebruik **uitsluitend** het pad-token __STUDIO_SITE_BASE__ plus het segment (bv. __STUDIO_SITE_BASE__/werkwijze); **geen** ankers zoals #werkwijze voor die inhoud als die op een subpagina staat. " : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
@@ -1406,10 +1507,19 @@ ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
 ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
-**Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
+${
+  strictLanding
+    ? `${buildMarqueeStudioPromptLine(true)}
+
+**Laserlijn / scan (optioneel — alleen passende sfeer):** **Standaard: geen** \`studio-laser-*\`. Gebruik liever \`studio-border-reveal\` + \`data-animation\`. Zet een laser **alleen** als de klant **duidelijk** futuristisch/neon/sci-fi vraagt (woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn**, of expliciete \`Stijl: …\`). **Niet** op donker thema of “branche is X” alleen. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` parent; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal).
+
+`
+    : `**Marquee / ticker-band (optioneel — zoals Lovable \`MarqueeStrip\`):** voor horizontaal **oneindig scrollende** logo’s of korte teksten: buitenste container \`class="studio-marquee …"\` (\`overflow\` wordt door studio-CSS gezet), binnen één rij \`class="studio-marquee-track flex items-center gap-8 md:gap-12 shrink-0 …"\` met **twee identieke** reeksen naast elkaar (zelfde items tweemaal achter elkaar) zodat de loop naadloos is. **Niet** \`data-animation\` op de track zetten (dat is voor scroll-reveal). Snelheid: standaard ~38s; voeg op de track \`studio-marquee--slow\` of \`studio-marquee--fast\` toe indien gewenst.
 
 **Laserlijn / scan (optioneel — alleen passende sfeer):** **Standaard: geen** \`studio-laser-*\`. Gebruik liever \`studio-border-reveal\` + \`data-animation\` + marquee voor “premium dynamiek”. Zet een laser **alleen** als de klant **duidelijk** futuristisch/neon/sci-fi vraagt (woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn**, of expliciete \`Stijl: …\`). **Niet** op donker thema of “branche is X” alleen. Techniek (als je het wél inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` parent; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **één** sweep-rail per hero (niet overal).
 
+`
+}
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
 **Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik Unsplash/gradient + motion zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
@@ -1450,6 +1560,8 @@ type PreparedGenerateSiteClaudeCall = {
   pipelineFeedback: GenerationPipelineFeedback;
   /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
   useMarketingMultiPage: boolean;
+  /** `landingPageOnly` + geen upgrade: harde 5-sectie-validatie na parse. */
+  strictLandingContract: boolean;
   /** Zelfde excerpt als in de bouw-prompt — voor Denklijn + zelfreview. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
 };
@@ -1506,7 +1618,10 @@ async function prepareGenerateSiteClaudeCall(
   }
 
   const industryProbe = combinedIndustryProbeText(businessName, description);
-  const briefingSectionIds = buildSectionIdsFromBriefing(industryProbe, mergedPromptOptions.sectionIdsHint);
+  const strictLandingContract = Boolean(mergedPromptOptions.landingPageOnly) && !preserveLayout;
+  const briefingSectionIds = strictLandingContract
+    ? [...buildCompactLandingSectionIds(industryProbe)]
+    : buildSectionIdsFromBriefing(industryProbe, mergedPromptOptions.sectionIdsHint);
   const sectionIds = [...briefingSectionIds];
   if (preserveLayout && mergedPromptOptions.existingSiteTailwindJson) {
     const existing = extractSectionIdsFromTailwindUpgradeJson(mergedPromptOptions.existingSiteTailwindJson);
@@ -1535,6 +1650,9 @@ async function prepareGenerateSiteClaudeCall(
       styleDetectionSource: styleResolved.source,
       ...(referenceStyleField ? { referenceStyle: referenceStyleField } : {}),
       minimalPrompt,
+      landingPageOnly: mergedPromptOptions.landingPageOnly,
+      strictLandingPageContract: strictLandingContract,
+      compactLandingIncludesFaq: strictLandingContract ? shouldIncludeCompactLandingFaq(industryProbe) : undefined,
     },
   };
 
@@ -1578,6 +1696,7 @@ async function prepareGenerateSiteClaudeCall(
     homepagePlan,
     pipelineFeedback,
     useMarketingMultiPage: !preserveLayout && !mergedPromptOptions.landingPageOnly,
+    strictLandingContract,
     ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
   };
 }
@@ -1599,7 +1718,7 @@ export function withContentClaimDiagnostics(data: GeneratedTailwindPage): Genera
 function finalizeGenerateSiteFromClaudeText(
   textBody: string,
   stop_reason: string | null,
-  options: { useMarketingMultiPage: boolean },
+  options: { useMarketingMultiPage: boolean; strictLandingContract?: boolean },
 ): GenerateSiteResult {
   if (!textBody.trim()) {
     return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
@@ -1660,7 +1779,18 @@ function finalizeGenerateSiteFromClaudeText(
   }
 
   const processed = postProcessClaudeTailwindPage(validated.data);
-  return { ok: true, data: mapClaudeOutputToSections(processed) };
+  const mapped = mapClaudeOutputToSections(processed);
+  if (options.strictLandingContract) {
+    const strictErrors = validateStrictLandingPageContract(mapped.sections);
+    if (strictErrors.length > 0) {
+      return {
+        ok: false,
+        error: `Strikte landingspagina: ${strictErrors.join(" ")}`,
+        rawText: textBody,
+      };
+    }
+  }
+  return { ok: true, data: mapped };
 }
 
 export async function generateSiteWithClaude(
@@ -1731,6 +1861,7 @@ export async function generateSiteWithClaude(
 
   const result = finalizeGenerateSiteFromClaudeText(textBody, stop_reason, {
     useMarketingMultiPage: p.useMarketingMultiPage,
+    strictLandingContract: p.strictLandingContract,
   });
   if (!result.ok) {
     return result;
@@ -1800,6 +1931,13 @@ export async function generateSiteWithClaude(
     const v = validateGeneratedPageHtml(joined, p.homepagePlan);
     if (v.errors.length > 0 || v.warnings.length > 0) {
       console.warn("[validateGeneratedPageHtml]", v);
+    }
+  }
+
+  if (p.strictLandingContract) {
+    const strictErrs = validateStrictLandingPageContract(data.sections);
+    if (strictErrs.length > 0) {
+      return { ok: false, error: `Strikte landingspagina: ${strictErrs.join(" ")}` };
     }
   }
 
@@ -2016,6 +2154,7 @@ export function createGenerateSiteReadableStream(
 
         const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason, {
           useMarketingMultiPage: p.useMarketingMultiPage,
+          strictLandingContract: p.strictLandingContract,
         });
         if (!result.ok) {
           send(controller, {
@@ -2144,6 +2283,18 @@ export function createGenerateSiteReadableStream(
           const v = validateGeneratedPageHtml(joined, p.homepagePlan);
           if (v.errors.length > 0 || v.warnings.length > 0) {
             console.warn("[validateGeneratedPageHtml]", v);
+          }
+        }
+
+        if (p.strictLandingContract) {
+          const strictErrs = validateStrictLandingPageContract(data.sections);
+          if (strictErrs.length > 0) {
+            send(controller, {
+              type: "error",
+              message: `Strikte landingspagina: ${strictErrs.join(" ")}`,
+            });
+            controller.close();
+            return;
           }
         }
 

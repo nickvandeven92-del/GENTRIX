@@ -11,13 +11,29 @@ export type IndustryProfile = {
   servicesFormat: "price-list" | "card-grid" | "split" | "spotlight";
   vibe: string;
   promptHint: string;
+  /**
+   * Strikte one-pager (`faq`-sectie): aan als `sections` al `faq` bevat **of** hier `true`
+   * (veel praktische vragen: openingstijden, boeken, tarieven, bezichtiging, …).
+   */
+  compactLandingDefaultFaq?: boolean;
 };
+
+/**
+ * Strikte one-pager: `faq` in het compacte plan als het profiel dat impliciet wil —
+ * via `sections` (al met `faq`) of via `compactLandingDefaultFaq`.
+ */
+export function industryProfilePrefersCompactLandingFaq(profile: IndustryProfile | null): boolean {
+  if (!profile) return false;
+  if (profile.sections.includes("faq")) return true;
+  return profile.compactLandingDefaultFaq === true;
+}
 
 export const INDUSTRY_PROFILES: IndustryProfile[] = [
   {
     id: "barber",
     label: "Barbershop / Herenkapper",
     sections: ["hero", "features", "gallery", "about", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "price-list",
     vibe: "warm",
@@ -32,6 +48,7 @@ Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk a
     id: "hair_salon",
     label: "Kapsalon / Haarsalon (unisex)",
     sections: ["hero", "features", "gallery", "about", "team", "brands", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "price-list",
     vibe: "luxury",
@@ -47,6 +64,7 @@ Dit is een kapsalon die zowel dames als heren bedient. Focus op haarverzorging, 
     id: "womens_salon",
     label: "Dameskapsalon",
     sections: ["hero", "features", "gallery", "about", "team", "brands", "testimonials", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "price-list",
     vibe: "luxury",
@@ -77,6 +95,7 @@ Denk aan Apple, Bang & Olufsen, of een premium tech-webshop. Het product is de s
     id: "garage",
     label: "Autogarage / Werkplaats",
     sections: ["hero", "features", "about", "gallery", "brands", "testimonials", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "card-grid",
     vibe: "industrial",
@@ -105,6 +124,7 @@ Denk B2B, professioneel, betrouwbaar. De klant is een bedrijf dat een partner zo
     id: "realestate",
     label: "Makelaar / Vastgoed",
     sections: ["hero", "features", "gallery", "about", "testimonials", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "spotlight",
     vibe: "luxury",
@@ -119,6 +139,7 @@ Denk aan luxe, aspiratie, droomhuizen. De website moet de levensstijl verkopen, 
     id: "restaurant",
     label: "Restaurant / Horeca",
     sections: ["hero", "features", "gallery", "about", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "price-list",
     vibe: "warm",
@@ -133,6 +154,7 @@ Denk aan een uitnodiging om te komen eten. Warmte, smaak, sfeer. De website is d
     id: "beauty",
     label: "Schoonheidssalon / Beauty",
     sections: ["hero", "features", "gallery", "team", "testimonials", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "price-list",
     vibe: "luxury",
@@ -622,6 +644,7 @@ Vertrouwen, zekerheid en onafhankelijk advies. De klant wil zich goed verzekerd 
     id: "gym",
     label: "Sportschool / Gym",
     sections: ["hero", "features", "about", "gallery", "team", "footer"],
+    compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "card-grid",
     vibe: "modern",
