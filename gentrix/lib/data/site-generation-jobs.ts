@@ -1,4 +1,3 @@
-import type { Json } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { consumeGenerateSiteReadableStream } from "@/lib/ai/consume-generate-site-readable-stream";
@@ -16,6 +15,9 @@ import {
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { isValidSubfolderSlug } from "@/lib/slug";
+
+/** JSON-serializable values for `json`/`jsonb` columns. */
+type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type SiteGenerationJobStatus = "queued" | "running" | "succeeded" | "failed";
 

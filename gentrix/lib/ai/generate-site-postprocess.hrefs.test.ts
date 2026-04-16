@@ -114,6 +114,18 @@ describe("repairInternalLinksInHtml marketing cross-page", () => {
     );
   });
 
+  it("maps #assortiment to collectie when retail marketing key exists", () => {
+    const retailCross = {
+      marketingPageKeys: new Set(["collectie", "service-retour", "faq"]),
+      contactOnDedicatedSubpage: true,
+    } as const;
+    const valid = new Set(["hero", "top"]);
+    const html = `<a href="#assortiment">Assortiment</a>`;
+    expect(repairInternalLinksInHtml(html, valid, retailCross)).toBe(
+      `<a href="__STUDIO_SITE_BASE__/collectie">Assortiment</a>`,
+    );
+  });
+
   it("keeps #contact when contact id exists on same page", () => {
     const valid = new Set(["hero", "contact", "top"]);
     const html = `<a href="#contact">Contact</a>`;

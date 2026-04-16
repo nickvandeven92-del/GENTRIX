@@ -678,6 +678,29 @@ export type MarketingCrossPageLinkContext = {
   contactOnDedicatedSubpage: boolean;
 };
 
+/**
+ * NL/EN nav-labels → standaard `marketingPages`-keys (retail vs. service defaults).
+ * Alleen van toepassing als de doel-key in `marketingPageKeys` van **deze** run zit.
+ */
+const MARKETING_PAGE_SLUG_SYNONYMS: Record<string, readonly string[]> = {
+  assortiment: ["collectie"],
+  catalogus: ["collectie"],
+  aanbod: ["collectie"],
+  shop: ["collectie"],
+  producten: ["collectie"],
+  diensten: ["wat-wij-doen"],
+  services: ["wat-wij-doen"],
+  methode: ["werkwijze"],
+  procedure: ["werkwijze"],
+  about: ["over-ons"],
+  overons: ["over-ons"],
+  veelgestelde: ["faq"],
+  veelgesteldevragen: ["faq"],
+  help: ["faq"],
+  retour: ["service-retour"],
+  garantie: ["service-retour"],
+};
+
 function matchCanonicalMarketingPageKey(fragment: string, keys: Set<string>): string | null {
   const f = fragment.trim();
   if (!f) return null;
@@ -685,6 +708,14 @@ function matchCanonicalMarketingPageKey(fragment: string, keys: Set<string>): st
   const fk = slugifyIdSegment(f);
   for (const k of keys) {
     if (slugifyIdSegment(k) === fk) return k;
+  }
+  const synonymTargets = MARKETING_PAGE_SLUG_SYNONYMS[fk] ?? MARKETING_PAGE_SLUG_SYNONYMS[f.trim().toLowerCase()] ?? [];
+  for (const t of synonymTargets) {
+    if (keys.has(t)) return t;
+    const tk = slugifyIdSegment(t);
+    for (const k of keys) {
+      if (slugifyIdSegment(k) === tk) return k;
+    }
   }
   return null;
 }

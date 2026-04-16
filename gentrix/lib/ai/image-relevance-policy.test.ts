@@ -11,6 +11,12 @@ describe("detectNicheBundle", () => {
     expect(detectNicheBundle("Online hengelsportwinkel met kunstaas")).toBe("fishing_angling_retail");
   });
 
+  it("detecteert visartikelen / tackle-retail", () => {
+    expect(detectNicheBundle("Rudenko's Fish verkoopt visartikelen voor serieuze vissers")).toBe(
+      "fishing_angling_retail",
+    );
+  });
+
   it("detecteert barbershop-context", () => {
     expect(detectNicheBundle("Premium barbershop voor heren in Rotterdam")).toBe("barbershop");
   });
@@ -118,5 +124,29 @@ describe("pickBestUnsplashResult", () => {
       pickOffset: 0,
     });
     expect(out?.photo.alt_description).not.toMatch(/scuba/i);
+  });
+
+  it("kiest tackle boven havenkraan voor visartikelen-briefing", () => {
+    const craneAndTackle = [
+      {
+        urls: { regular: "https://u.test/crane" },
+        alt_description: "gantry crane at container terminal at night",
+        description: null,
+      },
+      {
+        urls: { regular: "https://u.test/tackle" },
+        alt_description: "fishing reels and tackle on weathered wooden deck",
+        description: null,
+      },
+    ];
+    const out = pickBestUnsplashResult(craneAndTackle, {
+      themeContext: "Rudenko's Fish — visartikelen voor professionele en amateur vissers",
+      sectionId: "hero",
+      sectionName: "Hero",
+      pageIntent: "home",
+      designContract: null,
+      pickOffset: 0,
+    });
+    expect(out?.photo.urls.regular).toBe("https://u.test/tackle");
   });
 });
