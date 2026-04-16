@@ -1964,8 +1964,12 @@ export function buildTailwindIframeSrcDoc(
   });
   const existingHeaderLinks = extractHeaderNavLinks(body);
   const autoNavSourceBody = replaceBrokenDrawerChromeWithAutoNavSource(body);
+  const shouldInject = shouldInjectStudioAutoMobileNav(autoNavSourceBody);
+  console.log("[nav] broken drawer stripped:", autoNavSourceBody.length !== body.length);
+  console.log("[nav] shouldInject:", shouldInject);
+  console.log("[nav] sections.length:", sections.length);
   let studioAutoMobileNavInjected = false;
-  if (sections.length > 0 && shouldInjectStudioAutoMobileNav(autoNavSourceBody)) {
+  if (sections.length > 0 && shouldInject) {
     body = `${buildStudioAutoMobileNavHeaderHtml(
       sections,
       pageConfig ?? null,
