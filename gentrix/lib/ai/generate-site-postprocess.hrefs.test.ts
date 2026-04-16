@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   collectHtmlElementIds,
   ensureAlpineMobileOverlayHasLgHidden,
+  ensureAlpineMobileToggleButtonHasLgHidden,
   ensureClaudeMarketingSiteJsonHasContactSections,
   fixAlpineNavToggleDefaultsInXData,
   normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindPage,
   postProcessTailwindSectionsForStreamingPreview,
+  repairBrokenMobileDrawer,
   repairInternalLinksInHtml,
   repairSamePagePathHrefsInHtml,
   stripDecorativeScrollCueMarkup,
@@ -194,6 +196,100 @@ describe("ensureAlpineMobileOverlayHasLgHidden", () => {
     const out = ensureAlpineMobileOverlayHasLgHidden(html);
     expect(out).toContain("lg:hidden");
   });
+
+  it("voegt lg:hidden toe op rechter drawer met top/right/h-full", () => {
+    const html = `<div class="fixed top-0 right-0 h-full w-80 bg-slate-950 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]" x-show="navOpen"></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toContain("lg:hidden");
+  });
+
+  it("voegt lg:hidden toe op statische rechter nav-drawer zonder x-show", () => {
+    const html = `<div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5"></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toContain("lg:hidden");
+  });
+
+  it("wijzigt geen statisch sidepanel zonder menu-markers", () => {
+    const html = `<div class="fixed top-0 right-0 h-full w-16 z-10"></div>`;
+    expect(ensureAlpineMobileOverlayHasLgHidden(html)).toBe(html);
+  });
+});
+
+describe("ensureAlpineMobileToggleButtonHasLgHidden", () => {
+  it("voegt lg:hidden toe op hamburgerknop met menu-aria", () => {
+    const html = `<button type="button" class="inline-flex h-11 w-11" @click="navOpen = !navOpen" aria-controls="site-mobile-sheet" aria-label="Menu openen"></button>`;
+    const out = ensureAlpineMobileToggleButtonHasLgHidden(html);
+    expect(out).toMatch(/class="[^"]*\blg:hidden\b/);
+  });
+
+  it("wijzigt geen niet-menuknop zonder menu-aria", () => {
+    const html = `<button type="button" class="inline-flex h-10" @click="menuOpen = !menuOpen">Acties</button>`;
+    expect(ensureAlpineMobileToggleButtonHasLgHidden(html)).toBe(html);
+  });
+
+  it("wijzigt niet als lg:hidden al aanwezig is", () => {
+    const html = `<button type="button" class="inline-flex lg:hidden" @click="open = !open" aria-controls="mobile-menu"></button>`;
+    expect(ensureAlpineMobileToggleButtonHasLgHidden(html)).toBe(html);
+  });
+});
+
+describe("repairBrokenMobileDrawer", () => {
+  it("matches provided drawer class pattern (fixed/right-0/h-full)", () => {
+    const drawerClass =
+      "fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5";
+    expect(/fixed[^"]*right-0[^"]*h-full/.test(drawerClass)).toBe(true);
+  });
+
+  it("wiret broken hamburger + drawer + backdrop met navOpen", () => {
+    const html = `<section id="hero">
+  <header class="relative z-30 w-full">
+    <button type="button" class="lg:hidden w-10 h-10" aria-label="Menu"></button>
+  </header>
+  <div class="fixed inset-0 bg-black/60 z-[60]"></div>
+  <div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]"></div>
+</section>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-data="{ navOpen: false }"');
+    expect(out).toContain('@click="navOpen = !navOpen"');
+    expect(out).toContain('x-show="navOpen"');
+    expect(out).toContain('@click="navOpen = false"');
+  });
+
+  it("wiret drawer ook wanneer class-volgorde afwijkt", () => {
+    const html = `<section id="hero">
+  <header class="relative z-30 w-full">
+    <button type="button" class="w-10 h-10 lg:hidden" aria-label="Menu"></button>
+  </header>
+  <div class="fixed inset-0 bg-black/60 z-[60]"></div>
+  <div class="right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5 fixed top-0"></div>
+</section>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-show="navOpen"');
+  });
+
+  it("repareert section-loze markup met aria-controls menuknop", () => {
+    const html = `<div class="relative">
+  <button type="button" class="inline-flex h-10 w-10" aria-controls="mobile-drawer">Open</button>
+  <div class="fixed inset-0 bg-black/50 z-[60]"></div>
+  <aside id="mobile-drawer" class="fixed right-0 top-0 h-full w-72 bg-slate-950"></aside>
+</div>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-data="{ navOpen: false }"');
+    expect(out).toContain('@click="navOpen = !navOpen"');
+    expect(out).toContain('x-show="navOpen"');
+    expect(out).toContain('@click="navOpen = false"');
+  });
+
+  it("laat al gewirede drawer ongemoeid", () => {
+    const html = `<section id="hero" x-data="{ menuOpen: false }">
+  <header>
+    <button type="button" class="lg:hidden" @click="menuOpen = !menuOpen" aria-label="Menu"></button>
+  </header>
+  <div x-show="menuOpen" x-cloak class="fixed inset-0 bg-black/60 z-[60]" @click="menuOpen = false"></div>
+  <div x-show="menuOpen" x-cloak class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]" @click.stop></div>
+</section>`;
+    expect(repairBrokenMobileDrawer(html)).toBe(html);
+  });
 });
 
 describe("stripDecorativeScrollCueMarkup", () => {
@@ -230,6 +326,29 @@ describe("postProcessTailwindSectionsForStreamingPreview", () => {
       null,
     );
     expect(out[0]?.html).toContain("open: false");
+  });
+
+  it("voegt desktop-hide utilities toe op mobiele sheet + backdrop + toggle", () => {
+    const out = postProcessTailwindSectionsForStreamingPreview(
+      [
+        {
+          id: "hero",
+          sectionName: "Hero",
+          html: `<section id="hero" x-data="{ menuOpen: false }">
+  <header>
+    <button type="button" class="w-10 h-10" @click="menuOpen = !menuOpen" aria-controls="site-mobile-sheet" aria-label="Menu">Menu</button>
+    <div x-show="menuOpen" class="fixed inset-0 z-[60] bg-black/60"></div>
+    <div x-show="menuOpen" class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]"></div>
+  </header>
+</section>`,
+        },
+      ],
+      null,
+    );
+    const html = out[0]?.html ?? "";
+    expect(html).toMatch(/<button[^>]*class="[^"]*\blg:hidden\b/);
+    expect(html).toMatch(/class="[^"]*\binset-0\b[^"]*\blg:hidden\b/);
+    expect(html).toMatch(/class="[^"]*\btop-0\b[^"]*\bright-0\b[^"]*\bh-full\b[^"]*\blg:hidden\b/);
   });
 });
 
