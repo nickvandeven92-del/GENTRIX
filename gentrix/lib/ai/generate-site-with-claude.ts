@@ -49,6 +49,7 @@ import {
 import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
+import { maybeEnhanceHero } from "@/lib/ai/enhance-hero-section";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import { finalizeBookingShopAfterAiGeneration } from "@/lib/site/append-booking-section-to-payload";
 import { INDUSTRY_KEYWORDS, INDUSTRY_PROFILES } from "@/lib/ai/site-generation-industry-data";
@@ -2128,6 +2129,8 @@ export function createGenerateSiteReadableStream(
             : {}),
           ...(marketingAfterUnsplash != null ? { marketingPages: marketingAfterUnsplash } : {}),
         };
+
+        data = { ...data, sections: maybeEnhanceHero(data.sections, data.config, description) };
 
         data = {
           ...data,
