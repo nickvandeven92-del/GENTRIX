@@ -906,6 +906,8 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
 /**
  * Sticky/fixed top-nav: bemonster wat visueel **achter** de balk ligt; bij lichte achtergrond
  * `.studio-nav-tone-light` voor donkere voorgrond (studio-preview + live site + export).
+ * Let op: `behindNav`/`bgLum` mogen **niet** op helderheid `1` vallen bij “geen sample” — dat zette
+ * ten onrechte donkere menu-tekst op **donkere** headers (onleesbare navbar).
  */
 export const STUDIO_NAV_SCROLL_CONTRAST_CSS = `/* Zie STUDIO_NAV_SCROLL_CONTRAST_SCRIPT */
 header.studio-nav-tone-light,
@@ -963,7 +965,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(L!=null)return L;
       cur=cur.parentElement;
     }
-    return 1;
+    return null;
   }
   function behindNav(nav,x,y){
     var stack=document.elementsFromPoint(x,y);
@@ -972,7 +974,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(nav.contains(el))continue;
       return bgLum(el);
     }
-    return 1;
+    return null;
   }
   function pickNav(){
     var list=document.querySelectorAll("header,nav");
@@ -989,16 +991,30 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     }
     return null;
   }
-  var nav=null,ticking=false,THRESH=0.57;
+  var nav=null,ticking=false,THRESH=0.57,NAV_DARK_CAP=0.42;
   function sync(){
     if(!nav)return;
     var r=nav.getBoundingClientRect();
     if(r.height<20||r.width<32)return;
+    var navSelf=bgLum(nav);
+    if(navSelf!=null&&navSelf<NAV_DARK_CAP){
+      nav.classList.remove("studio-nav-tone-light");
+      return;
+    }
     var x1=Math.min(Math.max(innerWidth*0.22,6),innerWidth-6);
     var x2=Math.min(Math.max(innerWidth*0.5,6),innerWidth-6);
     var x3=Math.min(Math.max(innerWidth*0.78,6),innerWidth-6);
     var py=Math.min(Math.max(r.top+r.height*0.5,2),innerHeight-3);
-    var L=Math.max(behindNav(nav,x1,py),behindNav(nav,x2,py),behindNav(nav,x3,py));
+    var s1=behindNav(nav,x1,py),s2=behindNav(nav,x2,py),s3=behindNav(nav,x3,py);
+    var samples=[];
+    if(s1!=null)samples.push(s1);
+    if(s2!=null)samples.push(s2);
+    if(s3!=null)samples.push(s3);
+    if(!samples.length){
+      nav.classList.remove("studio-nav-tone-light");
+      return;
+    }
+    var L=Math.max.apply(Math,samples);
     nav.classList.toggle("studio-nav-tone-light",L>THRESH);
   }
   function onTick(){

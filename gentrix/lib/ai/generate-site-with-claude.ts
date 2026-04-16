@@ -278,6 +278,10 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
     merged.delete("booking");
     merged.delete("shop");
     merged.delete("contact");
+    const industryExplicit = detectIndustry(description);
+    if (industryExplicit?.sections.includes("shop") || EXTRA_SECTION_KEYWORDS.shop.keywords.test(description)) {
+      merged.delete("gallery");
+    }
     return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact");
   }
 
@@ -289,6 +293,10 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
   merged.delete("booking");
   merged.delete("shop");
   merged.delete("contact");
+  /** Retail met webshop: geen aparte marketing-`gallery` — productbeeldtaal hoort in de shop-module. */
+  if (industry?.sections.includes("shop") || EXTRA_SECTION_KEYWORDS.shop.keywords.test(description)) {
+    merged.delete("gallery");
+  }
   return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact");
 }
 
@@ -851,7 +859,8 @@ function buildBrancheSectionPromptBlocks(sectionIds: Set<string>): string {
 
   if (sectionIds.has("gallery")) {
     blocks.push(`**=== GALERIJ (id: "gallery") ===**
-Doel: werk, sfeer of resultaten tonen. Kies grid/masonry/editorial zelf; **voldoende** beelden (denk ±6+) als het visueel zwaar moet wegen.
+Alleen zinvol voor **portfolio / interieur / voor-na** (briefing vraagt expliciet om beeldoverzicht). **Niet** voor webshop-/productcatalogus: dat hoort in de shop-module.
+- Max. **4–6** beelden, strak grid of editorial — geen “18-tegels om lengte te maken”.
 - Unsplash passend bij branche; eigen stijl i.p.v. standaard hover-scale op elke foto.`);
   }
 
@@ -1052,7 +1061,7 @@ function buildMarketingSlugContentHintsLines(slugs: readonly string[]): string {
 
 /** Gedeelde copy-richting: sales/conversie binnen CONTENT AUTHORITY (geen fictie). */
 function buildSiteGenerationSalesCopyGuidanceLine(): string {
-  return `- **Copy (conversie / sales):** schrijf voor iemand die een keuze moet maken: duidelijke **belofte + bewijs uit de briefing** (diensten, aanpak, differentiatie), voordelen in **jij/wij**-taal, concrete **CTA’s** met werkende \`href\` (ook secundair, bv. “Meer over …” → anker of subroute). Vermijd encyclopedische of interne jargon-brochures; elke sectie ondersteunt vertrouwen of de volgende stap. **Geen** verzonnen prijzen, stats, reviews of “limited time” — zie CONTENT AUTHORITY.`;
+  return `- **Copy (conversie / sales):** schrijf voor iemand die een keuze moet maken: duidelijke **belofte + bewijs uit de briefing** (diensten, aanpak, differentiatie), voordelen in **jij/wij**-taal, **spaarzame** CTA’s met werkende \`href\` (één primair pad + hoogstens één secundair; geen vijf gelijkwaardige knoppen). Vermijd encyclopedische of interne jargon-brochures; elke sectie ondersteunt **één** nieuw inzicht of vertrouwenspunt — **niet** dezelfde boodschap herhalen. **Geen** verzonnen prijzen, stats, reviews of “limited time” — zie CONTENT AUTHORITY.`;
 }
 
 /** §3B–§5 voor multi-route marketing: landing + vaste subpagina's + contact. */
@@ -1080,7 +1089,7 @@ function buildMarketingMultiPageOperationalTail(
 - **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum) — zelfde CONTENT AUTHORITY-regels als standaard.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Meerdere echte pagina’s in één JSON:**
-  - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort).
+  - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort). **Geen** dubbele “tweede hero” met dezelfde CTA’s als de eerste; **geen** marketing-fotogalerij-raster voor producten die in de webshop horen.
   - \`marketingPages\` = **verplicht** exact deze keys (geen extra’s, geen missers), elk **minstens twee** HTML-secties met **eigen** \`id\`'s binnen die pagina: ${slugList}.
   - \`contactSections\` = **alleen de contact-subpagina** (route Contact): minstens één **werkend** <form> (naam/e-mail/bericht). **Niet** op de homepage (\`sections\`).
 - **Per marketing-key (inhoud):**
@@ -1185,7 +1194,7 @@ ${list}
 
 **Regels voor klantfoto's:**
 - **NIET in de hero gebruiken.** De hero moet altijd een sterke, professionele Unsplash-foto hebben die de branche visueel neerzet. Klantfoto's zijn vaak niet van hero-kwaliteit (resolutie, compositie, belichting). De hero moet op eigen kracht imponeren.
-- **Wel prominent in andere secties:** "over ons"-sectie, galerij, naast tekst in split-secties, diensten, team, of shop-secties. Niet als kleine thumbnails verstoppen.
+- **Wel prominent in andere secties:** \`about\` (over ons), \`features\` of andere marketing-secties met **split-layout, kaarten of een strak grid** — foto's groot genoeg (geen verstopte thumbnails). Als de sectielijst **wel** \`gallery\` bevat: mag ook daar. **Zonder** \`gallery\`-sectie (normaal bij webshop/retail): verdeel de klantfoto's over \`about\`/\`features\` (en evt. team) zodat **elke** upload alsnog duidelijk zichtbaar is.
 - **Alle aangeleverde foto's moeten zichtbaar in de site komen.** Verdeel ze logisch over de secties (excl. hero).
 - Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover ...">\` of als achtergrondbeeld via inline \`style\` attribuut met \`background-image\` + \`bg-cover bg-center\`.
 - **Aanvullen mag:** als er meer visuele plekken zijn dan klantfoto's, vul aan met passende Unsplash-foto's of decoratieve gradiënten. Maar klantfoto's hebben **altijd voorrang** op stockfoto's (behalve in de hero).
@@ -1279,6 +1288,21 @@ ${tailList}
 
 function buildMarqueeForbiddenPromptLine(): string {
   return `- **Marquee/ticker (verboden):** geen \`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`, of oneindig horizontaal scrollende logo-/tekstbanden. Toon logo's/trust **stilstaand** (grid, flex-wrap of vaste rij). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing; geen laser “om maar iets te laten bewegen”. Video alleen met **werkende** MP4-URL in de briefing.`;
+}
+
+/**
+ * Vrije (niet-strikte) runs: het model stapelde te vaak tweede hero-CTA's + fotogalerij naast webshop.
+ * Strikte one-pager heeft eigen contract; daarom alleen wanneer `strictLanding` false is.
+ */
+function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean): string {
+  const multiPageLine = marketingMultiPage
+    ? "- **Multi-page homepage:** houd \`sections\` bondig (richtlijn **4–6** secties); **geen** volledige “over ons”-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben — verwijs met één zin + link.\n"
+    : "";
+  return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
+- **Geen tweede hero:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
+- **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
+- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. Op de marketingpagina: hoogstens **één** sterk sfeerbeeld in de hero **of** één beeld in een split bij \`about\`/\`features\` — niet beide als beeldzwembad.
+${multiPageLine}`;
 }
 
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
@@ -1436,7 +1460,7 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 
 === 3. PAGINA → HTML (Tailwind) ===
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(combinedIndustryProbeText(businessName, description))) : ""}
-
+${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** sterke eerste indruk met **kop + korte waardepropositie**; **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) als dat past bij de briefing — tenzij de briefing expliciet een tekst-only hero wil. **Verboden:** elk decoratief scroll-label (**SCROLL**, **Scroll**, verticaal of horizontaal, muisicoon/streepje **zonder** echte link/anker) — dat blijft bij video-loops in beeld en oogt als sjabloon-rommel.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
@@ -1553,6 +1577,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 === 3. PAGINA COMPOSEREN → HTML (Tailwind) ===
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(industryProbe)) : ""}
+${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
 **Vrijheid:** ${strictLanding ? "Binnen de **vijf** vaste secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s." : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
 **Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie §3B"}) + contact` : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie §3B"}); **geen** \`#…\`-nav naar inhoud die op een subroute staat. ` : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.

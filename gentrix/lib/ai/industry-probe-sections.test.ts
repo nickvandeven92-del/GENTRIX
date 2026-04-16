@@ -25,4 +25,18 @@ describe("combinedIndustryProbeText + branche-secties", () => {
     expect(detectIndustry(probe)?.id).toBe("hair_salon");
     expect(buildSectionIdsFromBriefing(probe)).toContain("team");
   });
+
+  it("hengelsport-profiel: geen gallery in sectielijst (webshop-module dekt productbeeld)", () => {
+    const probe = combinedIndustryProbeText("Rudenko", "Visspeciaalzaak met webshop en hengels");
+    expect(detectIndustry(probe)?.id).toBe("angling_shop");
+    const ids = buildSectionIdsFromBriefing(probe);
+    expect(ids).not.toContain("gallery");
+    expect(ids).toContain("features");
+    expect(ids).toContain("footer");
+  });
+
+  it("strip gallery wanneer briefing duidelijke webshop-signalen heeft", () => {
+    const probe = combinedIndustryProbeText("", "Online bestellen via onze webshop, verzorgingsproducten");
+    expect(buildSectionIdsFromBriefing(probe)).not.toContain("gallery");
+  });
 });

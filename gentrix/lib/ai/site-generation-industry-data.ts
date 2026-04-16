@@ -340,7 +340,7 @@ Energie, prestatie en passie voor sport. De website moet activeren en motiveren.
   {
     id: "angling_shop",
     label: "Hengelsport / Viswinkel",
-    sections: ["hero", "shop", "features", "gallery", "about", "faq", "footer"],
+    sections: ["hero", "shop", "features", "about", "faq", "footer"],
     heroStrategy: "photo",
     servicesFormat: "split",
     vibe: "warm",
@@ -349,7 +349,7 @@ Rust, water, vakmanschap en serieuze uitrusting — **niet** dezelfde vibe als e
 - **Hero-idee:** full-bleed **water / ochtendnevel / boot / vislijn** (Unsplash: fishing rod lake, fly fishing, tackle close-up); kop in **elegant serif** + korte subkop; **geen** willekeurige stock die niets met vissen te maken heeft. Donker+diep **of** licht+editorial — kies één lijn en volg die.
 - **Compositie:** wissel **split** (foto + copy), **editoriale** banden, horizontale USP-rij met \`studio-border-reveal--h\` onder koppen — **niet** overal dezelfde drie ronde kaarten met hetzelfde icoon-patroon.
 - **Shop/nav:** \`shop\`-sectie komt server-side; zet webshop-placeholder in nav/footer. Categorie-denkrichting: hengels, molens, kunstaas, lijn, kleding, accessoires — alleen als het de briefing volgt.
-- **Galerij:** echte hengel-/natuur-scènes; geen “random nature leaf” zonder visserij-context.
+- **Geen marketing-fotogalerij:** product- en sfeerbeelden horen in de **webshop**; op de marketingpagina max. **één** sterk beeld (hero **of** één split bij about/features), geen collage-raster “om te vullen”.
 - **Motion:** bij briefing over dynamiek/interactie: \`data-animation\`, \`data-aos\`, \`studio-border-reveal\` — **geen** scrollende ticker/marquee; geen cyber-laser tenzij de klant dat expliciet zo noemt.`,
   },
   {
