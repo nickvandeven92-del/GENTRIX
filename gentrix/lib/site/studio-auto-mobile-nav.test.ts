@@ -126,7 +126,7 @@ describe("shouldInjectStudioAutoMobileNav", () => {
 </header>
 <section id="hero">…</section>`;
     expect(headerAppearsDesigned(html)).toBe(true);
-    expect(shouldInjectStudioAutoMobileNav(html)).toBe(false);
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(true);
   });
 
   it("injecteert niet bij een rijke AI-header met een gebroken mobiele toggle — behoud de echte navbar", () => {

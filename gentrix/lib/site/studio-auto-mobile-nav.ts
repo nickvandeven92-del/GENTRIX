@@ -151,9 +151,9 @@ function bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml: string): boolean {
 /**
  * `true` = utilitaire auto-navbar **injecteren** (alleen bij gebrek aan bruikbare bestaande top-nav).
  *
- * Beleid: zodra er al een vaste/sticky `<header>` is met echte `href`-links, of de header er “designed”
- * uitziet, of er vroeg in de body al een vaste top-`<nav>` staat, **niet** injecteren — anders verdwijnt
- * de AI-layout achter duplicate-CSS en blijft alleen de zwarte fallback-balk over.
+ * Beleid: zodra er al een **werkend** mobiel Alpine-menu staat, of er vroeg in de body al een vaste top-`<nav>`
+ * staat, **niet** injecteren. Een header die er alleen "designed" uitziet is niet genoeg: die kan alsnog een
+ * gebroken mobiel menu hebben (bijv. losse fixed right drawer zonder toggle/scope).
  */
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
@@ -161,8 +161,12 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (!win) {
     return !bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml);
   }
-  if (headerHasWiredAlpineMobileMenuToggle(bodyInnerHtml)) return false;
-  if (headerAppearsDesigned(bodyInnerHtml)) return false;
+  const hasWiredMobileToggle = headerHasWiredAlpineMobileMenuToggle(bodyInnerHtml);
+  if (hasWiredMobileToggle) return false;
+  /**
+   * Belangrijk: "designed" alleen is niet genoeg om injectie te skippen.
+   * Veel AI-headers ogen visueel rijk maar missen een werkende mobiele toggle/scope.
+   */
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
   if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1) return false;
   return true;
@@ -185,6 +189,7 @@ div.fixed.top-0.right-0,
 div[class*="fixed"][class*="top-0"][class*="right-0"],
 /* Alle fixed els met lage/hoge width aan rechterkant */
 div[class*="fixed"][class*="right-0"][class*="w-"],
+div[class*="fixed"][class*="right-0"][class*="h-full"],
 /* Sidebar-achtige divs */
 div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
 div[class*="fixed"][class*="right-0"][class*="z-"],

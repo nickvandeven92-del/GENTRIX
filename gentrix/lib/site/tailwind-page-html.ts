@@ -2094,6 +2094,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
+    ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
