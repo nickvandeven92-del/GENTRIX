@@ -351,7 +351,12 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
     return `<button${attrs} @click="${stateKey} = !${stateKey}"${expandedAttr}>`;
   });
 
+  /** Drawer-debug: laat exact zien of de bekende `fixed top-0 right-0`-tag in scope zit. */
+  const drawerTagMatch = out.match(/<div[^>]*class="fixed top-0 right-0[^"]*"[^>]*>/i);
+  logRepairBrokenMobileDrawer("[repair drawer] match:", drawerTagMatch?.[0] ?? null);
+
   /** Voeg x-show toe op side-drawer als die ontbreekt. */
+  const beforeDrawerReplace = out;
   out = out.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
     const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
     if (!/\bfixed\b/.test(cls)) return full;
@@ -364,6 +369,7 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
     const withStop = /@click\.stop\s*=/.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
     return `<${tag}${withStop} x-show="${stateKey}">`;
   });
+  logRepairBrokenMobileDrawer("[repair drawer] changed:", out !== beforeDrawerReplace);
 
   /** Voeg x-show toe op backdrop-laag als die ontbreekt. */
   out = out.replace(/<div\b([^>]*)>/gi, (full, attrs: string) => {
@@ -398,7 +404,7 @@ export function repairBrokenMobileDrawer(html: string): string {
     /class\s*=\s*["'](?=[^"']*\bfixed\b)(?=[^"']*\bright-0\b)(?=[^"']*\bh-full\b)[^"']*["']/i,
   );
   logRepairBrokenMobileDrawer("[repair] aangeroepen, html lengte:", html.length);
-  logRepairBrokenMobileDrawer("[repair] drawer regex match:", drawerMatch?.[1] ?? null);
+  logRepairBrokenMobileDrawer("[repair] drawer regex match:", drawerMatch?.[0] ?? null);
 
   const sectionRepaired = html.replace(/<section\b[\s\S]*?<\/section>/gi, (section) =>
     repairBrokenMobileDrawerInScope(section),
