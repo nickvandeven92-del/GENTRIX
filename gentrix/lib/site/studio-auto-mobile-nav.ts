@@ -149,6 +149,23 @@ function bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml: string): boolean {
 }
 
 /**
+ * AI-output kan een "mobiele" right/left drawer als los vast paneel zetten zonder werkende toggle-state.
+ * In dat geval wél auto-nav injecteren, ook als de header verder vaste links bevat.
+ */
+function headerHasLikelyBrokenMobileDrawer(headerSlice: string): boolean {
+  const hasSideDrawer =
+    /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.test(
+      headerSlice,
+    );
+  if (!hasSideDrawer) return false;
+  const hasMenuShow = /\bx-show\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["']/i.test(headerSlice);
+  const hasMenuToggle = /<button\b[^>]*(?:@click|x-on:click)\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["'][^>]*>/i.test(
+    headerSlice,
+  );
+  return !hasMenuShow || !hasMenuToggle;
+}
+
+/**
  * `true` = utilitaire auto-navbar **injecteren** (alleen bij gebrek aan bruikbare bestaande top-nav).
  *
  * Beleid: zodra er al een **werkend** mobiel Alpine-menu staat, of er vroeg in de body al een vaste top-`<nav>`
@@ -167,8 +184,9 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
    * Belangrijk: "designed" alleen is niet genoeg om injectie te skippen.
    * Veel AI-headers ogen visueel rijk maar missen een werkende mobiele toggle/scope.
    */
+  const hasLikelyBrokenDrawer = headerHasLikelyBrokenMobileDrawer(win);
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
-  if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1) return false;
+  if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) return false;
   return true;
 }
 
