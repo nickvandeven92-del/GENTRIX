@@ -2,6 +2,7 @@ import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
 import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { ensureCanonicalModuleSectionsForCrmFlags } from "@/lib/site/append-booking-section-to-payload";
 import {
   projectSnapshotFromTailwindPayload,
   projectSnapshotToJson,
@@ -57,14 +58,6 @@ export async function persistTailwindDraftForExistingClient(
         ? "ai_command"
         : "editor";
 
-  const docTitle = options.documentTitle?.trim() || existing.name?.trim() || "Website";
-  const withCss = await attachCompiledTailwindCssToPayload(tailwindPayload, docTitle);
-  const snapshot = projectSnapshotFromTailwindPayload(withCss, {
-    generationSource,
-    documentTitle: docTitle,
-    ...(options.siteIrHints != null ? { siteIrHints: options.siteIrHints } : {}),
-  });
-
   let flags: PublicSiteModuleFlags =
     options.moduleFlags ?? { appointmentsEnabled: false, webshopEnabled: false };
   if (!options.moduleFlags) {
@@ -78,6 +71,16 @@ export async function persistTailwindDraftForExistingClient(
       webshopEnabled: Boolean((modRow as { webshop_enabled?: boolean } | null)?.webshop_enabled),
     };
   }
+
+  const docTitle = options.documentTitle?.trim() || existing.name?.trim() || "Website";
+  const withCss = await attachCompiledTailwindCssToPayload(tailwindPayload, docTitle);
+  const withCanonicalModules = ensureCanonicalModuleSectionsForCrmFlags(withCss, flags);
+  const snapshot = projectSnapshotFromTailwindPayload(withCanonicalModules, {
+    generationSource,
+    documentTitle: docTitle,
+    ...(options.siteIrHints != null ? { siteIrHints: options.siteIrHints } : {}),
+  });
+
   const persistErrors = getPersistSiteValidationErrors(snapshot, flags);
   if (persistErrors.length > 0) {
     return { ok: false, error: persistErrors.join(" "), status: 422 };

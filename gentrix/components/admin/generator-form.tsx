@@ -493,7 +493,12 @@ export function GeneratorForm({
               setStreamPhase(msg);
               appendGenerationActivity(msg);
             } else if (job.status === "running" && job.updated_at && i > 0 && i % 15 === 0) {
-              appendGenerationActivity(`Server nog bezig (laatste update ${new Date(job.updated_at).toLocaleTimeString()}).`);
+              const ageSec = Math.round((Date.now() - new Date(job.updated_at).getTime()) / 1000);
+              appendGenerationActivity(
+                ageSec > 45
+                  ? `Server nog bezig — laatste voortgangsupdate ${new Date(job.updated_at).toLocaleTimeString()} (${ageSec}s geleden). Lange stappen: referentiesite ophalen, Denklijn, groot model; tot ~16 min is normaal.`
+                  : `Server nog bezig (laatste update ${new Date(job.updated_at).toLocaleTimeString()}).`,
+              );
             }
             if (job.status === "succeeded" && job.result) {
               setGeneratedTailwind(job.result);

@@ -21,6 +21,14 @@ describe("detectNicheBundle", () => {
     expect(detectNicheBundle("Premium barbershop voor heren in Rotterdam")).toBe("barbershop");
   });
 
+  it("detecteert volwassen/erotische retail-context", () => {
+    expect(
+      detectNicheBundle(
+        "Een webshop in erotische artikelen, eigenaar Rob. De website moet donker met veel neon rood, denk aan de wallen in amsterdam.",
+      ),
+    ).toBe("mature_retail_ambient");
+  });
+
   it("geeft null zonder duidelijke niche", () => {
     expect(detectNicheBundle("Algemene boekhoudkantoor voor MKB")).toBeNull();
   });
@@ -148,5 +156,29 @@ describe("pickBestUnsplashResult", () => {
       pickOffset: 0,
     });
     expect(out?.photo.urls.regular).toBe("https://u.test/tackle");
+  });
+
+  it("kiest neon/stad boven kinderspeelgoed voor erotische retail-briefing", () => {
+    const toyVsNeon = [
+      {
+        urls: { regular: "https://u.test/toys" },
+        alt_description: "colorful wooden blocks and toy cars on a table",
+        description: null,
+      },
+      {
+        urls: { regular: "https://u.test/neon" },
+        alt_description: "neon sign glow on city street at night",
+        description: null,
+      },
+    ];
+    const out = pickBestUnsplashResult(toyVsNeon, {
+      themeContext: "Webshop in erotische artikelen — donker, neon rood, Amsterdam wallen sfeer",
+      sectionId: "hero",
+      sectionName: "Hero",
+      pageIntent: "home",
+      designContract: null,
+      pickOffset: 0,
+    });
+    expect(out?.photo.urls.regular).toBe("https://u.test/neon");
   });
 });

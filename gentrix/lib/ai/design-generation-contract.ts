@@ -336,8 +336,12 @@ export function buildDesignContractPromptInjection(
 export function buildUnsplashThemeContextWithContract(
   description: string,
   contract: DesignGenerationContract | null | undefined,
+  businessName?: string | null,
 ): string {
-  if (!contract) return description;
+  const bn = businessName?.trim();
+  const desc = description.trim();
+  const head = bn ? `${bn}. ${desc}` : desc;
+  if (!contract) return head;
   const axes = contract.referenceVisualAxes;
   const extra = [
     contract.heroVisualSubject,
@@ -348,6 +352,6 @@ export function buildUnsplashThemeContextWithContract(
   ]
     .filter((s) => typeof s === "string" && s.trim().length > 0)
     .join(" · ");
-  if (!extra.trim()) return description;
-  return `${description}\n\n[Designcontract — visuele kern voor afbeeldingen: ${extra}]`;
+  if (!extra.trim()) return head;
+  return `${head}\n\n[Designcontract — visuele kern voor afbeeldingen: ${extra}]`;
 }

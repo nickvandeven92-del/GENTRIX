@@ -12,7 +12,7 @@ import type { DesignGenerationContract } from "@/lib/ai/design-generation-contra
 export type UnsplashPageIntent = "home" | "contact" | "marketing";
 
 /** Herkenbare niche-bundle (data-gedreven, uitbreidbaar). */
-export type NicheBundleId = "fishing_angling_retail" | "barbershop" | null;
+export type NicheBundleId = "mature_retail_ambient" | "fishing_angling_retail" | "barbershop" | null;
 
 export type NicheDomainBundle = {
   id: NonNullable<NicheBundleId>;
@@ -24,6 +24,10 @@ export type NicheDomainBundle = {
   forbiddenTerms: string[];
   /** Zwakke context (+score), kan misleiden — niet als enige gate. */
   weakContextTerms: string[];
+  /** Vervangt/verruimt sectie-gates voor deze bucket (alleen gezet buckets). */
+  sectionOverrides?: Partial<
+    Record<"hero" | "product_grid" | "about" | "gallery" | "contact" | "default", Partial<Pick<SectionGateRule, "mustHaveOneOf" | "avoid">>>
+  >;
 };
 
 export type SectionGateRule = {
@@ -53,6 +57,112 @@ export type ImageRelevanceEvaluation = {
 // ---------------------------------------------------------------------------
 
 const NICHE_BUNDLES: NicheDomainBundle[] = [
+  {
+    id: "mature_retail_ambient",
+    triggers: [
+      "erotische artikelen",
+      "erotische webshop",
+      "webshop in erotische",
+      "seksshop",
+      "sexshop",
+      "sex shop",
+      "adult shop",
+      "adult novelty",
+      "erotiekshop",
+      "de wallen",
+      "wallen amsterdam",
+      "wallen in amsterdam",
+      "red light district",
+      "lingerie webshop",
+      "intimate wellness",
+      "bdsm shop",
+    ],
+    anchorTerms: [
+      "neon",
+      "neon sign",
+      "nightlife",
+      "night club",
+      "velvet",
+      "silk",
+      "satin",
+      "fabric texture",
+      "candle",
+      "candlelight",
+      "moody",
+      "dark interior",
+      "luxury hotel",
+      "hotel corridor",
+      "boutique",
+      "urban night",
+      "city lights",
+      "night city",
+      "night street",
+      "lingerie",
+      "noir",
+      "rose petals",
+      "champagne",
+      "night portrait",
+      "shadow portrait",
+    ],
+    forbiddenTerms: [
+      "toddler",
+      "child playing",
+      "children",
+      "kids room",
+      "kids toys",
+      "kid toy",
+      "kindergarten",
+      "nursery",
+      "playground",
+      "schoolyard",
+      "classroom",
+      "baby",
+      "infant",
+      "newborn",
+      "wooden blocks",
+      "building blocks",
+      "toy blocks",
+      "lego",
+      "stuffed animal",
+      "plush toy",
+      "toy car",
+      "baby toy",
+      "family with kids",
+      "little boy",
+      "little girl",
+      "sock monkey",
+      "scuba",
+    ],
+    weakContextTerms: ["playroom", "birthday party", "crib"],
+    sectionOverrides: {
+      hero: {
+        mustHaveOneOf: [
+          "neon",
+          "night",
+          "nightlife",
+          "velvet",
+          "silk",
+          "satin",
+          "fabric",
+          "candle",
+          "moody",
+          "boutique",
+          "hotel",
+          "city lights",
+          "urban",
+          "lingerie",
+          "noir",
+          "shadow",
+          "dark interior",
+          "luxury",
+          "sign",
+          "glow",
+          "street night",
+        ],
+        avoid: ["playground", "classroom", "kindergarten"],
+      },
+    },
+  },
   {
     id: "fishing_angling_retail",
     triggers: [
@@ -338,6 +448,15 @@ function sectionRuleForBucket(bucket: string): SectionGateRule {
   return SECTION_RULES.find((r) => r.bucket === bucket) ?? SECTION_RULES.find((r) => r.bucket === "default")!;
 }
 
+function effectiveSectionRule(bucket: string, bundle: NicheDomainBundle | null): SectionGateRule {
+  const base = sectionRuleForBucket(bucket);
+  const ov = bundle?.sectionOverrides?.[bucket as keyof NonNullable<NicheDomainBundle["sectionOverrides"]>];
+  if (!ov) return base;
+  const must = ov.mustHaveOneOf && ov.mustHaveOneOf.length > 0 ? ov.mustHaveOneOf : base.mustHaveOneOf;
+  const avoid = [...base.avoid, ...(ov.avoid ?? [])];
+  return { bucket: base.bucket, mustHaveOneOf: must, avoid };
+}
+
 export function buildContractAvoidList(contract: DesignGenerationContract | null | undefined): string[] {
   if (!contract?.imageryAvoid?.length) return [];
   return contract.imageryAvoid.filter((x) => x.trim().length > 1);
@@ -406,7 +525,7 @@ export function evaluateUnsplashCandidate(
     reasons.push(`weak:${t}`);
   }
 
-  const rule = sectionRuleForBucket(options.sectionBucket);
+  const rule = effectiveSectionRule(options.sectionBucket, options.niche);
   const matchedSectionMust =
     rule.mustHaveOneOf.length > 0 ? collectMatches(haystack, rule.mustHaveOneOf) : [];
   const matchedSectionAvoid = collectMatches(haystack, rule.avoid);

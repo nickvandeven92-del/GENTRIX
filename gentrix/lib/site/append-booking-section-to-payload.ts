@@ -1,6 +1,7 @@
-import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { TailwindSection, TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import { buildDefaultBookingSection } from "@/lib/site/default-booking-section";
 import { buildDefaultShopSection } from "@/lib/site/default-shop-section";
+import type { PublicSiteModuleFlags } from "@/lib/site/public-site-modules-registry";
 
 export type AppendBookingSectionResult =
   | { ok: true; sections: TailwindSection[]; replaced: boolean }
@@ -61,6 +62,33 @@ export type AppendShopSectionResult =
 /**
  * Voegt standaard `id: "shop"` toe vóór `footer` (of aan het eind), naast het booking-blok.
  */
+/**
+ * CRM-modules die **aan** staan vereisen canonieke sectie-id's (`shop`, `booking`) in de snapshot (site-IR).
+ * AI-output strip't die secties; bij opslaan voegen we het vaste studio-blok toe zodat persist niet faalt.
+ */
+export function ensureCanonicalModuleSectionsForCrmFlags(
+  payload: TailwindSectionsPayload,
+  flags: PublicSiteModuleFlags,
+): TailwindSectionsPayload {
+  let sections = payload.sections;
+  let changed = false;
+  if (flags.webshopEnabled && !sections.some((s) => s.id === "shop")) {
+    const r = appendDefaultShopSectionToSections(sections);
+    if (r.ok) {
+      sections = r.sections;
+      changed = true;
+    }
+  }
+  if (flags.appointmentsEnabled && !sections.some((s) => s.id === "booking")) {
+    const r = appendDefaultBookingSectionToSections(sections);
+    if (r.ok) {
+      sections = r.sections;
+      changed = true;
+    }
+  }
+  return changed ? { ...payload, sections } : payload;
+}
+
 export function appendDefaultShopSectionToSections(
   sections: TailwindSection[],
   options?: { replaceExisting?: boolean; headline?: string },

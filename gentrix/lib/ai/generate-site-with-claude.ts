@@ -793,6 +793,15 @@ const ACCENT_FAMILY_MANDATES = [
   "Accent-familie **slate + koper** (luxury modern): CTA in `#b45309` / `#c2410c` (koper) of diep `#0c4a6e` i.p.v. fel oranje.",
 ] as const;
 
+/** Roteert per run om “dezelfde marketing-layout” te doorbreken (hash in buildVarianceBlock). */
+const LAYOUT_ARCHETYPE_MANDATES = [
+  "**Layout-lijn (A):** geen bullet-daaltrein met **identieke** kaarten onder elkaar — gebruik **asymmetrie**, \`md:col-span-2\` breakout, of één brede **editoriale band** met groot citaat/cijfer i.p.v. 3×2 mini-columns.",
+  "**Layout-lijn (B):** vermijd dat de **hele** pagina “hero + 3‑koloms USP‑grid” is — kies **horizontale scroll-strip**, **bento** (\`grid-cols-4\` met ongelijke cellen), of een **typografie-only** trust-blok **zonder** pictogram-raster.",
+  "**Layout-lijn (C):** wissel sectieritme: **split met veel negatieve ruimte**, **staggered cards** (alternerend \`md:translate-y-*\`), of **twee kolommen met één megakaart** — niet overal dezelfde \`grid md:grid-cols-3 gap-6\`.",
+  "**Layout-lijn (D):** hero-compositie **wisselen**: deze run óf **oversized type + zijstreep**, óf **full-bleed met asymmetrische overlay**, óf **50/50 split met asymmetrische crop** — kort vermelden in \`config.style\`.",
+  "**Layout-lijn (E):** diensten/USPs als **één horizontale band/tijdlijn** of **max. 2 kolommen brede kaarten** — geen zes gelijke tegeltjes tenzij de briefing expliciet “pijlers” noemt.",
+] as const;
+
 function buildVarianceBlock(
   businessName: string,
   description: string,
@@ -803,14 +812,18 @@ function buildVarianceBlock(
     `${businessName}\n${description.slice(0, 120)}\n${recentClientNames.join(",")}\n${varianceNonce ?? ""}`,
   );
   const accentIdx = (h >> 3) % ACCENT_FAMILY_MANDATES.length;
+  const layoutIdx = (h >> 7) % LAYOUT_ARCHETYPE_MANDATES.length;
   const explicitColors = detectExplicitColors(description);
   const hasExplicitColors = explicitColors.length > 0;
   const accentLine = hasExplicitColors
     ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** — gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
     : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
+  const layoutLine = `- ${LAYOUT_ARCHETYPE_MANDATES[layoutIdx]} (${layoutIdx + 1}/${LAYOUT_ARCHETYPE_MANDATES.length})`;
 
   return `=== 0A. COMPOSITIE (deze run) ===
 Kies **één** duidelijke lijn door de pagina (bijv. editorial type, asymmetrische splits, of een duidelijk licht/donker ritme) en houd die **consequent** vast. Herhaal niet in elke sectie hetzelfde 3-koloms kaarten-grid tenzij de briefing of branche dat echt vraagt.
+
+${layoutLine}
 
 ${accentLine}
 
@@ -876,7 +889,12 @@ Doel: gezichten en rollen. Layout vrij (kaarten, rij, editorial). Zonder namen i
 
   if (sectionIds.has("about")) {
     blocks.push(`**=== OVER (id: "about") ===**
-Doel: verhaal en vertrouwen. Split, kolom of lang lopende tekst — wat bij tone of branche past; minstens één sterk beeld als het helpt.`);
+Doel: vertrouwen in **weinig woorden** + beeld. **Max. 2 korte alinea’s** of één kolom + bullets — geen essay; detail hoort op een \`over-ons\`-subpagina als die bestaat.`);
+  }
+
+  if (sectionIds.has("features")) {
+    blocks.push(`**=== USP / FEATURES (id: "features") ===**
+Per kaart: **titel + één regel** (±10–14 woorden). **Geen** tweede alinea, geen “marketingvulling” om de grid te vullen.`);
   }
 
   if (sectionIds.has("stats")) {
@@ -1061,7 +1079,17 @@ function buildMarketingSlugContentHintsLines(slugs: readonly string[]): string {
 
 /** Gedeelde copy-richting: sales/conversie binnen CONTENT AUTHORITY (geen fictie). */
 function buildSiteGenerationSalesCopyGuidanceLine(): string {
-  return `- **Copy (conversie / sales):** schrijf voor iemand die een keuze moet maken: duidelijke **belofte + bewijs uit de briefing** (diensten, aanpak, differentiatie), voordelen in **jij/wij**-taal, **spaarzame** CTA’s met werkende \`href\` (één primair pad + hoogstens één secundair; geen vijf gelijkwaardige knoppen). Vermijd encyclopedische of interne jargon-brochures; elke sectie ondersteunt **één** nieuw inzicht of vertrouwenspunt — **niet** dezelfde boodschap herhalen. **Geen** verzonnen prijzen, stats, reviews of “limited time” — zie CONTENT AUTHORITY.`;
+  return `- **Copy (conversie / sales):** **Minder is meer** — billboard- en posterlogica: krachtige woorden, geen brochure-lengte. Elke zin moet iets **nieuws** zeggen; **geen** vulling (“ontdek ons…”, “bij ons staat kwaliteit centraal…”) zonder concrete briefing-hook. **Spaarzame** CTA’s met werkende \`href\` (één primair + hoogstens één secundair). **Geen** verzonnen prijzen, stats, reviews of “limited time” — zie CONTENT AUTHORITY.`;
+}
+
+/** Gedeelde copy-dichtheid: voorkomt dat het model hero + USP-kaarten volschrijft met alinea’s. */
+function buildMinimalMarketingCopyContractMarkdown(): string {
+  return `=== COPY — MINDER IS MEER (verplicht) ===
+- **Hero (\`#hero\`):** **geen** lange lichaamstekst. Maximaal: **één** \`h1\` (of vergelijkbaar display) + optioneel **één** korte kicker/regel erboven (**≤ 6 woorden**) + **hoogstens één** extra regel onder de kop (**≤ 12 woorden**, één zin of fragment). **Verboden in de hero:** twee of meer \`<p>\`-alinea’s; uitleg die beter onder de vouw past; “vertel”-marketing in plaats van **klap**.
+- **Hero-stock (\`<img>\` Unsplash):** de \`alt\` van de **hero**-foto wordt in de studio **gemengd met briefing + Denklijn-contract** om de zoekopdracht te bouwen — schrijf \`alt\` daarom in het **Engels** als **5–12 concrete scene-keywords** die de **branche + gewenste sfeer** letterlijk beschrijven (bijv. \`neon city street night red lights amsterdam canal\`, \`barbershop interior leather chairs vintage mirrors\`). **Vermijd** vage generieke \`alt\` zoals \`business people\` of \`happy team\` tenzij de briefing dat echt vraagt.
+- **USP / feature-kaarten / stappen:** per item **titel + hoogstens één korte regel** (**≤ 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
+- **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina’s: **kern + witruimte** — geen drie identieke marketing-alinea’s achter elkaar.
+- **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van “professioneel klinkend door veel woorden”.`;
 }
 
 /** §3B–§5 voor multi-route marketing: landing + vaste subpagina's + contact. */
@@ -1086,7 +1114,7 @@ function buildMarketingMultiPageOperationalTail(
 
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
-- **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum) — zelfde CONTENT AUTHORITY-regels als standaard.
+- **Copy:** Nederlands, **strak en kort** (geen Lorem ipsum) — zelfde CONTENT AUTHORITY; zie **COPY — MINDER IS MEER** op de landing.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Meerdere echte pagina’s in één JSON:**
   - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort). **Geen** dubbele “tweede hero” met dezelfde CTA’s als de eerste; **geen** marketing-fotogalerij-raster voor producten die in de webshop horen.
@@ -1113,6 +1141,8 @@ ${slugHints}
 - **Afbeeldingen — BELANGRIJK:** De foto moet **inhoudelijk kloppen** bij de tekst ernaast. Een sectie over waterglijbanen toont waterglijbanen, niet een kantoor. Een restaurant toont eten, niet cosmetica.
   - Gebruik \`https://images.unsplash.com/photo-XXXX?auto=format&fit=crop&w=800&q=80\` met een \`photo-\` id dat het juiste onderwerp toont. Relevante beelden helpen; gradient/kleurvlak mag als het past.
   - \`alt\`-tekst beschrijft wat de foto **moet** tonen (bijv. \`alt="Barbershop interieur met klassieke stoelen en warme verlichting"\`), niet een generieke beschrijving.
+  - **Hero + Unsplash (studio):** de zoekopdracht voor de **hero** wordt **branche-eerst** samengesteld uit **briefing + Denklijn-contract**, daarna aangevuld met jouw \`alt\` — schrijf hero-\`alt\` dus als **concrete Engelse zoekkeywords** voor de sector (zie **COPY — MINDER IS MEER** → hero-stock).
+  - **Volwassen commerce / lingerie / erotische retail (18+ in briefing):** **nooit** stock met **kinderen, klaslokaal, speelplaats, babykamer, houten speelblokken, knuffels, LEGO, kids toys** — dat is een **ernstige fout** (ook bij brede zoektermen). Richt Unsplash-zoektermen en \`alt\` op **nacht-stad, neon, fluweel/zijde textuur, donkere boutique/hotel-sfeer, abstracte gloed** — of **geen foto** (gradient + sterke typografie) i.p.v. verkeerde niche-beelden.
   - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en foto's die **niet matchen** met de context van het blok.
   - Voor overige secties (niet-hero): als je geen passende foto vindt, is een sfeervolle **gradient of kleurvlak** acceptabel — maar probeer altijd **eerst** een goede foto.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
@@ -1273,9 +1303,9 @@ ${faqDetect}
 
 **Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan — \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
 
-1. \`hero\` — kop, subkop, **max. 2** primaire CTA-links (\`<a>\` met button-styling), **max. 3** social-proof-items (sterren, badges, korte trust — alleen uit de briefing, geen fictie). Eventuele **"wij zijn anders"**-boodschap: **alleen** in de hero, geen aparte differentiator-sectie.
+1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero.
 2. \`stats\` **of** \`brands\` — precies **één** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen.
-3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide.
+3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Elk item **titel + max. één korte regel** — geen kaart-vullende alinea’s.
 ${tailList}
 
 **Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie.
@@ -1301,6 +1331,7 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
   return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
 - **Geen tweede hero:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
+- **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
 - **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. Op de marketingpagina: hoogstens **één** sterk sfeerbeeld in de hero **of** één beeld in een split bij \`about\`/\`features\` — niet beide als beeldzwembad.
 ${multiPageLine}`;
 }
@@ -1313,7 +1344,7 @@ function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTail
   const { preserve, requiredIdsLine, section4Nav, section5IdsNote } = input;
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
-- **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum, geen lege placeholders) — **maar** geen **verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (zie **CONTENT AUTHORITY** hierboven). Headlines en USP's: alleen claims die uit de **briefing** volgen; ontbreken harde feiten → **toch verkoopgericht formuleren** (voordeel, ontzorging, duidelijke keuze) **zonder** fake social proof of prijzen. FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands (geen kromme woorden of verkeerde werkwoordsvormen zoals "Productic" i.p.v. "Productie").
+- **Copy:** **Nederlands, strak en menselijk** — **geen** Lorem ipsum. **Niet** betekenen: lange alinea’s overal; zie **COPY — MINDER IS MEER** (hero en kaarten **kort**). **Geen verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (CONTENT AUTHORITY). FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Sectie-ankers:** Het **buitenste** element van elke sectie-\`html\` (eerste tag, meestal \`<section>\`) heeft \`id="…"\` dat **exact gelijk** is aan de JSON-\`id\` van die sectie (bijv. \`"id": "faq"\` → \`<section id="faq" class="…">\`). Zo werkt elke interne link.
 - **Interne links (\`#…\`):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#…">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen — plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).
@@ -1330,6 +1361,8 @@ ${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten *
 - **Afbeeldingen — BELANGRIJK:** De foto moet **inhoudelijk kloppen** bij de tekst ernaast. Een sectie over waterglijbanen toont waterglijbanen, niet een kantoor. Een restaurant toont eten, niet cosmetica.
   - Gebruik \`https://images.unsplash.com/photo-XXXX?auto=format&fit=crop&w=800&q=80\` met een \`photo-\` id dat het juiste onderwerp toont. Relevante beelden helpen; gradient/kleurvlak mag als het past.
   - \`alt\`-tekst beschrijft wat de foto **moet** tonen (bijv. \`alt="Barbershop interieur met klassieke stoelen en warme verlichting"\`), niet een generieke beschrijving.
+  - **Hero + Unsplash (studio):** de zoekopdracht voor de **hero** wordt **branche-eerst** samengesteld uit **briefing + Denklijn-contract**, daarna aangevuld met jouw \`alt\` — schrijf hero-\`alt\` dus als **concrete Engelse zoekkeywords** voor de sector (zie **COPY — MINDER IS MEER** → hero-stock).
+  - **Volwassen commerce / lingerie / erotische retail (18+ in briefing):** **nooit** stock met **kinderen, klaslokaal, speelplaats, babykamer, houten speelblokken, knuffels, LEGO, kids toys** — dat is een **ernstige fout** (ook bij brede zoektermen). Richt Unsplash-zoektermen en \`alt\` op **nacht-stad, neon, fluweel/zijde textuur, donkere boutique/hotel-sfeer, abstracte gloed** — of **geen foto** (gradient + sterke typografie) i.p.v. verkeerde niche-beelden.
   - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en foto's die **niet matchen** met de context van het blok.
   - Voor overige secties (niet-hero): als je geen passende foto vindt, is een sfeervolle **gradient of kleurvlak** acceptabel — maar probeer altijd **eerst** een goede foto.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
@@ -1460,9 +1493,10 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 
 === 3. PAGINA → HTML (Tailwind) ===
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(combinedIndustryProbeText(businessName, description))) : ""}
+${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
-- **Hero:** sterke eerste indruk met **kop + korte waardepropositie**; **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) als dat past bij de briefing — tenzij de briefing expliciet een tekst-only hero wil. **Verboden:** elk decoratief scroll-label (**SCROLL**, **Scroll**, verticaal of horizontaal, muisicoon/streepje **zonder** echte link/anker) — dat blijft bij video-loops in beeld en oogt als sjabloon-rommel.
+- **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
 - **Klantfoto's:** volg het blok hierboven (niet in de hero).
 
@@ -1577,20 +1611,22 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 === 3. PAGINA COMPOSEREN → HTML (Tailwind) ===
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(industryProbe)) : ""}
+${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
+
 **Vrijheid:** ${strictLanding ? "Binnen de **vijf** vaste secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s." : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
 **Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie §3B"}) + contact` : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie §3B"}); **geen** \`#…\`-nav naar inhoud die op een subroute staat. ` : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
-**Hero (\`#hero\`):** eerste indruk: kop, korte **waardepropositie** (sales: wat levert het op / welke drempel weg?) en sterk visueel element; **één primaire CTA** en optioneel **één secundaire** (werkende \`href\`) — mag deels overlappen met de nav. **Verboden:** decoratief **scroll**-label (SCROLL, Scroll, verticaal, muis-icoon zonder actie) in de hero. Volg de **viewport-/min-h-regels** hieronder (§VIEWPORT) zodat de preview geen smalle strook + leeg wit wordt. Combineer tekst met **foto (Unsplash), split-layout of gradient** waar dat sterk is; een **kaal effen donkervlak zonder enige laag** is meestal zwak — tenzij de briefing expliciet zo minimaal wil. **Achtergrond-\`<video>\`:** **niet** standaard — alleen als de briefing een **concrete https-URL** naar een videobestand bevat of een duidelijke formulering als **achtergrondvideo / video-hero / filmpje / MP4-link** (beweging, “dynamisch”, “levendig”, “animatie”, “bewegende hero” **zonder** URL = **geen** \`<video>\`; gebruik foto/gradient + studio-motion). Losse woorden als “cinematisch”, “premium” of “stoer” tellen **niet** als video-mandaat. Houd je aan **BRANCHE-INSPIRATIE** (bijv. barbershop: grote **stilstaande** cinematic foto).
+**Hero (\`#hero\`):** eerste indruk = **typografie + beeld**, niet een **brochure**: zie **COPY — MINDER IS MEER** — **geen** twee alinea’s onder de kop. **Één primaire CTA** en optioneel **één secundaire** (werkende \`href\`). **Verboden:** decoratief **scroll**-label in de hero. Volg **§VIEWPORT**. Combineer met **foto (Unsplash), split of gradient**; **Achtergrond-\`<video>\`:** alleen met **concrete https-URL** in de briefing; anders foto/gradient + \`data-animation\` / AOS. Houd je aan **BRANCHE-INSPIRATIE**.
 
 **Klantfoto's:** blijven **buiten** de hero (zie blok KLANTFOTO'S hierboven).
 
 **Verdere secties:** typisch \`py-16 md:py-24\` en \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of jouw ontwerp dat vraagt. Wissel achtergronden voor ritme; **geen** harde eis op aantal donkere banden.
 
-**Diensten / features:** kies lijst, grid, split of iets anders — wat bij inhoud en branche past.
+**Diensten / features:** kies lijst, grid, split of iets anders — per item **titel + max. één korte regel** (geen alinea per kaart).
 
 **Decoratie:** optioneel kleine **inline SVG** of \`data-lucide\` — niet verplicht.
 
@@ -2040,7 +2076,7 @@ export async function generateSiteWithClaude(
   });
   data = reviewed.data;
 
-  const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract);
+  const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract, businessName);
   data = {
     ...data,
     sections: await replaceUnsplashImagesInSections(
@@ -2206,12 +2242,19 @@ export function createGenerateSiteReadableStream(
             "Generatie gestart — briefing en context worden voorbereid (kan ½–2 min duren bij referentiesite of zware context).",
         });
 
-        const prepared = await prepareGenerateSiteClaudeCall(
-          businessName,
-          description,
-          recentClientNames,
-          promptOptions,
-        );
+        /** Zonder pings blijft async `site_generation_jobs` minutenlang zonder `updated_at` tijdens o.a. referentiesite-fetch + promptbouw. */
+        const stopPrepareKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+        let prepared: Awaited<ReturnType<typeof prepareGenerateSiteClaudeCall>>;
+        try {
+          prepared = await prepareGenerateSiteClaudeCall(
+            businessName,
+            description,
+            recentClientNames,
+            promptOptions,
+          );
+        } finally {
+          stopPrepareKeepalive();
+        }
 
         if ("ok" in prepared && prepared.ok === false) {
           send(controller, { type: "error", message: prepared.error });
@@ -2388,7 +2431,7 @@ export function createGenerateSiteReadableStream(
         let sectionsAfterUnsplash: typeof data.sections;
         let contactAfterUnsplash: typeof data.contactSections | undefined;
         let marketingAfterUnsplash: typeof data.marketingPages | undefined;
-        const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract);
+        const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract, businessName);
         try {
           sectionsAfterUnsplash = await replaceUnsplashImagesInSections(
             data.sections,

@@ -15,6 +15,7 @@ import type { SiteSnapshotSource } from "@/lib/site/site-project-model";
 import { ensureClientPreviewSecret } from "@/lib/data/ensure-client-preview-secret";
 import { tryMarkLatestGenerationRunOutcome } from "@/lib/data/log-site-generation-run";
 import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { ensureCanonicalModuleSectionsForCrmFlags } from "@/lib/site/append-booking-section-to-payload";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { projectSnapshotFromTailwindPayload, projectSnapshotToJson } from "@/lib/site/project-snapshot-io";
 import type { ProjectSnapshot } from "@/lib/site/project-snapshot-schema";
@@ -89,6 +90,26 @@ export async function POST(request: Request) {
     );
   }
 
+  const supabaseForModuleFlags = createServiceRoleClient();
+  const { data: existingClientRowForModules } = await supabaseForModuleFlags
+    .from("clients")
+    .select("webshop_enabled, appointments_enabled")
+    .eq("subfolder_slug", parsed.data.subfolder_slug)
+    .maybeSingle();
+  const priorWebshop = Boolean(
+    (existingClientRowForModules as { webshop_enabled?: boolean } | null)?.webshop_enabled,
+  );
+  const priorAppointments = Boolean(
+    (existingClientRowForModules as { appointments_enabled?: boolean } | null)?.appointments_enabled,
+  );
+  const briefingBlob = `${parsed.data.name}\n${parsed.data.description ?? ""}`;
+  const generatorAutoWebshop =
+    siteParsed.kind === "tailwind" &&
+    parsed.data.snapshot_source === "generator" &&
+    (industryProfileIncludesCanonicalShopSection(parsed.data.site_ir_hints?.detected_industry_id) ||
+      BRIEFING_EXPLICIT_WEBSHOP_SIGNAL.test(briefingBlob));
+  const resolvedWebshopEnabled = priorWebshop || generatorAutoWebshop;
+
   let jsonToStore: Json;
   let persistedTailwindSnapshot: ProjectSnapshot | null = null;
   if (siteParsed.kind === "react") {
@@ -124,7 +145,11 @@ export async function POST(request: Request) {
         : parsed.data.snapshot_source === "ai_command"
           ? "ai_command"
           : "editor";
-    const snapshot = projectSnapshotFromTailwindPayload(twStored.data, {
+    const mergedForCrm = ensureCanonicalModuleSectionsForCrmFlags(twStored.data, {
+      appointmentsEnabled: priorAppointments,
+      webshopEnabled: resolvedWebshopEnabled,
+    });
+    const snapshot = projectSnapshotFromTailwindPayload(mergedForCrm, {
       generationSource,
       documentTitle: docTitle,
       siteIrHints: {
@@ -141,33 +166,9 @@ export async function POST(request: Request) {
   try {
     const supabase = createServiceRoleClient();
 
-    const { data: existingClientRow } = await supabase
-      .from("clients")
-      .select("webshop_enabled")
-      .eq("subfolder_slug", parsed.data.subfolder_slug)
-      .maybeSingle();
-    const priorWebshop = Boolean(
-      (existingClientRow as { webshop_enabled?: boolean } | null)?.webshop_enabled,
-    );
-    const briefingBlob = `${parsed.data.name}\n${parsed.data.description ?? ""}`;
-    const generatorAutoWebshop =
-      parsed.data.snapshot_source === "generator" &&
-      (industryProfileIncludesCanonicalShopSection(
-        parsed.data.site_ir_hints?.detected_industry_id,
-      ) ||
-        BRIEFING_EXPLICIT_WEBSHOP_SIGNAL.test(briefingBlob));
-    const resolvedWebshopEnabled = priorWebshop || generatorAutoWebshop;
-
     if (persistedTailwindSnapshot) {
-      const { data: modRow } = await supabase
-        .from("clients")
-        .select("appointments_enabled, webshop_enabled")
-        .eq("subfolder_slug", parsed.data.subfolder_slug)
-        .maybeSingle();
       const flags = {
-        appointmentsEnabled: Boolean(
-          (modRow as { appointments_enabled?: boolean } | null)?.appointments_enabled,
-        ),
+        appointmentsEnabled: priorAppointments,
         webshopEnabled: resolvedWebshopEnabled,
       };
       const persistErrors = getPersistSiteValidationErrors(persistedTailwindSnapshot, flags);

@@ -256,7 +256,8 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       return;
     }
     if (ev.type === "keepalive") {
-      if (now - lastKeepaliveProgressAt < 8_000) return;
+      /** Stream pingt elke 4s tijdens stille stappen; DB iets vaker bijwerken voorkomt “vastgelopen” in de UI. */
+      if (now - lastKeepaliveProgressAt < 4_000) return;
       lastKeepaliveProgressAt = now;
       writeProgress("Server werkt nog (langere stap) — even geduld…");
       return;

@@ -44,36 +44,83 @@ function extractAltForUrl(html: string, url: string): string | null {
 }
 
 /** Strip filler words to produce a better Unsplash search query. */
-function cleanQuery(raw: string): string {
+function cleanQuery(raw: string, maxWords = 6): string {
   const stopWords = new Set([
     "met", "en", "voor", "van", "een", "het", "de", "die", "dat", "op",
     "in", "bij", "naar", "om", "als", "aan", "uit", "tot", "over",
     "with", "and", "for", "the", "a", "an", "of", "on", "at", "to",
+    "this", "that", "from", "into", "also", "just", "your", "our",
   ]);
   return raw
     .replace(/[^\w\sÀ-ÿ-]/g, " ")
     .split(/\s+/)
     .filter((w) => w.length > 1 && !stopWords.has(w.toLowerCase()))
-    .slice(0, 6)
+    .slice(0, maxWords)
     .join(" ")
     .trim();
 }
 
-const MAX_QUERY_WORDS = 10;
+const MAX_QUERY_WORDS = 12;
 
-/** Voeg unieke termen uit de bedrijfsbriefing toe zodat stock-zoekopdrachten beter bij branche/thema blijven. */
-function enrichQueryWithTheme(baseQuery: string, themeContext?: string): string {
-  const t = themeContext?.trim();
-  if (!t) return baseQuery;
-  const themeClean = cleanQuery(t);
-  if (!themeClean) return baseQuery;
-  const baseWords = baseQuery.toLowerCase().split(/\s+/).filter(Boolean);
-  const baseSet = new Set(baseWords);
-  const extras = themeClean
-    .split(/\s+/)
-    .filter((w) => w.length > 1 && !baseSet.has(w.toLowerCase()));
-  const merged = [...baseWords, ...extras].slice(0, MAX_QUERY_WORDS).join(" ").trim();
-  return merged || baseQuery;
+function mergeDistinctWordLists(primary: string[], secondary: string[], max: number): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const w of primary) {
+    const k = w.toLowerCase();
+    if (w.length < 2 || seen.has(k)) continue;
+    seen.add(k);
+    out.push(w);
+    if (out.length >= max) return out.join(" ");
+  }
+  for (const w of secondary) {
+    const k = w.toLowerCase();
+    if (w.length < 2 || seen.has(k)) continue;
+    seen.add(k);
+    out.push(w);
+    if (out.length >= max) break;
+  }
+  return out.join(" ").trim();
+}
+
+/** Zelfde heuristiek als hero-enhancement: eerste marketingblok = hero. */
+function isHeroLikeSection(sectionId: string, sectionName: string, sectionIndex: number): boolean {
+  const id = (sectionId ?? "").toLowerCase();
+  const name = (sectionName ?? "").toLowerCase();
+  if (id === "hero" || id.startsWith("hero") || id === "header" || id === "banner") return true;
+  if (/\bhero\b/i.test(name)) return true;
+  if (sectionIndex === 0 && (id.includes("intro") || id.includes("welcome"))) return true;
+  return false;
+}
+
+/**
+ * Bouwt de Unsplash Search-query. Voor **hero**: briefing/thema eerst (branche-eerst),
+ * daarna `alt`/sectienaam — zo volgen stock-resultaten de input, vergelijkbaar met tools die sector-keywords zwaar wegen.
+ */
+export function composeUnsplashSearchQuery(opts: {
+  altText: string | null;
+  sectionName: string;
+  sectionId: string;
+  sectionIndex: number;
+  themeContext?: string;
+}): string {
+  const rawAlt = opts.altText ?? opts.sectionName ?? "professional business";
+  const baseWords = cleanQuery(rawAlt, 10).split(/\s+/).filter(Boolean);
+  const base = baseWords.join(" ") || "professional business";
+  const themeRaw = opts.themeContext?.trim() ?? "";
+  const themeWords = themeRaw ? cleanQuery(themeRaw, 18).split(/\s+/).filter(Boolean) : [];
+
+  const hero = isHeroLikeSection(opts.sectionId, opts.sectionName, opts.sectionIndex);
+
+  if (themeWords.length === 0) return base;
+
+  if (hero) {
+    /** Niet alle 12 slots met briefing vullen — zo blijven concrete `alt`-keywords (scène) meewegen. */
+    const themeLead = themeWords.slice(0, 7);
+    const q = mergeDistinctWordLists(themeLead, baseWords, MAX_QUERY_WORDS);
+    return q || base;
+  }
+  const q = mergeDistinctWordLists(baseWords, themeWords, MAX_QUERY_WORDS);
+  return q || base;
 }
 
 interface UnsplashSearchResult {
@@ -162,9 +209,13 @@ export async function replaceUnsplashImagesInSections(
     for (const m of matches) {
       const url = m[0];
       const alt = extractAltForUrl(sec.html, url);
-      const rawQuery = alt ?? sec.sectionName ?? "professional business";
-      const base = cleanQuery(rawQuery) || "professional business";
-      const query = enrichQueryWithTheme(base, themeContext);
+      const query = composeUnsplashSearchQuery({
+        altText: alt,
+        sectionName: sec.sectionName ?? sectionId,
+        sectionId,
+        sectionIndex: si,
+        themeContext,
+      });
       entries.push({
         url,
         query,
