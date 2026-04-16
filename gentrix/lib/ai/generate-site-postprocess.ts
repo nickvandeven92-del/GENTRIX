@@ -175,6 +175,97 @@ function xShowExpressionUsesNavToggle(expr: string): boolean {
   return /\bopen\b/.test(e);
 }
 
+function extractFirstNavToggleKeyFromXDataScope(html: string): string | null {
+  for (const k of ALPINE_NAV_TOGGLE_KEYS) {
+    const re = new RegExp(`\\b${escapeRegExpKey(k)}\\s*:`, "i");
+    if (re.test(html)) return k;
+  }
+  return null;
+}
+
+/**
+ * Repareert veelvoorkomende "broken drawer"-output:
+ * - hamburgerknop zonder @click
+ * - right/left fixed h-full drawer zonder x-show
+ * - backdrop zonder x-show
+ *
+ * Strategie:
+ * 1) detecteer section met mobiele knop + side-drawer patroon;
+ * 2) kies state key (bestaande key uit x-data of fallback `navOpen`);
+ * 3) voeg ontbrekende Alpine wiring toe met idempotente checks.
+ */
+export function repairBrokenMobileDrawer(html: string): string {
+  return html.replace(/<section\b[\s\S]*?<\/section>/gi, (section) => {
+    const hasSideDrawer =
+      /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.test(
+        section,
+      );
+    if (!hasSideDrawer) return section;
+
+    const hasMenuButton =
+      /<button\b[^>]*(?:\b(?:sm|md|lg|xl|2xl):hidden\b|aria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|open|openen|sluit|close)[^"']*["'])[^>]*>/i.test(
+        section,
+      );
+    if (!hasMenuButton) return section;
+
+    const looksAlreadyWired =
+      /<button\b[^>]*(?:@click|x-on:click)\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["'][^>]*>/i.test(
+        section,
+      ) &&
+      /\bx-show\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["']/i.test(section);
+    if (looksAlreadyWired) return section;
+
+    const stateKey = extractFirstNavToggleKeyFromXDataScope(section) ?? "navOpen";
+    let out = section;
+
+    /** Zorg voor een scope als er nergens een bruikbare x-data state staat. */
+    if (!extractFirstNavToggleKeyFromXDataScope(out)) {
+      out = out.replace(
+        /<header\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+        `<header$1 x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false">`,
+      );
+    }
+
+    /** Voeg @click toggle toe op menuknop als die ontbreekt. */
+    out = out.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
+      const hasMenuHint =
+        /\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs) ||
+        /\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|open|openen|sluit|close)[^"']*["']/i.test(attrs);
+      if (!hasMenuHint) return full;
+      if (/(?:@click|x-on:click)\s*=/.test(attrs)) return full;
+      const expandedAttr = /\baria-expanded\s*=/.test(attrs) ? "" : ` :aria-expanded="${stateKey}.toString()"`;
+      return `<button${attrs} @click="${stateKey} = !${stateKey}"${expandedAttr}>`;
+    });
+
+    /** Voeg x-show toe op side-drawer als die ontbreekt. */
+    out = out.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
+      const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+      if (!/\bfixed\b/.test(cls)) return full;
+      const isDrawer =
+        /\b(?:right-0|left-0)\b/.test(cls) &&
+        (/\bh-full\b/.test(cls) || /\binset-y-0\b/.test(cls) || (/\btop-0\b/.test(cls) && /\bbottom-0\b/.test(cls)));
+      if (!isDrawer) return full;
+      if (/\bx-show\s*=/.test(attrs)) return full;
+      const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
+      const withStop = /@click\.stop\s*=/.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
+      return `<${tag}${withStop} x-show="${stateKey}">`;
+    });
+
+    /** Voeg x-show toe op backdrop-laag als die ontbreekt. */
+    out = out.replace(/<div\b([^>]*)>/gi, (full, attrs: string) => {
+      const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+      const isBackdrop = /\bfixed\b/.test(cls) && /\binset-0\b/.test(cls) && /bg-black\/|bg-slate-9|backdrop/.test(cls);
+      if (!isBackdrop) return full;
+      if (/\bx-show\s*=/.test(attrs)) return full;
+      const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
+      const withClose = /@click\s*=/.test(withCloak) ? withCloak : `${withCloak} @click="${stateKey} = false"`;
+      return `<div${withClose} x-show="${stateKey}">`;
+    });
+
+    return out;
+  });
+}
+
 /**
  * Veel AI-markup: mobiele backdrop/sheet `fixed` + `inset-*` + `x-show="navOpen"` maar **zonder** `lg:hidden`.
  * Dan blijft het paneel op desktop zichtbaar (Alpine inline wint van incomplete responsive utilities).
@@ -658,7 +749,8 @@ export function postProcessClaudeTailwindPage(
     const html1 = repairInternalLinksInHtml(html0b, validIds, cross);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
-    const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2b);
+    const html2c0 = repairBrokenMobileDrawer(html2b);
+    const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0);
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2c) : html2c;

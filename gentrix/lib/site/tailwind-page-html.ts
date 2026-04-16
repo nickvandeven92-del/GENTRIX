@@ -7,6 +7,7 @@ import {
   ensureAlpineMobileOverlayHasLgHidden,
   ensureAlpineMobileToggleButtonHasLgHidden,
   fixAlpineNavToggleDefaultsInXData,
+  repairBrokenMobileDrawer,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
 import {
@@ -1185,7 +1186,7 @@ export function sanitizeTailwindFragment(html: string): string {
 
   const htmlForSanitize = stripDecorativeScrollCueMarkup(
     ensureAlpineMobileOverlayHasLgHidden(
-      ensureAlpineMobileToggleButtonHasLgHidden(fixAlpineNavToggleDefaultsInXData(html)),
+      ensureAlpineMobileToggleButtonHasLgHidden(repairBrokenMobileDrawer(fixAlpineNavToggleDefaultsInXData(html))),
     ),
   );
 

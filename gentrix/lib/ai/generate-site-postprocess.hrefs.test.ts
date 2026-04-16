@@ -8,6 +8,7 @@ import {
   normalizeClaudeSectionArraysInParsedJson,
   postProcessClaudeTailwindPage,
   postProcessTailwindSectionsForStreamingPreview,
+  repairBrokenMobileDrawer,
   repairInternalLinksInHtml,
   repairSamePagePathHrefsInHtml,
   stripDecorativeScrollCueMarkup,
@@ -229,6 +230,34 @@ describe("ensureAlpineMobileToggleButtonHasLgHidden", () => {
   it("wijzigt niet als lg:hidden al aanwezig is", () => {
     const html = `<button type="button" class="inline-flex lg:hidden" @click="open = !open" aria-controls="mobile-menu"></button>`;
     expect(ensureAlpineMobileToggleButtonHasLgHidden(html)).toBe(html);
+  });
+});
+
+describe("repairBrokenMobileDrawer", () => {
+  it("wiret broken hamburger + drawer + backdrop met navOpen", () => {
+    const html = `<section id="hero">
+  <header class="relative z-30 w-full">
+    <button type="button" class="lg:hidden w-10 h-10" aria-label="Menu"></button>
+  </header>
+  <div class="fixed inset-0 bg-black/60 z-[60]"></div>
+  <div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]"></div>
+</section>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-data="{ navOpen: false }"');
+    expect(out).toContain('@click="navOpen = !navOpen"');
+    expect(out).toContain('x-show="navOpen"');
+    expect(out).toContain('@click="navOpen = false"');
+  });
+
+  it("laat al gewirede drawer ongemoeid", () => {
+    const html = `<section id="hero" x-data="{ menuOpen: false }">
+  <header>
+    <button type="button" class="lg:hidden" @click="menuOpen = !menuOpen" aria-label="Menu"></button>
+  </header>
+  <div x-show="menuOpen" x-cloak class="fixed inset-0 bg-black/60 z-[60]" @click="menuOpen = false"></div>
+  <div x-show="menuOpen" x-cloak class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]" @click.stop></div>
+</section>`;
+    expect(repairBrokenMobileDrawer(html)).toBe(html);
   });
 });
 
