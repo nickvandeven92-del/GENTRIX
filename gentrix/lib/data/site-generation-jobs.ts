@@ -65,6 +65,31 @@ export async function getSiteGenerationJobById(jobId: string): Promise<SiteGener
   return data as SiteGenerationJobRow;
 }
 
+async function claimQueuedSiteGenerationJob(jobId: string): Promise<SiteGenerationJobRow | null> {
+  const supabase = createServiceRoleClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("site_generation_jobs")
+    .update({
+      status: "running",
+      started_at: now,
+      progress_message: "Generatie gestart…",
+      updated_at: now,
+    })
+    .eq("id", jobId)
+    .eq("status", "queued")
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[site_generation_jobs claim]", error.message);
+    }
+    return null;
+  }
+  if (!data) return null;
+  return data as SiteGenerationJobRow;
+}
+
 async function updateJob(
   jobId: string,
   patch: Partial<{
@@ -99,10 +124,8 @@ export async function markSiteGenerationJobFailed(jobId: string, message: string
 }
 
 export async function runSiteGenerationJob(jobId: string): Promise<void> {
-  const job = await getSiteGenerationJobById(jobId);
-  if (!job || job.status !== "queued") return;
-
-  await updateJob(jobId, { status: "running", started_at: new Date().toISOString(), progress_message: "Generatie gestart…" });
+  const job = await claimQueuedSiteGenerationJob(jobId);
+  if (!job) return;
 
   try {
   const req = job.request_json as {

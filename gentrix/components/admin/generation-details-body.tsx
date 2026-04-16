@@ -104,7 +104,10 @@ export function GenerationDetailsBody({
               ) : null}
             </p>
           ) : (
-            <p className="mt-2 text-xs text-violet-800/70">Nog geen denklijn voor deze run.</p>
+            <p className="mt-2 text-xs text-violet-800/70">
+              Nog geen denklijn voor deze run. In server-job modus wordt de denklijn niet live teruggestuurd; gebruik
+              de stream-modus als je die stap realtime wilt zien.
+            </p>
           )}
           {designContractWarning ? (
             <p className="mt-2 rounded-md border border-amber-200 bg-amber-50/90 px-2 py-1.5 text-xs text-amber-950">
