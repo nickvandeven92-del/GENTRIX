@@ -35,7 +35,6 @@ import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/si
 import {
   buildStudioAutoMobileNavHeaderHtml,
   extractHeaderNavLinks,
-  replaceBrokenDrawerChromeWithAutoNavSource,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
@@ -1963,9 +1962,7 @@ export function buildTailwindIframeSrcDoc(
     logoSet: options?.logoSet,
   });
   const existingHeaderLinks = extractHeaderNavLinks(body);
-  const autoNavSourceBody = replaceBrokenDrawerChromeWithAutoNavSource(body);
-  const shouldInject = shouldInjectStudioAutoMobileNav(autoNavSourceBody);
-  console.log("[nav] broken drawer stripped:", autoNavSourceBody.length !== body.length);
+  const shouldInject = shouldInjectStudioAutoMobileNav(body);
   console.log("[nav] shouldInject:", shouldInject);
   console.log("[nav] sections.length:", sections.length);
   let studioAutoMobileNavInjected = false;
@@ -1978,7 +1975,7 @@ export function buildTailwindIframeSrcDoc(
         navBrandLabel: options?.navBrandLabel?.trim() || null,
       },
       existingHeaderLinks,
-    )}\n${autoNavSourceBody}`;
+    )}\n${body}`;
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();

@@ -151,13 +151,6 @@ function classLooksLikeSideDrawer(classValue: string): boolean {
   return /\bh-full\b|\binset-y-0\b|(?:\btop-0\b[\s\S]*\bbottom-0\b)/.test(cls);
 }
 
-function classLooksLikeDrawerBackdrop(classValue: string): boolean {
-  const cls = classValue.trim();
-  if (!cls) return false;
-  if (!/\bfixed\b/.test(cls) || !/\binset-0\b/.test(cls)) return false;
-  return /bg-(?:black|slate|zinc|neutral|gray)|backdrop|opacity-\d+/i.test(cls);
-}
-
 /**
  * Vaste top-nav zonder `<header>` (div/role=banner) — niet overschrijven met de utilitaire balk.
  */
@@ -204,32 +197,14 @@ function bodyHasLikelyBrokenMobileDrawer(bodyInnerHtml: string): boolean {
 }
 
 export function stripLikelyBrokenMobileDrawerBlocks(html: string): string {
-  return html.replace(/<(div|aside|nav)\b([^>]*)>[\s\S]*?<\/\1>/gi, (full, _tag: string, attrs: string) => {
-    if (/\b(id|data-gentrix-auto-mobile-nav)\s*=\s*["'](?:gentrix-site-mobile-sheet|1)["']/i.test(attrs)) return full;
-    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
-    const isBrokenDrawer = classLooksLikeSideDrawer(cls);
-    const isBrokenBackdrop = classLooksLikeDrawerBackdrop(cls);
-    if (!isBrokenDrawer && !isBrokenBackdrop) return full;
-    if (/\bx-show\s*=/.test(attrs)) return full;
-    return "";
-  });
+  return html;
 }
 
 /**
- * Broken-drawer-pad: verwijder fragiele AI-header/panelen en laat daarna één robuuste auto-nav injecteren.
- * Dit is bewust betrouwbaarder dan per-template regex repareren van willekeurige markup.
+ * Broken-drawer-pad is teruggedraaid: behoud gegenereerde navbar en repareer Alpine wiring upstream.
  */
 export function replaceBrokenDrawerChromeWithAutoNavSource(bodyInnerHtml: string): string {
-  if (!bodyHasLikelyBrokenMobileDrawer(bodyInnerHtml)) return bodyInnerHtml;
-  let out = bodyInnerHtml;
-
-  out = out.replace(/<header\b[\s\S]*?<\/header>/gi, (header) => {
-    if (headerHasLikelyBrokenMobileDrawer(header)) return "";
-    return header;
-  });
-
-  out = stripLikelyBrokenMobileDrawerBlocks(out);
-  return out;
+  return bodyInnerHtml;
 }
 
 /**
