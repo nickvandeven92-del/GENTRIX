@@ -347,11 +347,14 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
   const buttonCandidates = pickMenuButtonOrdinalCandidates(scopeHtml, buttonMatches);
   if (buttonCandidates.size === 0) return scopeHtml;
 
-  const stateKey =
-    extractFirstNavToggleKeyFromXDataScope(scopeHtml) ??
-    extractFirstNavToggleKeyFromInteractiveMarkup(scopeHtml) ??
-    "navOpen";
-  let out = scopeHtml;
+const stateKey =
+  extractFirstNavToggleKeyFromXDataScope(scopeHtml) ??
+  extractFirstNavToggleKeyFromInteractiveMarkup(scopeHtml) ??
+  // Zoek ook direct in x-show op drawer elementen
+  ALPINE_NAV_TOGGLE_KEYS.find((k) => 
+    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(scopeHtml)
+  ) ??
+  "navOpen";
 
   /** Zorg voor een scope als er nergens een bruikbare x-data state staat. */
   if (!extractFirstNavToggleKeyFromXDataScope(out)) {
