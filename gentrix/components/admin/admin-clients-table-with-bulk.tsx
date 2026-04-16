@@ -26,7 +26,18 @@ type Props = {
   badgeMap: Record<string, ClientFinancialBadge>;
   exportHref: string;
   searchQuery: string;
+  /** `?archief=1`: alleen rijen met status gearchiveerd. */
+  archiveTabActive?: boolean;
 };
+
+function clientsListHref(searchQuery: string, archief: boolean): string {
+  const p = new URLSearchParams();
+  const q = searchQuery.trim();
+  if (q) p.set("q", q);
+  if (archief) p.set("archief", "1");
+  const s = p.toString();
+  return s ? `/admin/clients?${s}` : "/admin/clients";
+}
 
 function statusLabel(status: string) {
   switch (status) {
@@ -43,16 +54,28 @@ function statusLabel(status: string) {
   }
 }
 
-async function postBulkDelete(subfolder_slugs: string[]): Promise<{ ok: boolean; error?: string; deleted_slugs?: string[] }> {
-  const res = await fetch("/api/admin/clients/bulk-delete", {
+type UnlinkBulkJson = {
+  ok?: boolean;
+  error?: string;
+  failures?: { subfolder_slug: string; error: string }[];
+};
+
+async function postBulkUnlinkCommercial(subfolder_slugs: string[]): Promise<UnlinkBulkJson> {
+  const res = await fetch("/api/admin/clients/unlink-commercial", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subfolder_slugs }),
   });
-  return (await res.json()) as { ok: boolean; error?: string; deleted_slugs?: string[] };
+  return (await res.json()) as UnlinkBulkJson;
 }
 
-export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQuery }: Props) {
+export function AdminClientsTableWithBulk({
+  rows,
+  badgeMap,
+  exportHref,
+  searchQuery,
+  archiveTabActive = false,
+}: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -95,7 +118,7 @@ export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQu
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
-  async function onBulkDelete() {
+  async function onBulkUnlink() {
     if (selectedInView.length === 0) return;
     const names = rows
       .filter((r) => selectedInView.includes(r.subfolder_slug))
@@ -103,10 +126,10 @@ export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQu
       .slice(0, 12);
     const more = selectedInView.length > 12 ? `\n… en ${selectedInView.length - 12} andere` : "";
     const msg = [
-      `${selectedInView.length} klant(en) permanent verwijderen?`,
+      `${selectedInView.length} klantdossier(s) loskoppelen?`,
       "",
-      "Let op: in dit systeem is elke klantregel ook de bijbehorende site (slug, inhoud, snapshots).",
-      "Verwijderen wist het volledige dossier inclusief site en gekoppelde data (DB-cascade).",
+      "De website (slug, inhoud, snapshots) blijft bestaan onder Sites.",
+      "Facturen, offertes, boekingen, portaal en dossiernotities bij deze dossiers worden gewist.",
       "",
       ...names,
       more,
@@ -115,15 +138,16 @@ export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQu
 
     setBulkLoading(true);
     try {
-      const json = await postBulkDelete(selectedInView);
+      const json = await postBulkUnlinkCommercial(selectedInView);
       if (!json.ok) {
-        window.alert(json.error ?? "Bulk verwijderen mislukt.");
+        const f = json.failures?.map((x) => `${x.subfolder_slug}: ${x.error}`).join("\n");
+        window.alert(f ?? json.error ?? "Bulk loskoppelen mislukt.");
         return;
       }
       clearSelection();
       router.refresh();
     } catch {
-      window.alert("Netwerkfout bij bulk verwijderen.");
+      window.alert("Netwerkfout bij bulk loskoppelen.");
     } finally {
       setBulkLoading(false);
     }
@@ -135,23 +159,58 @@ export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQu
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Klanten</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Centraal dossier per klant: facturen, offertes, deals en websites. Open een rij om het volledige overzicht te zien.
+            Centraal dossier per klant: facturen, offertes, deals en websites. Verwijderen hier koppelt alleen het dossier los — de site blijft onder{" "}
+            <Link href="/admin/sites" className="font-medium text-blue-800 underline dark:text-blue-400">
+              Sites
+            </Link>{" "}
+            bestaan tot je die definitief wist. Afgeronde dossiers kun je op status Archief zetten; die staan onder het tabblad Archief en verdwijnen niet.
           </p>
         </div>
-        <a
-          href={exportHref}
-          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
-        >
-          <Download className="size-4" aria-hidden />
-          Export CSV
-        </a>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <a
+            href={exportHref}
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+          >
+            <Download className="size-4" aria-hidden />
+            Export CSV
+          </a>
+          <span className="max-w-[14rem] text-right text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+            Export bevat alle dossiers, ook archief.
+          </span>
+        </div>
       </div>
+
+      <nav className="mb-4 flex flex-wrap gap-2" aria-label="Weergave klantenlijst">
+        <Link
+          href={clientsListHref(searchQuery, false)}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            !archiveTabActive
+              ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+              : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900/80",
+          )}
+        >
+          Actief &amp; concept
+        </Link>
+        <Link
+          href={clientsListHref(searchQuery, true)}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            archiveTabActive
+              ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+              : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900/80",
+          )}
+        >
+          Archief
+        </Link>
+      </nav>
 
       <form
         method="get"
         action="/admin/clients"
         className="flex max-w-2xl flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
       >
+        {archiveTabActive ? <input type="hidden" name="archief" value="1" /> : null}
         <div className="min-w-[200px] flex-1">
           <label htmlFor="client-q" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
             Zoeken
@@ -178,12 +237,12 @@ export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQu
           <span className="font-medium text-red-950 dark:text-red-100">{selectedInView.length} geselecteerd</span>
           <button
             type="button"
-            onClick={() => void onBulkDelete()}
+            onClick={() => void onBulkUnlink()}
             disabled={bulkLoading}
             className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-900 hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100 dark:hover:bg-red-950/70"
           >
             <Trash2 className="size-3.5" aria-hidden />
-            {bulkLoading ? "Bezig…" : "Verwijder geselecteerde"}
+            {bulkLoading ? "Bezig…" : "Dossiers loskoppelen"}
           </button>
           <button
             type="button"
@@ -230,7 +289,17 @@ export function AdminClientsTableWithBulk({ rows, badgeMap, exportHref, searchQu
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={12} className="px-4 py-12 text-center text-zinc-500">
-                  Nog geen klanten. Voeg een klant toe via je gebruikelijke aanmaakflow of import.
+                  {archiveTabActive ? (
+                    <>
+                      Geen klanten met status Archief. Zet een dossier op Archief via de site-editor of het klantdossier,
+                      of wissel naar het tabblad Actief &amp; concept.
+                    </>
+                  ) : (
+                    <>
+                      Geen klanten in deze weergave (concept, actief of gepauzeerd). Alles staat in het archief? Open het
+                      tabblad Archief. Nieuwe klant: via je gebruikelijke aanmaakflow of import.
+                    </>
+                  )}
                 </td>
               </tr>
             ) : (

@@ -2,10 +2,13 @@
 
 import { Download, Share, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const DISMISS_KEY = "portal-pwa-install-dismissed";
+/** Alleen deze browsersessie (tab tot je sluit). */
+const SESSION_DISMISS_KEY = "portal-pwa-install-dismissed";
+/** Permanent op dit apparaat (localStorage). */
+const PERMANENT_DISMISS_KEY = "portal-pwa-install-never-show";
 
 /** Portaal, centrale entry-routes én studio (/admin → /admin/ops). */
 function isPwaShellPath(pathname: string | null): boolean {
@@ -25,6 +28,33 @@ type BeforeInstallPromptEventLike = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+function readInstallBannerDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.localStorage.getItem(PERMANENT_DISMISS_KEY) === "1") return true;
+    if (window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1") return true;
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return false;
+}
+
+/** True wanneer de app als geïnstalleerde PWA draait (niet in een normale browsertab). */
+function computeStandaloneDisplay(): boolean {
+  if (typeof window === "undefined") return false;
+  const nav = navigator as Navigator & { standalone?: boolean };
+  if (nav.standalone === true) return true;
+  const modes = ["standalone", "minimal-ui", "fullscreen", "window-controls-overlay"] as const;
+  for (const mode of modes) {
+    try {
+      if (window.matchMedia(`(display-mode: ${mode})`).matches) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
 export function PortalPwaRoot() {
   const pathname = usePathname();
   const active = isPwaShellPath(pathname);
@@ -36,14 +66,32 @@ export function PortalPwaRoot() {
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      setDismissed(sessionStorage.getItem(DISMISS_KEY) === "1");
-    } catch {
-      setDismissed(false);
-    }
+  useLayoutEffect(() => {
+    setDismissed(readInstallBannerDismissed());
+    setStandalone(computeStandaloneDisplay());
   }, []);
+
+  useEffect(() => {
+    if (standalone) setDeferred(null);
+  }, [standalone]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !active) return;
+    const refreshStandalone = () => setStandalone(computeStandaloneDisplay());
+    const mqs: MediaQueryList[] = [];
+    for (const mode of ["standalone", "minimal-ui", "fullscreen", "window-controls-overlay"] as const) {
+      try {
+        const mq = window.matchMedia(`(display-mode: ${mode})`);
+        mq.addEventListener("change", refreshStandalone);
+        mqs.push(mq);
+      } catch {
+        /* ignore */
+      }
+    }
+    return () => {
+      for (const mq of mqs) mq.removeEventListener("change", refreshStandalone);
+    };
+  }, [active]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -57,14 +105,11 @@ export function PortalPwaRoot() {
   useEffect(() => {
     if (!active || typeof window === "undefined") return;
 
-    const mq = window.matchMedia("(display-mode: standalone)");
-    const nav = navigator as Navigator & { standalone?: boolean };
-    const isStandalone = mq.matches || nav.standalone === true;
-    setStandalone(isStandalone);
+    setStandalone(computeStandaloneDisplay());
 
     const ua = navigator.userAgent || "";
     const isIos = /iPad|iPhone|iPod/.test(ua);
-    setIosHint(isIos && !isStandalone);
+    setIosHint(isIos && !computeStandaloneDisplay());
 
     const onBip = (e: Event) => {
       e.preventDefault();
@@ -74,10 +119,20 @@ export function PortalPwaRoot() {
     return () => window.removeEventListener("beforeinstallprompt", onBip);
   }, [active]);
 
-  const dismiss = useCallback(() => {
+  const dismissSession = useCallback(() => {
     setDismissed(true);
     try {
-      sessionStorage.setItem(DISMISS_KEY, "1");
+      sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const dismissPermanent = useCallback(() => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(PERMANENT_DISMISS_KEY, "1");
+      sessionStorage.removeItem(SESSION_DISMISS_KEY);
     } catch {
       /* ignore */
     }
@@ -88,7 +143,16 @@ export function PortalPwaRoot() {
     setInstalling(true);
     try {
       await deferred.prompt();
-      await deferred.userChoice;
+      const choice = await deferred.userChoice;
+      if (choice.outcome === "accepted") {
+        try {
+          localStorage.setItem(PERMANENT_DISMISS_KEY, "1");
+          sessionStorage.removeItem(SESSION_DISMISS_KEY);
+        } catch {
+          /* ignore */
+        }
+        setDismissed(true);
+      }
     } catch {
       /* ignore */
     } finally {
@@ -119,6 +183,12 @@ export function PortalPwaRoot() {
                 ? "Snelkoppeling naar je dashboard; statische assets worden gecached, data blijft online."
                 : "Snelkoppeling op je startscherm; werkt offline beperkt (geen live data zonder internet)."}
             </span>
+            {studioCopy ? (
+              <span className="mt-1 block text-[11px] leading-snug text-zinc-400 dark:text-zinc-500">
+                Sta je al in de geïnstalleerde app? Open die via je snelkoppeling (venster zonder browsertabbladen). In een
+                gewone tab kan Chrome dit alsnog aanbieden — gebruik dan <strong className="font-medium text-zinc-600 dark:text-zinc-400">Niet meer tonen</strong>.
+              </span>
+            ) : null}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -132,9 +202,18 @@ export function PortalPwaRoot() {
             </button>
             <button
               type="button"
-              onClick={dismiss}
+              onClick={dismissPermanent}
+              className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+              title="Banner komt niet meer terug op dit apparaat (tenzij je sitegegevens wist)."
+            >
+              Niet meer tonen
+            </button>
+            <button
+              type="button"
+              onClick={dismissSession}
               className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-              aria-label="Sluiten"
+              aria-label="Sluiten (alleen deze sessie)"
+              title="Verbergt de banner tot je de browser sluit of een nieuw tabblad opent."
             >
               <X className="size-5" />
             </button>
@@ -166,14 +245,23 @@ export function PortalPwaRoot() {
               </span>
             </span>
           </p>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            aria-label="Sluiten"
-          >
-            <X className="size-5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={dismissPermanent}
+              className="rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            >
+              Niet meer tonen
+            </button>
+            <button
+              type="button"
+              onClick={dismissSession}
+              className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              aria-label="Sluiten (alleen deze sessie)"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
       </div>
     );

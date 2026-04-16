@@ -7,11 +7,15 @@ export const metadata: Metadata = {
   title: "Klanten",
 };
 
-type ClientsPageProps = { searchParams: Promise<{ q?: string }> };
+type ClientsPageProps = { searchParams: Promise<{ q?: string; archief?: string }> };
 
 export default async function AdminClientsPage({ searchParams }: ClientsPageProps) {
   const sp = await searchParams;
-  const rows = await listAdminClients({ search: sp.q });
+  const archiveTab = sp.archief === "1" || sp.archief === "true";
+  const rows = await listAdminClients({
+    search: sp.q,
+    statusScope: archiveTab ? "archived_only" : "active_workspace",
+  });
   const badgeMap = await getClientsFinancialBadgesMap(rows.map((r) => r.id));
 
   return (
@@ -20,6 +24,7 @@ export default async function AdminClientsPage({ searchParams }: ClientsPageProp
       badgeMap={badgeMap}
       exportHref="/api/admin/clients-export"
       searchQuery={sp.q ?? ""}
+      archiveTabActive={archiveTab}
     />
   );
 }

@@ -6,7 +6,7 @@ import { useState } from "react";
 export function CreateLeadForm() {
   const router = useRouter();
   const [company, setCompany] = useState("");
-  const [source, setSource] = useState("website");
+  const [source, setSource] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -24,7 +24,10 @@ export function CreateLeadForm() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company_name: name, source }),
+        body: JSON.stringify({
+          company_name: name,
+          ...(source.trim() ? { source: source.trim() } : {}),
+        }),
       });
       const j = (await res.json()) as { ok?: boolean; error?: string };
       if (!j.ok) {
@@ -32,6 +35,7 @@ export function CreateLeadForm() {
         return;
       }
       setCompany("");
+      setSource("");
       router.refresh();
     } finally {
       setBusy(false);
@@ -55,9 +59,18 @@ export function CreateLeadForm() {
           className={field}
         />
       </div>
-      <div className="min-w-0 sm:max-w-[10rem]">
+      <div className="min-w-0 sm:max-w-[12rem]">
         <label className="text-[10px] font-medium uppercase tracking-wide text-neutral-500 dark:text-zinc-400">Bron</label>
-        <input value={source} onChange={(e) => setSource(e.target.value)} className={field} />
+        <input
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          placeholder="Bron"
+          className={field}
+          aria-describedby="create-lead-source-hint"
+        />
+        <p id="create-lead-source-hint" className="mt-1 text-[10px] leading-snug text-neutral-500 dark:text-zinc-500">
+          Waar komt deze lead vandaan? Laat leeg als je het nog niet weet (dan wordt “unknown” opgeslagen). Bijv. website, telefoon, LinkedIn.
+        </p>
       </div>
       <button
         type="submit"

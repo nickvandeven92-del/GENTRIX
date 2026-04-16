@@ -18,17 +18,24 @@ export function DeleteClientButton({ subfolderSlug, clientName, onSuccess }: Pro
   async function onDelete() {
     if (
       !window.confirm(
-        `Site “${clientName}” (${subfolderSlug}) permanent verwijderen uit Supabase? Dit kan niet ongedaan worden gemaakt.`,
+        `Klantdossier voor “${clientName}” (${subfolderSlug}) loskoppelen?\n\n` +
+          `De website (slug, inhoud, snapshots) blijft bestaan. Facturen, offertes, boekingen en portaalgegevens bij dit dossier worden gewist.\n\n` +
+          `Dit kan niet ongedaan worden gemaakt.`,
       )
     ) {
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/clients/${encodeURIComponent(subfolderSlug)}`, { method: "DELETE" });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      const res = await fetch("/api/admin/clients/unlink-commercial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subfolder_slugs: [subfolderSlug] }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; failures?: { error: string }[] };
       if (!res.ok || !json.ok) {
-        window.alert(json.error ?? "Verwijderen mislukt.");
+        const failMsg = json.failures?.[0]?.error;
+        window.alert(failMsg ?? json.error ?? "Loskoppelen mislukt.");
         return;
       }
       onSuccess?.();
@@ -51,7 +58,7 @@ export function DeleteClientButton({ subfolderSlug, clientName, onSuccess }: Pro
       )}
     >
       <Trash2 className="size-3.5" aria-hidden />
-      {loading ? "…" : "Verwijderen"}
+      {loading ? "…" : "Dossier wissen"}
     </button>
   );
 }

@@ -64,6 +64,8 @@ export type Database = {
           flyer_public_token: string | null;
           /** Flyerstudio: teksten + presets (JSON). */
           flyer_studio_json: Json | null;
+          /** Gezet wanneer commercieel dossier is losgekoppeld; site-tenant blijft bestaan. */
+          commercial_unlinked_at: string | null;
         };
         Insert: {
           id?: string;
@@ -110,6 +112,7 @@ export type Database = {
           preview_secret?: string | null;
           flyer_public_token?: string | null;
           flyer_studio_json?: Json | null;
+          commercial_unlinked_at?: string | null;
         };
         Update: {
           id?: string;
@@ -155,6 +158,7 @@ export type Database = {
           preview_secret?: string | null;
           flyer_public_token?: string | null;
           flyer_studio_json?: Json | null;
+          commercial_unlinked_at?: string | null;
         };
         Relationships: [];
       };

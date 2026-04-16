@@ -17,6 +17,31 @@ function siteViewHref(row: AdminClientRow): string {
   return `/site/${enc}`;
 }
 
+function sitesListHref(archief: boolean): string {
+  return archief ? "/admin/sites?archief=1" : "/admin/sites";
+}
+
+function emptyListHint(archiveTabActive: boolean) {
+  if (archiveTabActive) {
+    return (
+      <>
+        Geen sites met status Archief. Zet status op Archief in de site-editor of via het klantdossier, of wissel naar
+        Actief &amp; concept.
+      </>
+    );
+  }
+  return (
+    <>
+      Geen sites in deze weergave (concept, actief of gepauzeerd). Afgeronde projecten kun je archiveren; die vind je
+      onder het tabblad Archief. Nieuwe site via{" "}
+      <Link href="/admin/clients" className="font-medium text-blue-800 underline dark:text-blue-400">
+        Klanten
+      </Link>
+      .
+    </>
+  );
+}
+
 function statusLabel(status: string) {
   switch (status) {
     case "active":
@@ -50,6 +75,71 @@ function StatusBadge({ status }: { status: string }) {
     >
       {statusLabel(status)}
     </span>
+  );
+}
+
+function OrphanPill({ row }: { row: AdminClientRow }) {
+  if (!row.commercial_unlinked_at) return null;
+  return (
+    <span
+      className="inline-flex shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-950 dark:bg-amber-950/50 dark:text-amber-100"
+      title="Geen actief commercieel dossier; site blijft bestaan."
+    >
+      Los dossier
+    </span>
+  );
+}
+
+function PurgeSiteButton({
+  subfolderSlug,
+  label,
+  className,
+}: {
+  subfolderSlug: string;
+  label: string;
+  className: string;
+}) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const isHome = subfolderSlug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
+
+  async function run() {
+    if (isHome) return;
+    if (
+      !window.confirm(
+        `Site “${label}” (${subfolderSlug}) volledig uit de database verwijderen?\n\n` +
+          `Inclusief inhoud, snapshots en alle gekoppelde rijen (cascade). Dit is definitief.`,
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/clients/${encodeURIComponent(subfolderSlug)}`, { method: "DELETE" });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        window.alert(json.error ?? "Verwijderen mislukt.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      window.alert("Netwerkfout bij verwijderen.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={loading || isHome}
+      title={isHome ? "Studio-homepage kan niet worden verwijderd." : "Volledig uit database wissen"}
+      onClick={() => void run()}
+      className={className}
+    >
+      <Trash2 className="size-3.5 shrink-0" aria-hidden />
+      {loading ? "…" : "Def. wissen"}
+    </button>
   );
 }
 
@@ -110,6 +200,14 @@ function SiteRowActionsCard({ r }: { r: AdminClientRow }) {
           disabledReason="Alleen bij status Actief (publieke site)."
         />
       </div>
+      <PurgeSiteButton
+        subfolderSlug={r.subfolder_slug}
+        label={r.name}
+        className={cn(
+          cardActionClass,
+          "justify-center border-red-200 text-red-800 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-200 dark:hover:bg-red-950/40",
+        )}
+      />
     </div>
   );
 }
@@ -168,6 +266,14 @@ function SiteRowActionsTable({ r }: { r: AdminClientRow }) {
         disabled={r.status !== "active"}
         disabledReason="Alleen bij status Actief (publieke site)."
       />
+      <PurgeSiteButton
+        subfolderSlug={r.subfolder_slug}
+        label={r.name}
+        className={cn(
+          tableActionClass,
+          "border-red-200 text-red-800 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-200 dark:hover:bg-red-950/40",
+        )}
+      />
     </div>
   );
 }
@@ -200,7 +306,10 @@ function SiteCard({
             <p className="mt-0.5 font-mono text-xs text-zinc-500">{r.subfolder_slug}</p>
           </div>
         </div>
-        <StatusBadge status={r.status} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge status={r.status} />
+          <OrphanPill row={r} />
+        </div>
       </div>
       <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
         <SiteRowActionsCard r={r} />
@@ -218,7 +327,14 @@ async function postBulkDelete(subfolder_slugs: string[]): Promise<{ ok: boolean;
   return (await res.json()) as { ok: boolean; error?: string };
 }
 
-export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
+export function AdminSitesTable({
+  rows,
+  archiveTabActive = false,
+}: {
+  rows: AdminClientRow[];
+  /** `?archief=1` op /admin/sites */
+  archiveTabActive?: boolean;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -269,9 +385,10 @@ export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
       .slice(0, 12);
     const more = selectedInView.length > 12 ? `\n… en ${selectedInView.length - 12} andere` : "";
     const msg = [
-      `${selectedInView.length} site(s) / klantregel(s) permanent verwijderen?`,
+      `${selectedInView.length} site(s) volledig uit de database verwijderen?`,
       "",
-      "Dit wist het volledige dossier inclusief inhoud en snapshots (zelfde als onder Klanten).",
+      "Dit wist de tenant inclusief inhoud, snapshots en alle gekoppelde rijen (cascade).",
+      "Loskoppelen van alleen het dossier doe je onder Klanten.",
       "",
       ...names,
       more,
@@ -296,16 +413,37 @@ export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
 
   const empty = (
     <p className="rounded-xl border border-zinc-200 bg-white px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
-      Nog geen klanten. Voeg eerst een{" "}
-      <Link href="/admin/clients" className="font-medium text-blue-800 underline dark:text-blue-400">
-        klant
-      </Link>{" "}
-      toe.
+      {emptyListHint(archiveTabActive)}
     </p>
   );
 
   return (
     <>
+      <nav className="mb-4 flex flex-wrap gap-2" aria-label="Weergave sites">
+        <Link
+          href={sitesListHref(false)}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            !archiveTabActive
+              ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+              : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900/80",
+          )}
+        >
+          Actief &amp; concept
+        </Link>
+        <Link
+          href={sitesListHref(true)}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            archiveTabActive
+              ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+              : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900/80",
+          )}
+        >
+          Archief
+        </Link>
+      </nav>
+
       {selectedInView.length > 0 ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50/80 px-4 py-3 text-sm dark:border-red-900/50 dark:bg-red-950/30">
           <span className="font-medium text-red-950 dark:text-red-100">{selectedInView.length} geselecteerd</span>
@@ -372,11 +510,7 @@ export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-zinc-500">
-                  Nog geen klanten. Voeg eerst een{" "}
-                  <Link href="/admin/clients" className="font-medium text-blue-800 underline dark:text-blue-400">
-                    klant
-                  </Link>{" "}
-                  toe.
+                  {emptyListHint(archiveTabActive)}
                 </td>
               </tr>
             ) : (
@@ -398,7 +532,10 @@ export function AdminSitesTable({ rows }: { rows: AdminClientRow[] }) {
                     <td className="px-4 py-3 font-medium">{r.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-zinc-500">{r.subfolder_slug}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={r.status} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={r.status} />
+                        <OrphanPill row={r} />
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <SiteRowActionsTable r={r} />

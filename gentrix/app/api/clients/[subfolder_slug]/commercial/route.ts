@@ -190,6 +190,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: false, error: "Geen velden om bij te werken." }, { status: 400 });
   }
 
+  row.commercial_unlinked_at = null;
+
   try {
     const supabase = createServiceRoleClient();
     const beforeSnapshot = await loadCommercialPortalSnapshot(supabase, subfolder_slug);
@@ -200,7 +202,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       .eq("subfolder_slug", subfolder_slug)
       .maybeSingle();
 
-    const { error } = await supabase.from("clients").update(row).eq("subfolder_slug", subfolder_slug);
+    let { error } = await supabase.from("clients").update(row).eq("subfolder_slug", subfolder_slug);
+
+    if (error && isPostgrestUnknownColumnError(error, "commercial_unlinked_at")) {
+      const { commercial_unlinked_at: _drop, ...rest } = row;
+      ({ error } = await supabase.from("clients").update(rest).eq("subfolder_slug", subfolder_slug));
+    }
 
     if (error) {
       if (error.message.includes("clients_generation_package_check")) {
