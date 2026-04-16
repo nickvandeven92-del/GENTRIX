@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   collectHtmlElementIds,
   ensureAlpineMobileOverlayHasLgHidden,
+  ensureAlpineMobileToggleButtonHasLgHidden,
   ensureClaudeMarketingSiteJsonHasContactSections,
   fixAlpineNavToggleDefaultsInXData,
   normalizeClaudeSectionArraysInParsedJson,
@@ -193,6 +194,30 @@ describe("ensureAlpineMobileOverlayHasLgHidden", () => {
     const html = `<div class='fixed inset-0 z-[60] backdrop-blur' x-show='open'></div>`;
     const out = ensureAlpineMobileOverlayHasLgHidden(html);
     expect(out).toContain("lg:hidden");
+  });
+
+  it("voegt lg:hidden toe op rechter drawer met top/right/h-full", () => {
+    const html = `<div class="fixed top-0 right-0 h-full w-80 bg-slate-950 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]" x-show="navOpen"></div>`;
+    const out = ensureAlpineMobileOverlayHasLgHidden(html);
+    expect(out).toContain("lg:hidden");
+  });
+});
+
+describe("ensureAlpineMobileToggleButtonHasLgHidden", () => {
+  it("voegt lg:hidden toe op hamburgerknop met menu-aria", () => {
+    const html = `<button type="button" class="inline-flex h-11 w-11" @click="navOpen = !navOpen" aria-controls="site-mobile-sheet" aria-label="Menu openen"></button>`;
+    const out = ensureAlpineMobileToggleButtonHasLgHidden(html);
+    expect(out).toMatch(/class="[^"]*\blg:hidden\b/);
+  });
+
+  it("wijzigt geen niet-menuknop zonder menu-aria", () => {
+    const html = `<button type="button" class="inline-flex h-10" @click="menuOpen = !menuOpen">Acties</button>`;
+    expect(ensureAlpineMobileToggleButtonHasLgHidden(html)).toBe(html);
+  });
+
+  it("wijzigt niet als lg:hidden al aanwezig is", () => {
+    const html = `<button type="button" class="inline-flex lg:hidden" @click="open = !open" aria-controls="mobile-menu"></button>`;
+    expect(ensureAlpineMobileToggleButtonHasLgHidden(html)).toBe(html);
   });
 });
 

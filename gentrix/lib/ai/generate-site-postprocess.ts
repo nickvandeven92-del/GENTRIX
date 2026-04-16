@@ -181,7 +181,7 @@ function xShowExpressionUsesNavToggle(expr: string): boolean {
  * Voegt alleen `lg:hidden` toe wanneer het patroon duidelijk menu/overlay is.
  */
 export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
-  return html.replace(/<(div|aside)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
+  return html.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
     if (!/\bx-show\s*=/i.test(attrs)) return full;
     const showM = /\bx-show\s*=\s*["']([^"']*)["']/i.exec(attrs);
     if (!showM || !xShowExpressionUsesNavToggle(showM[1])) return full;
@@ -194,7 +194,12 @@ export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
 
     const cls = clsRaw;
     if (!/\bfixed\b/.test(cls)) return full;
-    if (!/\binset-0\b|\binset-x-0\b/.test(cls)) return full;
+    const isInsetOverlay = /\binset-0\b|\binset-x-0\b/.test(cls);
+    const isSideDrawer =
+      /\b(?:left-0|right-0)\b/.test(cls) &&
+      (/\binset-y-0\b/.test(cls) ||
+        (/\btop-0\b/.test(cls) && (/\bbottom-0\b/.test(cls) || /\bh-full\b/.test(cls))));
+    if (!isInsetOverlay && !isSideDrawer) return full;
     if (/\blg:hidden\b/.test(cls)) return full;
 
     const blob = `${attrs} ${cls}`.toLowerCase();
@@ -209,6 +214,35 @@ export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
       quote === '"' ? `class="${newCls}"` : `class='${newCls}'`,
     );
     return `<${tag}${nextAttrs}>`;
+  });
+}
+
+/**
+ * Sommige AI-uitvoer zet de hamburger-toggles zonder responsive utility neer; dan blijft de knop op desktop
+ * zichtbaar naast desktop-navigatie. Voor menu-knoppen met Alpine-click + menu-aria voegen we `lg:hidden` toe.
+ */
+export function ensureAlpineMobileToggleButtonHasLgHidden(html: string): string {
+  return html.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
+    const clickM = /(?:@click|x-on:click)\s*=\s*["']([^"']*)["']/i.exec(attrs);
+    if (!clickM || !xShowExpressionUsesNavToggle(clickM[1])) return full;
+    const hasMenuAria =
+      /\baria-controls\s*=\s*["'][^"']*(mobile|menu|sheet|drawer|nav)/i.test(attrs) ||
+      /\baria-label\s*=\s*["'][^"']*(menu|hamburger|open|openen|sluit|close|navigatie|navigation)/i.test(attrs);
+    if (!hasMenuAria) return full;
+
+    const clsDouble = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs);
+    const clsSingle = /\bclass\s*=\s*'([^']*)'/i.exec(attrs);
+    const quote: '"' | "'" = clsDouble ? '"' : clsSingle ? "'" : ("" as '"' | "'");
+    const clsRaw = clsDouble?.[1] ?? clsSingle?.[1] ?? "";
+    if (!clsRaw) return full;
+    if (/\blg:hidden\b/.test(clsRaw)) return full;
+
+    const newCls = `${clsRaw} lg:hidden`.replace(/\s+/g, " ").trim();
+    const nextAttrs = attrs.replace(
+      quote === '"' ? /\bclass\s*=\s*"[^"]*"/i : /\bclass\s*=\s*'[^']*'/i,
+      quote === '"' ? `class="${newCls}"` : `class='${newCls}'`,
+    );
+    return `<button${nextAttrs}>`;
   });
 }
 
@@ -619,7 +653,8 @@ export function postProcessClaudeTailwindPage(
     const html1 = repairInternalLinksInHtml(html0b, validIds, cross);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
-    const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2b);
+    const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2b);
+    const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2c) : html2c;
     return { ...row, html: html3 };
