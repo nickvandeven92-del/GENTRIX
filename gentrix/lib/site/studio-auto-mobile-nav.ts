@@ -37,15 +37,20 @@ const BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE = /\b(?:sm|md|lg|xl|2xl):hidden\b/i;
  */
 export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolean {
   if (!GENERIC_XDATA_RE.test(fromHeader)) return false;
+  
+  // Check of drawer al x-show heeft met bekende nav toggle key
+  const hasWiredDrawer = ALPINE_NAV_TOGGLE_KEYS.some(k =>
+    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(fromHeader)
+  );
+  if (hasWiredDrawer) return true;
+
   const buttonRe = /<button\b[^>]{0,8000}>/gi;
   let m: RegExpExecArray | null;
   while ((m = buttonRe.exec(fromHeader)) !== null) {
     const tag = m[0];
     const looksMobileControl =
       BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE.test(tag) ||
-      /\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)/i.test(
-        tag,
-      );
+      /\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)/i.test(tag);
     if (!looksMobileControl) continue;
     if (BUTTON_HAS_ALPINE_CLICK_RE.test(tag)) return true;
   }
