@@ -102,6 +102,18 @@ describe("shouldInjectStudioAutoMobileNav", () => {
     expect(shouldInjectStudioAutoMobileNav(`<section><p>Alleen tekst</p></section>`)).toBe(true);
   });
 
+  it("injecteert bij section-only hero met losse fixed right drawer zonder Alpine wiring", () => {
+    const html = `
+<section id="hero" class="relative min-h-screen">
+  <div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70]">
+    <nav class="flex flex-col gap-2" aria-label="Mobiel menu">
+      <a href="#a">A</a><a href="#b">B</a><a href="#c">C</a>
+    </nav>
+  </div>
+</section>`;
+    expect(shouldInjectStudioAutoMobileNav(html)).toBe(true);
+  });
+
   it("injecteert niet bij een minimale vaste header met echte links (geen blur nodig)", () => {
     const html = `
 <header class="fixed inset-x-0 top-0 z-50 flex justify-between bg-black px-4 py-3 text-white">

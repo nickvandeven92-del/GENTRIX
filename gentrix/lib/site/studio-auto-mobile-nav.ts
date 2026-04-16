@@ -136,6 +136,13 @@ function sliceFirstHeaderHtml(bodyInnerHtml: string): string {
   return bodyInnerHtml.slice(idx, Math.min(bodyInnerHtml.length, idx + 32_000));
 }
 
+/** Eerste section-slice voor gevallen zonder top-level `<header>` (hero bevat soms de nav als losse div). */
+function sliceFirstSectionHtml(bodyInnerHtml: string): string {
+  const idx = bodyInnerHtml.search(/<section\b/i);
+  if (idx < 0) return "";
+  return bodyInnerHtml.slice(idx, Math.min(bodyInnerHtml.length, idx + 32_000));
+}
+
 /**
  * Vaste top-nav zonder `<header>` (div/role=banner) — niet overschrijven met de utilitaire balk.
  */
@@ -176,6 +183,13 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
   const win = sliceFirstHeaderHtml(bodyInnerHtml);
   if (!win) {
+    /**
+     * Sommige output heeft geen `<header>` op body-niveau: nav/drawer staat als losse fixed kolom in de eerste
+     * hero-`<section>`. Als die drawer niet bekabeld is, forceren we auto-nav injectie i.p.v. vroeg te stoppen.
+     */
+    const firstSection = sliceFirstSectionHtml(bodyInnerHtml);
+    const hasDrawerInSection = headerHasLikelyBrokenMobileDrawer(firstSection);
+    if (hasDrawerInSection && !headerHasWiredAlpineMobileMenuToggle(firstSection)) return true;
     return !bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml);
   }
   const hasWiredMobileToggle = headerHasWiredAlpineMobileMenuToggle(bodyInnerHtml);
