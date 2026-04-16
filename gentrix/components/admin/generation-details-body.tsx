@@ -105,8 +105,10 @@ export function GenerationDetailsBody({
             </p>
           ) : (
             <p className="mt-2 text-xs text-violet-800/70">
-              Nog geen denklijn voor deze run. In server-job modus wordt de denklijn niet live teruggestuurd; gebruik
-              de stream-modus als je die stap realtime wilt zien.
+              Nog geen denklijn zichtbaar. De server berekent de denklijn wel — bij <strong className="font-medium">server-job</strong>{" "}
+              (standaard) komt de tekst in de database en verschijnt hier na de volgende poll (enkele seconden). Voor
+              woord-voor-woord live tijdens de run: zet{" "}
+              <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">NEXT_PUBLIC_SITE_GENERATION_USE_STREAM=true</code>.
             </p>
           )}
           {designContractWarning ? (

@@ -390,6 +390,8 @@ export function GeneratorForm({
     setDesignRationale(null);
     setDesignRationaleLoading(false);
     setDesignRationaleSkipReason(null);
+    setDesignContract(null);
+    setDesignContractWarning(null);
     setStreamEndedWithoutComplete(false);
     setGenerationActivity([]);
     setRightPaneMode("preview");
@@ -437,6 +439,7 @@ export function GeneratorForm({
           appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
           pollAbortRef.current = false;
           lastPolledJobProgressRef.current = null;
+          setDesignRationaleLoading(true);
           /** ~16 min: lange Claude-runs + zelfreview/Unsplash ruim boven client-timeout houden. */
           const maxJobPolls = 480;
           for (let i = 0; i < maxJobPolls; i++) {
@@ -455,6 +458,11 @@ export function GeneratorForm({
                     error_message: string | null;
                     result: GeneratedTailwindPage | null;
                     updated_at?: string;
+                    pipeline_feedback_json?: unknown;
+                    denklijn_text?: string | null;
+                    denklijn_skip_reason?: string | null;
+                    design_contract_json?: unknown;
+                    design_contract_warning?: string | null;
                   };
                 }
               | { ok: false; error: string };
@@ -463,6 +471,22 @@ export function GeneratorForm({
               return;
             }
             const { job } = jp;
+            if (job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object") {
+              setPipelineFeedback(job.pipeline_feedback_json as GenerationPipelineFeedback);
+            }
+            if (job.denklijn_text != null && job.denklijn_text.length > 0) {
+              setDesignRationale(job.denklijn_text);
+              setDesignRationaleSkipReason(null);
+              setDesignRationaleLoading(false);
+            } else if (job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0) {
+              setDesignRationale(null);
+              setDesignRationaleSkipReason(job.denklijn_skip_reason);
+              setDesignRationaleLoading(false);
+            }
+            if (job.design_contract_json != null && typeof job.design_contract_json === "object") {
+              setDesignContract(job.design_contract_json as DesignGenerationContract);
+              setDesignContractWarning(job.design_contract_warning?.trim() || null);
+            }
             const msg = job.progress_message?.trim() ?? "";
             if (msg && msg !== lastPolledJobProgressRef.current) {
               lastPolledJobProgressRef.current = msg;
@@ -475,10 +499,12 @@ export function GeneratorForm({
               setGeneratedTailwind(job.result);
               setStreamPhase("Generatie voltooid");
               appendGenerationActivity("Klaar — resultaat geladen.");
+              setDesignRationaleLoading(false);
               return;
             }
             if (job.status === "failed") {
               setError(job.error_message ?? "Generatie mislukt.");
+              setDesignRationaleLoading(false);
               return;
             }
           }

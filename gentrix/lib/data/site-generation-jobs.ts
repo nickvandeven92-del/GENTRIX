@@ -1,3 +1,4 @@
+import type { Json } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { consumeGenerateSiteReadableStream } from "@/lib/ai/consume-generate-site-readable-stream";
@@ -30,6 +31,12 @@ export type SiteGenerationJobRow = {
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
+  /** `generation_meta` — voor Details / polling i.p.v. NDJSON (na migratie). */
+  pipeline_feedback_json?: Json | null;
+  denklijn_text?: string | null;
+  denklijn_skip_reason?: string | null;
+  design_contract_json?: Json | null;
+  design_contract_warning?: string | null;
 };
 
 export type CreateSiteGenerationJobInput = {
@@ -95,6 +102,11 @@ async function updateJob(
     error_message: string | null;
     started_at: string | null;
     completed_at: string | null;
+    pipeline_feedback_json: Json | null;
+    denklijn_text: string | null;
+    denklijn_skip_reason: string | null;
+    design_contract_json: Json | null;
+    design_contract_warning: string | null;
   }>,
 ): Promise<void> {
   const supabase = createServiceRoleClient();
@@ -201,7 +213,6 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   let tokenChars = 0;
   let lastTokenProgressAt = 0;
   let lastKeepaliveProgressAt = 0;
-  let lastSectionProgressAt = 0;
 
   const writeProgress = (message: string) => {
     const trimmed = message.trim().slice(0, 500);
@@ -218,16 +229,28 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       return;
     }
     if (ev.type === "generation_meta") {
-      writeProgress("Briefing geïnterpreteerd (branche, stijl, paginastructuur).");
+      const pm = "Briefing geïnterpreteerd (branche, stijl, paginastructuur).";
+      void updateJob(jobId, {
+        progress_message: pm,
+        pipeline_feedback_json: JSON.parse(JSON.stringify(ev.feedback)) as Json,
+      });
       return;
     }
     if (ev.type === "design_rationale") {
-      if (ev.text != null && ev.text.trim().length > 0) {
-        writeProgress(`Denklijn ontvangen (${ev.text.length} tekens); designcontract gekoppeld.`);
-      } else {
-        const skip = ev.skipReason?.trim().slice(0, 160);
-        writeProgress(skip ? `Denklijn overgeslagen: ${skip}` : "Denklijn overgeslagen of leeg.");
-      }
+      const hasText = ev.text != null && ev.text.trim().length > 0;
+      const skipShort = ev.skipReason?.trim().slice(0, 160);
+      const pm = hasText
+        ? `Denklijn ontvangen (${ev.text!.length} tekens); designcontract gekoppeld.`
+        : skipShort
+          ? `Denklijn overgeslagen: ${skipShort}`
+          : "Denklijn overgeslagen of leeg.";
+      void updateJob(jobId, {
+        progress_message: pm.slice(0, 500),
+        denklijn_text: hasText ? ev.text!.slice(0, 500_000) : null,
+        denklijn_skip_reason: hasText ? null : (ev.skipReason?.trim().slice(0, 4_000) ?? null),
+        design_contract_json: ev.contract ? (JSON.parse(JSON.stringify(ev.contract)) as Json) : null,
+        design_contract_warning: ev.contractWarning?.trim().slice(0, 8_000) ?? null,
+      });
       return;
     }
     if (ev.type === "keepalive") {
@@ -238,10 +261,9 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     }
     if (ev.type === "section_complete") {
       sectionCount += 1;
-      if (now - lastSectionProgressAt < 5_000) return;
-      lastSectionProgressAt = now;
+      const label = ev.section.sectionName?.trim() || ev.section.id;
       writeProgress(
-        `HTML-secties vormen zich… (${sectionCount} sectie${sectionCount === 1 ? "" : "s"} in concept)`,
+        `Sectie in concept: ${label} (${sectionCount} sectie${sectionCount === 1 ? "" : "s"} ontvangen)`,
       );
       return;
     }
@@ -250,7 +272,9 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       if (now - lastTokenProgressAt < 12_000) return;
       lastTokenProgressAt = now;
       const kb = Math.max(1, Math.round(tokenChars / 1024));
-      writeProgress(`Model schrijft JSON/HTML… (~${kb}k tekens ontvangen)`);
+      writeProgress(
+        `Ruwe model-output: ~${kb}k tekens (stukken JSON/HTML; secties met naam verschijnen hieronder)`,
+      );
       return;
     }
     if (ev.type === "self_review") {

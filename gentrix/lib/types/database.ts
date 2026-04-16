@@ -475,6 +475,11 @@ export type Database = {
           error_message: string | null;
           started_at: string | null;
           completed_at: string | null;
+          pipeline_feedback_json: Json | null;
+          denklijn_text: string | null;
+          denklijn_skip_reason: string | null;
+          design_contract_json: Json | null;
+          design_contract_warning: string | null;
         };
         Insert: {
           id?: string;
@@ -488,6 +493,11 @@ export type Database = {
           error_message?: string | null;
           started_at?: string | null;
           completed_at?: string | null;
+          pipeline_feedback_json?: Json | null;
+          denklijn_text?: string | null;
+          denklijn_skip_reason?: string | null;
+          design_contract_json?: Json | null;
+          design_contract_warning?: string | null;
         };
         Update: {
           id?: string;
@@ -501,6 +511,11 @@ export type Database = {
           error_message?: string | null;
           started_at?: string | null;
           completed_at?: string | null;
+          pipeline_feedback_json?: Json | null;
+          denklijn_text?: string | null;
+          denklijn_skip_reason?: string | null;
+          design_contract_json?: Json | null;
+          design_contract_warning?: string | null;
         };
         Relationships: [];
       };

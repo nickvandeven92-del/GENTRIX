@@ -87,7 +87,10 @@ export function GenerationFeedbackPanel({
 
   const stepPipelineDone = Boolean(feedback);
   const stepDenklijnDone =
-    !designRationaleLoading && (Boolean(designRationale?.trim()) || Boolean(designRationaleSkipReason));
+    !designRationaleLoading &&
+    (Boolean(designRationale?.trim()) ||
+      Boolean(designRationaleSkipReason) ||
+      Boolean(designContract));
   const stepSiteDone = Boolean(hasSiteOutput);
 
   const checklist = [
