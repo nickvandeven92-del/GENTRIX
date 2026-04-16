@@ -26,9 +26,10 @@ export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolea
   if (!GENERIC_XDATA_RE.test(fromHeader)) return false;
 
   // Check of drawer al x-show heeft met bekende nav toggle key — ook zonder @click op button
-  const hasWiredDrawer = ALPINE_NAV_TOGGLE_KEYS.some((k) =>
-    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(fromHeader),
-  );
+ const hasWiredDrawer = ALPINE_NAV_TOGGLE_KEYS.some((k) =>
+  new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(fromHeader) &&
+  new RegExp(`x-data\\s*=\\s*["'][^"']*\\b${k}\\b`).test(fromHeader),
+);
   if (hasWiredDrawer) return true;
 
   const buttonRe = /<button\b[^>]{0,8000}>/gi;
