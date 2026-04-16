@@ -12,35 +12,22 @@ import { STUDIO_BRAND_MARK_ATTR } from "@/lib/site/brand-logo-inject";
 import { STUDIO_CONTACT_PATH_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
 import type { GeneratedLogoSet } from "@/types/logo";
 
-/**
- * Zelfde sleutels als `fixAlpineNavToggleDefaultsInXData`: als het model al Alpine-navstate in `x-data` zet,
- * geen automatische header injecteren (anders dubbele navbar, vooral op desktop).
- */
 const XDATA_HAS_NAV_TOGGLE_RE = new RegExp(
   `\\bx-data\\s*=\\s*["'][^"']*\\b(?:${ALPINE_NAV_TOGGLE_KEYS.join("|")})\\s*:`,
   "i",
 );
 const GENERIC_XDATA_RE = /\bx-data\s*=\s*["'][^"']*["']/i;
 
-/** Alpine / x-html: klik-handler op dezelfde `<button>`-tag (attribuutvolgorde willekeurig). */
 const BUTTON_HAS_ALPINE_CLICK_RE = /@click|x-on:click/i;
 
-/** `lg:hidden`-achtige menuknop in class. */
 const BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE = /\b(?:sm|md|lg|xl|2xl):hidden\b/i;
 
-/**
- * Echte werkende mobiele toggle: `x-data` met een Alpine mobiele-toggleknop (`*:hidden` of menu-achtige aria)
- * en `@click` / `x-on:click` op die knop.
- *
- * Deze detectie is bewust generieker dan alleen de bekende toggle-keys, zodat valide custom Alpine-staten
- * zoals `x-data="{ menuVisible: false }"` ook niet onterecht worden overschreven.
- */
 export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolean {
   if (!GENERIC_XDATA_RE.test(fromHeader)) return false;
-  
-  // Check of drawer al x-show heeft met bekende nav toggle key
-  const hasWiredDrawer = ALPINE_NAV_TOGGLE_KEYS.some(k =>
-    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(fromHeader)
+
+  // Check of drawer al x-show heeft met bekende nav toggle key — ook zonder @click op button
+  const hasWiredDrawer = ALPINE_NAV_TOGGLE_KEYS.some((k) =>
+    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(fromHeader),
   );
   if (hasWiredDrawer) return true;
 
@@ -50,22 +37,18 @@ export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolea
     const tag = m[0];
     const looksMobileControl =
       BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE.test(tag) ||
-      /\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)/i.test(tag);
+      /\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)/i.test(
+        tag,
+      );
     if (!looksMobileControl) continue;
     if (BUTTON_HAS_ALPINE_CLICK_RE.test(tag)) return true;
   }
   return false;
 }
 
-/**
- * Gegenereerde hero/site-header die er **visueel uitgebreid** uitziet — dan géén utilitaire
- * `data-gentrix-auto-mobile-nav`-balk injecteren (die verbergt de echte header via duplicate-CSS
- * en voelt als “zwarte balk met tekst”).
- */
 export function headerAppearsDesigned(scanSlice: string): boolean {
   const relIdx = scanSlice.search(/<header\b/i);
   if (relIdx < 0) return false;
-  /** Eerste ~22k vanaf `<header>`: blur/gradient zitten vaak op een inner `div`, niet op de open tag. */
   const w = scanSlice.slice(relIdx, Math.min(scanSlice.length, relIdx + 22_000));
   const openM = w.match(/^<header\b[^>]{0,4000}>/i);
   const openTag = openM?.[0] ?? "";
@@ -85,7 +68,6 @@ export function headerAppearsDesigned(scanSlice: string): boolean {
   return false;
 }
 
-/** Herken onze eigen geïnjecteerde balk (geen dubbele injectie). */
 const AUTO_NAV_ATTR = 'data-gentrix-auto-mobile-nav="1"';
 
 function escapeHtmlText(s: string): string {
@@ -125,7 +107,6 @@ export function extractHeaderNavLinks(bodyInnerHtml: string): { href: string; la
   return out;
 }
 
-/** Zelfde normalisatie als `buildStudioSinglePageInternalNavScript` (`slugifyNavKey`) voor `#hash`-links. */
 function studioNavHashFromSectionName(name: string): string {
   return name
     .toLowerCase()
@@ -134,14 +115,12 @@ function studioNavHashFromSectionName(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/** Eerste site-`<header>` (meestal hero-nav); beperkte lengte i.v.m. performance. */
 function sliceFirstHeaderHtml(bodyInnerHtml: string): string {
   const idx = bodyInnerHtml.search(/<header\b/i);
   if (idx < 0) return "";
   return bodyInnerHtml.slice(idx, Math.min(bodyInnerHtml.length, idx + 32_000));
 }
 
-/** Eerste section-slice voor gevallen zonder top-level `<header>` (hero bevat soms de nav als losse div). */
 function sliceFirstSectionHtml(bodyInnerHtml: string): string {
   const idx = bodyInnerHtml.search(/<section\b/i);
   if (idx < 0) return "";
@@ -156,9 +135,6 @@ function classLooksLikeSideDrawer(classValue: string): boolean {
   return /\bh-full\b|\binset-y-0\b|(?:\btop-0\b[\s\S]*\bbottom-0\b)/.test(cls);
 }
 
-/**
- * Vaste top-nav zonder `<header>` (div/role=banner) — niet overschrijven met de utilitaire balk.
- */
 function bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml: string): boolean {
   const probe = bodyInnerHtml.slice(0, 14_000);
   if (/\brole\s*=\s*["']banner["']/i.test(probe)) return true;
@@ -168,10 +144,6 @@ function bodyHasEarlyTopNavWithoutHeaderTag(bodyInnerHtml: string): boolean {
   return /\b(fixed|sticky)\b/i.test(beforeNav) && /\btop-0\b/i.test(beforeNav);
 }
 
-/**
- * AI-output kan een "mobiele" right/left drawer als los vast paneel zetten zonder werkende toggle-state.
- * In dat geval wél auto-nav injecteren, ook als de header verder vaste links bevat.
- */
 function headerHasLikelyBrokenMobileDrawer(headerSlice: string): boolean {
   const hasSideDrawer = /<(?:div|aside|nav)\b([^>]*)>/gi.test(headerSlice)
     ? [...headerSlice.matchAll(/<(?:div|aside|nav)\b([^>]*)>/gi)].some((m) => {
@@ -205,28 +177,14 @@ export function stripLikelyBrokenMobileDrawerBlocks(html: string): string {
   return html;
 }
 
-/**
- * Broken-drawer-pad is teruggedraaid: behoud gegenereerde navbar en repareer Alpine wiring upstream.
- */
 export function replaceBrokenDrawerChromeWithAutoNavSource(bodyInnerHtml: string): string {
   return bodyInnerHtml;
 }
 
-/**
- * `true` = utilitaire auto-navbar **injecteren** (alleen bij gebrek aan bruikbare bestaande top-nav).
- *
- * Beleid: zodra er al een **werkend** mobiel Alpine-menu staat, of er vroeg in de body al een vaste top-`<nav>`
- * staat, **niet** injecteren. Een header die er alleen "designed" uitziet is niet genoeg: die kan alsnog een
- * gebroken mobiel menu hebben (bijv. losse fixed right drawer zonder toggle/scope).
- */
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
   const win = sliceFirstHeaderHtml(bodyInnerHtml);
   if (!win) {
-    /**
-     * Sommige output heeft geen `<header>` op body-niveau: nav/drawer staat als losse fixed kolom in de eerste
-     * hero-`<section>`. Als die drawer niet bekabeld is, forceren we auto-nav injectie i.p.v. vroeg te stoppen.
-     */
     const firstSection = sliceFirstSectionHtml(bodyInnerHtml);
     const hasDrawerInSection = headerHasLikelyBrokenMobileDrawer(firstSection);
     if (hasDrawerInSection && !headerHasWiredAlpineMobileMenuToggle(firstSection)) return true;
@@ -234,46 +192,29 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   }
   const hasWiredMobileToggle = headerHasWiredAlpineMobileMenuToggle(bodyInnerHtml);
   if (hasWiredMobileToggle) return false;
-  /**
-   * Belangrijk: "designed" alleen is niet genoeg om injectie te skippen.
-   * Veel AI-headers ogen visueel rijk maar missen een werkende mobiele toggle/scope.
-   */
   const hasLikelyBrokenDrawer = headerHasLikelyBrokenMobileDrawer(win);
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
   if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) return false;
   return true;
 }
 
-/**
- * Verbergt een eventuele tweede `<header>` in de eerste sectie (vaak de AI-hero-nav) zodra de
- * automatische balk is geïnjecteerd — op **alle** breakpoints. Alleen “op mobiel” verbergen gaf
- * dubbele nav + open mobiel paneel in desktop-studio-preview.
- *
- * Ook: Alpine x-show doet inline display, dus we moeten forceren dat mobiele elementen op lg+ verborgen zijn.
- */
 export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[${AUTO_NAV_ATTR}] ~ header,
 body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
   display: none !important;
 }
 
-/* Verberg de rechterkant navbars - fixed positioning right-0 */
 div.fixed.top-0.right-0,
 div[class*="fixed"][class*="top-0"][class*="right-0"],
-/* Alle fixed els met lage/hoge width aan rechterkant */
 div[class*="fixed"][class*="right-0"][class*="w-"],
 div[class*="fixed"][class*="right-0"][class*="h-full"],
-/* Sidebar-achtige divs */
 div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
 div[class*="fixed"][class*="right-0"][class*="z-"],
-/* Alpine-based mobiele menu drawers (niet elke section-fixed: breekt hero-video/gradient-lagen). */
 div[class*="fixed"][x-show],
 
-/* Verberg ALLE gegenereerde navbars */
 section header,
 section nav,
 body > header:not([${AUTO_NAV_ATTR}]),
 body > nav,
-/* Niet de geïnjecteerde sheet (#gentrix-site-mobile-sheet); die heeft ook aria-label met "menu". */
 body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="enu"],
 body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="Menu"],
 section nav[aria-label*="enu"],
@@ -281,20 +222,14 @@ section nav[aria-label*="Menu"] {
   display: none !important;
 }
 
-/* Geïnjecteerde mobiele sheet: expliciet tonen (wint van bovenstaande nav-*-regels). */
 header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet nav[aria-label="Mobiel menu"],
 header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet nav[aria-label="Mobile menu"] {
   display: flex !important;
 }
 
-/* VERBERG NIET: backdrop en mobile sheet — Alpine x-show moet die kunnen schakelen! */
-
-/* Force hide Alpine mobile sheets/drawers on desktop (lg+) — x-show inline display overrides lg:hidden */
 @media (min-width: 1024px) {
-  /* Hamburger knop verbergen op desktop */
   header[${AUTO_NAV_ATTR}] button[class*="lg:hidden"],
   header[${AUTO_NAV_ATTR}] button.lg\\:hidden,
-  /* Mobiele nav buiten header */
   body > div[class*="fixed"][class*="inset"][class*="lg:hidden"],
   body > div[class*="fixed"][class*="inset"][x-show],
   body > div.pointer-events-auto:has(nav[aria-label="Mobiel menu"]),
@@ -307,10 +242,6 @@ header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet nav[aria-label="Mobile menu"
   }
 }`;
 
-/**
- * Body gebruikt `text-slate-900`; ontbrekende Tailwind-utilities of globale `a`-regels uit secties
- * kunnen mobiele menu-links donker maken op donkere sheet → onzichtbaar. Deze safeguard wint van die bleed.
- */
 export const STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS = `header[data-gentrix-auto-mobile-nav="1"] #gentrix-site-mobile-sheet a:not([class*="bg-white"]) {
   color: rgb(248 250 252) !important;
 }
@@ -318,12 +249,6 @@ header[data-gentrix-auto-mobile-nav="1"] #gentrix-site-mobile-sheet a[class*="bg
   color: rgb(15 23 42) !important;
 }`;
 
-/**
- * Was: `display:none!important` op `section > header` fixed/inset-lagen om oude AI-sidebars te verbergen.
- * Dat brak **alle** mobiele menu’s: niet alleen tegen Alpine `x-show`, ook tegen `:class` / `hidden`, en
- * elke selector was te breed. Bewust leeg — gebruik auto-nav (`shouldInjectStudioAutoMobileNav`) of
- * editor-self-review i.p.v. globale header-CSS.
- */
 export const STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS = "";
 
 const NAV_BRAND_TEXT_MAX = 48;
@@ -340,14 +265,11 @@ function defaultBrandLabel(pageConfig: TailwindPageConfig | null | undefined): s
     const t = pageConfig.themeName.trim();
     return clampNavBrandText(t.length > 0 ? t : "Website") || "Website";
   }
-  /* `style` is een lange ontwerpbriefing — nooit als zichtbaar merk in de balk. */
   return "Website";
 }
 
 export type StudioAutoMobileNavBrandOptions = {
-  /** Zichtbare merktekst (bv. klant- of sitenaam uit de studio). */
   navBrandLabel?: string | null;
-  /** Premium-logo: zelfde primary-SVG als elders in de site. */
   logoSet?: GeneratedLogoSet | null;
 };
 
