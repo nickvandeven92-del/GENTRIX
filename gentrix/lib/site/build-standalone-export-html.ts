@@ -38,7 +38,6 @@ import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/si
 import {
   buildStudioAutoMobileNavHeaderHtml,
   extractHeaderNavLinks,
-  replaceBrokenDrawerChromeWithAutoNavSource,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
@@ -103,7 +102,7 @@ export function buildStandaloneExportHtmlDocument(
     logoSet: userAssets?.logoSet,
   });
   const existingHeaderLinks = extractHeaderNavLinks(bodyInner);
-  const autoNavSourceBodyInner = replaceBrokenDrawerChromeWithAutoNavSource(bodyInner);
+  const autoNavSourceBodyInner = bodyInner;
   let studioAutoMobileNavInjected = false;
   if (
     !forScan &&

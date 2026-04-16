@@ -267,6 +267,22 @@ describe("repairBrokenMobileDrawer", () => {
     expect(out).toContain('x-show="navOpen"');
   });
 
+  it("wiret exact de bekende broken drawer class met x-show navOpen", () => {
+    const html = `<section id="hero">
+  <header class="relative z-30 w-full">
+    <button type="button" class="lg:hidden w-10 h-10" aria-label="Menu"></button>
+  </header>
+  <div class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5"></div>
+</section>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-data="{ navOpen: false }"');
+    expect(out).toContain('@click="navOpen = !navOpen"');
+    expect(out).toContain(
+      'class="fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5"',
+    );
+    expect(out).toContain('x-show="navOpen"');
+  });
+
   it("repareert section-loze markup met aria-controls menuknop", () => {
     const html = `<div class="relative">
   <button type="button" class="inline-flex h-10 w-10" aria-controls="mobile-drawer">Open</button>

@@ -220,6 +220,23 @@ function classLooksLikeSideDrawer(cls: string): boolean {
   );
 }
 
+const KNOWN_BROKEN_MOBILE_DRAWER_CLASS =
+  "fixed top-0 right-0 h-full w-72 bg-[#08081a] z-[70] flex flex-col px-8 pt-24 pb-10 shadow-2xl border-l border-white/5";
+
+function wireKnownBrokenDrawerClass(html: string, stateKey: string): string {
+  const classRe = escapeRegExpKey(KNOWN_BROKEN_MOBILE_DRAWER_CLASS);
+  const re = new RegExp(
+    `<(div|aside|nav)\\b([^>]*\\bclass\\s*=\\s*["']${classRe}["'][^>]*)>`,
+    "gi",
+  );
+  return html.replace(re, (full, tag: string, attrs: string) => {
+    if (/\bx-show\s*=/i.test(attrs)) return full;
+    const withCloak = /\bx-cloak\b/i.test(attrs) ? attrs : `${attrs} x-cloak`;
+    const withStop = /@click\.stop(?:\s*=|\b)/i.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
+    return `<${tag}${withStop} x-show="${stateKey}">`;
+  });
+}
+
 function findSideDrawerOpenTagIndex(html: string): number {
   const re = /<(div|aside|nav)\b([^>]*)>/gi;
   let m: RegExpExecArray | null;
@@ -357,16 +374,14 @@ function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
 
   /** Voeg x-show toe op side-drawer als die ontbreekt. */
   const beforeDrawerReplace = out;
+  /** Snelle, exacte fix voor het bekende broken-drawer klassepatroon uit logs. */
+  out = wireKnownBrokenDrawerClass(out, stateKey);
   out = out.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
     const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
-    if (!/\bfixed\b/.test(cls)) return full;
-    const isDrawer =
-      /\b(?:right-0|left-0)\b/.test(cls) &&
-      (/\bh-full\b/.test(cls) || /\binset-y-0\b/.test(cls) || (/\btop-0\b/.test(cls) && /\bbottom-0\b/.test(cls)));
-    if (!isDrawer) return full;
-    if (/\bx-show\s*=/.test(attrs)) return full;
-    const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
-    const withStop = /@click\.stop\s*=/.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
+    if (!classLooksLikeSideDrawer(cls)) return full;
+    if (/\bx-show\s*=/i.test(attrs)) return full;
+    const withCloak = /\bx-cloak\b/i.test(attrs) ? attrs : `${attrs} x-cloak`;
+    const withStop = /@click\.stop(?:\s*=|\b)/i.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
     return `<${tag}${withStop} x-show="${stateKey}">`;
   });
   logRepairBrokenMobileDrawer("[repair drawer] changed:", out !== beforeDrawerReplace);
