@@ -249,6 +249,19 @@ describe("repairBrokenMobileDrawer", () => {
     expect(out).toContain('@click="navOpen = false"');
   });
 
+  it("repareert section-loze markup met aria-controls menuknop", () => {
+    const html = `<div class="relative">
+  <button type="button" class="inline-flex h-10 w-10" aria-controls="mobile-drawer">Open</button>
+  <div class="fixed inset-0 bg-black/50 z-[60]"></div>
+  <aside id="mobile-drawer" class="fixed right-0 top-0 h-full w-72 bg-slate-950"></aside>
+</div>`;
+    const out = repairBrokenMobileDrawer(html);
+    expect(out).toContain('x-data="{ navOpen: false }"');
+    expect(out).toContain('@click="navOpen = !navOpen"');
+    expect(out).toContain('x-show="navOpen"');
+    expect(out).toContain('@click="navOpen = false"');
+  });
+
   it("laat al gewirede drawer ongemoeid", () => {
     const html = `<section id="hero" x-data="{ menuOpen: false }">
   <header>

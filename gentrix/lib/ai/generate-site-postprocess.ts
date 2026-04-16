@@ -183,6 +183,110 @@ function extractFirstNavToggleKeyFromXDataScope(html: string): string | null {
   return null;
 }
 
+function extractFirstNavToggleKeyFromInteractiveMarkup(html: string): string | null {
+  for (const k of ALPINE_NAV_TOGGLE_KEYS) {
+    const key = escapeRegExpKey(k);
+    const inClick = new RegExp(`(?:@click|x-on:click)\\s*=\\s*["'][^"']*\\b${key}\\b[^"']*["']`, "i");
+    if (inClick.test(html)) return k;
+    const inShow = new RegExp(`\\bx-show\\s*=\\s*["'][^"']*\\b${key}\\b[^"']*["']`, "i");
+    if (inShow.test(html)) return k;
+  }
+  return null;
+}
+
+function attrsLookLikeMenuButton(attrs: string): boolean {
+  return (
+    /\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs) ||
+    /\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|burger|open|openen|sluit|close|navigat)/i.test(attrs) ||
+    /\baria-controls\s*=\s*["'][^"']*(?:mobile|menu|drawer|sheet|nav)/i.test(attrs) ||
+    /\bclass\s*=\s*["'][^"']*(?:menu|hamburger|burger|nav-toggle|drawer-toggle|mobile-toggle)[^"']*["']/i.test(attrs)
+  );
+}
+
+function injectNavStateScope(html: string, stateKey: string): string {
+  const scopeAttrs = ` x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false"`;
+  let out = html.replace(
+    /<header\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+    `<header$1${scopeAttrs}>`,
+  );
+  if (out !== html) return out;
+  out = html.replace(
+    /<section\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+    `<section$1${scopeAttrs}>`,
+  );
+  if (out !== html) return out;
+  return html.replace(
+    /<(div|nav|aside|main|article)\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+    (full, tag: string, attrs: string) => `<${tag}${attrs}${scopeAttrs}>`,
+  );
+}
+
+function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
+  const hasSideDrawer =
+    /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.test(
+      scopeHtml,
+    );
+  if (!hasSideDrawer) return scopeHtml;
+
+  const buttonMatches = [...scopeHtml.matchAll(/<button\b([^>]*)>/gi)];
+  if (buttonMatches.length === 0) return scopeHtml;
+  const hasMenuButton = buttonMatches.some((m) => attrsLookLikeMenuButton(m[1] ?? ""));
+  const allowSingleButtonFallback = !hasMenuButton && buttonMatches.length === 1;
+  if (!hasMenuButton && !allowSingleButtonFallback) return scopeHtml;
+
+  const stateKey =
+    extractFirstNavToggleKeyFromXDataScope(scopeHtml) ??
+    extractFirstNavToggleKeyFromInteractiveMarkup(scopeHtml) ??
+    "navOpen";
+  let out = scopeHtml;
+
+  /** Zorg voor een scope als er nergens een bruikbare x-data state staat. */
+  if (!extractFirstNavToggleKeyFromXDataScope(out)) {
+    out = injectNavStateScope(out, stateKey);
+  }
+
+  /** Voeg @click toggle toe op menuknop als die ontbreekt. */
+  let buttonIdx = -1;
+  out = out.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
+    buttonIdx += 1;
+    const isCandidate = attrsLookLikeMenuButton(attrs) || (allowSingleButtonFallback && buttonIdx === 0);
+    if (!isCandidate) return full;
+    if (/(?:@click|x-on:click)\s*=/.test(attrs)) return full;
+    const expandedAttr = /\baria-expanded\s*=/.test(attrs) ? "" : ` :aria-expanded="${stateKey}.toString()"`;
+    return `<button${attrs} @click="${stateKey} = !${stateKey}"${expandedAttr}>`;
+  });
+
+  /** Voeg x-show toe op side-drawer als die ontbreekt. */
+  out = out.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    if (!/\bfixed\b/.test(cls)) return full;
+    const isDrawer =
+      /\b(?:right-0|left-0)\b/.test(cls) &&
+      (/\bh-full\b/.test(cls) || /\binset-y-0\b/.test(cls) || (/\btop-0\b/.test(cls) && /\bbottom-0\b/.test(cls)));
+    if (!isDrawer) return full;
+    if (/\bx-show\s*=/.test(attrs)) return full;
+    const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
+    const withStop = /@click\.stop\s*=/.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
+    return `<${tag}${withStop} x-show="${stateKey}">`;
+  });
+
+  /** Voeg x-show toe op backdrop-laag als die ontbreekt. */
+  out = out.replace(/<div\b([^>]*)>/gi, (full, attrs: string) => {
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    const isBackdrop =
+      /\bfixed\b/.test(cls) &&
+      /\binset-0\b/.test(cls) &&
+      /bg-(?:black|slate|zinc|neutral|gray)|bg-\[rgba|backdrop|opacity-\d+/i.test(cls);
+    if (!isBackdrop) return full;
+    if (/\bx-show\s*=/.test(attrs)) return full;
+    const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
+    const withClose = /@click\s*=/.test(withCloak) ? withCloak : `${withCloak} @click="${stateKey} = false"`;
+    return `<div${withClose} x-show="${stateKey}">`;
+  });
+
+  return out;
+}
+
 /**
  * Repareert veelvoorkomende "broken drawer"-output:
  * - hamburgerknop zonder @click
@@ -195,75 +299,10 @@ function extractFirstNavToggleKeyFromXDataScope(html: string): string | null {
  * 3) voeg ontbrekende Alpine wiring toe met idempotente checks.
  */
 export function repairBrokenMobileDrawer(html: string): string {
-  return html.replace(/<section\b[\s\S]*?<\/section>/gi, (section) => {
-    const hasSideDrawer =
-      /<(?:div|aside|nav)\b[^>]*\bclass\s*=\s*["'][^"']*\bfixed\b[^"']*\b(?:right-0|left-0)\b[^"']*(?:\bh-full\b|\binset-y-0\b|(?:\btop-0\b[^"']*\bbottom-0\b))[^"']*["'][^>]*>/i.test(
-        section,
-      );
-    if (!hasSideDrawer) return section;
-
-    const hasMenuButton =
-      /<button\b[^>]*(?:\b(?:sm|md|lg|xl|2xl):hidden\b|aria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|open|openen|sluit|close)[^"']*["'])[^>]*>/i.test(
-        section,
-      );
-    if (!hasMenuButton) return section;
-
-    const looksAlreadyWired =
-      /<button\b[^>]*(?:@click|x-on:click)\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["'][^>]*>/i.test(
-        section,
-      ) &&
-      /\bx-show\s*=\s*["'][^"']*(?:open|menu|nav|drawer|mobile)[^"']*["']/i.test(section);
-    if (looksAlreadyWired) return section;
-
-    const stateKey = extractFirstNavToggleKeyFromXDataScope(section) ?? "navOpen";
-    let out = section;
-
-    /** Zorg voor een scope als er nergens een bruikbare x-data state staat. */
-    if (!extractFirstNavToggleKeyFromXDataScope(out)) {
-      out = out.replace(
-        /<header\b((?:(?!\bx-data\s*=)[^>])*)>/i,
-        `<header$1 x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false">`,
-      );
-    }
-
-    /** Voeg @click toggle toe op menuknop als die ontbreekt. */
-    out = out.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
-      const hasMenuHint =
-        /\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs) ||
-        /\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|open|openen|sluit|close)[^"']*["']/i.test(attrs);
-      if (!hasMenuHint) return full;
-      if (/(?:@click|x-on:click)\s*=/.test(attrs)) return full;
-      const expandedAttr = /\baria-expanded\s*=/.test(attrs) ? "" : ` :aria-expanded="${stateKey}.toString()"`;
-      return `<button${attrs} @click="${stateKey} = !${stateKey}"${expandedAttr}>`;
-    });
-
-    /** Voeg x-show toe op side-drawer als die ontbreekt. */
-    out = out.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
-      const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
-      if (!/\bfixed\b/.test(cls)) return full;
-      const isDrawer =
-        /\b(?:right-0|left-0)\b/.test(cls) &&
-        (/\bh-full\b/.test(cls) || /\binset-y-0\b/.test(cls) || (/\btop-0\b/.test(cls) && /\bbottom-0\b/.test(cls)));
-      if (!isDrawer) return full;
-      if (/\bx-show\s*=/.test(attrs)) return full;
-      const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
-      const withStop = /@click\.stop\s*=/.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
-      return `<${tag}${withStop} x-show="${stateKey}">`;
-    });
-
-    /** Voeg x-show toe op backdrop-laag als die ontbreekt. */
-    out = out.replace(/<div\b([^>]*)>/gi, (full, attrs: string) => {
-      const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
-      const isBackdrop = /\bfixed\b/.test(cls) && /\binset-0\b/.test(cls) && /bg-black\/|bg-slate-9|backdrop/.test(cls);
-      if (!isBackdrop) return full;
-      if (/\bx-show\s*=/.test(attrs)) return full;
-      const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
-      const withClose = /@click\s*=/.test(withCloak) ? withCloak : `${withCloak} @click="${stateKey} = false"`;
-      return `<div${withClose} x-show="${stateKey}">`;
-    });
-
-    return out;
-  });
+  const sectionRepaired = html.replace(/<section\b[\s\S]*?<\/section>/gi, (section) =>
+    repairBrokenMobileDrawerInScope(section),
+  );
+  return repairBrokenMobileDrawerInScope(sectionRepaired);
 }
 
 /**
