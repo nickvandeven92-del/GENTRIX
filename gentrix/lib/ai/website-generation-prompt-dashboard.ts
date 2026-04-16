@@ -30,7 +30,8 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
   {
     label: "Alpine / micro-interactie-instructies",
     path: "lib/ai/interactive-alpine-prompt.ts",
-    description: "getAlpineInteractivityPromptBlock — variatie-seed voor hero-video volgorde e.d.",
+    description:
+      "getAlpineInteractivityPromptBlock + getStudioDefaultHeroVideoPromptBlock — Alpine-regels; video alleen met eigen URL.",
   },
   {
     label: "Denklijn + designcontract (voor bouw-prompt)",

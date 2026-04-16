@@ -43,7 +43,7 @@ export function briefingWantsAnimation(briefing: string): boolean {
 // ─── Detectie helpers ────────────────────────────────────────────────────────
 
 function isHeroSection(section: TailwindSection, index: number): boolean {
-  const id = section.id.toLowerCase();
+  const id = (section.id ?? "").toLowerCase();
   return (
     id === "hero" ||
     id.startsWith("hero") ||

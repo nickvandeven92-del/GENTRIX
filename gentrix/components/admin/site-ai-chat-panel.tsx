@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Copy, Film, Loader2, MessageCircle, X } from "lucide-react";
+import { ArrowUp, Film, Loader2, MessageCircle, X } from "lucide-react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { SiteChatStreamNdjsonEvent, SiteChatTurn } from "@/lib/ai/site-chat-with-claude";
 import { consumeSiteChatNdjsonBuffer } from "@/lib/api/site-chat-stream-events";
-import { STUDIO_DEFAULT_SILENT_HERO_MP4_URLS } from "@/lib/site/studio-default-hero-videos";
 import { cn } from "@/lib/utils";
 
 type ChatRow = { id: string; role: "user" | "assistant"; content: string };
@@ -68,23 +67,10 @@ export function SiteAiChatPanel({
   /** Tekst uit het inkomende JSON-antwoord (`reply_preview`), voor een lopend gesprek. */
   const [streamingReply, setStreamingReply] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [copiedHeroUrlIndex, setCopiedHeroUrlIndex] = useState<number | null>(null);
   const [fileDragOver, setFileDragOver] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
-
-  const copyHeroStockUrl = useCallback(async (url: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedHeroUrlIndex(index);
-      window.setTimeout(() => {
-        setCopiedHeroUrlIndex((cur) => (cur === index ? null : cur));
-      }, 2000);
-    } catch {
-      setError("Kopiëren mislukt in deze browser.");
-    }
-  }, []);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -264,42 +250,19 @@ export function SiteAiChatPanel({
 
       <details className="mx-4 mt-2 text-xs text-zinc-700 dark:text-zinc-300">
         <summary className="cursor-pointer select-none font-medium text-zinc-800 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100">
-          Tips: hero-video, logo en technische grenzen
+          Tips: hero, logo en technische grenzen
         </summary>
         <div className="mt-2 space-y-2 rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-3 py-2.5 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-50">
-          <p className="font-semibold text-emerald-900 dark:text-emerald-100">Stille achtergrondvideo</p>
+          <p className="font-semibold text-emerald-900 dark:text-emerald-100">Video in de hero</p>
           <p className="text-emerald-900/95 dark:text-emerald-100/95">
-            Vraag om een <strong>stille achtergrondvideo</strong> of <strong>bewegende hero</strong> — Claude kan een stock-loop in een echt{" "}
-            <code className="rounded bg-emerald-200/60 px-1 dark:bg-emerald-900/60">&lt;video&gt;</code> zetten.
-          </p>
-          <p className="rounded bg-white/70 px-2 py-1.5 font-mono text-[11px] text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100">
-            Voorbeeld: “Zet in de hero een stille achtergrondvideo met donkere overlay zodat de kop leesbaar blijft.”
+            Een echte <code className="rounded bg-emerald-200/60 px-1 dark:bg-emerald-900/60">&lt;video&gt;</code>-achtergrond alleen met een{" "}
+            <strong>concrete https-MP4/WebM-URL</strong> in je bericht (of upload hieronder en verwijs naar de URL). Zonder link: vraag om dynamiek
+            met foto, gradient of scroll/hover-animaties — de generator gebruikt geen vaste stock-video’s meer.
           </p>
           <p className="text-emerald-900/90 dark:text-emerald-100/90">
-            Eigen logo of MP4/WebM: <strong>sleep het bestand naar het tekstvak</strong> hieronder; daarna in de chat naar die URL verwijzen.
+            Logo of video: <strong>sleep het bestand naar het tekstvak</strong>; gebruik daarna die URL in je instructie.
           </p>
         </div>
-      </details>
-
-      <details className="mx-4 mt-1 text-xs text-zinc-700 dark:text-zinc-300">
-        <summary className="cursor-pointer select-none font-medium text-zinc-800 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100">
-          Standaard video-links (alleen nodig om handmatig te plakken)
-        </summary>
-        <ul className="mt-2 space-y-2 border-t border-zinc-200/70 pt-2 dark:border-zinc-700/50">
-          {STUDIO_DEFAULT_SILENT_HERO_MP4_URLS.map((url, i) => (
-            <li key={url} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-              <span className="min-w-0 break-all font-mono text-[10px] text-zinc-600 dark:text-zinc-400">{url}</span>
-              <button
-                type="button"
-                onClick={() => void copyHeroStockUrl(url, i)}
-                className="inline-flex shrink-0 items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-1 text-[10px] font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <Copy className="size-3" aria-hidden />
-                {copiedHeroUrlIndex === i ? "Gekopieerd" : "Kopieer"}
-              </button>
-            </li>
-          ))}
-        </ul>
       </details>
 
       {attachmentUrls.length > 0 && (

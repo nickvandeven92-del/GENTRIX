@@ -1292,7 +1292,7 @@ ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
 ${section3Tail}${section3HeroHeight}
 
-${getAlpineInteractivityPromptBlock({ defaultHeroVideoOrderSeed: options?.varianceNonce })}
+${getAlpineInteractivityPromptBlock()}
 
 ${buildSiteGenerationOperationalTail({
     preserve,
@@ -1392,7 +1392,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
-**Hero (\`#hero\`):** eerste indruk: kop, korte **waardepropositie** (sales: wat levert het op / welke drempel weg?) en sterk visueel element; **één primaire CTA** en optioneel **één secundaire** (werkende \`href\`) — mag deels overlappen met de nav. **Verboden:** decoratief **scroll**-label (SCROLL, Scroll, verticaal, muis-icoon zonder actie) in de hero. Volg de **viewport-/min-h-regels** hieronder (§VIEWPORT) zodat de preview geen smalle strook + leeg wit wordt. Combineer tekst met **foto (Unsplash), split-layout of gradient** waar dat sterk is; een **kaal effen donkervlak zonder enige laag** is meestal zwak — tenzij de briefing expliciet zo minimaal wil. **Achtergrond-\`<video>\`:** **niet** standaard — alleen als de gebruikersbriefing **expliciet** om video, bewegende achtergrond, filmische loop, fullscreen motion of dergelijke vraagt (losse woorden als “cinematisch”, “premium” of “stoer” tellen **niet** als video-mandaat). Houd je aan **BRANCHE-INSPIRATIE** (bijv. barbershop: grote **stilstaande** cinematic foto, geen Pexels-achtergrondvideo tenzij de briefing om beweging vraagt).
+**Hero (\`#hero\`):** eerste indruk: kop, korte **waardepropositie** (sales: wat levert het op / welke drempel weg?) en sterk visueel element; **één primaire CTA** en optioneel **één secundaire** (werkende \`href\`) — mag deels overlappen met de nav. **Verboden:** decoratief **scroll**-label (SCROLL, Scroll, verticaal, muis-icoon zonder actie) in de hero. Volg de **viewport-/min-h-regels** hieronder (§VIEWPORT) zodat de preview geen smalle strook + leeg wit wordt. Combineer tekst met **foto (Unsplash), split-layout of gradient** waar dat sterk is; een **kaal effen donkervlak zonder enige laag** is meestal zwak — tenzij de briefing expliciet zo minimaal wil. **Achtergrond-\`<video>\`:** **niet** standaard — alleen als de briefing een **concrete https-URL** naar een videobestand bevat of een duidelijke formulering als **achtergrondvideo / video-hero / filmpje / MP4-link** (beweging, “dynamisch”, “levendig”, “animatie”, “bewegende hero” **zonder** URL = **geen** \`<video>\`; gebruik foto/gradient + studio-motion). Losse woorden als “cinematisch”, “premium” of “stoer” tellen **niet** als video-mandaat. Houd je aan **BRANCHE-INSPIRATIE** (bijv. barbershop: grote **stilstaande** cinematic foto).
 
 **Klantfoto's:** blijven **buiten** de hero (zie blok KLANTFOTO'S hierboven).
 
@@ -1412,13 +1412,13 @@ ${buildSiteGenerationBorderRevealInstructionsMarkdown()}
 
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
-**Video-hero (alleen na expliciete briefing — zie hero-regel hierboven):** als de briefing **video / bewegende achtergrond / filmische hero** (als bewegend beeld) vraagt **zonder** eigen klant-URL: gebruik **altijd** een echt \`<video autoplay muted loop playsinline>\` met **één** van de **studio-standaard MP4-URL's** uit het blok **STUDIO-VOORZIENE ACHTERGRONDVIDEO** hieronder (Alpine/interactie-sectie). Geen verzonnen URLs; geen “CSS-video” i.p.v. \`<video>\` tenzij de briefing uitdrukkelijk statisch wil. **Geen** \`poster\` met een **andere** stockfoto dan de video — dat **knippert** zichtbaar bij buffer/loop; volg het patroon in dat blok (\`bg-black\` op wrapper, \`preload="auto"\`, poster weglaten tenzij matcht met video).
+**Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik Unsplash/gradient + motion zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
 
 **Foto's:** relevante Unsplash waar het helpt; gradient of kleurvlak mag. Match onderwerp met tekst.
 
 ${section3Tail}${section3HeroHeight}
 
-${getAlpineInteractivityPromptBlock({ defaultHeroVideoOrderSeed: options?.varianceNonce })}
+${getAlpineInteractivityPromptBlock()}
 ${brancheSectionBlocks}
 ${buildSiteGenerationOperationalTail({
     preserve,
