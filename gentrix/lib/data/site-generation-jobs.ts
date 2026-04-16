@@ -50,9 +50,7 @@ export async function insertSiteGenerationJob(input: CreateSiteGenerationJobInpu
     .single();
 
   if (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[site_generation_jobs insert]", error.message);
-    }
+    console.warn("[site_generation_jobs insert]", error.message);
     return null;
   }
   return (data as { id: string }).id;
@@ -81,9 +79,7 @@ async function claimQueuedSiteGenerationJob(jobId: string): Promise<SiteGenerati
     .select("*")
     .maybeSingle();
   if (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[site_generation_jobs claim]", error.message);
-    }
+    console.warn("[site_generation_jobs claim]", jobId, error.message);
     return null;
   }
   if (!data) return null;
@@ -106,8 +102,8 @@ async function updateJob(
     .from("site_generation_jobs")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", jobId);
-  if (error && process.env.NODE_ENV === "development") {
-    console.warn("[site_generation_jobs update]", error.message);
+  if (error) {
+    console.warn("[site_generation_jobs update]", jobId, error.message);
   }
 }
 
