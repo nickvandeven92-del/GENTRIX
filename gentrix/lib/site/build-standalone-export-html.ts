@@ -38,6 +38,7 @@ import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/si
 import {
   buildStudioAutoMobileNavHeaderHtml,
   extractHeaderNavLinks,
+  replaceBrokenDrawerChromeWithAutoNavSource,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
@@ -101,13 +102,14 @@ export function buildStandaloneExportHtmlDocument(
   let bodyInner = buildTailwindSectionsBodyInnerHtml(sectionSource, pageConfig, {
     logoSet: userAssets?.logoSet,
   });
+  const existingHeaderLinks = extractHeaderNavLinks(bodyInner);
+  const autoNavSourceBodyInner = replaceBrokenDrawerChromeWithAutoNavSource(bodyInner);
   let studioAutoMobileNavInjected = false;
   if (
     !forScan &&
     sectionSource.length > 0 &&
-    shouldInjectStudioAutoMobileNav(bodyInner)
+    shouldInjectStudioAutoMobileNav(autoNavSourceBodyInner)
   ) {
-    const existingHeaderLinks = extractHeaderNavLinks(bodyInner);
     bodyInner = `${buildStudioAutoMobileNavHeaderHtml(
       sectionSource,
       pageConfig ?? null,
@@ -116,7 +118,7 @@ export function buildStandaloneExportHtmlDocument(
         navBrandLabel: docTitle.trim() || null,
       },
       existingHeaderLinks,
-    )}\n${bodyInner}`;
+    )}\n${autoNavSourceBodyInner}`;
     studioAutoMobileNavInjected = true;
   }
 

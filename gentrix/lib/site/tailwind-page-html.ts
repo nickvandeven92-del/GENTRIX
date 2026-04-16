@@ -5,7 +5,9 @@ import DOMPurify from "isomorphic-dompurify";
 import {
   ALPINE_NAV_TOGGLE_KEYS,
   ensureAlpineMobileOverlayHasLgHidden,
+  ensureAlpineMobileToggleButtonHasLgHidden,
   fixAlpineNavToggleDefaultsInXData,
+  repairBrokenMobileDrawer,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
 import {
@@ -33,6 +35,7 @@ import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/si
 import {
   buildStudioAutoMobileNavHeaderHtml,
   extractHeaderNavLinks,
+  replaceBrokenDrawerChromeWithAutoNavSource,
   shouldInjectStudioAutoMobileNav,
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
@@ -1183,7 +1186,9 @@ export function sanitizeTailwindFragment(html: string): string {
   }
 
   const htmlForSanitize = stripDecorativeScrollCueMarkup(
-    ensureAlpineMobileOverlayHasLgHidden(fixAlpineNavToggleDefaultsInXData(html)),
+    ensureAlpineMobileOverlayHasLgHidden(
+      ensureAlpineMobileToggleButtonHasLgHidden(repairBrokenMobileDrawer(fixAlpineNavToggleDefaultsInXData(html))),
+    ),
   );
 
   DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
@@ -1957,9 +1962,14 @@ export function buildTailwindIframeSrcDoc(
   let body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {
     logoSet: options?.logoSet,
   });
+  const existingHeaderLinks = extractHeaderNavLinks(body);
+  const autoNavSourceBody = replaceBrokenDrawerChromeWithAutoNavSource(body);
+  const shouldInject = shouldInjectStudioAutoMobileNav(autoNavSourceBody);
+  console.log("[nav] broken drawer stripped:", autoNavSourceBody.length !== body.length);
+  console.log("[nav] shouldInject:", shouldInject);
+  console.log("[nav] sections.length:", sections.length);
   let studioAutoMobileNavInjected = false;
-  if (sections.length > 0 && shouldInjectStudioAutoMobileNav(body)) {
-    const existingHeaderLinks = extractHeaderNavLinks(body);
+  if (sections.length > 0 && shouldInject) {
     body = `${buildStudioAutoMobileNavHeaderHtml(
       sections,
       pageConfig ?? null,
@@ -1968,7 +1978,7 @@ export function buildTailwindIframeSrcDoc(
         navBrandLabel: options?.navBrandLabel?.trim() || null,
       },
       existingHeaderLinks,
-    )}\n${body}`;
+    )}\n${autoNavSourceBody}`;
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();
@@ -2091,6 +2101,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
+    ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}

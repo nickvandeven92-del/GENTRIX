@@ -59,6 +59,8 @@ const USE_LEGACY_NDJSON_STREAM = process.env.NEXT_PUBLIC_SITE_GENERATION_USE_STR
 type ApiOk = { ok: true; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage };
 type ApiErr = { ok: false; error: string; rawText?: string };
 
+const SITE_GENERATION_JOBS_MIGRATION_ERROR_RE = /site_generation_jobs|generatie-job aanmaken/i;
+
 type GeneratorFormProps = {
   initialSubfolderSlug?: string;
   initialClientName?: string;
@@ -420,48 +422,57 @@ export function GeneratorForm({
           | { ok: true; jobId: string }
           | { ok: false; error: string };
         if (!startRes.ok || !startPayload.ok || !("jobId" in startPayload)) {
-          setError(!startPayload.ok ? startPayload.error : "Job start mislukt.");
+          const fallbackToStream =
+            !startPayload.ok && SITE_GENERATION_JOBS_MIGRATION_ERROR_RE.test(startPayload.error ?? "");
+          if (!fallbackToStream) {
+            setError(!startPayload.ok ? startPayload.error : "Job start mislukt.");
+            return;
+          }
+          appendGenerationActivity(
+            "Server-job queue niet beschikbaar (site_generation_jobs ontbreekt) — terugval naar directe stream.",
+          );
+          setStreamPhase("Terugvalmodus: directe stream");
+        } else {
+          appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
+          pollAbortRef.current = false;
+          for (let i = 0; i < 300; i++) {
+            if (pollAbortRef.current) break;
+            if (i > 0) await new Promise((r) => setTimeout(r, 2000));
+            const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, { credentials: "include" });
+            const jp = (await jr.json()) as
+              | {
+                  ok: true;
+                  job: {
+                    status: string;
+                    progress_message: string | null;
+                    error_message: string | null;
+                    result: GeneratedTailwindPage | null;
+                  };
+                }
+              | { ok: false; error: string };
+            if (!jr.ok || !jp.ok) {
+              setError(!jp.ok ? jp.error : "Jobstatus ophalen mislukt.");
+              return;
+            }
+            const { job } = jp;
+            if (job.progress_message) {
+              setStreamPhase(job.progress_message);
+              appendGenerationActivity(job.progress_message);
+            }
+            if (job.status === "succeeded" && job.result) {
+              setGeneratedTailwind(job.result);
+              setStreamPhase("Generatie voltooid");
+              appendGenerationActivity("Klaar — resultaat geladen.");
+              return;
+            }
+            if (job.status === "failed") {
+              setError(job.error_message ?? "Generatie mislukt.");
+              return;
+            }
+          }
+          setError("Polling gestopt (timeout na ~10 min). Probeer opnieuw of gebruik de legacy-stream (NEXT_PUBLIC_SITE_GENERATION_USE_STREAM).");
           return;
         }
-        appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
-        pollAbortRef.current = false;
-        for (let i = 0; i < 300; i++) {
-          if (pollAbortRef.current) break;
-          if (i > 0) await new Promise((r) => setTimeout(r, 2000));
-          const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, { credentials: "include" });
-          const jp = (await jr.json()) as
-            | {
-                ok: true;
-                job: {
-                  status: string;
-                  progress_message: string | null;
-                  error_message: string | null;
-                  result: GeneratedTailwindPage | null;
-                };
-              }
-            | { ok: false; error: string };
-          if (!jr.ok || !jp.ok) {
-            setError(!jp.ok ? jp.error : "Jobstatus ophalen mislukt.");
-            return;
-          }
-          const { job } = jp;
-          if (job.progress_message) {
-            setStreamPhase(job.progress_message);
-            appendGenerationActivity(job.progress_message);
-          }
-          if (job.status === "succeeded" && job.result) {
-            setGeneratedTailwind(job.result);
-            setStreamPhase("Generatie voltooid");
-            appendGenerationActivity("Klaar — resultaat geladen.");
-            return;
-          }
-          if (job.status === "failed") {
-            setError(job.error_message ?? "Generatie mislukt.");
-            return;
-          }
-        }
-        setError("Polling gestopt (timeout na ~10 min). Probeer opnieuw of gebruik de legacy-stream (NEXT_PUBLIC_SITE_GENERATION_USE_STREAM).");
-        return;
       }
 
       const res = await fetch("/api/generate-site/stream", {

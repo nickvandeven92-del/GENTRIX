@@ -1,42 +1,41 @@
-// Updated Alpine.js mobile menu documentation
-
 /**
- * Alpine.js Mobile Menu Documentation
- * 
- * This section describes the best practices for implementing a mobile menu using Alpine.js,
- * specifically focusing on the necessary structure for x-data placements and click bindings.
- * 
- * **Key Guidelines:**
- * 1. **x-data Placement:** Ensure that x-data is placed on the header element where the menu interacts with.
- * 2. **Hamburger Button Binding:** The @click directive must be bound to the hamburger button to toggle the mobile menu.
- * 
- * **Validation Examples:**
- * - **Correct Implementation:**
- *   ```html
- *   <header x-data="{ open: false }">
- *       <button @click="open = !open" class="hamburger">Menu</button>
- *       <div x-show="open" class="menu">...
- *       </div>
- *   </header>
- *   ```
- * - **Incorrect Pattern Example 1:** Hamburger always visible:
- *   ```html
- *   <header>
- *       <button class="hamburger">Menu</button>
- *       <div x-show="open" class="menu">...
- *       </div>
- *   </header>
- *   ```
- *   This is incorrect because the button does not have @click to control the menu visibility.
- * 
- * - **Incorrect Pattern Example 2:** Both menu states show simultaneously:
- *   ```html
- *   <header x-data="{ open: true }">
- *       <button @click="open = !open" class="hamburger">Menu</button>
- *       <div x-show="open" class="menu">...</div>
- *   </header>
- *   ```
- *   This is incorrect if both states try to render at the same time.
- * 
- * **Conclusion:**
- * Following these guidelines ensures a cleaner and more functional mobile menu implementation in Alpine.js that adheres to best practices, maximizing usability and accessibility for users.
+ * Gedeelde prompttekst: Studio laadt Alpine.js 3 op preview, publicatie en export (tailwind_cdn).
+ * Houd dit synchroon met lib/site/studio-alpine-cdn.ts en sanitize in tailwind-page-html.
+ */
+import { getStudioDefaultHeroVideoPromptBlock } from "@/lib/site/studio-default-hero-videos";
+
+export type AlpineInteractivityPromptOptions = {
+  /** Zelfde waarde als site-generatie `varianceNonce` → andere volgorde standaard hero-MP4’s in de prompt. */
+  defaultHeroVideoOrderSeed?: string;
+};
+
+export function getAlpineInteractivityPromptBlock(opts?: AlpineInteractivityPromptOptions): string {
+  return `=== INTERACTIVITEIT (Alpine.js 3, CDN) ===
+De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-interacties waar dat de UX merkbaar verbetert (FAQ-uitklap, mobiel menu, tabs, eenvoudige toggles) — niet overal tóévoegen.
+
+**Toegestaan in \`html\`:** \`x-data="…"\` (compacte state), \`x-show\`, \`x-cloak\`, \`x-transition\`, \`x-for\` (vaak op \`<template x-for="…">\`), \`x-model\`, \`x-text\`, \`x-bind\` en korte vorm \`:class\`, \`:id\`, \`@click\`, \`@submit.prevent\`, \`@scroll.window\`, enz.
+
+**Verboden in fragmenten:** eigen \`<script>\` of \`<style>\`, klassieke inline handlers (\`onclick=\`, \`onchange=\`), \`javascript:\` links, en **\`x-html\`** (wordt uit sanitisatie verwijderd — gebruik \`x-text\` of vaste markup). **Belangrijk:** \`<style>\` en \`@keyframes\` in sectie-HTML worden bij preview/publicatie **volledig verwijderd** — gebruik ze niet. Voor gloed/hover: **Tailwind** (\`hover:shadow-*\`, \`hover:ring-*\`, \`transition\`, \`duration-*\`, \`group\`/\`group-hover:\`) of bestaande studio-markup zoals \`studio-laser-h\` / \`data-animation\` / \`data-aos\` (AOS). **GSAP** staat in de pagina-shell; geen eigen \`<script>\` in fragmenten — alleen targets (\`id\`/\`class\`) voor eventuele **Eigen JS** buiten dit JSON-fragment; voor eigen keyframes: de gebruiker moet **Eigen CSS** in de editor gebruiken.
+
+**HTML — één \`class\` per element:**
+- **Nooit** twee \`class="…"\` op dezelfde tag.
+- Vaste Tailwind-utilities in **één** \`class="…"\`; dynamische klassen via \`:class="…"\` / \`x-bind:class\`.
+
+**Menu’s / header:** **één** primaire site-nav voor de hele pagina — **geen** tweede menu met dezelfde \`href="#…"\`-links (geen verticale dubbele lijst naast de topbar). Vorm verder **vrij** (sticky balk, pill, \`fixed\` overlay, minimaal). Hamburger/overlay = dezelfde nav, geen kopie. Mobiel uitklapmenu: **sluiten** na linkklik en bij klik buiten waar logisch (\`@click.outside\`). **Verboden patroon:** een permanente zijbalk-nav (\`fixed top-0 right-0 h-full\` of \`fixed … left-0 … h-full\`) die op desktop naast de hoofdnav zichtbaar blijft. **Z-index:** als de top-nav \`fixed\` is met \`z-50\` (of vergelijkbaar), moet het **mobiele menu** (backdrop \`fixed inset-0\`, sheet \`fixed … h-full\`, enz.) **strikt hogere** \`z-*\` hebben (bijv. backdrop \`z-[60]\`, sheet \`z-[70]\`) zodat overlay en sluitknop **boven** de balk liggen — anders blijft de navbar zichtbaar “door” het open menu.
+
+**Mobiel menu — start altijd gesloten:** Alpine-state voor hamburger/sheet/overlay **moet** op eerste paint **gesloten** zijn (bv. \`x-data="{ open: false }"\`, \`menuOpen: false\`, \`navOpen: false\`). **Nooit** \`open: true\` / \`menuOpen: true\` als default — bezoekers zien dan een volscherm-menu vóór ze tikken. Gebruik **plat object** in \`x-data="…"\` (geen \`x-data="fn()"\` dat \`open: true\` teruggeeft). Overlay/panel: \`x-show="open"\` (of \`:class\`) + eventueel \`x-cloak\` (de studio injecteert \`[x-cloak]{display:none!important}\` in preview/export) om flitsen te voorkomen. Op **brede** breakpoints (\`lg:\`+): horizontale links **zichtbaar** zonder eerst menu te openen.
+
+**Mobiel togglen — één knop:** **één** \`type="button"\` met \`@click="open = !open"\` (of \`@click="menuOpen = !menuOpen"\`). **Gesloten:** drie **platte, gelijke** horizontale streepjes (zelfde breedte/dikte, strak gespatieerd). **Open:** hetzelfde knopvlak toont een **X** uit twee dunne kruisende lijnen (geen los typografisch teken naast de hamburger) — past bij donkere/lichte header. **Geen** tweede losse sluitknop in de header; sluiten = zelfde knop of backdrop-klik.
+
+**Alpine-scope (verplicht):** zet \`x-data="{ … }"\` op **\`<header>\`** (aanbevolen) of op **één** parent die **zowel** de hamburger-knop **als** alle \`x-show\` / \`@click\` gebruikt die diezelfde state togglen (inclusief streepjes vs. × in dezelfde knop). **Fout patroon:** knop met \`@click\` en spans met \`x-show="!open"\` / \`x-show="open"\` terwijl \`x-data\` alleen op een **ander** takje van de header staat (of ontbreekt) — dan bindt Alpine niet, doet de knop niets en kunnen **hamburger en × tegelijk** zichtbaar blijven.
+
+**Referentie in dit project:** bestand \`lib/site/studio-default-mobile-nav-snippet.ts\`, export \`STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET\` — complete \`<header>\` met werkend mobiel menu (één \`navOpen\`, backdrop \`z-[60]\`, sheet \`z-[70]\`, streepjes en × **in dezelfde** knop via \`x-show\`, \`x-cloak\`, Escape). Pas labels/hrefs/kleuren aan de briefing aan; behoud het **zelfde gedrag** (geen tweede menu-kolom naast de balk, geen \`open: true\` bij load).
+
+**Mobiel menu — contrast:** de pagina-shell heeft \`text-slate-900\` op \`body\`; elke link in een **donkere** sheet/overlay moet expliciet lichte tekst hebben (bv. \`text-white\`, \`text-white/90\`, \`hover:bg-white/10\`) — anders erven ankers de donkere bodykleur en zijn ze op zwart **onzichtbaar**.
+
+**Leesbaarheid:** transparante of glass header over wisselende achtergronden: zorg **functioneel** voor contrast (bijv. \`:class\` op scroll, \`@scroll.window\`) — **geen** verplichte nav-stijl.
+
+**Formulieren:** \`<form>\` met \`@submit.prevent\` mag voor UX (bijv. "bedankt"-toggle); echte server-POST is niet standaard — gebruik \`mailto:\`, \`tel:\`, \`https://\` of ankers naar \`#contact\` tenzij de briefing expliciet anders vraagt. Geen fictieve API-routes als harde afhankelijkheid.
+
+${getStudioDefaultHeroVideoPromptBlock(opts?.defaultHeroVideoOrderSeed)}`;
+}

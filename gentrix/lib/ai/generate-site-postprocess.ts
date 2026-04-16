@@ -175,16 +175,254 @@ function xShowExpressionUsesNavToggle(expr: string): boolean {
   return /\bopen\b/.test(e);
 }
 
+function extractFirstNavToggleKeyFromXDataScope(html: string): string | null {
+  for (const k of ALPINE_NAV_TOGGLE_KEYS) {
+    const re = new RegExp(`\\b${escapeRegExpKey(k)}\\s*:`, "i");
+    if (re.test(html)) return k;
+  }
+  return null;
+}
+
+function extractFirstNavToggleKeyFromInteractiveMarkup(html: string): string | null {
+  for (const k of ALPINE_NAV_TOGGLE_KEYS) {
+    const key = escapeRegExpKey(k);
+    const inClick = new RegExp(`(?:@click|x-on:click)\\s*=\\s*["'][^"']*\\b${key}\\b[^"']*["']`, "i");
+    if (inClick.test(html)) return k;
+    const inShow = new RegExp(`\\bx-show\\s*=\\s*["'][^"']*\\b${key}\\b[^"']*["']`, "i");
+    if (inShow.test(html)) return k;
+  }
+  return null;
+}
+
+function shouldLogRepairBrokenMobileDrawer(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const w = window as Window & { __gentrixDebugMobileDrawerRepair?: boolean };
+    if (w.__gentrixDebugMobileDrawerRepair === true) return true;
+    return /(?:\?|&)debugRepairMobileDrawer=1(?:&|$)/.test(window.location.search);
+  } catch {
+    return false;
+  }
+}
+
+function logRepairBrokenMobileDrawer(...args: unknown[]): void {
+  if (!shouldLogRepairBrokenMobileDrawer()) return;
+  console.log(...args);
+}
+
+function classLooksLikeSideDrawer(cls: string): boolean {
+  if (!/\bfixed\b/i.test(cls)) return false;
+  if (!/\b(?:right-0|left-0)\b/i.test(cls)) return false;
+  return (
+    /\bh-full\b/i.test(cls) ||
+    /\binset-y-0\b/i.test(cls) ||
+    (/\btop-0\b/i.test(cls) && /\bbottom-0\b/i.test(cls))
+  );
+}
+
+function findSideDrawerOpenTagIndex(html: string): number {
+  const re = /<(div|aside|nav)\b([^>]*)>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const attrs = m[2] ?? "";
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    if (classLooksLikeSideDrawer(cls)) return m.index;
+  }
+  return -1;
+}
+
+function htmlHasSideDrawerElement(html: string): boolean {
+  return findSideDrawerOpenTagIndex(html) >= 0;
+}
+
+function menuButtonHintScore(attrs: string): number {
+  let score = 0;
+  if (/\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs)) score += 6;
+  if (/\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|burger|open|openen|sluit|close|navigat)/i.test(attrs)) {
+    score += 6;
+  }
+  if (/\baria-controls\s*=\s*["'][^"']*(?:mobile|menu|drawer|sheet|nav)/i.test(attrs)) score += 6;
+  if (/\bclass\s*=\s*["'][^"']*(?:menu|hamburger|burger|nav-toggle|drawer-toggle|mobile-toggle)[^"']*["']/i.test(attrs)) {
+    score += 5;
+  }
+  if (
+    /\bclass\s*=\s*["'][^"']*(?:\bh-(?:8|9|10|11|12)\b|\bw-(?:8|9|10|11|12)\b|\bsize-(?:8|9|10|11|12)\b|\baspect-square\b)[^"']*["']/i.test(
+      attrs,
+    )
+  ) {
+    score += 2;
+  }
+  if (/\btype\s*=\s*["']button["']/i.test(attrs)) score += 1;
+  return score;
+}
+
+function pickMenuButtonOrdinalCandidates(scopeHtml: string, buttonMatches: RegExpMatchArray[]): Set<number> {
+  const out = new Set<number>();
+  if (buttonMatches.length === 0) return out;
+  const scored = buttonMatches.map((m, ordinal) => ({
+    ordinal,
+    attrs: m[1] ?? "",
+    index: m.index ?? -1,
+    score: menuButtonHintScore(m[1] ?? ""),
+  }));
+
+  const strong = scored.filter((r) => r.score >= 6);
+  if (strong.length > 0) {
+    for (const row of strong) out.add(row.ordinal);
+    return out;
+  }
+
+  const likely = scored.filter((r) => r.score >= 3);
+  if (likely.length > 0) {
+    const topScore = Math.max(...likely.map((r) => r.score));
+    for (const row of likely) {
+      if (row.score === topScore) out.add(row.ordinal);
+    }
+    return out;
+  }
+
+  const drawerIdx = findSideDrawerOpenTagIndex(scopeHtml);
+  if (drawerIdx >= 0) {
+    const beforeDrawer = scored.filter((r) => r.index >= 0 && r.index < drawerIdx);
+    if (beforeDrawer.length === 1) {
+      out.add(beforeDrawer[0]!.ordinal);
+      return out;
+    }
+    if (beforeDrawer.length > 1) {
+      const iconSized = beforeDrawer.filter((r) =>
+        /\b(?:\bh-(?:8|9|10|11|12)\b|\bw-(?:8|9|10|11|12)\b|\bsize-(?:8|9|10|11|12)\b|\baspect-square\b)/i.test(r.attrs),
+      );
+      if (iconSized.length > 0) {
+        const pick = iconSized[iconSized.length - 1]!;
+        out.add(pick.ordinal);
+        return out;
+      }
+    }
+  }
+
+  if (scored.length === 1) out.add(0);
+  return out;
+}
+
+function injectNavStateScope(html: string, stateKey: string): string {
+  const scopeAttrs = ` x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false"`;
+  let out = html.replace(
+    /<header\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+    `<header$1${scopeAttrs}>`,
+  );
+  if (out !== html) return out;
+  out = html.replace(
+    /<section\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+    `<section$1${scopeAttrs}>`,
+  );
+  if (out !== html) return out;
+  return html.replace(
+    /<(div|nav|aside|main|article)\b((?:(?!\bx-data\s*=)[^>])*)>/i,
+    (full, tag: string, attrs: string) => `<${tag}${attrs}${scopeAttrs}>`,
+  );
+}
+
+function repairBrokenMobileDrawerInScope(scopeHtml: string): string {
+  const hasSideDrawer = htmlHasSideDrawerElement(scopeHtml);
+  if (!hasSideDrawer) return scopeHtml;
+
+  const buttonMatches = [...scopeHtml.matchAll(/<button\b([^>]*)>/gi)];
+  const buttonCandidates = pickMenuButtonOrdinalCandidates(scopeHtml, buttonMatches);
+  if (buttonCandidates.size === 0) return scopeHtml;
+
+  const stateKey =
+    extractFirstNavToggleKeyFromXDataScope(scopeHtml) ??
+    extractFirstNavToggleKeyFromInteractiveMarkup(scopeHtml) ??
+    "navOpen";
+  let out = scopeHtml;
+
+  /** Zorg voor een scope als er nergens een bruikbare x-data state staat. */
+  if (!extractFirstNavToggleKeyFromXDataScope(out)) {
+    out = injectNavStateScope(out, stateKey);
+  }
+
+  /** Voeg @click toggle toe op menuknop als die ontbreekt. */
+  let buttonIdx = -1;
+  out = out.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
+    buttonIdx += 1;
+    if (!buttonCandidates.has(buttonIdx)) return full;
+    if (/(?:@click|x-on:click)\s*=/.test(attrs)) return full;
+    const expandedAttr = /\baria-expanded\s*=/.test(attrs) ? "" : ` :aria-expanded="${stateKey}.toString()"`;
+    return `<button${attrs} @click="${stateKey} = !${stateKey}"${expandedAttr}>`;
+  });
+
+  /** Drawer-debug: laat exact zien of de bekende `fixed top-0 right-0`-tag in scope zit. */
+  const drawerTagMatch = out.match(/<div[^>]*class="fixed top-0 right-0[^"]*"[^>]*>/i);
+  logRepairBrokenMobileDrawer("[repair drawer] match:", drawerTagMatch?.[0] ?? null);
+
+  /** Voeg x-show toe op side-drawer als die ontbreekt. */
+  const beforeDrawerReplace = out;
+  out = out.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    if (!/\bfixed\b/.test(cls)) return full;
+    const isDrawer =
+      /\b(?:right-0|left-0)\b/.test(cls) &&
+      (/\bh-full\b/.test(cls) || /\binset-y-0\b/.test(cls) || (/\btop-0\b/.test(cls) && /\bbottom-0\b/.test(cls)));
+    if (!isDrawer) return full;
+    if (/\bx-show\s*=/.test(attrs)) return full;
+    const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
+    const withStop = /@click\.stop\s*=/.test(withCloak) ? withCloak : `${withCloak} @click.stop`;
+    return `<${tag}${withStop} x-show="${stateKey}">`;
+  });
+  logRepairBrokenMobileDrawer("[repair drawer] changed:", out !== beforeDrawerReplace);
+
+  /** Voeg x-show toe op backdrop-laag als die ontbreekt. */
+  out = out.replace(/<div\b([^>]*)>/gi, (full, attrs: string) => {
+    const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    const isBackdrop =
+      /\bfixed\b/.test(cls) &&
+      /\binset-0\b/.test(cls) &&
+      /bg-(?:black|slate|zinc|neutral|gray)|bg-\[rgba|backdrop|opacity-\d+/i.test(cls);
+    if (!isBackdrop) return full;
+    if (/\bx-show\s*=/.test(attrs)) return full;
+    const withCloak = /\bx-cloak\b/.test(attrs) ? attrs : `${attrs} x-cloak`;
+    const withClose = /@click\s*=/.test(withCloak) ? withCloak : `${withCloak} @click="${stateKey} = false"`;
+    return `<div${withClose} x-show="${stateKey}">`;
+  });
+
+  return out;
+}
+
+/**
+ * Repareert veelvoorkomende "broken drawer"-output:
+ * - hamburgerknop zonder @click
+ * - right/left fixed h-full drawer zonder x-show
+ * - backdrop zonder x-show
+ *
+ * Strategie:
+ * 1) detecteer section met mobiele knop + side-drawer patroon;
+ * 2) kies state key (bestaande key uit x-data of fallback `navOpen`);
+ * 3) voeg ontbrekende Alpine wiring toe met idempotente checks.
+ */
+export function repairBrokenMobileDrawer(html: string): string {
+  const drawerMatch = html.match(
+    /class\s*=\s*["'](?=[^"']*\bfixed\b)(?=[^"']*\bright-0\b)(?=[^"']*\bh-full\b)[^"']*["']/i,
+  );
+  logRepairBrokenMobileDrawer("[repair] aangeroepen, html lengte:", html.length);
+  logRepairBrokenMobileDrawer("[repair] drawer regex match:", drawerMatch?.[0] ?? null);
+
+  const sectionRepaired = html.replace(/<section\b[\s\S]*?<\/section>/gi, (section) =>
+    repairBrokenMobileDrawerInScope(section),
+  );
+  const out = repairBrokenMobileDrawerInScope(sectionRepaired);
+  logRepairBrokenMobileDrawer("[repair] output gewijzigd:", out !== html);
+  return out;
+}
+
 /**
  * Veel AI-markup: mobiele backdrop/sheet `fixed` + `inset-*` + `x-show="navOpen"` maar **zonder** `lg:hidden`.
  * Dan blijft het paneel op desktop zichtbaar (Alpine inline wint van incomplete responsive utilities).
  * Voegt alleen `lg:hidden` toe wanneer het patroon duidelijk menu/overlay is.
  */
 export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
-  return html.replace(/<(div|aside)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
-    if (!/\bx-show\s*=/i.test(attrs)) return full;
+  return html.replace(/<(div|aside|nav)\b([^>]*)>/gi, (full, tag: string, attrs: string) => {
     const showM = /\bx-show\s*=\s*["']([^"']*)["']/i.exec(attrs);
-    if (!showM || !xShowExpressionUsesNavToggle(showM[1])) return full;
+    const hasAlpineNavShow = !!showM && xShowExpressionUsesNavToggle(showM[1]);
 
     const clsDouble = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs);
     const clsSingle = /\bclass\s*=\s*'([^']*)'/i.exec(attrs);
@@ -194,7 +432,12 @@ export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
 
     const cls = clsRaw;
     if (!/\bfixed\b/.test(cls)) return full;
-    if (!/\binset-0\b|\binset-x-0\b/.test(cls)) return full;
+    const isInsetOverlay = /\binset-0\b|\binset-x-0\b/.test(cls);
+    const isSideDrawer =
+      /\b(?:left-0|right-0)\b/.test(cls) &&
+      (/\binset-y-0\b/.test(cls) ||
+        (/\btop-0\b/.test(cls) && (/\bbottom-0\b/.test(cls) || /\bh-full\b/.test(cls))));
+    if (!isInsetOverlay && !isSideDrawer) return full;
     if (/\blg:hidden\b/.test(cls)) return full;
 
     const blob = `${attrs} ${cls}`.toLowerCase();
@@ -202,6 +445,12 @@ export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
       /backdrop|bg-slate-9|bg-black\/|from-slate|to-slate|via-slate|ring-white|shadow-\[0_2|site-mobile|mobile-sheet|drawer|sheet|z-\[6|z-\[7|z-\[8|z-\[9|z-\[1\d|z-60|z-50|z-45|z-40/.test(blob) ||
       /\b(id|aria-controls)\s*=\s*["'][^"']*(mobile|menu|sheet|drawer|nav)/i.test(attrs);
     if (!menuish) return full;
+    /**
+     * Ook statische side-drawers (zonder x-show) komen voor uit model-output als "tweede nav kolom".
+     * Die moeten nooit op desktop zichtbaar blijven naast de hoofdnav.
+     */
+    const staticSideDrawerLikelyMenu = !showM && isSideDrawer && menuish;
+    if (!hasAlpineNavShow && !staticSideDrawerLikelyMenu) return full;
 
     const newCls = `${cls} lg:hidden`.replace(/\s+/g, " ").trim();
     const nextAttrs = attrs.replace(
@@ -209,6 +458,35 @@ export function ensureAlpineMobileOverlayHasLgHidden(html: string): string {
       quote === '"' ? `class="${newCls}"` : `class='${newCls}'`,
     );
     return `<${tag}${nextAttrs}>`;
+  });
+}
+
+/**
+ * Sommige AI-uitvoer zet de hamburger-toggles zonder responsive utility neer; dan blijft de knop op desktop
+ * zichtbaar naast desktop-navigatie. Voor menu-knoppen met Alpine-click + menu-aria voegen we `lg:hidden` toe.
+ */
+export function ensureAlpineMobileToggleButtonHasLgHidden(html: string): string {
+  return html.replace(/<button\b([^>]*)>/gi, (full, attrs: string) => {
+    const clickM = /(?:@click|x-on:click)\s*=\s*["']([^"']*)["']/i.exec(attrs);
+    if (!clickM || !xShowExpressionUsesNavToggle(clickM[1])) return full;
+    const hasMenuAria =
+      /\baria-controls\s*=\s*["'][^"']*(mobile|menu|sheet|drawer|nav)/i.test(attrs) ||
+      /\baria-label\s*=\s*["'][^"']*(menu|hamburger|open|openen|sluit|close|navigatie|navigation)/i.test(attrs);
+    if (!hasMenuAria) return full;
+
+    const clsDouble = /\bclass\s*=\s*"([^"]*)"/i.exec(attrs);
+    const clsSingle = /\bclass\s*=\s*'([^']*)'/i.exec(attrs);
+    const quote: '"' | "'" = clsDouble ? '"' : clsSingle ? "'" : ("" as '"' | "'");
+    const clsRaw = clsDouble?.[1] ?? clsSingle?.[1] ?? "";
+    if (!clsRaw) return full;
+    if (/\blg:hidden\b/.test(clsRaw)) return full;
+
+    const newCls = `${clsRaw} lg:hidden`.replace(/\s+/g, " ").trim();
+    const nextAttrs = attrs.replace(
+      quote === '"' ? /\bclass\s*=\s*"[^"]*"/i : /\bclass\s*=\s*'[^']*'/i,
+      quote === '"' ? `class="${newCls}"` : `class='${newCls}'`,
+    );
+    return `<button${nextAttrs}>`;
   });
 }
 
@@ -619,7 +897,9 @@ export function postProcessClaudeTailwindPage(
     const html1 = repairInternalLinksInHtml(html0b, validIds, cross);
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
-    const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2b);
+    const html2c0 = repairBrokenMobileDrawer(html2b);
+    const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0);
+    const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2c) : html2c;
     return { ...row, html: html3 };
