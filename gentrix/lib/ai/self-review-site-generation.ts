@@ -32,6 +32,7 @@ import {
 } from "@/lib/ai/generate-site-postprocess";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import {
+  buildClaudeTailwindMarketingSiteOutputSchema,
   claudeTailwindMarketingSiteOutputSchema,
   claudeTailwindPageOutputSchema,
   mapClaudeMarketingSiteOutputToSections,
@@ -51,13 +52,13 @@ import type { GenerationPipelineFeedback, StyleDetectionSource } from "@/lib/ai/
 
 const MAX_DRAFT_JSON_CHARS = 380_000;
 
-const SELF_REVIEW_SYSTEM = `Je bent senior QA en front-end reviser voor Tailwind-marketing sites als **JSON**: \`config\` + \`sections\` (landing), **optioneel** \`marketingPages\` (object met subpagina-keys → sectie-arrays), en **indien het concept \`contactSections\` heeft** ook die array (contactpagina met formulier).
+const SELF_REVIEW_SYSTEM = `Je bent senior QA en front-end reviser voor Tailwind-marketing sites als **JSON**: \`config\` + \`sections\` (landing), \`marketingPages\` (subpagina-keys → sectie-arrays) **wanneer het concept die keys heeft**, en **indien het concept \`contactSections\` heeft** ook die array (contactpagina met formulier).
 
 Je krijgt de briefing, een **concept**-JSON, en **automatische checks** (validator + claim-scan). Behandel de markup alsof je de pagina visueel doorloopt: hiërarchie, hero-impact, redundante trust-blokken, generieke kaartenmuur, verticale lengte, en vooral **feitelijke integriteit**.
 
 === OUTPUT ===
 - Antwoord met **alleen** één geldig JSON-object (geen markdown-fences, geen toelichting buiten JSON).
-- Vorm: **zelfde top-level keys als het concept** (sectie-arrays + optioneel \`marketingPages\`). Geen keys weglaten die het concept wél had.
+- Vorm: **zelfde top-level keys als het concept** (sectie-arrays + dezelfde \`marketingPages\`-keys als het concept). Geen keys weglaten die het concept wél had.
 - Houd **hetzelfde aantal secties** in elke array en **dezelfde sectie-\`id\`’s in dezelfde volgorde** als het concept. Alleen \`html\` (en zo nodig \`name\`) inhoudelijk verbeteren; \`config\` alleen bij kleine correctie als die duidelijk botst met de briefing (kleur/font), niet opnieuw ontwerpen.
 - **Multi-pagina:** landing zonder \`<form>\`; subpagina's in \`marketingPages\` zonder \`<form>\`; contact met formulier; cross-route via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\`; **geen** \`href="#"\`.
 
@@ -391,10 +392,16 @@ export async function applySelfReviewToGeneratedPage(options: {
   const marketingMulti = draft.contactSections != null && draft.contactSections.length > 0;
 
   if (marketingMulti) {
-    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(
-      ensureClaudeMarketingSiteJsonHasContactSections(
-        normalizeClaudeSectionArraysInParsedJson(parsedResult.value),
-      ),
+    const normalized = normalizeClaudeSectionArraysInParsedJson(parsedResult.value);
+    const draftMp = draft.marketingPages;
+    const mpKeys =
+      draftMp != null && Object.keys(draftMp).length > 0 ? Object.keys(draftMp).sort() : null;
+    const marketingSchema =
+      mpKeys != null && mpKeys.length > 0
+        ? buildClaudeTailwindMarketingSiteOutputSchema(mpKeys)
+        : claudeTailwindMarketingSiteOutputSchema;
+    const validated = marketingSchema.safeParse(
+      ensureClaudeMarketingSiteJsonHasContactSections(normalized, mpKeys ?? undefined),
     );
     if (!validated.success) {
       console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);

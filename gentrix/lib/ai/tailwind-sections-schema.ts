@@ -296,6 +296,10 @@ const RESERVED_MARKETING_PAGE_KEYS = new Set([
   "home",
 ]);
 
+export function isReservedMarketingPageSlug(slug: string): boolean {
+  return RESERVED_MARKETING_PAGE_KEYS.has(slug.trim().toLowerCase());
+}
+
 const marketingPageKeyFromClaudeSchema = z
   .string()
   .min(2)
@@ -311,11 +315,52 @@ const claudeMarketingPagesRecordSchema = z
     }
   });
 
-/** Claude master-output: landingspagina + aparte contactpagina (zelfde `config`). */
-export const claudeTailwindMarketingSiteOutputSchema = z.object({
+const claudeTailwindMarketingSiteBaseSchema = z.object({
   config: masterPromptPageConfigSchema,
   sections: z.array(claudeTailwindSectionRowSchema).min(1).max(24),
   contactSections: z.array(claudeTailwindSectionRowSchema).min(1).max(12),
+});
+
+/**
+ * Multipage-generator: `marketingPages` verplicht met **exact** de gegeven keys (volgorde vrij).
+ * Gebruik voor eerste parse na Claude; legacy/self-review zonder vaste set → {@link claudeTailwindMarketingSiteOutputSchema}.
+ */
+export function buildClaudeTailwindMarketingSiteOutputSchema(expectedMarketingSlugs: readonly string[]) {
+  const unique = [...new Set(expectedMarketingSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean))];
+  if (unique.length === 0 || unique.length > 8) {
+    throw new Error("marketingPageSlugs: 1 t/m 8 unieke slugs vereist.");
+  }
+  for (const k of unique) {
+    const r = marketingPageKeyFromClaudeSchema.safeParse(k);
+    if (!r.success) {
+      throw new Error(`Ongeldige marketing-slug "${k}": ${r.error.message}`);
+    }
+  }
+  const want = [...unique].sort().join("\0");
+
+  return claudeTailwindMarketingSiteBaseSchema.extend({
+    marketingPages: claudeMarketingPagesRecordSchema.superRefine((rec, ctx) => {
+      const got = Object.keys(rec)
+        .map((k) => k.trim().toLowerCase())
+        .sort()
+        .join("\0");
+      if (got !== want) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `marketingPages moet exact deze keys bevatten (geen extra's, geen missers): ${unique.join(", ")}. Ontvangen: ${Object.keys(rec).join(", ") || "(leeg)"}.`,
+          path: ["marketingPages"],
+        });
+      }
+    }),
+  });
+}
+
+/**
+ * Claude master-output: landingspagina + aparte contactpagina (zelfde `config`).
+ * `marketingPages` optioneel — o.a. self-review en oudere tests; **nieuwe** multipage-parse gebruikt
+ * {@link buildClaudeTailwindMarketingSiteOutputSchema}.
+ */
+export const claudeTailwindMarketingSiteOutputSchema = claudeTailwindMarketingSiteBaseSchema.extend({
   /**
    * Vaste subroutes onder `/site/{slug}/<key>` (bv. `wat-wij-doen`, `faq`).
    * Cross-links in HTML: `href="__STUDIO_SITE_BASE__/wat-wij-doen"` en `href="__STUDIO_CONTACT_PATH__"`.

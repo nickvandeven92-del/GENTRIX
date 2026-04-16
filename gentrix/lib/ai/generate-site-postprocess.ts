@@ -6,6 +6,7 @@ import type {
   TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import { isLegacyTailwindPageConfig, slugifyToSectionId } from "@/lib/ai/tailwind-sections-schema";
+import { DEFAULT_SERVICE_MARKETING_SLUGS, marketingPageNavLabel } from "@/lib/ai/marketing-page-slugs";
 import {
   STUDIO_CONTACT_PATH_PLACEHOLDER,
   STUDIO_SITE_BASE_PLACEHOLDER,
@@ -998,11 +999,22 @@ function extractThemeHexesFromParsedRoot(o: Record<string, unknown>): { primary:
  * Minimale contactpagina + nav (zelfde studio-tokens als het model) als `contactSections` ontbreekt of leeg is.
  * Formulier alleen hier — homepage en marketing-subpagina's blijven form-vrij.
  */
-export function buildDefaultClaudeMarketingContactSectionRow(primary: string, accent: string): {
+export function buildDefaultClaudeMarketingContactSectionRow(
+  primary: string,
+  accent: string,
+  marketingSlugs: readonly string[],
+): {
   id: string;
   name: string;
   html: string;
 } {
+  const links = marketingSlugs
+    .map((slug) => {
+      const s = slug.trim().toLowerCase();
+      const label = marketingPageNavLabel(s);
+      return `        <a href="__STUDIO_SITE_BASE__/${s}" class="hover:opacity-80">${label}</a>`;
+    })
+    .join("\n");
   return {
     id: "contact",
     name: "Contact",
@@ -1011,10 +1023,7 @@ export function buildDefaultClaudeMarketingContactSectionRow(primary: string, ac
     <nav class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 text-sm font-medium text-stone-700">
       <a href="__STUDIO_SITE_BASE__" class="font-semibold" style="color:${primary}">Home</a>
       <div class="flex flex-wrap items-center gap-3 md:gap-4">
-        <a href="__STUDIO_SITE_BASE__/wat-wij-doen" class="hover:opacity-80">Wat wij doen</a>
-        <a href="__STUDIO_SITE_BASE__/werkwijze" class="hover:opacity-80">Werkwijze</a>
-        <a href="__STUDIO_SITE_BASE__/over-ons" class="hover:opacity-80">Over ons</a>
-        <a href="__STUDIO_SITE_BASE__/faq" class="hover:opacity-80">FAQ</a>
+${links}
         <a href="__STUDIO_CONTACT_PATH__" class="rounded-md px-3 py-1.5 text-white shadow-sm hover:opacity-90" style="background:${accent}">Contact</a>
       </div>
     </nav>
@@ -1128,7 +1137,10 @@ function marketingContactSectionsIncludeForm(raw: unknown): boolean {
  * Vult ontbrekende `contactSections` aan vóór Zod-parse (marketing multi-page).
  * Voorkomt schema-fouten wanneer het model het veld weglaat; het formulier blijft op de contact-subroute.
  */
-export function ensureClaudeMarketingSiteJsonHasContactSections(parsed: unknown): unknown {
+export function ensureClaudeMarketingSiteJsonHasContactSections(
+  parsed: unknown,
+  marketingSlugsForDefaultNav?: readonly string[] | null,
+): unknown {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return parsed;
   }
@@ -1140,6 +1152,17 @@ export function ensureClaudeMarketingSiteJsonHasContactSections(parsed: unknown)
     return parsed;
   }
   const { primary, accent } = extractThemeHexesFromParsedRoot(o);
-  const row = buildDefaultClaudeMarketingContactSectionRow(primary, accent);
+  let slugs: string[] =
+    marketingSlugsForDefaultNav?.length && marketingSlugsForDefaultNav.length > 0
+      ? [...marketingSlugsForDefaultNav]
+      : typeof o.marketingPages === "object" &&
+          o.marketingPages !== null &&
+          !Array.isArray(o.marketingPages)
+        ? Object.keys(o.marketingPages as Record<string, unknown>)
+        : [];
+  if (slugs.length === 0) {
+    slugs = [...DEFAULT_SERVICE_MARKETING_SLUGS];
+  }
+  const row = buildDefaultClaudeMarketingContactSectionRow(primary, accent, slugs);
   return { ...o, contactSections: [row] };
 }

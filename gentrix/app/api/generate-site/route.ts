@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       ...(parsed.data.clientImages?.length ? { clientImages: parsed.data.clientImages } : {}),
       ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
       ...(parsed.data.landing_page_only !== undefined ? { landingPageOnly: parsed.data.landing_page_only } : {}),
+      ...(parsed.data.marketing_page_slugs?.length ? { marketingPageSlugs: parsed.data.marketing_page_slugs } : {}),
     };
     const hasPromptOpts = Object.keys(promptOpts).length > 0;
 

@@ -22,6 +22,11 @@ export const generateSiteRequestBodySchema = z.object({
    * Kortere generatie; subpagina's kun je later alsnog toevoegen via upgrade/editor.
    */
   landing_page_only: z.boolean().optional(),
+  /**
+   * Multipage: forceer exact deze `marketingPages`-keys (1–8, slug-formaat).
+   * Weglaten = server kiest (service-default of retail-detectie).
+   */
+  marketing_page_slugs: z.array(z.string().min(2).max(48)).min(1).max(8).optional(),
   /** Optioneel: publieke http(s)-URL; server haalt HTML op als stijl-/structuurhint (geen pixel-perfect kopie). */
   reference_style_url: z.preprocess((v) => {
     if (v == null) return undefined;

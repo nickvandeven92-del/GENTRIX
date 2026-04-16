@@ -17,7 +17,9 @@ import {
   MASTER_SITE_SYSTEM_PROMPT_MINIMAL,
 } from "@/lib/ai/master-site-system-prompt";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
+import { resolveMarketingPageSlugsForGeneration } from "@/lib/ai/marketing-page-slugs";
 import {
+  buildClaudeTailwindMarketingSiteOutputSchema,
   claudeTailwindMarketingSiteOutputSchema,
   claudeTailwindPageOutputSchema,
   MASTER_PROMPT_CONFIG_STYLE_MAX,
@@ -40,6 +42,12 @@ import {
 } from "@/lib/ai/generate-site-postprocess";
 import { tryExtractCompletedSections } from "@/lib/ai/stream-json-section-extractor";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import {
+  collectMarketingNavScanHtml,
+  validateMarketingPageContent,
+  validateMarketingPageLinks,
+  validateMarketingPagePlanNavCoverage,
+} from "@/lib/ai/validate-marketing-pages";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
 import { validateStrictLandingPageContract } from "@/lib/ai/validate-strict-landing-page";
 import { validateGeneratedPageHtml, type HomepagePlan } from "@/lib/ai/validate-generated-page";
@@ -104,6 +112,8 @@ export type GenerationPipelineFeedback = {
     strictLandingPageContract?: boolean;
     /** Of strikte one-pager \`faq\` in de sectielijst heeft (FAQ-keywords in naam+briefing). */
     compactLandingIncludesFaq?: boolean;
+    /** Multipage: exacte `marketingPages`-keys voor deze run (server + optionele override). */
+    marketingPageSlugs?: string[];
   };
 };
 
@@ -893,6 +903,11 @@ export type GenerateSitePromptOptions = {
   referenceStyleUrl?: string;
   /** Snapshot na fetch — wordt in de user-prompt ingevoegd. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
+  /**
+   * Multipage: forceer exact deze `marketingPages`-keys (1–8, slug-formaat, niet gereserveerd).
+   * Anders: server kiest set o.a. via retail-detectie of service-default.
+   */
+  marketingPageSlugs?: string[];
 };
 
 const UPGRADE_PROMPT_JSON_MAX = 150_000;
@@ -1002,10 +1017,36 @@ type SiteGenerationOperationalTailInput = {
   preserve: boolean;
   /** Nieuwe marketing-sites: landings-JSON + aparte \`contactSections\` (geen one-pager). */
   marketingMultiPage?: boolean;
+  /** Verplichte `marketingPages`-keys (alleen bij multipage). */
+  marketingPageSlugs?: readonly string[];
   requiredIdsLine: string;
   section4Nav: string;
   section5IdsNote: string;
 };
+
+function buildMarketingSlugContentHintsLines(slugs: readonly string[]): string {
+  const lines: string[] = [];
+  for (const raw of slugs) {
+    const s = raw.trim().toLowerCase();
+    if (s === "wat-wij-doen") {
+      lines.push("- **`wat-wij-doen`:** uitgebreid aanbod/diensten — **niet** de homepage-features herhalen.");
+    } else if (s === "werkwijze") {
+      lines.push("- **`werkwijze`:** proces in stappen — **niet** dezelfde beknopte uitleg als op de landing.");
+    } else if (s === "over-ons") {
+      lines.push("- **`over-ons`:** verhaal, team of waarden — **niet** opnieuw de homepage-hero.");
+    } else if (s === "faq") {
+      lines.push("- **`faq`:** meer detail dan een eventuele korte FAQ op de homepage.");
+    } else if (s === "collectie") {
+      lines.push("- **`collectie`:** assortiment of productlijnen — gericht op kiezen/kopen.");
+    } else if (s === "service-retour") {
+      lines.push("- **`service-retour`:** levering, service, retour — geen productgrid-kopie.");
+    }
+  }
+  if (lines.length === 0) {
+    return "- Elke slug: inhoud moet **duidelijk** bij die pagina horen — geen letterlijke kopie van andere pagina's of de homepage-longread.";
+  }
+  return lines.join("\n");
+}
 
 /** Gedeelde copy-richting: sales/conversie binnen CONTENT AUTHORITY (geen fictie). */
 function buildSiteGenerationSalesCopyGuidanceLine(): string {
@@ -1014,23 +1055,41 @@ function buildSiteGenerationSalesCopyGuidanceLine(): string {
 
 /** §3B–§5 voor multi-route marketing: landing + vaste subpagina's + contact. */
 function buildMarketingMultiPageOperationalTail(
-  input: Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote">,
+  input: Pick<
+    SiteGenerationOperationalTailInput,
+    "requiredIdsLine" | "section4Nav" | "section5IdsNote" | "marketingPageSlugs"
+  >,
 ): string {
-  const { requiredIdsLine, section4Nav, section5IdsNote } = input;
+  const { requiredIdsLine, section4Nav, section5IdsNote, marketingPageSlugs = [] } = input;
+  const slugList = marketingPageSlugs.map((s) => `\`"${s.trim().toLowerCase()}"\``).join(", ");
+  const hrefExamples = marketingPageSlugs
+    .map((s) => `\`href="__STUDIO_SITE_BASE__/${s.trim().toLowerCase()}"\``)
+    .join(", ");
+  const marketingJsonExample = marketingPageSlugs
+    .map(
+      (raw) =>
+        `    "${raw.trim().toLowerCase()}": [{ "id": "a", "html": "<section id=\\"a\\" class=\\"...\\">…</section>" }, { "id": "b", "html": "<section id=\\"b\\" class=\\"...\\">…</section>" }]`,
+    )
+    .join(",\n");
+  const slugHints = buildMarketingSlugContentHintsLines(marketingPageSlugs);
+
   return `=== 3B. OPERATIONELE SITE — TEKSTEN & WERKENDE LINKS (verplicht) ===
 
 - **Copy:** **Volledige, professionele Nederlandse** zinnen (geen Lorem ipsum) — zelfde CONTENT AUTHORITY-regels als standaard.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Meerdere echte pagina’s in één JSON:**
-  - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige “Wat wij doen”-longread hier — dat staat op de eigen subpagina).
-  - \`marketingPages\` = **verplicht** exact deze vier keys, elk met **eigen** HTML-secties (minstens één sectie per key, eigen \`id\`'s binnen die pagina): \`"wat-wij-doen"\`, \`"werkwijze"\`, \`"over-ons"\`, \`"faq"\`.
+  - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort).
+  - \`marketingPages\` = **verplicht** exact deze keys (geen extra’s, geen missers), elk **minstens twee** HTML-secties met **eigen** \`id\`'s binnen die pagina: ${slugList}.
   - \`contactSections\` = **alleen de contact-subpagina** (route Contact): minstens één **werkend** <form> (naam/e-mail/bericht). **Niet** op de homepage (\`sections\`).
+- **Per marketing-key (inhoud):**
+${slugHints}
+  - Geen **letterlijk dezelfde** blokken tussen pagina’s of tussen landing en subpagina — herschrijf bij twijfel.
 - **Homepage + elke marketing-subpagina:** **geen** <form> — wel dezelfde nav met \`href="__STUDIO_CONTACT_PATH__"\` naar het formulier op de contactpagina.
 - **Verboden op landings-\`sections\` en op elke \`marketingPages[*]\`:** elk \`<form>\` (ook geen newsletter-mini). Alleen \`contactSections\` mag formulieren.
 - **Sectie-ankers:** binnen **één pagina** (\`sections\` of één key van \`marketingPages\`) gebruik je \`href="#…"\` alleen naar \`id\`'s die **op diezelfde pagina** bestaan.
-- **Cross-pagina (verplicht):** gebruik **uitsluitend** het token \`href="__STUDIO_SITE_BASE__/wat-wij-doen"\` (zelfde patroon voor \`werkwijze\`, \`over-ons\`, \`faq\`) en \`href="__STUDIO_CONTACT_PATH__"\` voor Contact. **Verboden:** zelf \`/site/…\`, \`/contact\`, of losse paden verzinnen; **verboden** \`#werkwijze\` / \`#faq\` in de nav als die inhoud in \`marketingPages\` staat (dat is geen echte subroute).
-- **Zelfde header op elke pagina:** herhaal **dezelfde** \`<header>\`/nav-structuur (zelfde links met \`__STUDIO_SITE_BASE__/…\` + \`__STUDIO_CONTACT_PATH__\`) bovenaan **landing**, elke \`marketingPages\`-pagina, en \`contactSections\` — zo voelt het als één site met echte pagina’s.
-- **Verboden:** \`href="#"\`, lege \`href\`, verzonnen routes buiten de vijf studio-paden hierboven.
+- **Cross-pagina (verplicht):** subpagina’s via ${hrefExamples} en \`href="__STUDIO_CONTACT_PATH__"\` voor Contact. **Verboden:** zelf \`/site/…\`, \`/contact\`, of losse paden verzinnen; **verboden** \`#…\` in de nav voor inhoud die op een marketing-subroute staat.
+- **Zelfde header op elke pagina:** herhaal **dezelfde** \`<header>\`/nav-structuur (zelfde \`__STUDIO_SITE_BASE__/…\` + \`__STUDIO_CONTACT_PATH__\`) bovenaan **landing**, elke \`marketingPages\`-pagina, en \`contactSections\` — elke marketing-key moet **minstens één keer** in die nav als \`__STUDIO_SITE_BASE__/<slug>\` voorkomen.
+- **Verboden:** \`href="#"\`, lege \`href\`, verzonnen \`__STUDIO_SITE_BASE__/…\` slugs buiten deze keys.
 - **Studio-placeholders (alleen letterlijk deze strings):** \`__STUDIO_SITE_BASE__\`, \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\`, \`__STUDIO_CONTACT_PATH__\` — volgens module-instructies uit §0B.
 - **WhatsApp:** alleen \`https://wa.me/…\` als een nummer in de briefing staat; anders link naar \`__STUDIO_CONTACT_PATH__\`.
 - **Extern (https):** alleen \`https://\`; geen \`http://\` zonder TLS.
@@ -1052,7 +1111,7 @@ ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikba
 
 Lever **uitsluitend** één JSON-object. Geen markdown, geen code fences, geen tekst ervoor of erna.
 
-Structuur — \`marketingPages\` met **precies** de keys \`wat-wij-doen\`, \`werkwijze\`, \`over-ons\`, \`faq\` (verplicht):
+Structuur — \`marketingPages\` met **precies** deze keys (elk **≥2** secties):
 
 {
   "config": { "style": "…", "theme": { "primary": "#…", "accent": "#…", "primaryLight": "#…", "primaryMain": "#…", "primaryDark": "#…" }, "font": "…" },
@@ -1060,10 +1119,7 @@ Structuur — \`marketingPages\` met **precies** de keys \`wat-wij-doen\`, \`wer
     { "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">…</section>" }
   ],
   "marketingPages": {
-    "wat-wij-doen": [{ "id": "intro", "html": "<section id=\\"intro\\" class=\\"...\\">…</section>" }],
-    "werkwijze": [{ "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">…</section>" }],
-    "over-ons": [{ "id": "team", "html": "<section id=\\"team\\" class=\\"...\\">…</section>" }],
-    "faq": [{ "id": "faq", "html": "<section id=\\"faq\\" class=\\"...\\">…</section>" }]
+${marketingJsonExample}
   },
   "contactSections": [
     { "id": "contact", "html": "<section id=\\"contact\\" class=\\"...\\"><form>…</form></section>" }
@@ -1336,6 +1392,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
     options?.sectionIdsHint,
   );
   const marketingMultiPage = !preserve && !landingPageOnly;
+  const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
   const strictLanding = landingPageOnly && !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
@@ -1344,6 +1401,10 @@ function buildMinimalWebsiteGenerationUserPrompt(
   const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(
     detectIndustry(combinedIndustryProbeText(businessName, description)),
   );
+  const mpKeysLine =
+    marketingMultiPage && marketingPageSlugsForTail.length > 0
+      ? marketingPageSlugsForTail.map((s) => `\`${s}\``).join(", ")
+      : "";
 
   const psychColorLeadMin = preserve
     ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
@@ -1367,7 +1428,7 @@ ${section1}=== KERN (technisch) ===
 
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
 2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\` (zie §3B).
-3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (contact-subpagina: minstens één sectie met <form>; **niet** op de homepage)" : ""}.
+3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? ` + **verplicht** \`marketingPages\` (exact deze keys: ${mpKeysLine || "zie §3B"}) + \`contactSections\` (contact-subpagina: minstens één sectie met <form>; **niet** op de homepage)` : ""}.
 4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : strictLanding ? "**Strikte one-pager:** exact **4 of 5** secties (zie STRIKTE LANDINGS: FAQ alleen bij FAQ-signalen in naam+briefing) in de volgorde van de opdrachtregel — geen extra secties." : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
@@ -1394,6 +1455,7 @@ ${getAlpineInteractivityPromptBlock()}
 ${buildSiteGenerationOperationalTail({
     preserve,
     marketingMultiPage,
+    marketingPageSlugs: marketingPageSlugsForTail,
     requiredIdsLine,
     section4Nav,
     section5IdsNote,
@@ -1430,6 +1492,7 @@ export function buildWebsiteGenerationUserPrompt(
     options?.sectionIdsHint,
   );
   const marketingMultiPage = !preserve && !landingPageOnly;
+  const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
   const strictLanding = landingPageOnly && !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
 
@@ -1444,6 +1507,10 @@ export function buildWebsiteGenerationUserPrompt(
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
+  const mpKeysLine =
+    marketingMultiPage && marketingPageSlugsForTail.length > 0
+      ? marketingPageSlugsForTail.map((s) => `\`${s}\``).join(", ")
+      : "";
 
   return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, onderscheidende** site die past bij de briefing — **niet** anoniem-veilig; je hebt ruimte voor sterk ontwerp.
 
@@ -1474,7 +1541,7 @@ ${packageBlock}${existingBlock}
 1. Output = **één geldig JSON** volgens §5 — geen andere vorm.
 2. **Balans:** duidelijke hiërarchie en leesbaarheid; \`60-30-10\` is optionele richting, geen wiskunde.
 3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; ${marketingMultiPage ? "subpagina-links via __STUDIO_SITE_BASE__ (zie §3B); " : ""}landings-\`id\`'s consistent met \`href="#…"\` **alleen binnen dezelfde pagina**; link “Contact” naar \`__STUDIO_CONTACT_PATH__\` ${marketingMultiPage ? "(verplicht token)" : ""}.
-4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? " + **verplicht** `marketingPages` (vier keys) + `contactSections` (alleen contact-subroute met formulier)" : ""}.
+4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? ` + **verplicht** \`marketingPages\` (exact deze keys: ${mpKeysLine || "zie §3B"}) + \`contactSections\` (alleen contact-subroute met formulier)` : ""}.
 5. **Kleur:** als een flashy wens botst met de branche, gebruik die kleur liever **als accent** (§2). ${preserve ? " **Upgrade:** bestaande \`config.theme\` uit bron wint." : ""}
 
 ${section1}
@@ -1489,7 +1556,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(industryProbe)) : ""}
 **Vrijheid:** ${strictLanding ? "Binnen de **vijf** vaste secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s." : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
-**Navigatie (${marketingMultiPage ? "multi-page: landing + 4 subpagina's + contact" : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? "“Wat wij doen”, “Werkwijze”, “Over ons”, “FAQ”: gebruik **uitsluitend** het pad-token __STUDIO_SITE_BASE__ plus het segment (bv. __STUDIO_SITE_BASE__/werkwijze); **geen** ankers zoals #werkwijze voor die inhoud als die op een subpagina staat. " : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
+**Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie §3B"}) + contact` : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie §3B"}); **geen** \`#…\`-nav naar inhoud die op een subroute staat. ` : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
@@ -1533,6 +1600,7 @@ ${brancheSectionBlocks}
 ${buildSiteGenerationOperationalTail({
     preserve,
     marketingMultiPage,
+    marketingPageSlugs: marketingPageSlugsForTail,
     requiredIdsLine,
     section4Nav,
     section5IdsNote,
@@ -1562,6 +1630,8 @@ type PreparedGenerateSiteClaudeCall = {
   useMarketingMultiPage: boolean;
   /** `landingPageOnly` + geen upgrade: harde 5-sectie-validatie na parse. */
   strictLandingContract: boolean;
+  /** Multipage: exacte `marketingPages`-keys (prompt + Zod + validatie). */
+  marketingPageSlugs?: readonly string[];
   /** Zelfde excerpt als in de bouw-prompt — voor Denklijn + zelfreview. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
 };
@@ -1637,6 +1707,22 @@ async function prepareGenerateSiteClaudeCall(
   const styleResolved = resolveStyleDetection(description);
   const minimalPrompt =
     Boolean(mergedPromptOptions.minimalPrompt) || isSiteGenerationMinimalPromptFromEnv();
+  const useMarketingMultiPage = !preserveLayout && !mergedPromptOptions.landingPageOnly;
+  let marketingPageSlugs: readonly string[] | undefined;
+  try {
+    marketingPageSlugs = useMarketingMultiPage
+      ? resolveMarketingPageSlugsForGeneration({
+          combinedProbe: industryProbe,
+          detectedIndustryId: detectedIndustry?.id,
+          override: mergedPromptOptions.marketingPageSlugs,
+        })
+      : undefined;
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Ongeldige marketingPageSlugs.",
+    };
+  }
   const pipelineFeedback: GenerationPipelineFeedback = {
     model: generateModel,
     interpreted: {
@@ -1653,6 +1739,7 @@ async function prepareGenerateSiteClaudeCall(
       landingPageOnly: mergedPromptOptions.landingPageOnly,
       strictLandingPageContract: strictLandingContract,
       compactLandingIncludesFaq: strictLandingContract ? shouldIncludeCompactLandingFaq(industryProbe) : undefined,
+      ...(marketingPageSlugs ? { marketingPageSlugs: [...marketingPageSlugs] } : {}),
     },
   };
 
@@ -1667,6 +1754,7 @@ async function prepareGenerateSiteClaudeCall(
       sectionIdsHint: sectionIds,
       ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
       minimalPrompt,
+      ...(marketingPageSlugs ? { marketingPageSlugs: [...marketingPageSlugs] } : {}),
     },
   );
   const mainUserPrompt = corePrompt;
@@ -1695,8 +1783,9 @@ async function prepareGenerateSiteClaudeCall(
     userContent,
     homepagePlan,
     pipelineFeedback,
-    useMarketingMultiPage: !preserveLayout && !mergedPromptOptions.landingPageOnly,
+    useMarketingMultiPage,
     strictLandingContract,
+    ...(marketingPageSlugs ? { marketingPageSlugs } : {}),
     ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
   };
 }
@@ -1718,7 +1807,11 @@ export function withContentClaimDiagnostics(data: GeneratedTailwindPage): Genera
 function finalizeGenerateSiteFromClaudeText(
   textBody: string,
   stop_reason: string | null,
-  options: { useMarketingMultiPage: boolean; strictLandingContract?: boolean },
+  options: {
+    useMarketingMultiPage: boolean;
+    strictLandingContract?: boolean;
+    marketingPageSlugs?: readonly string[];
+  },
 ): GenerateSiteResult {
   if (!textBody.trim()) {
     return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
@@ -1738,15 +1831,63 @@ function finalizeGenerateSiteFromClaudeText(
   }
 
   if (options.useMarketingMultiPage) {
-    const validated = claudeTailwindMarketingSiteOutputSchema.safeParse(
-      ensureClaudeMarketingSiteJsonHasContactSections(
-        normalizeClaudeSectionArraysInParsedJson(parsedResult.value),
-      ),
+    const slugs = options.marketingPageSlugs;
+    if (!slugs?.length) {
+      return {
+        ok: false,
+        error: "Interne fout: multipage zonder marketingPageSlugs (prepareGenerateSiteClaudeCall).",
+        rawText: textBody,
+      };
+    }
+    let marketingSchema;
+    try {
+      marketingSchema = buildClaudeTailwindMarketingSiteOutputSchema(slugs);
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Ongeldig marketingPageSlugs-schema.",
+        rawText: textBody,
+      };
+    }
+    const normalized = normalizeClaudeSectionArraysInParsedJson(parsedResult.value);
+    const validated = marketingSchema.safeParse(
+      ensureClaudeMarketingSiteJsonHasContactSections(normalized, slugs),
     );
     if (!validated.success) {
       return {
         ok: false,
         error: `JSON voldoet niet aan het schema: ${validated.error.message}`,
+        rawText: textBody,
+      };
+    }
+    const navHtml = collectMarketingNavScanHtml({
+      sections: validated.data.sections,
+      marketingPages: validated.data.marketingPages,
+      contactSections: validated.data.contactSections,
+    });
+    const linkCheck = validateMarketingPageLinks(navHtml, validated.data.marketingPages);
+    if (!linkCheck.valid) {
+      const miss = linkCheck.missingKeys.join(", ");
+      return {
+        ok: false,
+        error: `Nav bevat __STUDIO_SITE_BASE__/-links naar ontbrekende marketingPages: ${miss}.`,
+        rawText: textBody,
+      };
+    }
+    const coverCheck = validateMarketingPagePlanNavCoverage(validated.data.marketingPages, navHtml);
+    if (!coverCheck.valid) {
+      const miss = coverCheck.missingInNav.join(", ");
+      return {
+        ok: false,
+        error: `Nav mist minstens één link per marketingpagina. Ontbrekend in nav: ${miss}.`,
+        rawText: textBody,
+      };
+    }
+    const contentCheck = validateMarketingPageContent(validated.data.marketingPages);
+    if (!contentCheck.valid) {
+      return {
+        ok: false,
+        error: `Marketingpagina-inhoud: ${contentCheck.errors.join(" ")}`,
         rawText: textBody,
       };
     }
@@ -1862,6 +2003,7 @@ export async function generateSiteWithClaude(
   const result = finalizeGenerateSiteFromClaudeText(textBody, stop_reason, {
     useMarketingMultiPage: p.useMarketingMultiPage,
     strictLandingContract: p.strictLandingContract,
+    marketingPageSlugs: p.marketingPageSlugs,
   });
   if (!result.ok) {
     return result;
@@ -2155,6 +2297,7 @@ export function createGenerateSiteReadableStream(
         const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason, {
           useMarketingMultiPage: p.useMarketingMultiPage,
           strictLandingContract: p.strictLandingContract,
+          marketingPageSlugs: p.marketingPageSlugs,
         });
         if (!result.ok) {
           send(controller, {

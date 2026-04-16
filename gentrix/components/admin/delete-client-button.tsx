@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 type Props = {
   subfolderSlug: string;
   clientName: string;
+  onSuccess?: () => void;
 };
 
-export function DeleteClientButton({ subfolderSlug, clientName }: Props) {
+export function DeleteClientButton({ subfolderSlug, clientName, onSuccess }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +31,7 @@ export function DeleteClientButton({ subfolderSlug, clientName }: Props) {
         window.alert(json.error ?? "Verwijderen mislukt.");
         return;
       }
+      onSuccess?.();
       router.refresh();
     } catch {
       window.alert("Netwerkfout bij verwijderen.");

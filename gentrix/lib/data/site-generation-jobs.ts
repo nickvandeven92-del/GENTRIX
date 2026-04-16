@@ -134,6 +134,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     clientImages?: { url: string; label?: string }[];
     reference_style_url?: string;
     landing_page_only?: boolean;
+    marketing_page_slugs?: string[];
     subfolder_slug?: string;
     generation_preset_ids?: string[];
     layout_archetypes?: string[];
@@ -157,6 +158,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     ...(clientImages.length > 0 ? { clientImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
     ...(req.landing_page_only !== undefined ? { landingPageOnly: req.landing_page_only } : {}),
+    ...(req.marketing_page_slugs?.length ? { marketingPageSlugs: req.marketing_page_slugs } : {}),
   };
   const hasPromptOpts = Object.keys(promptOpts).length > 0;
 
