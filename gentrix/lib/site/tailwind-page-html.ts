@@ -1348,7 +1348,7 @@ export function sanitizeTailwindFragment(html: string): string {
     ALLOW_DATA_ATTR: false,
   });
   DOMPurify.removeHook("uponSanitizeAttribute");
-  return appendImgOnErrorHide(purified);
+  return repairBrokenMobileDrawer(appendImgOnErrorHide(purified));
 }
 
 function escapeDataAttr(value: string): string {
