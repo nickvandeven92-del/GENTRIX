@@ -228,7 +228,12 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     if (ev.type === "status") {
       const msgTrim = ev.message.trim();
       const forceProgress =
-        msgTrim.includes("Denklijn") || msgTrim.includes("Pagina genereren") || msgTrim.includes("Zelfreview");
+        msgTrim.includes("Denklijn") ||
+        msgTrim.includes("Pagina genereren") ||
+        msgTrim.includes("Zelfreview") ||
+        msgTrim.includes("Stock:") ||
+        msgTrim.includes("Stock ") ||
+        msgTrim.includes("Generatie voltooid");
       if (!forceProgress && now - lastStreamStatusThrottleAt < 2_500) return;
       lastStreamStatusThrottleAt = now;
       writeProgress(ev.message);

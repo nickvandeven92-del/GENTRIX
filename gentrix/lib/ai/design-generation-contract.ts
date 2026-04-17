@@ -383,10 +383,10 @@ export function buildDesignContractPromptInjection(
             "",
           ]),
     "=== BEELDEN (sector + studio-regels) ===",
-    "- **Geen** `images.unsplash.com` **buiten** sectie-`id: \"gallery\"` (daar mag een beperkt raster; elders worden stock-URL's geneutraliseerd). Buiten `gallery`: **gradient**, **typografie**, **SVG**, **klantfoto-URL** uit de opdracht, of **`<video>`** met echte briefing-URL.",
-    "- **Hero:** sterk visueel via typografie + gradient/textuur, **klant-upload**, of video met concrete https-URL — **geen** Unsplash in `#hero`. Vertaal `heroVisualSubject` naar compositie/kleur/motion **zonder** anonieme stock (tenzij je een aparte `gallery`-sectie gebruikt voor beelden). Geen stock-video zonder URL in de briefing.",
+    "- **Geen** `images.unsplash.com` **buiten** sectie-`id: \"gallery\"` (beperkt raster; elders worden stock-URL's geneutraliseerd). **Hero:** typografie + gradient/textuur, **klant-upload**, of **`<video>`** met echte briefing-URL — **geen** anonieme stock in `#hero` tenzij de studio expliciet `SITE_GENERATION_UNSPLASH_ALLOW_HERO=1` gebruikt.",
+    "- **Hero:** vertaal `heroVisualSubject` naar compositie/kleur/motion **zonder** stock-foto's (tenzij studio hero-stock aanzet); geen stock-video zonder URL in de briefing.",
     "",
-    "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Geen `images.unsplash.com` buiten `gallery`; klant-`<img>`-URL's moeten bij de briefing passen. (3) `config` + `hero` + één feature-blok mogen `referenceVisualAxes` en `paletteMode` niet tegenspreken.",
+    "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Geen `images.unsplash.com` buiten `gallery` (tenzij studio hero-stock aan heeft); klant-`<img>`-URL's moeten bij de briefing passen. (3) `config` + `hero` + één feature-blok mogen `referenceVisualAxes` en `paletteMode` niet tegenspreken.",
     "",
     `- **Hero-visueel:** ${contract.heroVisualSubject}`,
     ...(contract.heroImageSearchHints

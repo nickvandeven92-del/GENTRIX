@@ -94,7 +94,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
   {
     label: "Unsplash-vervanging",
     path: "lib/ai/unsplash-image-replace.ts",
-    description: "replaceUnsplashImagesInSections: standaard alleen `gallery` + Unsplash API; elders stock → placeholder; SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0 herstelt oud gedrag.",
+    description: "replaceUnsplashImagesInSections: standaard alleen `gallery` + Unsplash API (image-vrij); SITE_GENERATION_UNSPLASH_ALLOW_HERO=1 optioneel; SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0 = overal.",
   },
   {
     label: "NDJSON stream consumer (jobs)",

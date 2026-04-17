@@ -57,7 +57,9 @@ import {
 } from "@/lib/ai/self-review-site-generation";
 import {
   DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION,
+  htmlMayContainUnsplashPhotoUrl,
   replaceUnsplashImagesInSections,
+  stripAllUnsplashFromSections,
 } from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
@@ -130,6 +132,15 @@ const DEFAULT_GENERATE_MODEL = "claude-sonnet-4-6";
 const DEFAULT_SUPPORT_MODEL = "claude-sonnet-4-6";
 /** Streaming site-build: ruim genoeg voor marketing multi-page + zware secties (binnen model/stream-limiet). */
 const DEFAULT_MAX_OUTPUT_TOKENS = 30_720;
+
+/** Optioneel verlagen via \`SITE_GENERATION_MAX_OUTPUT_TOKENS\` om sneller klaar te zijn (kleinere JSON, minder timeout-risico). */
+function resolveSiteGenerationMaxOutputTokens(): number {
+  const raw = process.env.SITE_GENERATION_MAX_OUTPUT_TOKENS?.trim();
+  if (!raw) return DEFAULT_MAX_OUTPUT_TOKENS;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return DEFAULT_MAX_OUTPUT_TOKENS;
+  return Math.min(Math.max(n, 8192), 32_000);
+}
 
 
 /**
@@ -493,7 +504,7 @@ Warme tinten: terracotta, warm oranje, zachtgeel. Achtergronden in \`bg-orange-5
 - **Spacing:** compact maar niet claustrofobisch; donkere banden mogen \`py-20\` hebben.
 - **Hero:** full-bleed **sfeerbeeld** dat industrieel aanvoelt (exposed brick, leder/staal, dramatisch licht, workshop) + korte kop; of typografisch op **donker beton/zwart** met subtiele gradient/noise — **geen** witte hero met twee knalrode knoppen.
 - **Sector ≠ zware industrie:** bij **sportvisserij / visartikelen / tackle / boten** betekent “stoer industrieel” **rauw metaal, molens, braided line, nat dek/hout, kleine vissersboot/kotter, haven met vissersschepen** — **niet** bulkterminals, havenkranen, hoogovens, bergtoppen of alpiene landschappen (dat mist de branche).
-- **Barbershop + industrieel:** combineer rauwe loft-sfeer met vakmanschap: donkere tonen, koper/roest/barnijs als accent — **typografie + gradient/textuur** (geen stock-foto tenzij \`gallery\`).`,
+- **Barbershop + industrieel:** combineer rauwe loft-sfeer met vakmanschap: donkere tonen, koper/roest/barnijs als accent — **typografie + gradient/textuur** (geen stock buiten \`gallery\`).`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Beton- en staaltinten: \`bg-zinc-900\`, \`bg-neutral-900\`, \`bg-slate-950\`, \`text-zinc-300\`. Accent: **roest, koper, barnijs, gedesatureerd oranje of amber** — of koel **staalblauw**. **Vermijd** puur \`red-500\` + \`bg-white\` als hoofdpalet (pizza-tent); rood hoogstens zeer donker (\`red-950\`) of als dunne lijn, niet als grote vlakken.`,
   },
@@ -601,7 +612,7 @@ Ivoor/warm wit + crème of diep navy + crème; accent: goud/brons **of** diep wi
     label: "Skeuomorphism",
     designLanguage: `**DESIGNTAAL: SKEUOMORPHISM** (richtlijn — briefing wint bij conflict)
 - **Diepte:** licht lijkt van boven — \`bg-gradient-to-b\` op knoppen/vlakken, subtiele inner shadow (\`shadow-inner\`), afgeronde “object”-vormen.
-- **Materialen:** hints van **leer, papier, hout** via warme tinten, textuur en **CSS-gradient/noise** — geen stock-foto tenzij \`gallery\`.
+- **Materialen:** hints van **leer, papier, hout** via warme tinten, textuur en **CSS-gradient/noise** — geen stock buiten \`gallery\`.
 - **Knoppen:** mogen **relief** hebben (\`border-b-4\` donkerder rand); toggles/schuifjes als fysieke controls waar het past.
 - **Typografie:** serif of warme sans; uitstraling “ tastbaar ”.
 - **Balans:** moderne spacing (\`py-16\`+) zodat het niet oubollig wordt; combineer met **flat** secties als adempauze.`,
@@ -1187,21 +1198,21 @@ function buildSiteGenerationSalesCopyGuidanceLine(): string {
 }
 
 /**
- * Geen onbekende stock: alleen klant-uploads + optioneel `gallery` met Unsplash (server vult daar de API).
+ * Standaard image-vrij (Lovable-achtig): geen anonieme stock-foto's; Unsplash alleen in expliciete \`gallery\` (server).
  */
 function buildStockImageryAgencyDefaultMarkdown(): string {
-  return `- **Beeld — geen onbekende stock (standaard):**
-  - **Verboden:** \`https://images.unsplash.com/photo-…\` in **\`hero\`**, **\`features\`**, **\`about\`**, **\`pricing\`**, **\`footer\`**, … — de studio **verwijdert** die URL's **en** laat daarna **geen** lege stock-\`<img>\` staan (Lovable-achtig: geen raster van “ongebruikte” foto’s buiten \`gallery\`).
-  - **Hero:** visuele kracht uit **typografie**, **gradient**, **patroon**, **SVG**, eventueel **\`<video>\`** met echte https-URL uit de briefing — **geen** stock-foto van onbekende fotografen.
-  - **Klantfoto's** (eigen URL's in de opdracht): **wel** overal gebruiken waar het past, **inclusief hero** als de upload sterk genoeg is — dat zijn géén Unsplash-URL's.
-  - **Alleen \`gallery\`:** daar mag je Unsplash-placeholders (\`photo-…\`) zetten; de server lost ze daar via de API op. Zonder \`gallery\`-sectie: **nul** stock-foto's op de site.`;
+  return `- **Beeld — standaard zonder stock-foto's (studio-default):**
+  - **Standaard:** **geen** \`https://images.unsplash.com/photo-…\` in **\`hero\`**, **\`features\`**, **\`about\`**, … — klanten hebben weinig aan generieke stock; werk met **typografie**, **gradient**, **patroon**, **SVG**, eventueel **\`<video>\`** met echte https-URL uit de briefing. De server **neutraliseert** losse Unsplash-URL's + ruimt lege stock-\`<img>\` op.
+  - **Alleen \`id="gallery"\`:** daar **mag** je Unsplash-placeholders (\`photo-…\`) zetten als de site echt een fotogalerij nodig heeft; de server lost ze **daar** via de API op. Zonder \`gallery\`-sectie: **geen** stock-foto's op de site.
+  - **Optioneel hero-stock (agency):** zet server-env \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` — dan mag de hero wél Unsplash-placeholders krijgen die de server matcht.
+  - **Klantfoto's** (eigen URL's in de opdracht): **wel** overal waar het past, **inclusief hero** — dat zijn géén Unsplash-URL's.`;
 }
 
 /** Gedeelde copy-dichtheid: voorkomt dat het model hero + USP-kaarten volschrijft met alinea’s. */
 function buildMinimalMarketingCopyContractMarkdown(): string {
   return `=== COPY — MINDER IS MEER (verplicht) ===
 - **Hero (\`#hero\`):** **geen** lange lichaamstekst. Maximaal: **één** \`h1\` (of vergelijkbaar display) + optioneel **één** korte kicker/regel erboven (**≤ 6 woorden**) + **hoogstens één** extra regel onder de kop (**≤ 12 woorden**, één zin of fragment). **Verboden in de hero:** twee of meer \`<p>\`-alinea’s; uitleg die beter onder de vouw past; “vertel”-marketing in plaats van **klap**.
-- **Hero — geen Unsplash:** zie **Beeld — geen onbekende stock**; hero visueel zonder \`images.unsplash.com\`.
+- **Hero — geen stock:** **geen** \`images.unsplash.com\` in de hero (tenzij studio expliciet \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` heeft); hero visueel = typografie, gradient, patroon, SVG, **klantfoto-URL** of briefing-video — zie **Beeld — standaard zonder stock-foto's**.
 - **USP / feature-kaarten / stappen:** per item **titel + hoogstens één korte regel** (**≤ 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
 - **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina’s: **kern + witruimte** — geen drie identieke marketing-alinea’s achter elkaar.
 - **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van “professioneel klinkend door veel woorden”.
@@ -1255,10 +1266,10 @@ ${slugHints}
 === 4. TECHNISCHE HTML-REGELS ===
 
 - Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
-- **Afbeeldingen:** **Geen** anonieme stock buiten **\`id: "gallery"\`** — zie **COPY — MINDER IS MEER** (beeld). In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
-  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** — zie **COPY — MINDER IS MEER** (beeld). Voor \`gallery\`: \`alt\` in het **Engels** als concrete scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
-  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\`).
-  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten \`gallery\`**.
+- **Afbeeldingen (standaard image-vrij):** **geen** anonieme stock op de hele site **behalve** optioneel in **\`<section id="gallery">\`** — zie **COPY — MINDER IS MEER** (beeld). **Hero:** geen stock-foto; gradient/typografie of **klant-URL**. In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
+  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** (server verwijdert ze). Studio kan hero-stock aanzetten met env — vermijd tenzij nodig. Voor \`gallery\`: \`alt\` in het **Engels** als scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
+  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\` tenzij hero-env aan staat).
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten toegestane stock-zone\`**.
   - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
@@ -1513,7 +1524,7 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
 - **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
-- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** Unsplash op marketing/landingspagina's behalve in een echte \`gallery\`; hero = typografie/gradient of **klantfoto**.
+- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** Unsplash op marketing/landingspagina's behalve een echte \`gallery\`; andere secties = typografie/gradient of **klantfoto**.
 ${multiPageLine}`;
 }
 
@@ -1568,10 +1579,10 @@ ${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten *
 === 4. TECHNISCHE HTML-REGELS ===
 
 - Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
-- **Afbeeldingen:** **Geen** anonieme stock buiten **\`id: "gallery"\`** — zie **COPY — MINDER IS MEER** (beeld). In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
-  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** — zie **COPY — MINDER IS MEER** (beeld). Voor \`gallery\`: \`alt\` in het **Engels** als concrete scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
-  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\`).
-  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten \`gallery\`**.
+- **Afbeeldingen (standaard image-vrij):** **geen** anonieme stock op de hele site **behalve** optioneel in **\`<section id="gallery">\`** — zie **COPY — MINDER IS MEER** (beeld). **Hero:** geen stock-foto; gradient/typografie of **klant-URL**. In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
+  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** (server verwijdert ze). Studio kan hero-stock aanzetten met env — vermijd tenzij nodig. Voor \`gallery\`: \`alt\` in het **Engels** als scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
+  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\` tenzij hero-env aan staat).
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten toegestane stock-zone\`**.
   - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
@@ -1700,7 +1711,7 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 - **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
 - **Klantfoto's:** volg het blok hierboven (hero **mag** met upload).
-- **Stock (Unsplash):** standaard **alleen** in **\`id: "gallery"\`** (max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** resolves per sectie); elders worden \`images.unsplash.com\`-URL's **geneutraliseerd**. Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` als je oude “stock overal”-gedrag wilt.
+- **Stock (Unsplash):** standaard **alleen \`id: "gallery"\`** (max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** resolves per sectie); elders worden \`images.unsplash.com\`-URL's **geneutraliseerd** (image-vrije site). Optioneel hero: \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`. Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` voor Unsplash **overal** (oud gedrag).
 
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
@@ -1852,7 +1863,7 @@ ${buildMarqueeForbiddenPromptLine()}
 
 **Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik **gradient + motion** zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
 
-**Foto's:** **geen** \`images.unsplash.com\` buiten **\`id: "gallery"\`** — zie COPY. In \`gallery\`: max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** stock-resolves; elders alleen **eigen/klant-**URL's of geen foto.
+**Foto's:** **geen** \`images.unsplash.com\` behalve in **\`id: "gallery"\`** — zie COPY. Max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** stock-resolves in \`gallery\`; elders alleen **eigen/klant-**URL's of geen foto. Hero-stock alleen als studio \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` gebruikt.
 
 ${section3Tail}${section3HeroHeight}
 
@@ -2051,7 +2062,7 @@ async function prepareGenerateSiteClaudeCall(
   );
   const mainUserPrompt = corePrompt;
 
-  const max_tokens = DEFAULT_MAX_OUTPUT_TOKENS;
+  const max_tokens = resolveSiteGenerationMaxOutputTokens();
 
   const userContent: string | ContentBlockParam[] =
     userPrefixBlocks.length > 0
@@ -2093,6 +2104,66 @@ export function withContentClaimDiagnostics(data: GeneratedTailwindPage): Genera
   return {
     ...data,
     contentClaimDiagnostics: buildContentClaimDiagnosticsReport(html),
+  };
+}
+
+/** Unsplash/strip alleen als het concept nog \`images.unsplash.com/photo-\` bevat; anders geen extra werk. Home/contact/marketing parallel bij API-key. */
+async function applyUnsplashPostProcessToGeneratedPage(
+  data: GeneratedTailwindPage,
+  designContract: DesignGenerationContract | null,
+  description: string,
+  businessName: string,
+): Promise<GeneratedTailwindPage> {
+  const pageMayHaveUnsplash =
+    data.sections.some((s) => htmlMayContainUnsplashPhotoUrl(s.html)) ||
+    (data.contactSections ?? []).some((s) => htmlMayContainUnsplashPhotoUrl(s.html)) ||
+    Object.values(data.marketingPages ?? {}).some((secs) => secs.some((s) => htmlMayContainUnsplashPhotoUrl(s.html)));
+
+  if (!pageMayHaveUnsplash) {
+    return data;
+  }
+
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract, businessName);
+  const relBase = { designContract: designContract ?? undefined };
+
+  if (!key) {
+    return {
+      ...data,
+      sections: stripAllUnsplashFromSections(data.sections),
+      ...(data.contactSections != null && data.contactSections.length > 0
+        ? { contactSections: stripAllUnsplashFromSections(data.contactSections) }
+        : {}),
+      ...(data.marketingPages != null && Object.keys(data.marketingPages).length > 0
+        ? {
+            marketingPages: Object.fromEntries(
+              Object.entries(data.marketingPages).map(([slug, secs]) => [slug, stripAllUnsplashFromSections(secs)]),
+            ),
+          }
+        : {}),
+    };
+  }
+
+  const [sectionsAfter, contactAfter, marketingAfter] = await Promise.all([
+    replaceUnsplashImagesInSections(data.sections, key, unsplashTheme, { ...relBase, pageIntent: "home" }),
+    data.contactSections != null && data.contactSections.length > 0
+      ? replaceUnsplashImagesInSections(data.contactSections, key, unsplashTheme, { ...relBase, pageIntent: "contact" })
+      : Promise.resolve(undefined as TailwindSection[] | undefined),
+    data.marketingPages != null && Object.keys(data.marketingPages).length > 0
+      ? Promise.all(
+          Object.entries(data.marketingPages).map(async ([slug, secs]) => [
+            slug,
+            await replaceUnsplashImagesInSections(secs, key, unsplashTheme, { ...relBase, pageIntent: "marketing" }),
+          ]),
+        ).then(Object.fromEntries)
+      : Promise.resolve(undefined as GeneratedTailwindPage["marketingPages"]),
+  ]);
+
+  return {
+    ...data,
+    sections: sectionsAfter,
+    ...(contactAfter != null && contactAfter.length > 0 ? { contactSections: contactAfter } : {}),
+    ...(marketingAfter != null ? { marketingPages: marketingAfter } : {}),
   };
 }
 
@@ -2327,41 +2398,7 @@ export async function generateSiteWithClaude(
   });
   data = reviewed.data;
 
-  const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract, businessName);
-  data = {
-    ...data,
-    sections: await replaceUnsplashImagesInSections(
-      data.sections,
-      process.env.UNSPLASH_ACCESS_KEY,
-      unsplashTheme,
-      { designContract, pageIntent: "home" },
-    ),
-    ...(data.contactSections != null && data.contactSections.length > 0
-      ? {
-          contactSections: await replaceUnsplashImagesInSections(
-            data.contactSections,
-            process.env.UNSPLASH_ACCESS_KEY,
-            unsplashTheme,
-            { designContract, pageIntent: "contact" },
-          ),
-        }
-      : {}),
-    ...(data.marketingPages != null && Object.keys(data.marketingPages).length > 0
-      ? {
-          marketingPages: Object.fromEntries(
-            await Promise.all(
-              Object.entries(data.marketingPages).map(async ([k, secs]) => [
-                k,
-                await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme, {
-                  designContract,
-                  pageIntent: "marketing",
-                }),
-              ]),
-            ),
-          ),
-        }
-      : {}),
-  };
+  data = await applyUnsplashPostProcessToGeneratedPage(data, designContract, description, businessName);
 
   data = {
     ...data,
@@ -2692,58 +2729,28 @@ export function createGenerateSiteReadableStream(
               : "Zelfreview overgeslagen (upgrade-modus of uitgeschakeld).",
         });
 
-        if (process.env.UNSPLASH_ACCESS_KEY) {
+        const hasUnsplashInPage =
+          data.sections.some((s) => htmlMayContainUnsplashPhotoUrl(s.html)) ||
+          (data.contactSections ?? []).some((s) => htmlMayContainUnsplashPhotoUrl(s.html)) ||
+          Object.values(data.marketingPages ?? {}).some((secs) => secs.some((s) => htmlMayContainUnsplashPhotoUrl(s.html)));
+        if (hasUnsplashInPage) {
           send(controller, {
             type: "status",
-            message: "Stock opruimen (alleen galerij krijgt Unsplash-resolve)…",
+            message: process.env.UNSPLASH_ACCESS_KEY
+              ? "Stock: Unsplash alleen in galerij (elders geneutraliseerd)…"
+              : "Stock: Unsplash-URL's verwijderen (geen API-key)…",
           });
+        } else {
+          send(controller, { type: "status", message: "Stock: geen Unsplash-URL's — overslaan." });
         }
-        const stopUnsplashKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
-        let sectionsAfterUnsplash: typeof data.sections;
-        let contactAfterUnsplash: typeof data.contactSections | undefined;
-        let marketingAfterUnsplash: typeof data.marketingPages | undefined;
-        const unsplashTheme = buildUnsplashThemeContextWithContract(description, designContract, businessName);
+        const stopUnsplashKeepalive = hasUnsplashInPage
+          ? startNdjsonKeepaliveForSilentWork(controller, send)
+          : () => {};
         try {
-          sectionsAfterUnsplash = await replaceUnsplashImagesInSections(
-            data.sections,
-            process.env.UNSPLASH_ACCESS_KEY,
-            unsplashTheme,
-            { designContract, pageIntent: "home" },
-          );
-          contactAfterUnsplash =
-            data.contactSections != null && data.contactSections.length > 0
-              ? await replaceUnsplashImagesInSections(
-                  data.contactSections,
-                  process.env.UNSPLASH_ACCESS_KEY,
-                  unsplashTheme,
-                  { designContract, pageIntent: "contact" },
-                )
-              : undefined;
-          marketingAfterUnsplash =
-            data.marketingPages != null && Object.keys(data.marketingPages).length > 0
-              ? Object.fromEntries(
-                  await Promise.all(
-                    Object.entries(data.marketingPages).map(async ([k, secs]) => [
-                      k,
-                      await replaceUnsplashImagesInSections(secs, process.env.UNSPLASH_ACCESS_KEY, unsplashTheme, {
-                        designContract,
-                        pageIntent: "marketing",
-                      }),
-                    ]),
-                  ),
-                )
-              : undefined;
+          data = await applyUnsplashPostProcessToGeneratedPage(data, designContract, description, businessName);
         } finally {
           stopUnsplashKeepalive();
         }
-        data = {
-          ...data,
-          sections: sectionsAfterUnsplash,
-          ...(contactAfterUnsplash != null && contactAfterUnsplash.length > 0
-            ? { contactSections: contactAfterUnsplash }
-            : {}),
-          ...(marketingAfterUnsplash != null ? { marketingPages: marketingAfterUnsplash } : {}),
-        };
 
         data = { ...data, sections: maybeEnhanceHero(data.sections, data.config, description) };
 
@@ -2774,10 +2781,29 @@ export function createGenerateSiteReadableStream(
           }
         }
 
-        /** Journal + usage-log kunnen lang duren (extra Claude + DB); zonder keepalive knipt de stream vaak net vóór `complete`. */
+        /**
+         * Journal + usage-log = extra Claude + DB; zonder begrenzing kon dit de stream **na** Unsplash
+         * nog lang blokkeren → client/proxy zag "timeout" terwijl de zware HTML al klaar was.
+         * `complete` gaat altijd door; journal mag best-effort doorgaan op de achtergrond.
+         */
+        const ON_SUCCESS_STREAM_BUDGET_MS = 12_000;
+        const postPromise = streamOptions?.onSuccess?.(data);
         const stopPostProcessKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         try {
-          await streamOptions?.onSuccess?.(data);
+          if (postPromise) {
+            const raced = await Promise.race([
+              postPromise.then(() => "ok" as const),
+              new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), ON_SUCCESS_STREAM_BUDGET_MS)),
+            ]);
+            if (raced === "timeout") {
+              console.warn(
+                `[generate-site-stream] onSuccess time budget (${ON_SUCCESS_STREAM_BUDGET_MS}ms) exceeded — sending complete; journal/logging continues in background.`,
+              );
+              void postPromise.catch((e) =>
+                console.error("[generate-site-stream] onSuccess (background) mislukt:", e),
+              );
+            }
+          }
         } catch (journalErr) {
           console.error("[generate-site-stream] onSuccess (journal/log) mislukt; generatie wordt alsnog afgerond:", journalErr);
         } finally {

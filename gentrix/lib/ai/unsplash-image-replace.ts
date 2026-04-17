@@ -21,6 +21,11 @@ const INTER_REQUEST_DELAY_MS = 120;
 const UNSPLASH_URL_RE =
   /https:\/\/images\.unsplash\.com\/photo-[a-zA-Z0-9_-]+[^"'\s)>]*/g;
 
+/** Snelle precheck vóór zware passes — false negatives zijn onschuldig (regex in replace vangt zeldzame varianten). */
+export function htmlMayContainUnsplashPhotoUrl(html: string): boolean {
+  return html.includes("images.unsplash.com/photo-");
+}
+
 /** Standaard cap: te veel stock per sectie = trage Unsplash-stap + visuele herhaling. */
 export const DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION = 4;
 
@@ -39,13 +44,19 @@ export type ReplaceUnsplashRelevanceOptions = {
   /** Overschrijft \`UNSPLASH_MAX_IMAGES_PER_PAGE\` (0 in env = uit). */
   maxImagesPerPage?: number;
   /**
-   * `false` = Unsplash overal resolven (oud gedrag). Standaard **aan**: alleen sectie-\`id: "gallery"\` krijgt API-resolve;
-   * elders worden \`images.unsplash.com/photo-…\` geneutraliseerd (geen onbekende stock).
+   * `false` = Unsplash overal resolven (oud gedrag). Standaard **aan**: alleen \`id: "gallery"\` krijgt API-resolve (Lovable-achtig: geen stock-hero);
+   * hero-stock optioneel via \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`. Elders worden \`images.unsplash.com/photo-…\` geneutraliseerd.
    */
   galleryOnlyStock?: boolean;
 };
 
-/** Standaard: geen stock-foto's behalve in \`gallery\` (zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` voor oud gedrag). */
+/** Standaard **uit**: geen Unsplash in hero — alleen expliciete \`gallery\`-sectie. Zet \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` om hero/header/banner wél te laten matchen. */
+export function isUnsplashHeroStockResolveEnabled(): boolean {
+  const v = process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
+/** Standaard: geen stock-foto's behalve \`gallery\` (+ optioneel hero via env; zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` voor Unsplash overal). */
 export function isGalleryOnlyUnsplashStockMode(opts?: ReplaceUnsplashRelevanceOptions): boolean {
   if (opts?.galleryOnlyStock === false) return false;
   if (opts?.galleryOnlyStock === true) return true;
@@ -56,6 +67,20 @@ export function isGalleryOnlyUnsplashStockMode(opts?: ReplaceUnsplashRelevanceOp
 
 export function isUnsplashGallerySection(sec: Pick<TailwindSection, "id">): boolean {
   return String(sec.id ?? "").trim().toLowerCase() === "gallery";
+}
+
+/**
+ * In gallery-only modus: hier mag Unsplash wél via de API worden opgelost.
+ * Standaard **alleen** \`id: "gallery"\` (image-vrije site); hero wanneer \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`.
+ */
+export function allowsUnsplashStockResolveInGalleryOnlyMode(
+  sec: Pick<TailwindSection, "id" | "sectionName">,
+  sectionIndex: number,
+): boolean {
+  if (isUnsplashGallerySection(sec)) return true;
+  if (!isUnsplashHeroStockResolveEnabled()) return false;
+  const sectionId = String(sec.id ?? `section-${sectionIndex}`).trim() || `section-${sectionIndex}`;
+  return isHeroLikeSection(sectionId, sec.sectionName ?? "", sectionIndex);
 }
 
 /** Verwijdert alle Unsplash-photo-URL's uit HTML (placeholder); geen API. */
@@ -301,7 +326,7 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * - Uniqueness: picks different photos from the result set for the same query.
  * - Respects rate limits with inter-request delays and a total timeout.
  * - **Cap:** standaard `DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION` resolves per sectie (+ optioneel per pagina); rest → transparante placeholder (geen extra API).
- * - **Gallery-only (standaard):** Unsplash wordt **alleen** in secties met \`id: "gallery"\` via de API opgelost; elders → placeholder (geen onbekende stock). Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` om overal te resolven.
+ * - **Gallery-only (standaard):** Unsplash wordt **alleen** in \`id: "gallery"\` opgelost; elders → placeholder. Optioneel hero: \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`. Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` om overal te resolven.
  * @param themeContext Optioneel: korte bedrijfsbeschrijving; wordt gemengd in de zoekterm voor betere branche-match.
  * @param relevance Optioneel: relevantie + optioneel `maxImagesPerSection` / `maxImagesPerPage` (of env `UNSPLASH_MAX_*`).
  */
@@ -312,6 +337,10 @@ export async function replaceUnsplashImagesInSections(
   relevance?: ReplaceUnsplashRelevanceOptions,
 ): Promise<TailwindSection[]> {
   const galleryOnlyStock = isGalleryOnlyUnsplashStockMode(relevance);
+
+  if (!sections.some((s) => htmlMayContainUnsplashPhotoUrl(s.html))) {
+    return sections;
+  }
 
   if (!accessKey) {
     return stripAllUnsplashFromSections(sections);
@@ -341,7 +370,7 @@ export async function replaceUnsplashImagesInSections(
     const localOverflow: { start: number; end: number }[] = [];
     let sectionKeptCount = 0;
 
-    const allowUnsplashApiResolve = !galleryOnlyStock || isUnsplashGallerySection(sec);
+    const allowUnsplashApiResolve = !galleryOnlyStock || allowsUnsplashStockResolveInGalleryOnlyMode(sec, si);
 
     const matchList = [...sec.html.matchAll(UNSPLASH_URL_RE)];
     for (const m of matchList) {
@@ -452,7 +481,7 @@ export async function replaceUnsplashImagesInSections(
         html = replaceOccurrenceLimited(html, oldUrl, newUrl, k);
       }
     }
-    if (galleryOnlyStock && !isUnsplashGallerySection(sec)) {
+    if (galleryOnlyStock && !allowsUnsplashStockResolveInGalleryOnlyMode(sec, si)) {
       html = cleanupStrippedStockMarkup(html);
     }
     return html !== sec.html ? { ...sec, html } : sec;

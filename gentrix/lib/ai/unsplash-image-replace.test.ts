@@ -1,10 +1,43 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  allowsUnsplashStockResolveInGalleryOnlyMode,
   cleanupStrippedStockMarkup,
   composeUnsplashSearchQuery,
+  htmlMayContainUnsplashPhotoUrl,
   replaceOverflowUnsplashRanges,
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/unsplash-image-replace";
+
+describe("allowsUnsplashStockResolveInGalleryOnlyMode", () => {
+  const prevHero = process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO;
+
+  afterEach(() => {
+    if (prevHero === undefined) delete process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO;
+    else process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO = prevHero;
+  });
+
+  it("staat standaard alleen gallery toe (geen stock-hero)", () => {
+    delete process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO;
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "hero", sectionName: "Hero" }, 0)).toBe(false);
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "gallery", sectionName: "Galerij" }, 3)).toBe(true);
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "header", sectionName: "Kop" }, 0)).toBe(false);
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "about", sectionName: "Over ons" }, 2)).toBe(false);
+  });
+
+  it("met SITE_GENERATION_UNSPLASH_ALLOW_HERO=1 ook hero en header", () => {
+    process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO = "1";
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "hero", sectionName: "Hero" }, 0)).toBe(true);
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "gallery", sectionName: "Galerij" }, 3)).toBe(true);
+    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "header", sectionName: "Kop" }, 0)).toBe(true);
+  });
+});
+
+describe("htmlMayContainUnsplashPhotoUrl", () => {
+  it("detecteert typische Unsplash-photo-URL", () => {
+    expect(htmlMayContainUnsplashPhotoUrl('<img src="https://images.unsplash.com/photo-1?w=1" />')).toBe(true);
+    expect(htmlMayContainUnsplashPhotoUrl("<section class='bg-zinc-900'>alleen tekst</section>")).toBe(false);
+  });
+});
 
 describe("composeUnsplashSearchQuery", () => {
   const theme =
