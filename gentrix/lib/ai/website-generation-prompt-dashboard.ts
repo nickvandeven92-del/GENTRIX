@@ -37,7 +37,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Denklijn + designcontract (voor bouw-prompt)",
     path: "lib/ai/generate-design-rationale-with-claude.ts",
     description:
-      "JSON rationale_nl + contract; bij fout of SKIP_DESIGN_RATIONALE gaat generatie door zonder contractinjectie.",
+      "JSON rationale_nl + contract; bij fout kan generatie door zonder contractinjectie.",
   },
   {
     label: "Designcontract-schema (Zod)",

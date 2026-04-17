@@ -72,12 +72,6 @@ Object met exact deze keys (enum-waarden exact zoals hieronder):
 
 Het \`contract\` wordt **letterlijk** aan de generator gekoppeld — geen rhetorische “we hebben de referentie meegenomen” zonder dat de assen het excerpt echt vertalen.`;
 
-/** Standaard aan. Zet \`SKIP_DESIGN_RATIONALE=1\` om een extra API-ronde te vermijden. */
-export function isDesignRationaleDuringGenerationEnabled(): boolean {
-  const v = process.env.SKIP_DESIGN_RATIONALE?.trim().toLowerCase();
-  return v !== "1" && v !== "true" && v !== "yes";
-}
-
 export type GenerateDesignRationaleOutcome =
   | { ok: true; text: string; contract: DesignGenerationContract }
   | { ok: true; text: string; contract: null; contractWarning: string }
@@ -125,10 +119,6 @@ export async function generateDesignRationaleWithClaude(
     referenceSiteSnapshot?: { url: string; excerpt: string };
   },
 ): Promise<GenerateDesignRationaleOutcome> {
-  if (!isDesignRationaleDuringGenerationEnabled()) {
-    return { ok: false, error: "overgeslagen (SKIP_DESIGN_RATIONALE)" };
-  }
-
   const name = input.businessName.trim().slice(0, 200);
   const desc = input.description.trim().slice(0, 8_000);
   const ctx = slimFeedbackForRationale(input.feedback);

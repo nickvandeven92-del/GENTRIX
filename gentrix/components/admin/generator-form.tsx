@@ -38,34 +38,20 @@ import {
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
-import {
-  tryExtractStreamingTailwindConfig,
-} from "@/lib/ai/stream-json-section-extractor";
 import { publishedPayloadFromParsed, type PublishedSitePayload } from "@/lib/site/project-published-payload";
 import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-sections-payload-from-published";
 import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
-import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import {
   buildConceptRefinementInstruction,
   type ConceptRefinementDirection,
 } from "@/lib/ai/concept-refinement-instructions";
-import type { GenerateSiteStreamNdjsonEvent } from "@/lib/ai/generate-site-with-claude";
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
 import { cn } from "@/lib/utils";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
-
-/**
- * Alleen fallback als `/api/admin/site-generation-transport` faalt.
- * `NEXT_PUBLIC_*` wordt bij build ingevuld — voor runtime (Vercel zonder rebuild) gebruikt de client de API.
- */
-const USE_LEGACY_NDJSON_STREAM_FALLBACK = process.env.NEXT_PUBLIC_SITE_GENERATION_USE_STREAM === "true";
-
-type ApiOk = { ok: true; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage };
-type ApiErr = { ok: false; error: string; rawText?: string };
 
 const SITE_GENERATION_JOBS_MIGRATION_ERROR_RE = /site_generation_jobs|generatie-job aanmaken/i;
 
@@ -593,283 +579,142 @@ export function GeneratorForm({
         body.reference_style_url = refTrim;
       }
 
-      let useLegacyNdjsonStream = USE_LEGACY_NDJSON_STREAM_FALLBACK;
-      try {
-        const tr = await fetch("/api/admin/site-generation-transport", {
+      const startRes = await fetch("/api/generate-site/jobs", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const startPayload = (await startRes.json()) as
+        | { ok: true; jobId: string }
+        | { ok: false; error: string };
+      if (!startRes.ok || !startPayload.ok || !("jobId" in startPayload)) {
+        const err = !startPayload.ok ? startPayload.error : "Job start mislukt.";
+        const migration =
+          typeof err === "string" && SITE_GENERATION_JOBS_MIGRATION_ERROR_RE.test(err);
+        setError(
+          migration
+            ? "Server-jobs zijn niet geconfigureerd (database-tabel `site_generation_jobs` ontbreekt). Voer de Supabase-migraties uit op dit project en deploy opnieuw."
+            : err,
+        );
+        return;
+      }
+
+      appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
+      pollAbortRef.current = false;
+      lastPolledJobProgressRef.current = null;
+      /** Denklijn-tekst bestaat pas ná `generation_meta` + aparte rationale-API; tot die tijd geen “uitleg”-spinner i.v.m. wachtrij/prepare. */
+      setDesignRationaleLoading(false);
+      for (let i = 0; i < SITE_JOB_POLL_MAX_ROUNDS; i++) {
+        if (pollAbortRef.current) break;
+        if (i > 0) await new Promise((r) => setTimeout(r, SITE_JOB_POLL_INTERVAL_MS));
+        const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, {
           credentials: "include",
           cache: "no-store",
         });
-        const tj = (await tr.json()) as { ok?: boolean; mode?: string };
-        if (tr.ok && tj.ok === true && tj.mode === "stream") {
-          useLegacyNdjsonStream = true;
-        } else if (tr.ok && tj.ok === true && tj.mode === "jobs") {
-          useLegacyNdjsonStream = false;
-        }
-      } catch {
-        /* netwerk: fallback build-time env */
-      }
-
-      if (!useLegacyNdjsonStream) {
-        const startRes = await fetch("/api/generate-site/jobs", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const startPayload = (await startRes.json()) as
-          | { ok: true; jobId: string }
+        const jp = (await jr.json()) as
+          | {
+              ok: true;
+              job: {
+                status: string;
+                progress_message: string | null;
+                error_message: string | null;
+                result: GeneratedTailwindPage | null;
+                updated_at?: string;
+                pipeline_feedback_json?: unknown;
+                denklijn_text?: string | null;
+                denklijn_skip_reason?: string | null;
+                design_contract_json?: unknown;
+                design_contract_warning?: string | null;
+              };
+            }
           | { ok: false; error: string };
-        if (!startRes.ok || !startPayload.ok || !("jobId" in startPayload)) {
-          const fallbackToStream =
-            !startPayload.ok && SITE_GENERATION_JOBS_MIGRATION_ERROR_RE.test(startPayload.error ?? "");
-          if (!fallbackToStream) {
-            setError(!startPayload.ok ? startPayload.error : "Job start mislukt.");
-            return;
-          }
-          appendGenerationActivity(
-            "Server-job queue niet beschikbaar (site_generation_jobs ontbreekt) — terugval naar directe stream.",
-          );
-          setStreamPhase("Terugvalmodus: directe stream");
-        } else {
-          appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
-          pollAbortRef.current = false;
-          lastPolledJobProgressRef.current = null;
-          /** Denklijn-tekst bestaat pas ná `generation_meta` + aparte rationale-API; tot die tijd geen “uitleg”-spinner i.v.m. wachtrij/prepare. */
-          setDesignRationaleLoading(false);
-          for (let i = 0; i < SITE_JOB_POLL_MAX_ROUNDS; i++) {
-            if (pollAbortRef.current) break;
-            if (i > 0) await new Promise((r) => setTimeout(r, SITE_JOB_POLL_INTERVAL_MS));
-            const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, {
-              credentials: "include",
-              cache: "no-store",
-            });
-            const jp = (await jr.json()) as
-              | {
-                  ok: true;
-                  job: {
-                    status: string;
-                    progress_message: string | null;
-                    error_message: string | null;
-                    result: GeneratedTailwindPage | null;
-                    updated_at?: string;
-                    pipeline_feedback_json?: unknown;
-                    denklijn_text?: string | null;
-                    denklijn_skip_reason?: string | null;
-                    design_contract_json?: unknown;
-                    design_contract_warning?: string | null;
-                  };
-                }
-              | { ok: false; error: string };
-            if (!jr.ok || !jp.ok) {
-              setError(!jp.ok ? jp.error : "Jobstatus ophalen mislukt.");
-              return;
-            }
-            const { job } = jp;
-            const updatedAtMs = job.updated_at ? new Date(job.updated_at).getTime() : 0;
-            const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
-            if (job.status === "running" && staleMs > 7 * 60 * 1000 && i > 3) {
-              setError(
-                "De job blijft op «bezig» staan maar de server heeft meer dan 7 minuten geen voortgang meer weggeschreven. Vaak is de worker op de hosting gestopt (tijdslimiet) terwijl de database nog op «running» staat. Probeer opnieuw. Blijft dit terugkomen: vraag beheer om een langere functieduur op de hosting of om live stream-modus voor generatie.",
-              );
-              setDesignRationaleLoading(false);
-              return;
-            }
-            if (job.status === "queued" && staleMs > 4 * 60 * 1000 && i > 30) {
-              setError(
-                "De job blijft te lang in de wachtrij (worker start niet). Controleer deployment, `site_generation_jobs`-migratie en of `/api/generate-site/jobs/[id]` bereikbaar is.",
-              );
-              setDesignRationaleLoading(false);
-              return;
-            }
-            if (job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object") {
-              setPipelineFeedback(job.pipeline_feedback_json as GenerationPipelineFeedback);
-            }
-            const hasPipeline = job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object";
-            const hasDenk = job.denklijn_text != null && job.denklijn_text.length > 0;
-            const hasSkip = job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0;
-            if (hasDenk) {
-              setDesignRationale(job.denklijn_text ?? null);
-              setDesignRationaleSkipReason(null);
-              setDesignRationaleLoading(false);
-            } else if (hasSkip) {
-              setDesignRationale(null);
-              setDesignRationaleSkipReason(job.denklijn_skip_reason ?? null);
-              setDesignRationaleLoading(false);
-            } else if (job.status === "running" && hasPipeline) {
-              setDesignRationaleLoading(true);
-            } else if (job.status === "running" && !hasPipeline) {
-              setDesignRationaleLoading(false);
-            }
-            if (job.design_contract_json != null && typeof job.design_contract_json === "object") {
-              setDesignContract(job.design_contract_json as DesignGenerationContract);
-              setDesignContractWarning(job.design_contract_warning?.trim() || null);
-            }
-            const msg = job.progress_message?.trim() ?? "";
-            if (msg && msg !== lastPolledJobProgressRef.current) {
-              lastPolledJobProgressRef.current = msg;
-              setStreamPhase(msg);
-              appendGenerationActivity(msg);
-            } else if (job.status === "running" && job.updated_at && i > 0 && i % 5 === 0) {
-              /** Geen nieuwe `progress_message` (bijv. lange Denklijn-API): niet elke poll een bijna-gelijke regel in het log — dat voelt als “hangen”. */
-              const ageSec = Math.round((Date.now() - new Date(job.updated_at).getTime()) / 1000);
-              if (ageSec > 35) {
-                const baseline =
-                  lastPolledJobProgressRef.current?.trim() ||
-                  msg.trim() ||
-                  "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
-                setStreamPhase(
-                  `${baseline} · laatste statusupdate ${ageSec}s geleden — bij zware generaties normaal; deze pagina blijft nog tot ca. ${SITE_JOB_POLL_MAX_MINUTES} min opnieuw vragen.`,
-                );
-              }
-            }
-            if (job.status === "succeeded") {
-              if (!job.result) {
-                setError(
-                  "De job staat op «gelukt» maar er is geen opgeslagen resultaat (vaak een database-fout bij grote JSON). Probeer opnieuw of kort de briefing in.",
-                );
-                setDesignRationaleLoading(false);
-                return;
-              }
-              setGeneratedTailwind(job.result);
-              setStreamPhase("Generatie voltooid");
-              appendGenerationActivity("Klaar — resultaat geladen.");
-              setDesignRationaleLoading(false);
-              return;
-            }
-            if (job.status === "failed") {
-              setError(job.error_message ?? "Generatie mislukt.");
-              setDesignRationaleLoading(false);
-              return;
-            }
-          }
+        if (!jr.ok || !jp.ok) {
+          setError(!jp.ok ? jp.error : "Jobstatus ophalen mislukt.");
+          return;
+        }
+        const { job } = jp;
+        const updatedAtMs = job.updated_at ? new Date(job.updated_at).getTime() : 0;
+        const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
+        if (job.status === "running" && staleMs > 7 * 60 * 1000 && i > 3) {
           setError(
-            `Na ongeveer ${SITE_JOB_POLL_MAX_MINUTES} minuten is deze pagina gestopt met wachten (geen klaar-signaal). Probeer opnieuw. Blijft het mis: laat beheer de job/hosting nalopen — de server kan eerder zijn gestopt dan deze pagina.`,
+            "De job blijft op «bezig» staan maar de server heeft meer dan 7 minuten geen voortgang meer weggeschreven. Vaak is de worker op de hosting gestopt (tijdslimiet) terwijl de database nog op «running» staat. Probeer opnieuw. Blijft dit terugkomen: vraag beheer om een langere functieduur op de hosting (Vercel dashboard → Functions).",
           );
+          setDesignRationaleLoading(false);
           return;
         }
-      }
-
-      const res = await fetch("/api/generate-site/stream", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
-        body: JSON.stringify(body),
-      });
-
-      const ct = res.headers.get("content-type") ?? "";
-      if (!ct.includes("ndjson") && !ct.includes("x-ndjson")) {
-        const payload = (await res.json()) as ApiOk | ApiErr;
-        if (!res.ok || !payload.ok) {
-          setError(!payload.ok ? payload.error : "Generatie mislukt.");
-          if (!payload.ok && payload.rawText) setRawFallback(payload.rawText);
+        if (job.status === "queued" && staleMs > 4 * 60 * 1000 && i > 30) {
+          setError(
+            "De job blijft te lang in de wachtrij (worker start niet). Controleer deployment, `site_generation_jobs`-migratie en of `/api/generate-site/jobs/[id]` bereikbaar is.",
+          );
+          setDesignRationaleLoading(false);
           return;
         }
-        if (payload.outputFormat === "tailwind_sections") {
-          setGeneratedTailwind(payload.data);
+        if (job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object") {
+          setPipelineFeedback(job.pipeline_feedback_json as GenerationPipelineFeedback);
         }
-        return;
-      }
-
-      if (!res.body) {
-        setError("Geen response-stream van de server.");
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let streamStopped = false;
-
-      const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
-          if (ev.type === "keepalive") {
+        const hasPipeline = job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object";
+        const hasDenk = job.denklijn_text != null && job.denklijn_text.length > 0;
+        const hasSkip = job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0;
+        if (hasDenk) {
+          setDesignRationale(job.denklijn_text ?? null);
+          setDesignRationaleSkipReason(null);
+          setDesignRationaleLoading(false);
+        } else if (hasSkip) {
+          setDesignRationale(null);
+          setDesignRationaleSkipReason(job.denklijn_skip_reason ?? null);
+          setDesignRationaleLoading(false);
+        } else if (job.status === "running" && hasPipeline) {
+          setDesignRationaleLoading(true);
+        } else if (job.status === "running" && !hasPipeline) {
+          setDesignRationaleLoading(false);
+        }
+        if (job.design_contract_json != null && typeof job.design_contract_json === "object") {
+          setDesignContract(job.design_contract_json as DesignGenerationContract);
+          setDesignContractWarning(job.design_contract_warning?.trim() || null);
+        }
+        const msg = job.progress_message?.trim() ?? "";
+        if (msg && msg !== lastPolledJobProgressRef.current) {
+          lastPolledJobProgressRef.current = msg;
+          setStreamPhase(msg);
+          appendGenerationActivity(msg);
+        } else if (job.status === "running" && job.updated_at && i > 0 && i % 5 === 0) {
+          /** Geen nieuwe `progress_message` (bijv. lange Denklijn-API): niet elke poll een bijna-gelijke regel in het log — dat voelt als “hangen”. */
+          const ageSec = Math.round((Date.now() - new Date(job.updated_at).getTime()) / 1000);
+          if (ageSec > 35) {
+            const baseline =
+              lastPolledJobProgressRef.current?.trim() ||
+              msg.trim() ||
+              "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
+            setStreamPhase(
+              `${baseline} · laatste statusupdate ${ageSec}s geleden — bij zware generaties normaal; deze pagina blijft nog tot ca. ${SITE_JOB_POLL_MAX_MINUTES} min opnieuw vragen.`,
+            );
+          }
+        }
+        if (job.status === "succeeded") {
+          if (!job.result) {
+            setError(
+              "De job staat op «gelukt» maar er is geen opgeslagen resultaat (vaak een database-fout bij grote JSON). Probeer opnieuw of kort de briefing in.",
+            );
+            setDesignRationaleLoading(false);
             return;
           }
-          if (ev.type === "generation_meta") {
-            setPipelineFeedback(ev.feedback);
-            setDesignRationaleLoading(true);
-            setDesignRationale(null);
-            setDesignRationaleSkipReason(null);
-            setDesignContract(null);
-            setDesignContractWarning(null);
-            appendGenerationActivity("Pipeline: briefing geïnterpreteerd (branche, stijl, structuur).");
-          }
-          if (ev.type === "design_rationale") {
-            setDesignRationaleLoading(false);
-            setDesignContract(ev.contract ?? null);
-            setDesignContractWarning(ev.contractWarning ?? null);
-            if (ev.text != null && ev.text.length > 0) {
-              setDesignRationale(ev.text);
-              setDesignRationaleSkipReason(null);
-              appendGenerationActivity("Denklijn: rationale en designcontract ontvangen.");
-            } else {
-              setDesignRationale(null);
-              setDesignRationaleSkipReason(ev.skipReason ?? "onbekend");
-              appendGenerationActivity(
-                `Denklijn overgeslagen${ev.skipReason ? `: ${ev.skipReason}` : ""}.`,
-              );
-            }
-          }
-          if (ev.type === "status") {
-            setStreamPhase(ev.message);
-            appendGenerationActivity(ev.message);
-          }
-          if (ev.type === "token") {
-            streamJsonBufferRef.current += ev.content;
-            setStreamLog((prev) => (prev + ev.content).slice(-120_000));
-          }
-          if (ev.type === "section_complete") {
-            const s = ev.section;
-            const sectionName = s.sectionName?.trim() || s.id;
-            appendGenerationActivity(`Sectie ontvangen: ${sectionName}`);
-            setStreamingSections((prev) => {
-              if (prev.some((x) => x.id === s.id)) return prev;
-              return [...prev, { id: s.id, html: s.html, sectionName }];
-            });
-            const cfg = tryExtractStreamingTailwindConfig(streamJsonBufferRef.current);
-            if (cfg) setStreamingConfig(cfg);
-          }
-          if (ev.type === "complete") {
-            setStreamEndedWithoutComplete(false);
-            setStreamingSections([]);
-            setStreamingConfig(null);
-            streamJsonBufferRef.current = "";
-            if (ev.outputFormat === "tailwind_sections") {
-              setGeneratedTailwind(ev.data);
-            }
-            setDesignRationaleLoading(false);
-            streamStopped = true;
-          }
-          if (ev.type === "error") {
-            setStreamEndedWithoutComplete(false);
-            setStreamingSections([]);
-            setStreamingConfig(null);
-            streamJsonBufferRef.current = "";
-            setError(ev.message);
-            if (ev.rawText) setRawFallback(ev.rawText);
-            setDesignRationaleLoading(false);
-            streamStopped = true;
-          }
-      };
-
-      while (!streamStopped) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer = consumeGenerateSiteNdjsonBuffer(buffer, decoder.decode(value, { stream: true }), handleNdjsonEvent);
+          setGeneratedTailwind(job.result);
+          setStreamPhase("Generatie voltooid");
+          appendGenerationActivity("Klaar — resultaat geladen.");
+          setDesignRationaleLoading(false);
+          return;
+        }
+        if (job.status === "failed") {
+          setError(job.error_message ?? "Generatie mislukt.");
+          setDesignRationaleLoading(false);
+          return;
+        }
       }
-
-      if (buffer.trim()) {
-        buffer = consumeGenerateSiteNdjsonBuffer(buffer, "\n", handleNdjsonEvent);
-      }
-
-      if (!streamStopped) {
-        setStreamEndedWithoutComplete(true);
-        setError((prev) =>
-          prev ??
-          "De verbinding met de server werd verbroken vóór de generatie kon worden afgerond (vaak door een time-out of netwerkonderbreking). Hieronder staan de laatst ontvangen secties — genereer opnieuw om op te kunnen slaan.",
-        );
-      }
-
-      await reader.cancel().catch(() => {});
+      setError(
+        `Na ongeveer ${SITE_JOB_POLL_MAX_MINUTES} minuten is deze pagina gestopt met wachten (geen klaar-signaal). Probeer opnieuw. Blijft het mis: laat beheer de job/hosting nalopen — de server kan eerder zijn gestopt dan deze pagina.`,
+      );
+      return;
     } catch {
       setError("Netwerkfout of server niet bereikbaar.");
     } finally {

@@ -126,8 +126,8 @@ export function GenerationDetailsBody({
               Geen denklijn: <span className="font-mono">{designRationaleSkipReason}</span>
               {designRationaleSkipReason.includes("SKIP_DESIGN_RATIONALE") ? (
                 <span className="block pt-1 text-violet-700/80">
-                  De denklijn staat op de server uit (overslaan). Wil je die weer: laat beheer de overslaan-optie in de
-                  omgeving uitzetten.
+                  Deze skip-melding hoort bij een oude omgevingsinstelling; de studio draait de Denklijn standaard weer
+                  volledig. Vernieuw de pagina na deploy of negeer deze regel.
                 </span>
               ) : null}
             </p>
