@@ -71,6 +71,8 @@ import {
   type IndustryProfile,
   industryProfilePrefersCompactLandingFaq,
 } from "@/lib/ai/site-generation-industry-data";
+import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
+import { SITE_GENERATION_JOB_MAX_DURATION_MS } from "@/lib/config/site-generation-job";
 
 /**
  * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
@@ -110,7 +112,7 @@ export type GenerationPipelineFeedback = {
       excerptChars?: number;
       error?: string;
     };
-    /** `true` bij SITE_GENERATION_MINIMAL_PROMPT of `minimalPrompt` in options. */
+    /** `true` bij vaste studio-default of `minimalPrompt` in options. */
     minimalPrompt?: boolean;
     strictLandingPageContract?: boolean;
     /** Of strikte one-pager \`faq\` in de sectielijst heeft (FAQ-keywords in naam+briefing). */
@@ -126,22 +128,6 @@ export type GenerationPipelineFeedback = {
     };
   };
 };
-
-const DEFAULT_GENERATE_MODEL = "claude-sonnet-4-6";
-/** Denklijn, self-review, briefing-vision (tenzij `ANTHROPIC_BRIEFING_VISION_MODEL`): Haiku = veel kortere wall-time dan Sonnet. */
-const DEFAULT_SUPPORT_MODEL = "claude-haiku-4-5-20251001";
-/** Streaming site-build: ruim genoeg voor marketing multi-page + zware secties (binnen model/stream-limiet). */
-const DEFAULT_MAX_OUTPUT_TOKENS = 30_720;
-
-/** Optioneel verlagen via \`SITE_GENERATION_MAX_OUTPUT_TOKENS\` om sneller klaar te zijn (kleinere JSON, minder timeout-risico). */
-function resolveSiteGenerationMaxOutputTokens(): number {
-  const raw = process.env.SITE_GENERATION_MAX_OUTPUT_TOKENS?.trim();
-  if (!raw) return DEFAULT_MAX_OUTPUT_TOKENS;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n)) return DEFAULT_MAX_OUTPUT_TOKENS;
-  return Math.min(Math.max(n, 8192), 32_000);
-}
-
 
 /**
  * Tekst voor branche- en sectie-detectie: **bedrijfsnaam + briefing** samen.
@@ -1033,7 +1019,7 @@ export type GenerateSitePromptOptions = {
   existingSiteTailwindJson?: string | null;
   varianceNonce?: string;
   sectionIdsHint?: string[];
-  /** Korte prompt (geen branche/stijl/variatie). Ook: env `SITE_GENERATION_MINIMAL_PROMPT=1`. */
+  /** Korte prompt (geen branche/stijl/variatie). */
   minimalPrompt?: boolean;
   clientImages?: ClientImage[];
   /** Screenshots/referenties bij de briefing (los van klantfoto's). */
@@ -1645,12 +1631,11 @@ JSON moet geldig zijn.`;
 }
 
 /**
- * `SITE_GENERATION_MINIMAL_PROMPT=1|true|yes` — minder sturing (geen branche-/stijl-/variatieblokken).
- * API kan `minimalPrompt: true` zetten (wint niet over env: beide activeren minimal).
+ * Standaard minimale prompt-modus (vast in `studio-generation-fixed-config`).
+ * API kan `minimalPrompt: true` zetten — dat wint óók wanneer de default uit staat.
  */
 export function isSiteGenerationMinimalPromptFromEnv(): boolean {
-  const v = process.env.SITE_GENERATION_MINIMAL_PROMPT?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+  return STUDIO_SITE_GENERATION.minimalPromptDefault;
 }
 
 /** Alleen briefing + CONTENT AUTHORITY + studio-contract + technische tail — geen INDUSTRY/DESIGNTAAL/variatie/§1/shop-blokken. */
@@ -1940,11 +1925,8 @@ async function prepareGenerateSiteClaudeCall(
     };
   }
 
-  const generateModel = process.env.ANTHROPIC_GENERATE_MODEL ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_GENERATE_MODEL;
-  const supportModel =
-    process.env.ANTHROPIC_SUPPORT_MODEL?.trim() ||
-    process.env.ANTHROPIC_MODEL?.trim() ||
-    DEFAULT_SUPPORT_MODEL;
+  const generateModel = STUDIO_SITE_GENERATION.generateModel;
+  const supportModel = STUDIO_SITE_GENERATION.supportModel;
   const client = new Anthropic({ apiKey });
 
   const { systemText: knowledgeSystem, userPrefixBlocks } = await getKnowledgeContextForClaude();
@@ -2015,14 +1997,12 @@ async function prepareGenerateSiteClaudeCall(
   }
 
   const briefingRefForVision = mergedPromptOptions.briefingReferenceImages?.filter((img) => img.url?.trim()) ?? [];
-  const skipBriefingVision =
-    process.env.SITE_GENERATION_BRIEFING_VISION?.trim().toLowerCase() === "0" ||
-    process.env.SITE_GENERATION_BRIEFING_VISION?.trim().toLowerCase() === "false";
+  const skipBriefingVision = !STUDIO_SITE_GENERATION.briefingVisionEnabled;
   const preProvidedVisionExtract = mergedPromptOptions.briefingReferenceImagesVisionExtract?.trim() ?? "";
   let briefingReferenceImagesVisionExtract = preProvidedVisionExtract;
   let briefingVisionApiCalled = false;
   if (!preProvidedVisionExtract && !skipBriefingVision && briefingRefForVision.length > 0) {
-    const visionModel = process.env.ANTHROPIC_BRIEFING_VISION_MODEL?.trim() || supportModel;
+    const visionModel = supportModel;
     const extracted = await extractBriefingReferenceImagesWithVision({
       client,
       model: visionModel,
@@ -2081,7 +2061,7 @@ async function prepareGenerateSiteClaudeCall(
   );
   const mainUserPrompt = corePrompt;
 
-  const max_tokens = resolveSiteGenerationMaxOutputTokens();
+  const max_tokens = STUDIO_SITE_GENERATION.maxOutputTokens;
 
   const userContent: string | ContentBlockParam[] =
     userPrefixBlocks.length > 0
@@ -2469,8 +2449,8 @@ export type GenerateSiteStreamNdjsonEvent =
  */
 const NDJSON_SILENT_WORK_KEEPALIVE_MS = 4_000;
 
-/** Houd gelijk met `export const maxDuration` in `app/api/generate-site/stream/route.ts`. */
-const GENERATE_SITE_STREAM_MAX_DURATION_MS = 300_000;
+/** Houd gelijk met `SITE_GENERATION_JOB_MAX_DURATION_MS` (`lib/config/site-generation-job.ts`). */
+const GENERATE_SITE_STREAM_MAX_DURATION_MS = SITE_GENERATION_JOB_MAX_DURATION_MS;
 /** Ruimte voor zelfreview + Unsplash + journal vóór Vercel het verzoek beëindigt. */
 const GENERATE_SITE_TAIL_RESERVE_MS = 95_000;
 

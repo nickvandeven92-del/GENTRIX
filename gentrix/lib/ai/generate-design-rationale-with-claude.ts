@@ -11,6 +11,9 @@ import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-cla
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 
+/** Losse hangende upstream-calls voorkomen; bij timeout gaat de pipeline door zonder contract. */
+const DESIGN_RATIONALE_CALL_TIMEOUT_MS = 180_000;
+
 const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bindend designcontract** voor de website-generator in dezelfde run.
 
 === ROLVERDELING (leidend — niet wollig) ===
@@ -125,16 +128,20 @@ export async function generateDesignRationaleWithClaude(
   const referenceBlock = buildReferenceSiteBlockForRationale(input.referenceSiteSnapshot, name || "de klant");
   const requiresReferenceAxes = Boolean(input.referenceSiteSnapshot?.excerpt?.trim());
 
+  const timeoutAfterSec = DESIGN_RATIONALE_CALL_TIMEOUT_MS / 1000;
+
   try {
-    const message = await client.messages.create({
-      model,
-      /** Kortere rationale + zelfde contract: minder output-tokens/latency; plafond blijft ruim voor JSON-contract. */
-      max_tokens: clampMaxTokensNonStreaming(model, 2_048),
-      system: SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: `Bedrijfsnaam: ${name || "(niet opgegeven)"}
+    return await Promise.race([
+      (async (): Promise<GenerateDesignRationaleOutcome> => {
+        const message = await client.messages.create({
+          model,
+          /** Kortere rationale + zelfde contract: minder output-tokens/latency; plafond blijft ruim voor JSON-contract. */
+          max_tokens: clampMaxTokensNonStreaming(model, 2_048),
+          system: SYSTEM,
+          messages: [
+            {
+              role: "user",
+              content: `Bedrijfsnaam: ${name || "(niet opgegeven)"}
 
 Briefing:
 ${desc || "(leeg)"}
@@ -143,70 +150,82 @@ ${referenceBlock}
 ${JSON.stringify(ctx, null, 2)}
 
 Schrijf nu het JSON-antwoord: korte \`rationale_nl\` (zie limiet hierboven) + volledig geldig \`contract\`.`,
-        },
-      ],
-    });
+            },
+          ],
+        });
 
-    await logClaudeMessageUsage("generate_site_design_rationale", model, message.usage);
+        await logClaudeMessageUsage("generate_site_design_rationale", model, message.usage);
 
-    const textBlock = message.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return { ok: false, error: "Geen tekst-antwoord." };
-    }
+        const textBlock = message.content.find((b) => b.type === "text");
+        if (!textBlock || textBlock.type !== "text") {
+          return { ok: false, error: "Geen tekst-antwoord." };
+        }
 
-    const raw = textBlock.text.trim();
-    if (!raw) {
-      return { ok: false, error: "Leeg antwoord." };
-    }
+        const raw = textBlock.text.trim();
+        if (!raw) {
+          return { ok: false, error: "Leeg antwoord." };
+        }
 
-    const parsedJson = parseModelJsonObject(raw);
-    if (!parsedJson.ok) {
-      return { ok: false, error: "Denklijn is geen parseerbare JSON (controleer model-output)." };
-    }
+        const parsedJson = parseModelJsonObject(raw);
+        if (!parsedJson.ok) {
+          return { ok: false, error: "Denklijn is geen parseerbare JSON (controleer model-output)." };
+        }
 
-    const envelope = designRationaleEnvelopeSchema.safeParse(parsedJson.value);
-    if (!envelope.success) {
-      return { ok: false, error: `Denklijn-envelop ongeldig: ${envelope.error.message}` };
-    }
+        const envelope = designRationaleEnvelopeSchema.safeParse(parsedJson.value);
+        if (!envelope.success) {
+          return { ok: false, error: `Denklijn-envelop ongeldig: ${envelope.error.message}` };
+        }
 
-    const contractParsed = designGenerationContractSchema.safeParse(
-      clampUnknownContractForSchemaParse(envelope.data.contract),
-    );
-    if (!contractParsed.success) {
-      return {
-        ok: true,
-        text: envelope.data.rationale_nl.trim(),
-        contract: null,
-        contractWarning: `Contract ongeldig (${contractParsed.error.message}) — generatie zonder designcontract.`,
-      };
-    }
+        const contractParsed = designGenerationContractSchema.safeParse(
+          clampUnknownContractForSchemaParse(envelope.data.contract),
+        );
+        if (!contractParsed.success) {
+          return {
+            ok: true,
+            text: envelope.data.rationale_nl.trim(),
+            contract: null,
+            contractWarning: `Contract ongeldig (${contractParsed.error.message}) — generatie zonder designcontract.`,
+          };
+        }
 
-    const contract = contractParsed.data;
-    if (requiresReferenceAxes && contract.referenceVisualAxes == null) {
-      return {
-        ok: true,
-        text: envelope.data.rationale_nl.trim(),
-        contract: null,
-        contractWarning:
-          "Referentie-excerpt aanwezig maar `referenceVisualAxes` ontbreekt in contract — generatie zonder designcontract (herhaal run of strakker model).",
-      };
-    }
+        const contract = contractParsed.data;
+        if (requiresReferenceAxes && contract.referenceVisualAxes == null) {
+          return {
+            ok: true,
+            text: envelope.data.rationale_nl.trim(),
+            contract: null,
+            contractWarning:
+              "Referentie-excerpt aanwezig maar `referenceVisualAxes` ontbreekt in contract — generatie zonder designcontract (herhaal run of strakker model).",
+          };
+        }
 
-    if (!requiresReferenceAxes && contract.referenceVisualAxes != null) {
-      return {
-        ok: true,
-        text: envelope.data.rationale_nl.trim(),
-        contract: null,
-        contractWarning:
-          "`referenceVisualAxes` meegegeven zonder referentie-excerpt — generatie zonder designcontract.",
-      };
-    }
+        if (!requiresReferenceAxes && contract.referenceVisualAxes != null) {
+          return {
+            ok: true,
+            text: envelope.data.rationale_nl.trim(),
+            contract: null,
+            contractWarning:
+              "`referenceVisualAxes` meegegeven zonder referentie-excerpt — generatie zonder designcontract.",
+          };
+        }
 
-    return {
-      ok: true,
-      text: envelope.data.rationale_nl.trim(),
-      contract,
-    };
+        return {
+          ok: true,
+          text: envelope.data.rationale_nl.trim(),
+          contract,
+        };
+      })(),
+      new Promise<GenerateDesignRationaleOutcome>((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              ok: false,
+              error: `Denklijn-timeout na ${timeoutAfterSec}s (geen tijdig antwoord van het model). Generatie gaat door zonder designcontract — probeer opnieuw of kort briefing/referentiesite.`,
+            }),
+          DESIGN_RATIONALE_CALL_TIMEOUT_MS,
+        ),
+      ),
+    ]);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "generateDesignRationaleWithClaude mislukt.";
     return { ok: false, error: msg };

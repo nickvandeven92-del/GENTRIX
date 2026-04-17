@@ -3,6 +3,7 @@ import {
   generatedTailwindPageToClaudeOutput,
   isSiteSelfReviewEnabled,
 } from "@/lib/ai/self-review-site-generation";
+import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 import type { GeneratedTailwindPage } from "@/lib/ai/tailwind-sections-schema";
 
 describe("self-review-site-generation", () => {
@@ -24,27 +25,7 @@ describe("self-review-site-generation", () => {
     ]);
   });
 
-  it("isSiteSelfReviewEnabled standaard uit; ENABLE=1 zet aan; DISABLE=1 wint", () => {
-    const prevD = process.env.DISABLE_SITE_SELF_REVIEW;
-    const prevE = process.env.ENABLE_SITE_SELF_REVIEW;
-    try {
-      delete process.env.DISABLE_SITE_SELF_REVIEW;
-      delete process.env.ENABLE_SITE_SELF_REVIEW;
-      expect(isSiteSelfReviewEnabled()).toBe(false);
-      process.env.ENABLE_SITE_SELF_REVIEW = "1";
-      expect(isSiteSelfReviewEnabled()).toBe(true);
-      process.env.ENABLE_SITE_SELF_REVIEW = "0";
-      expect(isSiteSelfReviewEnabled()).toBe(false);
-      delete process.env.ENABLE_SITE_SELF_REVIEW;
-      expect(isSiteSelfReviewEnabled()).toBe(false);
-      process.env.DISABLE_SITE_SELF_REVIEW = "1";
-      process.env.ENABLE_SITE_SELF_REVIEW = "1";
-      expect(isSiteSelfReviewEnabled()).toBe(false);
-    } finally {
-      if (prevD === undefined) delete process.env.DISABLE_SITE_SELF_REVIEW;
-      else process.env.DISABLE_SITE_SELF_REVIEW = prevD;
-      if (prevE === undefined) delete process.env.ENABLE_SITE_SELF_REVIEW;
-      else process.env.ENABLE_SITE_SELF_REVIEW = prevE;
-    }
+  it("isSiteSelfReviewEnabled volgt studio-generation-fixed-config", () => {
+    expect(isSiteSelfReviewEnabled()).toBe(STUDIO_SITE_GENERATION.selfReviewEnabled);
   });
 });

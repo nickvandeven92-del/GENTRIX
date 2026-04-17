@@ -3,6 +3,7 @@ import {
   pickBestUnsplashResult,
   type UnsplashPageIntent,
 } from "@/lib/ai/image-relevance-policy";
+import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 import type { TailwindSection } from "./tailwind-sections-schema";
 
 // ---------------------------------------------------------------------------
@@ -27,42 +28,32 @@ export function htmlMayContainUnsplashPhotoUrl(html: string): boolean {
 }
 
 /** Standaard cap: te veel stock per sectie = trage Unsplash-stap + visuele herhaling. */
-export const DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION = 4;
-
-function parseEnvPositiveInt(name: string, fallback: number): number {
-  const v = process.env[name]?.trim();
-  if (!v) return fallback;
-  const n = Number.parseInt(v, 10);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
+export const DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION = STUDIO_SITE_GENERATION.unsplashMaxImagesPerSection;
 
 export type ReplaceUnsplashRelevanceOptions = {
   designContract?: DesignGenerationContract | null;
   pageIntent?: UnsplashPageIntent;
-  /** Overschrijft \`UNSPLASH_MAX_IMAGES_PER_SECTION\` voor deze call. */
+  /** Overschrijft vaste studio-cap \`unsplashMaxImagesPerSection\` voor deze call. */
   maxImagesPerSection?: number;
-  /** Overschrijft \`UNSPLASH_MAX_IMAGES_PER_PAGE\` (0 in env = uit). */
+  /** Overschrijft vaste studio-cap \`unsplashMaxImagesPerPage\` (0 = uit). */
   maxImagesPerPage?: number;
   /**
-   * `false` = Unsplash overal resolven (oud gedrag). Standaard **aan**: alleen \`id: "gallery"\` krijgt API-resolve (Lovable-achtig: geen stock-hero);
-   * hero-stock optioneel via \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`. Elders worden \`images.unsplash.com/photo-…\` geneutraliseerd.
+   * `false` = Unsplash overal resolven (oud gedrag). Standaard volgt dit \`STUDIO_SITE_GENERATION.unsplashGalleryOnly\`:
+   * alleen \`id: "gallery"\` krijgt API-resolve tenzij \`unsplashAllowHeroStock\` hero/header/banner toestaat.
    */
   galleryOnlyStock?: boolean;
 };
 
-/** Standaard **uit**: geen Unsplash in hero — alleen expliciete \`gallery\`-sectie. Zet \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` om hero/header/banner wél te laten matchen. */
+/** Geen Unsplash in hero tenzij \`studio-generation-fixed-config\` \`unsplashAllowHeroStock\` true is. */
 export function isUnsplashHeroStockResolveEnabled(): boolean {
-  const v = process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes" || v === "on";
+  return STUDIO_SITE_GENERATION.unsplashAllowHeroStock;
 }
 
-/** Standaard: geen stock-foto's behalve \`gallery\` (+ optioneel hero via env; zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` voor Unsplash overal). */
+/** Gallery-only en hero volgen \`STUDIO_SITE_GENERATION\`; \`opts.galleryOnlyStock\` wint per call. */
 export function isGalleryOnlyUnsplashStockMode(opts?: ReplaceUnsplashRelevanceOptions): boolean {
   if (opts?.galleryOnlyStock === false) return false;
   if (opts?.galleryOnlyStock === true) return true;
-  const v = process.env.SITE_GENERATION_UNSPLASH_GALLERY_ONLY?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "off" || v === "no") return false;
-  return true;
+  return STUDIO_SITE_GENERATION.unsplashGalleryOnly;
 }
 
 export function isUnsplashGallerySection(sec: Pick<TailwindSection, "id">): boolean {
@@ -71,7 +62,7 @@ export function isUnsplashGallerySection(sec: Pick<TailwindSection, "id">): bool
 
 /**
  * In gallery-only modus: hier mag Unsplash wél via de API worden opgelost.
- * Standaard **alleen** \`id: "gallery"\` (image-vrije site); hero wanneer \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`.
+ * Standaard **alleen** \`id: "gallery"\` (image-vrije site); hero wanneer \`unsplashAllowHeroStock\` in de vaste studio-config aan staat.
  */
 export function allowsUnsplashStockResolveInGalleryOnlyMode(
   sec: Pick<TailwindSection, "id" | "sectionName">,
@@ -106,13 +97,12 @@ function resolveUnsplashImageLimits(opts?: ReplaceUnsplashRelevanceOptions): {
   perSection: number;
   perPage: number | null;
 } {
-  const perSection =
-    opts?.maxImagesPerSection ?? parseEnvPositiveInt("UNSPLASH_MAX_IMAGES_PER_SECTION", DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION);
+  const perSection = opts?.maxImagesPerSection ?? STUDIO_SITE_GENERATION.unsplashMaxImagesPerSection;
   if (opts?.maxImagesPerPage != null) {
     return { perSection, perPage: opts.maxImagesPerPage > 0 ? opts.maxImagesPerPage : null };
   }
-  const envPage = parseEnvPositiveInt("UNSPLASH_MAX_IMAGES_PER_PAGE", 0);
-  return { perSection, perPage: envPage > 0 ? envPage : null };
+  const pageCap = STUDIO_SITE_GENERATION.unsplashMaxImagesPerPage;
+  return { perSection, perPage: pageCap > 0 ? pageCap : null };
 }
 
 /** Mini-transparante GIF: tijdelijke src tussen range-replace en opruimen van `<img>`. */
@@ -325,10 +315,10 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * - Deduplicates queries: same alt text → same result set.
  * - Uniqueness: picks different photos from the result set for the same query.
  * - Respects rate limits with inter-request delays and a total timeout.
- * - **Cap:** standaard `DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION` resolves per sectie (+ optioneel per pagina); rest → transparante placeholder (geen extra API).
- * - **Gallery-only (standaard):** Unsplash wordt **alleen** in \`id: "gallery"\` opgelost; elders → placeholder. Optioneel hero: \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`. Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` om overal te resolven.
+ * - **Cap:** vaste waarden in \`studio-generation-fixed-config\` per sectie (+ optioneel per pagina); rest → transparante placeholder (geen extra API).
+ * - **Gallery-only:** Unsplash wordt **alleen** in \`id: "gallery"\` opgelost wanneer \`unsplashGalleryOnly\` aan staat; optioneel hero via \`unsplashAllowHeroStock\`.
  * @param themeContext Optioneel: korte bedrijfsbeschrijving; wordt gemengd in de zoekterm voor betere branche-match.
- * @param relevance Optioneel: relevantie + optioneel `maxImagesPerSection` / `maxImagesPerPage` (of env `UNSPLASH_MAX_*`).
+ * @param relevance Optioneel: relevantie + optioneel \`maxImagesPerSection\` / \`maxImagesPerPage\` (overschrijft vaste studio-caps).
  */
 export async function replaceUnsplashImagesInSections(
   sections: TailwindSection[],

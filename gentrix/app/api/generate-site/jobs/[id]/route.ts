@@ -6,9 +6,10 @@ import {
   markSiteGenerationJobFailed,
   runSiteGenerationJob,
 } from "@/lib/data/site-generation-jobs";
+import { SITE_GENERATION_JOB_MAX_DURATION_SEC } from "@/lib/config/site-generation-job";
 
 /** Zelfde plafond als POST /jobs: kickstart + `after()` moeten lang genoeg mogen voor de volledige pipeline. */
-export const maxDuration = 300;
+export const maxDuration = SITE_GENERATION_JOB_MAX_DURATION_SEC;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminApiAuth();
@@ -52,6 +53,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         updated_at: job.updated_at,
         started_at: job.started_at,
         completed_at: job.completed_at,
+        /** Browser: wall-clock vanaf `started_at` i.p.v. `updated_at` (keepalives verversen die laatste). */
+        server_max_duration_sec: SITE_GENERATION_JOB_MAX_DURATION_SEC,
       },
     },
     {

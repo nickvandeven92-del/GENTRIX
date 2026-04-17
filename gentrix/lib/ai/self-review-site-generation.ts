@@ -7,10 +7,7 @@
  * betere contrasten, dubbele navigatie weg, laser-decoratie alleen als de briefing dat rechtvaardigt,
  * kortere dubbele trust-blokken, hero wat vullen als die te kaal is — zonder secties te verwijderen of `id`’s te wijzigen.
  *
- * **Standaard uit:** geen tweede LLM-pass (voorkomt timeouts); expliciet aanzetten met env (zie hieronder).
- * **Aanzetten:** `ENABLE_SITE_SELF_REVIEW=1` / `true` / `yes` in `.env.local`.
- * **Force uit:** `DISABLE_SITE_SELF_REVIEW=1` wint altijd (ook als ENABLE gezet is).
- * Na wijziging: dev-server herstarten.
+ * **Aan/uit:** vast in `lib/ai/studio-generation-fixed-config.ts` (`selfReviewEnabled`).
  *
  * **Trade-off:** coherente revisie — **niet** bedoeld om output **saver of generischer** te maken dan de briefing vraagt.
  */
@@ -49,6 +46,7 @@ import {
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback, StyleDetectionSource } from "@/lib/ai/generate-site-with-claude";
+import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 
 const MAX_DRAFT_JSON_CHARS = 380_000;
 
@@ -94,15 +92,9 @@ ${buildContentAuthorityPolicyBlock()}
 - **Hero te druk t.o.v. briefing:** als de eerste sectie vol staat met tekst en knoppen terwijl de klant rust/luxe vraagt, **vereenvoudig** (kortere kop, minder knoppen, uitleg naar volgende sectie) — geen verplichte serif/knoppen-formule; hero zonder knoppen is prima tenzij de briefing anders vraagt.
 - Vraagt de briefing **vintage / warm papier / old-school**: breng diensten-, trust- en testimonial-secties visueel in **dezelfde warme papierwereld** (crème/zand/stone-warm sectie-achtergronden); vervang dominerend \`bg-white\` op brede banden door passende warme tinten; geen willekeurige off-topic full-bleed beelden (bijv. verf/klus) tenzij de briefing dat zo noemt.`;
 
-/**
- * Tweede LLM-pass staat **standaard uit** (minder stream-timeouts).
- * Aanzetten: `ENABLE_SITE_SELF_REVIEW=1` / `true` / `yes`.
- * Uitzetten wint altijd: `DISABLE_SITE_SELF_REVIEW=1`.
- */
+/** Tweede LLM-pass: vast in `studio-generation-fixed-config` (`selfReviewEnabled`). */
 export function isSiteSelfReviewEnabled(): boolean {
-  if (process.env.DISABLE_SITE_SELF_REVIEW === "1") return false;
-  const v = process.env.ENABLE_SITE_SELF_REVIEW?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+  return STUDIO_SITE_GENERATION.selfReviewEnabled;
 }
 
 export function generatedTailwindPageToClaudeOutput(

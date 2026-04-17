@@ -19,7 +19,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "System prompts (volledig vs minimal)",
     path: "lib/ai/master-site-system-prompt.ts",
     description:
-      "MASTER_SITE_SYSTEM_PROMPT / _MINIMAL — gekozen via minimalPrompt of SITE_GENERATION_MINIMAL_PROMPT.",
+      "MASTER_SITE_SYSTEM_PROMPT / _MINIMAL — gekozen via `minimalPrompt` in de request of vaste default in `studio-generation-fixed-config`.",
   },
   {
     label: "Studio-blok (pakket / briefing in user-prompt)",
@@ -89,12 +89,13 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Optionele tweede LLM-pass (zelfreview)",
     path: "lib/ai/self-review-site-generation.ts",
     description:
-      "applySelfReviewToGeneratedPage — standaard uit (ENABLE_SITE_SELF_REVIEW); DISABLE wint.",
+      "applySelfReviewToGeneratedPage — aan/uit vast in `studio-generation-fixed-config` (`selfReviewEnabled`).",
   },
   {
     label: "Unsplash-vervanging",
     path: "lib/ai/unsplash-image-replace.ts",
-    description: "replaceUnsplashImagesInSections: standaard alleen `gallery` + Unsplash API (image-vrij); SITE_GENERATION_UNSPLASH_ALLOW_HERO=1 optioneel; SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0 = overal.",
+    description:
+      "replaceUnsplashImagesInSections: gallery-only en hero-caps vast in `studio-generation-fixed-config`; per call overschrijfbaar via relevance-options.",
   },
   {
     label: "NDJSON stream consumer (jobs)",

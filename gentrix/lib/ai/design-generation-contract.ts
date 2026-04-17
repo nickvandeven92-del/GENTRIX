@@ -383,7 +383,7 @@ export function buildDesignContractPromptInjection(
             "",
           ]),
     "=== BEELDEN (sector + studio-regels) ===",
-    "- **Geen** `images.unsplash.com` **buiten** sectie-`id: \"gallery\"` (beperkt raster; elders worden stock-URL's geneutraliseerd). **Hero:** typografie + gradient/textuur, **klant-upload**, of **`<video>`** met echte briefing-URL — **geen** anonieme stock in `#hero` tenzij de studio expliciet `SITE_GENERATION_UNSPLASH_ALLOW_HERO=1` gebruikt.",
+    "- **Geen** `images.unsplash.com` **buiten** sectie-`id: \"gallery\"` (beperkt raster; elders worden stock-URL's geneutraliseerd). **Hero:** typografie + gradient/textuur, **klant-upload**, of **`<video>`** met echte briefing-URL — **geen** anonieme stock in `#hero` tenzij de vaste studio-config `unsplashAllowHeroStock` aanzet.",
     "- **Hero:** vertaal `heroVisualSubject` naar compositie/kleur/motion **zonder** stock-foto's (tenzij studio hero-stock aanzet); geen stock-video zonder URL in de briefing.",
     "",
     "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Geen `images.unsplash.com` buiten `gallery` (tenzij studio hero-stock aan heeft); klant-`<img>`-URL's moeten bij de briefing passen. (3) `config` + `hero` + één feature-blok mogen `referenceVisualAxes` en `paletteMode` niet tegenspreken.",

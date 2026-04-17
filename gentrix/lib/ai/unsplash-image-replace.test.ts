@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   allowsUnsplashStockResolveInGalleryOnlyMode,
   cleanupStrippedStockMarkup,
@@ -9,26 +9,36 @@ import {
 } from "@/lib/ai/unsplash-image-replace";
 
 describe("allowsUnsplashStockResolveInGalleryOnlyMode", () => {
-  const prevHero = process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO;
-
-  afterEach(() => {
-    if (prevHero === undefined) delete process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO;
-    else process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO = prevHero;
-  });
-
   it("staat standaard alleen gallery toe (geen stock-hero)", () => {
-    delete process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO;
     expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "hero", sectionName: "Hero" }, 0)).toBe(false);
     expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "gallery", sectionName: "Galerij" }, 3)).toBe(true);
     expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "header", sectionName: "Kop" }, 0)).toBe(false);
     expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "about", sectionName: "Over ons" }, 2)).toBe(false);
   });
 
-  it("met SITE_GENERATION_UNSPLASH_ALLOW_HERO=1 ook hero en header", () => {
-    process.env.SITE_GENERATION_UNSPLASH_ALLOW_HERO = "1";
-    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "hero", sectionName: "Hero" }, 0)).toBe(true);
-    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "gallery", sectionName: "Galerij" }, 3)).toBe(true);
-    expect(allowsUnsplashStockResolveInGalleryOnlyMode({ id: "header", sectionName: "Kop" }, 0)).toBe(true);
+  it("met unsplashAllowHeroStock ook hero en header", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/ai/studio-generation-fixed-config", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("@/lib/ai/studio-generation-fixed-config")>();
+      return {
+        STUDIO_SITE_GENERATION: {
+          ...actual.STUDIO_SITE_GENERATION,
+          unsplashAllowHeroStock: true,
+          unsplashGalleryOnly: true,
+        },
+      };
+    });
+    try {
+      const { allowsUnsplashStockResolveInGalleryOnlyMode: allow } = await import(
+        "@/lib/ai/unsplash-image-replace"
+      );
+      expect(allow({ id: "hero", sectionName: "Hero" }, 0)).toBe(true);
+      expect(allow({ id: "gallery", sectionName: "Galerij" }, 3)).toBe(true);
+      expect(allow({ id: "header", sectionName: "Kop" }, 0)).toBe(true);
+    } finally {
+      vi.doUnmock("@/lib/ai/studio-generation-fixed-config");
+      vi.resetModules();
+    }
   });
 });
 

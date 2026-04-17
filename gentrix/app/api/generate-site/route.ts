@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
-
-/** Zelfde plafond als stream-/jobs-endpoint. Hobby: max 300; op Pro optioneel 800. */
-export const maxDuration = 300;
 import { generateSiteWithClaude, type GenerateSitePromptOptions } from "@/lib/ai/generate-site-with-claude";
 import {
   buildJournalFactsGenerateSite,
@@ -11,6 +8,9 @@ import {
 import { generateSiteRequestBodySchema } from "@/lib/api/generate-site-request-schema";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
+import { SITE_GENERATION_JOB_MAX_DURATION_SEC } from "@/lib/config/site-generation-job";
+
+export const maxDuration = SITE_GENERATION_JOB_MAX_DURATION_SEC;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

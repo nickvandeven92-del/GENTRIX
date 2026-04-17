@@ -49,6 +49,10 @@ import {
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
+import {
+  SITE_GENERATION_JOB_CLIENT_WALL_GRACE_MS,
+  SITE_GENERATION_JOB_MAX_DURATION_SEC,
+} from "@/lib/config/site-generation-job";
 import { cn } from "@/lib/utils";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
@@ -621,11 +625,14 @@ export function GeneratorForm({
                 error_message: string | null;
                 result: GeneratedTailwindPage | null;
                 updated_at?: string;
+                started_at?: string | null;
                 pipeline_feedback_json?: unknown;
                 denklijn_text?: string | null;
                 denklijn_skip_reason?: string | null;
                 design_contract_json?: unknown;
                 design_contract_warning?: string | null;
+                /** Server `maxDuration` (s); keepalives verversen `updated_at` dus niet daarop vertrouwen. */
+                server_max_duration_sec?: number;
               };
             }
           | { ok: false; error: string };
@@ -634,15 +641,22 @@ export function GeneratorForm({
           return;
         }
         const { job } = jp;
-        const updatedAtMs = job.updated_at ? new Date(job.updated_at).getTime() : 0;
-        const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
-        if (job.status === "running" && staleMs > 7 * 60 * 1000 && i > 3) {
+        const maxSec =
+          typeof job.server_max_duration_sec === "number" && job.server_max_duration_sec > 0
+            ? job.server_max_duration_sec
+            : SITE_GENERATION_JOB_MAX_DURATION_SEC;
+        const wallLimitMs = maxSec * 1000 + SITE_GENERATION_JOB_CLIENT_WALL_GRACE_MS;
+        const startedAtMs = job.started_at ? new Date(job.started_at).getTime() : 0;
+        const runningWallMs = startedAtMs > 0 ? Date.now() - startedAtMs : 0;
+        if (job.status === "running" && startedAtMs > 0 && runningWallMs > wallLimitMs && i > 3) {
           setError(
-            "De job blijft op «bezig» staan maar de server heeft meer dan 7 minuten geen voortgang meer weggeschreven. Vaak is de worker op de hosting gestopt (tijdslimiet) terwijl de database nog op «running» staat. Probeer opnieuw. Blijft dit terugkomen: vraag beheer om een langere functieduur op de hosting (Vercel dashboard → Functions).",
+            `De job blijft op «bezig» terwijl de run langer duurt dan het hosting-plafond (~${maxSec}s functie + marge). Vaak is de worker gestopt terwijl de database nog op «running» staat (keepalives verversen «laatste update» — daarom meten we vanaf starttijd). Probeer opnieuw. Op Vercel Pro: verhoog SITE_GENERATION_JOB_MAX_DURATION_SEC in lib/config/site-generation-job.ts en deploy.`,
           );
           setDesignRationaleLoading(false);
           return;
         }
+        const updatedAtMs = job.updated_at ? new Date(job.updated_at).getTime() : 0;
+        const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
         if (job.status === "queued" && staleMs > 4 * 60 * 1000 && i > 30) {
           setError(
             "De job blijft te lang in de wachtrij (worker start niet). Controleer deployment, `site_generation_jobs`-migratie en of `/api/generate-site/jobs/[id]` bereikbaar is.",
@@ -678,17 +692,20 @@ export function GeneratorForm({
           lastPolledJobProgressRef.current = msg;
           setStreamPhase(msg);
           appendGenerationActivity(msg);
-        } else if (job.status === "running" && job.updated_at && i > 0 && i % 5 === 0) {
-          /** Geen nieuwe `progress_message` (bijv. lange Denklijn-API): niet elke poll een bijna-gelijke regel in het log — dat voelt als “hangen”. */
-          const ageSec = Math.round((Date.now() - new Date(job.updated_at).getTime()) / 1000);
-          if (ageSec > 35) {
-            const baseline =
-              lastPolledJobProgressRef.current?.trim() ||
-              msg.trim() ||
-              "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
-            setStreamPhase(
-              `${baseline} · laatste statusupdate ${ageSec}s geleden — bij zware generaties normaal; deze pagina blijft nog tot ca. ${SITE_JOB_POLL_MAX_MINUTES} min opnieuw vragen.`,
-            );
+        } else if (job.status === "running" && i > 0 && i % 5 === 0) {
+          /** Tijd sinds echte job-start (started_at); `updated_at` loopt door keepalives omhoog en misleidt bij Denklijn. */
+          const refMs = startedAtMs > 0 ? startedAtMs : updatedAtMs;
+          if (refMs > 0) {
+            const ageSec = Math.round((Date.now() - refMs) / 1000);
+            if (ageSec > 35) {
+              const baseline =
+                lastPolledJobProgressRef.current?.trim() ||
+                msg.trim() ||
+                "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
+              setStreamPhase(
+                `${baseline} · run bezig sinds ~${ageSec}s (Denklijn is géén live token-stream; deze pagina blijft nog tot ca. ${SITE_JOB_POLL_MAX_MINUTES} min pollen).`,
+              );
+            }
           }
         }
         if (job.status === "succeeded") {

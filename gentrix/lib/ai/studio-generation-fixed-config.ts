@@ -1,0 +1,23 @@
+/**
+ * Vaste studio-instellingen voor **site-generatie** (één bron van waarheid, geen env-schakelaars).
+ *
+ * Geheimen en infrastructuur blijven via omgeving o.a.:
+ * - `ANTHROPIC_API_KEY`
+ * - `UNSPLASH_ACCESS_KEY` (optioneel)
+ * - database / Supabase
+ */
+export const STUDIO_SITE_GENERATION = {
+  generateModel: "claude-sonnet-4-6",
+  supportModel: "claude-haiku-4-5-20251001",
+  /** Claude `max_tokens` voor de hoofd-stream. */
+  maxOutputTokens: 20_480,
+  /** Standaard geen minimale prompt; `minimalPrompt: true` in de API-request wint. */
+  minimalPromptDefault: false,
+  briefingVisionEnabled: true,
+  selfReviewEnabled: false,
+  unsplashGalleryOnly: true,
+  unsplashAllowHeroStock: false,
+  unsplashMaxImagesPerSection: 4,
+  /** 0 = geen cap over alle secties van één pagina. */
+  unsplashMaxImagesPerPage: 0,
+} as const;
