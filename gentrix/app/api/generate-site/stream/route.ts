@@ -13,8 +13,8 @@ import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
-/** Langere runs: prepare + Denklijn + grote JSON-stream + Unsplash. Op Pro kun je dit in deze file naar 800 verhogen als runs tegen het plafond lopen. */
-export const maxDuration = 300;
+/** Langere runs: prepare + Denklijn + grote JSON-stream + Unsplash. Pro-plafond 800s (jobs-route idem). */
+export const maxDuration = 800;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

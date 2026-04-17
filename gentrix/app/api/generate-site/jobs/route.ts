@@ -9,8 +9,12 @@ import {
   runSiteGenerationJob,
 } from "@/lib/data/site-generation-jobs";
 
-/** Zelfde als stream-route: `after()`-work deelt `maxDuration` van deze route (zie stream-route). */
-export const maxDuration = 300;
+/**
+ * `after()`-work deelt dit plafond met de POST-response. 300s is te kort voor zware studio-runs
+ * (Denklijn + grote JSON + Unsplash): Vercel breekt dan hard af en de job blijft soms op `running`
+ * hangen zonder verdere DB-updates. Op Pro: 800 (zie stream-route).
+ */
+export const maxDuration = 800;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();
