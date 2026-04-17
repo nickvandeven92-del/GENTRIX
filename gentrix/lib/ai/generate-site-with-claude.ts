@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { generateDesignRationaleWithClaude } from "@/lib/ai/generate-design-rationale-with-claude";
 import {
   buildDesignContractPromptInjection,
+  buildUnsplashThemeContextWithContract,
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
@@ -54,7 +55,13 @@ import {
   applySelfReviewToGeneratedPage,
   isSiteSelfReviewEnabled,
 } from "@/lib/ai/self-review-site-generation";
+import {
+  htmlMayContainUnsplashPhotoUrl,
+  replaceUnsplashImagesInSections,
+  stripAllUnsplashFromSections,
+} from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
+import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
 import { maybeEnhanceHero } from "@/lib/ai/enhance-hero-section";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
