@@ -23,15 +23,14 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 === OUTPUT (strikt) ===
 - Antwoord met **alleen** één geldig JSON-object (geen markdown buiten JSON, geen uitleg erna).
 - Top-level keys, precies:
-  1. \`rationale_nl\` — **4 tot 6 korte alinea's** in het Nederlands (elk 1–3 zinnen). Leg uit: briefing-lezing, eventuele referentie-assen (per as, geen vaag “we namen het mee”), en hoe contract de twee merged.
+  1. \`rationale_nl\` — **max. 1–2 korte alinea's**, Nederlands, **recht-to-the-point** (totaal **≤ 8 zinnen**, geen marketingproza, geen herhaling van het hele contract). Doel: in **één oogopslag** waarom deze branche + (eventuele) referentie zo vertaald worden in het contract.
   2. \`contract\` — object volgens het schema hieronder.
 
-=== INHOUD rationale_nl (volgorde) ===
-1. Branche & sfeer uit briefing.
-2. Designrichting uit briefing + basisvelden contract.
-3. Pagina / sectievolgorde; hero-eis op hoofdlijn.
-4. **Referentie:** alleen als excerpt aanwezig: welke **visuele** conclusies per as (\`layoutRhythm\`, \`themeMode\`, …); geen loze bevestiging. Als \`referenceStyle.status: "failed"\` in JSON: kort melden, geen assen afdwingen.
-5. Fine-tunen — één concrete tip voor de briefing.
+=== INHOUD rationale_nl (compact — volgorde) ===
+1. Branche/sfeer + kern designkeuze (één adem).
+2. Hero / motion / palet in **één** zin als dat afwijkt van “standaard sector”.
+3. **Referentie:** alleen als excerpt aanwezig: noem **concreet** welke assen uit het excerpt komen (geen “we hebben het meegenomen”). Bij \`referenceStyle.status: "failed"\` in JSON: één zin, geen assen afdwingen.
+4. Optioneel: **één** zin met de belangrijkste briefing-nuance (geen bullet-essay).
 
 === contract — basisvelden ===
 - \`heroVisualSubject\`, \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
@@ -51,9 +50,9 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
     - \`"warm_paper_rhythm"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.warm_paper_rhythm}
     - \`"conversion_forward"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.conversion_forward}
     - \`"immersive_media_hero"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.immersive_media_hero}
-  - \`commitment_nl\` — **28–420 tekens** Nederlands: concreet **wat deze site visueel onderscheidt** van een standaard landingspagina (compositie, ritme, type, beeld — geen loze superlatieven).
+  - \`commitment_nl\` — **28–420 tekens** Nederlands: **één scherpe zin + desnoods één bijzin** — wat deze site visueel onderscheidt (compositie, ritme, type, beeld); geen superlatieven-stapel.
   - \`anti_templates_nl\` — **JSON-array** van **1 tot 4** strings (elk **12–160** tekens), concrete **verboden generieke patronen** (bv. “geen identieke 3×2 USP-kaarten achter elkaar”, “geen standaard blauwe SaaS-gradient op wit”). Kies patronen die **bij deze briefing** echt risico zijn — niet willekeurig.
-  Leg in \`rationale_nl\` kort uit **waarom** dit archetype + anti-templates bij **deze** briefing passen.
+  In \`rationale_nl\`: **max. één zin** die archetype + anti-templates linkt aan de briefing (geen aparte uitleg per veld).
 - **imageryAvoid vs. winkel/webshop:** als de briefing een **fysieke winkel**, **webshop**, **online bestellen** of duidelijke **productverkoop** in deze sector noemt, zet dan **geen** brede vermijdingen als "retail", "winkelsfeer" of "winkelomgeving" — dat laat de generator ten onrechte generieke natuur- of hobbyfoto’s kiezen i.p.v. sectorjuiste uitrusting, water/visserij of een nette specialistische winkelsetting. Vermijd alleen **niet passende** retail (supermarkt, winkelcentrum zonder sectorlink, kantoor-stock) en expliciet off-topic beelden.
 
 === contract — referenceVisualAxes (verplicht bij REFERENTIESITE-excerpt) ===
@@ -139,7 +138,8 @@ export async function generateDesignRationaleWithClaude(
   try {
     const message = await client.messages.create({
       model,
-      max_tokens: clampMaxTokensNonStreaming(model, 2_560),
+      /** Kortere rationale + zelfde contract: minder output-tokens/latency; plafond blijft ruim voor JSON-contract. */
+      max_tokens: clampMaxTokensNonStreaming(model, 2_048),
       system: SYSTEM,
       messages: [
         {
@@ -152,7 +152,7 @@ ${referenceBlock}
 --- Interpretatie die de generator al vastlegde (JSON) ---
 ${JSON.stringify(ctx, null, 2)}
 
-Schrijf nu het JSON-antwoord met rationale_nl + contract.`,
+Schrijf nu het JSON-antwoord: korte \`rationale_nl\` (zie limiet hierboven) + volledig geldig \`contract\`.`,
         },
       ],
     });
