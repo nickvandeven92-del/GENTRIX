@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDesignContractPromptInjection,
+  clampUnknownContractForSchemaParse,
   designGenerationContractSchema,
 } from "@/lib/ai/design-generation-contract";
 
@@ -93,6 +94,26 @@ describe("designGenerationContractSchema", () => {
     if (r.success) {
       expect(r.data.motionLevel).toBe("moderate");
       expect(r.data.imageryAvoid.length).toBe(2);
+    }
+  });
+
+  it("krimpt te lange siteSignature.commitment_nl via clamp vóór validatie", () => {
+    const longCommit = "x".repeat(500);
+    const raw = {
+      heroVisualSubject: "Hengelsport aan het water met actiebeeld van werphengel.",
+      paletteMode: "dark",
+      imageryMustReflect: ["hengelsport", "water", "visuitrusting"],
+      motionLevel: "moderate" as const,
+      siteSignature: {
+        ...sampleSiteSignature,
+        commitment_nl: longCommit,
+      },
+    };
+    const r = designGenerationContractSchema.safeParse(clampUnknownContractForSchemaParse(raw));
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.siteSignature?.commitment_nl.length).toBeLessThanOrEqual(420);
+      expect(r.data.siteSignature?.commitment_nl.length).toBeGreaterThanOrEqual(28);
     }
   });
 

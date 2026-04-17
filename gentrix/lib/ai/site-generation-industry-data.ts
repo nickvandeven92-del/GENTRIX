@@ -47,7 +47,8 @@ Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk a
   {
     id: "hair_salon",
     label: "Kapsalon / Haarsalon (unisex)",
-    sections: ["hero", "features", "gallery", "about", "team", "brands", "footer"],
+    /** Standaard strak; `team` / `brands` via briefing-keywords. */
+    sections: ["hero", "features", "gallery", "about", "footer"],
     compactLandingDefaultFaq: true,
     heroStrategy: "photo",
     servicesFormat: "price-list",
@@ -57,8 +58,8 @@ Dit is een kapsalon die zowel dames als heren bedient. Focus op haarverzorging, 
 - **Hero-idee:** stijlvol salon-interieur of close-up haar; **minimale copy** in de hero (korte kop + optioneel één regel), serif-kop, veel negatieve ruimte — luxe voelt rustig, niet druk.
 - **Diensten-idee:** een elegante prijslijst per categorie, gescheiden in **Dames** en **Heren** (of apart: Knippen, Kleuren, Behandelingen). Prijzen in euro's. Menukaart-gevoel.
 - **Content:** breed scala — knippen dames & heren, kleuren, highlights/balayage, keratine, föhnen/stylen, baardtrimmen. Toon dat iedereen welkom is.
-- **Team:** stylisten met specialisaties. Portretfoto's en korte bio's.
-- **Typische elementen:** behandelingenmenu (dames + heren), team van stylisten, resultaat-galerij, merkpartners (Kérastase, Olaplex, Redken, etc.), online booking-CTA, openingstijden.`,
+- **Team & merken:** standaard **geen** aparte \`team\`/\`brands\`-secties — verwerk in \`about\`/\`features\` of voeg toe via briefing (keywords).
+- **Typische elementen:** behandelingenmenu (dames + heren), resultaat-galerij, online booking-CTA, openingstijden.`,
   },
   {
     id: "womens_salon",

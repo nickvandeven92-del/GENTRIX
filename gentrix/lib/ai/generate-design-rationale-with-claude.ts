@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { clampMaxTokensNonStreaming } from "@/lib/ai/anthropic-nonstream-limits";
 import {
+  clampUnknownContractForSchemaParse,
   designGenerationContractSchema,
   designRationaleEnvelopeSchema,
   SITE_SIGNATURE_ARCHETYPE_LABELS,
@@ -178,7 +179,9 @@ Schrijf nu het JSON-antwoord met rationale_nl + contract.`,
       return { ok: false, error: `Denklijn-envelop ongeldig: ${envelope.error.message}` };
     }
 
-    const contractParsed = designGenerationContractSchema.safeParse(envelope.data.contract);
+    const contractParsed = designGenerationContractSchema.safeParse(
+      clampUnknownContractForSchemaParse(envelope.data.contract),
+    );
     if (!contractParsed.success) {
       return {
         ok: true,

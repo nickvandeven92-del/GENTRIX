@@ -19,16 +19,16 @@ const FORBIDDEN_STRICT_LANDING_IDS = new Set([
 ]);
 
 /**
- * Harde checks voor de **landings-`sections`** (compact max. 5, studio-contract) bij nieuwe sites.
- * **4** secties = zonder `faq`; **5** = met `faq` vóór `footer`.
+ * Harde checks voor de **landings-`sections`** (studio-contract) bij nieuwe sites.
+ * **3** = ultra-compact (`hero` → `features` → `footer`); **4** = zonder `faq`; **5** = met `faq` vóór `footer`.
  */
 export function validateStrictLandingPageContract(sections: TailwindSection[]): string[] {
   const errors: string[] = [];
   const n = sections.length;
 
-  if (n !== 4 && n !== 5) {
+  if (n !== 3 && n !== 4 && n !== 5) {
     errors.push(
-      `Strikte landingspagina: **4** secties (zonder FAQ) of **5** (met FAQ vóór footer); nu ${n}.`,
+      `Strikte landingspagina: **3** (ultra-compact), **4** (zonder FAQ) of **5** (met FAQ vóór footer); nu ${n}.`,
     );
     return errors;
   }
@@ -44,31 +44,43 @@ export function validateStrictLandingPageContract(sections: TailwindSection[]): 
     errors.push('Laatste sectie moet `id: "footer"` zijn met eind-CTA in hetzelfde blok (geen aparte `cta`-sectie).');
   }
 
-  const proofId = ids[1];
-  if (proofId !== "stats" && proofId !== "brands") {
-    errors.push('Tweede sectie: `id` moet `stats` (cijfers/KPI) of `brands` (logo-partners) zijn — precies één type bewijs.');
-  }
-
-  const middleId = ids[2];
-  if (middleId !== "steps" && middleId !== "features") {
-    errors.push('Derde sectie: `id` moet `steps` (werkwijze) of `features` (diensten) zijn — kies één van de twee.');
-  }
-
-  if (n === 5) {
-    if (ids[3] !== "faq") {
-      errors.push('Bij 5 secties moet de vierde `id: "faq"` zijn (max. 6 vragen in de HTML).');
+  if (n === 3) {
+    if (ids[1] !== "features" && ids[1] !== "steps") {
+      errors.push('Tweede sectie (3-sectieplan): `id` moet `features` of `steps` zijn — het kernblok onder de hero.');
+    }
+    if (ids.includes("stats") || ids.includes("brands")) {
+      errors.push("Bij 3 landings-secties mag geen aparte `stats`- of `brands`-sectie — trust hoort in `features`.");
+    }
+    if (ids.includes("faq")) {
+      errors.push("Bij 3 landings-secties mag geen `faq`-sectie op `sections`.");
     }
   } else {
-    if (ids.includes("faq")) {
-      errors.push('Bij 4 secties mag geen `faq`-sectie voorkomen (verwijder `faq` of voeg geen FAQ-blok toe).');
+    const proofId = ids[1];
+    if (proofId !== "stats" && proofId !== "brands") {
+      errors.push('Tweede sectie: `id` moet `stats` (cijfers/KPI) of `brands` (logo-partners) zijn — precies één type bewijs.');
     }
-  }
 
-  if (ids.filter((x) => x === "stats").length + ids.filter((x) => x === "brands").length > 1) {
-    errors.push('Niet meerdere bewijs-secties: maximaal één `stats` of één `brands` in de hele `sections`-array.');
-  }
-  if (ids.filter((x) => x === "steps").length + ids.filter((x) => x === "features").length > 1) {
-    errors.push('Niet meerdere werkwijze/diensten-secties: maximaal één `steps` of één `features`.');
+    const middleId = ids[2];
+    if (middleId !== "steps" && middleId !== "features") {
+      errors.push('Derde sectie: `id` moet `steps` (werkwijze) of `features` (diensten) zijn — kies één van de twee.');
+    }
+
+    if (n === 5) {
+      if (ids[3] !== "faq") {
+        errors.push('Bij 5 secties moet de vierde `id: "faq"` zijn (max. 6 vragen in de HTML).');
+      }
+    } else {
+      if (ids.includes("faq")) {
+        errors.push('Bij 4 secties mag geen `faq`-sectie voorkomen (verwijder `faq` of voeg geen FAQ-blok toe).');
+      }
+    }
+
+    if (ids.filter((x) => x === "stats").length + ids.filter((x) => x === "brands").length > 1) {
+      errors.push('Niet meerdere bewijs-secties: maximaal één `stats` of één `brands` in de hele `sections`-array.');
+    }
+    if (ids.filter((x) => x === "steps").length + ids.filter((x) => x === "features").length > 1) {
+      errors.push('Niet meerdere werkwijze/diensten-secties: maximaal één `steps` of één `features`.');
+    }
   }
 
   for (const id of ids) {

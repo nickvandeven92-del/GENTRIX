@@ -228,6 +228,57 @@ export const designGenerationContractSchema = z.object({
 
 export type DesignGenerationContract = z.infer<typeof designGenerationContractSchema>;
 
+/** Afstemmen op `siteSignatureSchema` — modellen overschrijden de max soms licht. */
+const SITE_SIG_COMMITMENT_MAX = 420;
+const SITE_SIG_COMMITMENT_MIN = 28;
+const SITE_SIG_ANTI_LINE_MAX = 160;
+const SITE_SIG_ANTI_LINE_MIN = 12;
+
+/**
+ * Denklijn levert soms `commitment_nl` > 420 tekens of te lange anti-template regels → Zod faalt en de hele
+ * generatie draait zonder designcontract. Knijp vooraf naar schema-limieten (inhoud blijft grotendeels intact).
+ */
+export function clampUnknownContractForSchemaParse(contract: unknown): unknown {
+  if (contract == null || typeof contract !== "object" || Array.isArray(contract)) {
+    return contract;
+  }
+  const root = { ...(contract as Record<string, unknown>) };
+  const sig = root.siteSignature;
+  if (sig == null || typeof sig !== "object" || Array.isArray(sig)) {
+    return root;
+  }
+  const sigObj = { ...(sig as Record<string, unknown>) };
+
+  if (typeof sigObj.commitment_nl === "string") {
+    let t = sigObj.commitment_nl.trim();
+    if (t.length > SITE_SIG_COMMITMENT_MAX) {
+      t = t.slice(0, SITE_SIG_COMMITMENT_MAX);
+    }
+    if (t.length > 0 && t.length < SITE_SIG_COMMITMENT_MIN) {
+      t = (t + " — visuele lijn volgens Denklijn en briefing.").slice(0, SITE_SIG_COMMITMENT_MAX);
+      if (t.length < SITE_SIG_COMMITMENT_MIN) {
+        t = t.padEnd(SITE_SIG_COMMITMENT_MIN, "·");
+      }
+    }
+    sigObj.commitment_nl = t;
+  }
+
+  if (Array.isArray(sigObj.anti_templates_nl)) {
+    const rawLines = sigObj.anti_templates_nl as unknown[];
+    let lines = rawLines
+      .map((line) => (typeof line === "string" ? line.trim().slice(0, SITE_SIG_ANTI_LINE_MAX) : ""))
+      .filter((line) => line.length >= SITE_SIG_ANTI_LINE_MIN)
+      .slice(0, 4);
+    if (lines.length === 0 && rawLines.length > 0) {
+      lines = ["Geen standaard marketing-tegelraster zonder briefing-reden."];
+    }
+    sigObj.anti_templates_nl = lines;
+  }
+
+  root.siteSignature = sigObj;
+  return root;
+}
+
 export type { SiteSignature } from "@/lib/ai/site-signature-schema";
 export { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
 

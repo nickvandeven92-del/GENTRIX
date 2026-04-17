@@ -66,7 +66,7 @@ type ApiErr = { ok: false; error: string; rawText?: string };
 
 const SITE_GENERATION_JOBS_MIGRATION_ERROR_RE = /site_generation_jobs|generatie-job aanmaken/i;
 
-/** Screenshots/reviews bij de opdracht — los van klantfoto's (max. in schema / API). */
+/** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
 
 function allowedImageMime(t: string): boolean {
@@ -1019,9 +1019,12 @@ export function GeneratorForm({
                 Briefing-beelden <span className="font-normal text-slate-400">(optioneel, max. {BRIEFING_REF_IMAGES_MAX})</span>
               </label>
               <p className="mt-0.5 text-xs text-slate-500">
-                Screenshots (bijv. reviews): sleep hierheen, klik <strong className="font-medium text-slate-600">Toevoegen</strong>, of{" "}
+                Screenshots (reviews, prijslijst, voorbeeld-UI, flyer): sleep hierheen, klik{" "}
+                <strong className="font-medium text-slate-600">Toevoegen</strong>, of{" "}
                 <strong className="font-medium text-slate-600">plak in het tekstveld</strong> hieronder. Dit is <strong>niet</strong> hetzelfde
-                als klantfoto&apos;s — die blijven apart.
+                als klantfoto&apos;s — die blijven apart. De server leest op de achtergrond{" "}
+                <strong className="text-slate-600">zichtbare tekst en inhoud</strong> uit deze beelden (vision) en neemt dat mee in de
+                generatie; de schriftelijke omschrijving blijft ook belangrijk.
               </p>
               <div
                 onDrop={handleBriefingDrop}

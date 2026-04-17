@@ -11,7 +11,8 @@ export type ClaudeUsageOperation =
   | "extract_design_image"
   | "extract_site_intent"
   | "extract_prompt_interpretation"
-  | "generate_brand_logo";
+  | "generate_brand_logo"
+  | "briefing_reference_images_vision";
 
 type MessageUsage = {
   input_tokens: number;

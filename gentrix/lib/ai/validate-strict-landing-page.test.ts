@@ -16,6 +16,10 @@ describe("shouldIncludeCompactLandingFaq / buildCompactLandingSectionIds", () =>
     expect(shouldIncludeCompactLandingFaq("")).toBe(false);
     expect(buildCompactLandingSectionIds("").join(",")).toBe("hero,stats,features,footer");
 
+    expect(buildCompactLandingSectionIds("Website voor onze salon in Groningen").join(",")).toBe(
+      "hero,features,footer",
+    );
+
     expect(shouldIncludeCompactLandingFaq("Veelgestelde vragen over onze diensten")).toBe(true);
     expect(buildCompactLandingSectionIds("Veelgestelde vragen over onze diensten").join(",")).toContain("faq");
 
@@ -26,6 +30,15 @@ describe("shouldIncludeCompactLandingFaq / buildCompactLandingSectionIds", () =>
 });
 
 describe("validateStrictLandingPageContract", () => {
+  it("accepteert een geldige 3-sectie ultra-compacte opzet", () => {
+    const sections = [
+      sec("hero", '<section id="hero"></section>'),
+      sec("features", '<section id="features"></section>'),
+      sec("footer", '<section id="footer"></section>'),
+    ];
+    expect(validateStrictLandingPageContract(sections)).toEqual([]);
+  });
+
   it("accepteert een geldige 5-sectie-opzet met faq", () => {
     const sections = [
       sec("hero", '<section id="hero"><a class="rounded-full bg-white">A</a></section>'),

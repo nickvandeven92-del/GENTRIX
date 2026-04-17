@@ -57,6 +57,7 @@ import {
 } from "@/lib/ai/self-review-site-generation";
 import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
+import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
 import { maybeEnhanceHero } from "@/lib/ai/enhance-hero-section";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
@@ -112,6 +113,13 @@ export type GenerationPipelineFeedback = {
     compactLandingIncludesFaq?: boolean;
     /** Multipage: exacte `marketingPages`-keys voor deze run (server + optionele override). */
     marketingPageSlugs?: string[];
+    /** Briefing-beelden: vision-extractie (tekst + evt. reviews uit screenshots; meta). */
+    briefingVisionExtract?: {
+      /** `true` alleen als Anthropic `messages.create` is aangeroepen (extract kan alsnog leeg zijn). */
+      visionApiCalled: boolean;
+      briefingImageUrls: number;
+      extractChars: number;
+    };
   };
 };
 
@@ -202,11 +210,14 @@ const EXTRA_SECTION_KEYWORDS: Record<string, { keywords: RegExp; weight: number 
 
 const SECTION_ORDER_PREFERENCE: readonly string[] = [
   "hero",
+  /** Compact-landingsbewijs / werkwijze (ook in strikte studio-contracten). */
+  "stats",
+  "brands",
+  "steps",
   "features",
+  "gallery",
   "about",
   "shop",
-  "gallery",
-  "brands",
   "team",
   "testimonials",
   "pricing",
@@ -240,26 +251,112 @@ export function shouldIncludeCompactLandingFaq(industryProbeText: string): boole
 }
 
 /**
- * Vaste volgorde voor de **landings-`sections`** (nieuwe site, geen upgrade — max. 5):
+ * Vaste volgorde voor de **landings-`sections`** (nieuwe site, geen upgrade — max. **5**):
  * hero → bewijs → werkwijze/diensten → [faq als briefing FAQ vraagt] → footer.
- * **4** secties zonder FAQ-signalen; **5** met (max. 5 secties totaal).
+ * **3** bij korte briefing zonder FAQ/merken/stappen-signalen: **hero → features → footer** (kern = één `features`-blok).
+ * Anders **4** zonder FAQ-signalen of **5** met FAQ.
  */
 export function buildCompactLandingSectionIds(description: string): readonly string[] {
-  const prefersLogos =
+  const trimmed = description.trim();
+  const wordCount = trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0;
+  const hasBrandSignals =
     EXTRA_SECTION_KEYWORDS.brands.keywords.test(description) ||
     /\b(logo|logos|merken|partners?|leveranciers?)\b/i.test(description);
-  const proofId = prefersLogos ? "brands" : "stats";
-  const middleId = /\b(werkwijze|stappenplan|stappen|in\s+\d+\s+stappen|hoe\s+wij\s+werken|proces|aanpak)\b/i.test(
+  const hasStepsSignals = /\b(werkwijze|stappenplan|stappen|in\s+\d+\s+stappen|hoe\s+wij\s+werken|proces|aanpak)\b/i.test(
     description,
-  )
-    ? "steps"
-    : "features";
+  );
+  const faqWanted = shouldIncludeCompactLandingFaq(description);
+
+  /** Minimaal 3: hero + kern + footer; lege/minimale input → klassieke 4-sectie (stats + features). */
+  const lightBrief =
+    trimmed.length >= 12 &&
+    trimmed.length < 96 &&
+    wordCount < 14 &&
+    !faqWanted &&
+    !hasBrandSignals &&
+    !hasStepsSignals;
+
+  if (lightBrief) {
+    return ["hero", "features", "footer"] as const;
+  }
+
+  const prefersLogos = hasBrandSignals;
+  const proofId = prefersLogos ? "brands" : "stats";
+  const middleId = hasStepsSignals ? "steps" : "features";
   const core: string[] = ["hero", proofId, middleId];
-  if (shouldIncludeCompactLandingFaq(description)) {
+  if (faqWanted) {
     core.push("faq");
   }
   core.push("footer");
   return core as readonly string[];
+}
+
+/** Hard max. homepage-secties (studio-budget); min = hero + kern + footer. */
+export const HOMEPAGE_SECTION_BUDGET_MAX = 5;
+export const HOMEPAGE_SECTION_BUDGET_MIN = 3;
+
+const KERN_SECTION_IDS = new Set([
+  "features",
+  "about",
+  "gallery",
+  "shop",
+  "steps",
+  "stats",
+  "brands",
+  "testimonials",
+  "pricing",
+  "faq",
+  "team",
+  "cta",
+]);
+
+/**
+ * Kap/verrijk homepage-secties: **min. 3**, **max. 5**, standaard **4 of 5** afhankelijk van briefing-rijkdom
+ * (keywords of voldoende tekstlengte → max. 5; anders max. 4).
+ */
+export function applyHomepageSectionBudget(description: string, orderedIds: string[]): string[] {
+  const deduped = [...new Set(orderedIds.map((id) => id.trim()).filter(Boolean))].filter(
+    (id) => id !== "contact" && id !== "booking",
+  );
+  let ids = SECTION_ORDER_PREFERENCE.filter((id) => deduped.includes(id));
+
+  if (!ids.includes("hero")) {
+    ids = ["hero", ...ids.filter((x) => x !== "hero")];
+    ids = SECTION_ORDER_PREFERENCE.filter((id) => ids.includes(id));
+  }
+  if (!ids.includes("footer")) {
+    ids = [...ids.filter((x) => x !== "footer"), "footer"];
+  }
+
+  const middle = ids.filter((id) => id !== "hero" && id !== "footer");
+  if (!middle.some((id) => KERN_SECTION_IDS.has(id))) {
+    ids = ["hero", "features", ...ids.filter((x) => x !== "hero" && x !== "features")];
+    ids = SECTION_ORDER_PREFERENCE.filter((id) => ids.includes(id));
+  }
+
+  const withoutFooter = ids.filter((x) => x !== "footer");
+  const hasFooter = ids.includes("footer");
+  const extraHits = analyzeBriefingForSections(description);
+  const rich = extraHits.length > 0 || description.trim().length >= 100;
+  const softCap = rich ? HOMEPAGE_SECTION_BUDGET_MAX : 4;
+  const targetCount = Math.min(
+    HOMEPAGE_SECTION_BUDGET_MAX,
+    Math.max(HOMEPAGE_SECTION_BUDGET_MIN, Math.min(ids.length, softCap)),
+  );
+
+  const footerPart = hasFooter ? (["footer"] as const) : [];
+  const needBody = targetCount - footerPart.length;
+  const middleOnly = withoutFooter.filter((id) => id !== "hero");
+  const briefingExtra = new Set(analyzeBriefingForSections(description));
+  /** Keyword-secties eerst — zo blijft bv. `team` zichtbaar binnen het max. van 5. */
+  const sortedMiddle = [
+    ...middleOnly.filter((id) => briefingExtra.has(id)),
+    ...middleOnly.filter((id) => !briefingExtra.has(id)),
+  ];
+  const takeMiddle = Math.max(0, needBody - 1);
+  const body = ["hero", ...sortedMiddle.slice(0, takeMiddle)];
+
+  return [...body, ...footerPart];
 }
 
 /**
@@ -280,7 +377,10 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
     if (industryExplicit?.sections.includes("shop") || EXTRA_SECTION_KEYWORDS.shop.keywords.test(description)) {
       merged.delete("gallery");
     }
-    return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact");
+    return applyHomepageSectionBudget(
+      description,
+      SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact"),
+    );
   }
 
   const industry = detectIndustry(description);
@@ -295,7 +395,10 @@ export function buildSectionIdsFromBriefing(description: string, explicitIds?: s
   if (industry?.sections.includes("shop") || EXTRA_SECTION_KEYWORDS.shop.keywords.test(description)) {
     merged.delete("gallery");
   }
-  return SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact");
+  return applyHomepageSectionBudget(
+    description,
+    SECTION_ORDER_PREFERENCE.filter((id) => merged.has(id) && id !== "contact"),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -922,6 +1025,11 @@ export type GenerateSitePromptOptions = {
   clientImages?: ClientImage[];
   /** Screenshots/referenties bij de briefing (los van klantfoto's). */
   briefingReferenceImages?: ClientImage[];
+  /**
+   * Optioneel: vooraf geëxtraheerde inhoud uit briefing-afbeeldingen (tests/handmatig).
+   * Anders vult `prepareGenerateSiteClaudeCall` dit via vision in wanneer `briefingReferenceImages` gezet is.
+   */
+  briefingReferenceImagesVisionExtract?: string;
   /** Alleen server-side: uit formulier/API; wordt in \`prepareGenerateSiteClaudeCall\` omgezet naar \`referenceSiteSnapshot\`. */
   referenceStyleUrl?: string;
   /** Snapshot na fetch — wordt in de user-prompt ingevoegd. */
@@ -1192,17 +1300,26 @@ ${t}
 function buildOperationalNavParts(
   preserve: boolean,
   sectionIdsHint: string[] | undefined,
+  /** Compacte nieuwe-site-landingsplan (min. 3 / max. 5) — wint over generieke fallback voor §5. */
+  resolvedLandingSectionIds?: string[],
 ): Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote"> {
   const section4Nav = preserve
     ? `- **Nav / upgrade:** behoud navigatie en hero-structuur uit de **bestaande** hero-\`html\`; werk alleen \`href="#…"\` / \`id\` bij waar nieuwe secties dat vereisen. Nav-vorm **niet verplicht wijzigen** — zie minimale UX-fix onder §3B.\n`
     : `- **Navigatie:** zie §3 — **exact één** globale site-nav (één \`<header>\`/\`<nav>\`-blok met alle ankers); **geen** tweede verticale/zijbalk met dezelfde linkset naast de header. \`href="#…"\` matchen sectie-\`id\`'s. **Vorm vrij** zolang de nav bereikbaar blijft.\n`;
+  let requiredIdsLine: string;
+  if (!preserve && resolvedLandingSectionIds && resolvedLandingSectionIds.length > 0) {
+    requiredIdsLine = resolvedLandingSectionIds.map((s) => `\`${s}\``).join(", ");
+  } else if (sectionIdsHint && sectionIdsHint.length > 0) {
+    requiredIdsLine = sectionIdsHint.map((s) => `\`${s}\``).join(", ");
+  } else {
+    requiredIdsLine =
+      "`hero`, `features`, `about`, `footer` (+ briefing/branche; **geen** `contact`-sectie met formulier op de landing — contact staat in `contactSections`)";
+  }
   const section5IdsNote = preserve
     ? `\nIn **upgrade-modus:** behoud alle \`id\`'s (en bij voorkeur de \`html\`) van de bron-secties; voeg alleen **nieuwe** secties toe waar de briefing dat vraagt.`
-    : "";
-  const requiredIdsLine =
-    sectionIdsHint && sectionIdsHint.length > 0
-      ? sectionIdsHint.map((s) => `\`${s}\``).join(", ")
-      : "`hero`, `features`, `about`, `footer` (+ briefing/branche; **geen** `contact`-sectie met formulier op de landing — contact staat in `contactSections`)";
+    : resolvedLandingSectionIds?.length
+      ? `\n**Homepage-budget (studio):** exact **${resolvedLandingSectionIds.length}** landings-sectie(s) in deze run (toegestaan: **${HOMEPAGE_SECTION_BUDGET_MIN}–${HOMEPAGE_SECTION_BUDGET_MAX}**) — gebruik **alleen** deze \`id\`'s; **geen** extra secties op \`sections\`.`
+      : "";
   return { section4Nav, section5IdsNote, requiredIdsLine };
 }
 
@@ -1227,20 +1344,43 @@ ${list}
 `;
 }
 
-function buildBriefingReferenceImagesPromptBlock(images: ClientImage[]): string {
+function buildBriefingReferenceImagesPromptBlock(images: ClientImage[], visionExtract?: string): string {
   if (images.length === 0) return "";
   const list = images.map((img, i) => `${i + 1}. ${img.url}${img.label ? ` — ${img.label}` : ""}`).join("\n");
+  const extracted = visionExtract?.trim() ?? "";
+  const extractBlock = extracted
+    ? `
+
+=== INHOUD UIT BRIEFING-AFBEELDINGEN (server vision — leidend naast de geschreven briefing) ===
+
+${extracted}
+
+**Gebruik op de site:** vertaal bovenstaande inhoud naar **eigen** HTML in \`config.theme\`: koppen, USP’s, diensten, prijzen, **en** eventuele reviews als kaarten (border/schaduw, grid of horizontale scroll met Alpine). **Verboden:** deze URL's als **één** volledige schermafdruk-\`<img>\` die de hele “browser” of review-app imiteert.
+`
+    : "";
+
+  const sourceAuthority = extracted
+    ? `**Bron voor concrete zinnen uit de afbeeldingen:** het blok **INHOUD UIT BRIEFING-AFBEELDINGEN** hierboven **plus** de geschreven briefing. Geen verzonnen feiten, namen, prijzen of datums buiten wat daar staat (CONTENT AUTHORITY).`
+    : `**Briefing-beelden zonder vision-tekst:** je ziet hieronder alleen **URL's** naar afbeeldingen. Er is **geen** extractieblok meegeleverd (vision uit of download faalde). Baseer concrete citaten en claims dan op de **geschreven briefing**; gebruik de afbeeldingen hoogstens als vage richting, niet als betrouwbare OCR-bron.`;
+
+  const testimonialLine = extracted
+    ? `- **Reviews in de extractie:** zet ze strak in HTML; geen externe review-widgets; geen “officieel Google”-claims tenzij de extractie dat letterlijk toont.`
+    : `- **Bij review-/Google-screenshot-intentie:** bouw een **strakke testimonial-sectie** in HTML: kaarten met **border** / subtiele schaduw, duidelijke hiërarchie (kop, korte quote, initiaal of voornaam **alleen** als de briefing die noemt), eventueel **2–4 kolommen** of een **eenvoudige horizontale scroll** met Alpine (geen externe review-widgets). Teksten: **uitsluitend** wat uit de **briefing** volgt of korte, generieke positieve formuleringen zonder verzonnen namen, datums of “officieel Google”-claims (CONTENT AUTHORITY).`;
+
   return `
 === BRIEFING-REFERENTIEBEELDEN (screenshots / voorbeelden — niet hetzelfde als KLANTFOTO'S) ===
 
-De gebruiker heeft **afbeeldingen bij de opdracht** gezet (bijv. screenshot van reviews, voorbeeld-UI). Publieke URL's:
+De gebruiker heeft **afbeeldingen bij de opdracht** gezet (bijv. reviews, flyer, prijslijst, voorbeeld-UI). Publieke URL's:
 
 ${list}
+${extractBlock}
+${sourceAuthority}
 
-- Dit blok staat **los** van **KLANTFOTO'S** hierboven: de regels voor klantfoto's (hero, verplicht zichtbaar, enz.) gelden **alleen** voor dat aparte blok — **wijzig die interpretatie niet** voor deze URL's.
-- Gebruik deze beelden **waar de tekstuele briefing het vraagt** (bijv. “zet deze reviews op de site” → sectie met testimonials/reviews en echte \`<img src="…">\` naar bovenstaande URL's, met zinvolle \`alt\`).
-- Als de briefing niet expliciet zegt waar een screenshot hoort: kies **max. één** logische plek of laat een beeld weg — geen zinloze duplicaten over de hele pagina.
-- **Geen** verzonnen cijfers of reviewtekst; alleen wat uit de briefing of duidelijk uit het beeld volgt.
+- Dit blok staat **los** van **KLANTFOTO'S**: de klantfoto-regels gelden **niet** op deze URL's.
+- **Verboden:** de screenshot-URL als **één grote** \`<img>\` (volledig Google-/browser-/desktop-scherm) in een testimonials-/reviews-sectie — dat is geen professionele site, dat is een ingeladen schermafdruk.
+${testimonialLine}
+- **Gebruik van de URL's:** hoogstens ter ondersteuning als de briefing expliciet vraagt om “deze afbeelding tonen”; anders **geen** \`<img src="…">\` naar deze screenshot-URL's in de reviews-sectie — gebruik Unsplash/sfeerbeeld of alleen typografie als visueel anker.
+- Als de briefing niet zegt waar een screenshot hoort: **geen** full-bleed screenshot op de pagina.
 
 `;
 }
@@ -1293,16 +1433,39 @@ function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
 - **Volledige omtrek × document-scroll (\`data-studio-scroll-border\`):** alleen als de briefing echt een **kaderrand om een blok** vraagt die **met scroll** verder “dichtloopt”. Wrapper: \`data-studio-scroll-border\` + verplicht \`style="--studio-sb-stroke:…"\` (hex/rgb — **geen** fallback-kleur in de studio). Optioneel \`--studio-sb-width\` (px). **Geen** \`<script>\` in secties — de shell levert JS + SVG.`;
 }
 
-function buildStrictLandingPageComposerMarkdown(includeFaq: boolean): string {
-  const countLine = includeFaq
-    ? "**5** rijen in `sections` (exact deze volgorde)"
-    : "**4** rijen in `sections` (exact deze volgorde — **zonder** `faq`)";
+function buildStrictLandingPageComposerMarkdown(sectionIds: readonly string[]): string {
+  const n = sectionIds.length;
+  const faqDetect = `**FAQ wel of niet:** de server zet \`faq\` in de sectielijst als **(a)** naam+briefing FAQ-trefwoorden bevat (**faq**, **veelgestelde vragen**, **veel gestelde**, **vragen en antwoorden**, **help center** / **helpcentrum** — zelfde regex als elders), **of (b)** het gedetecteerde **brancheprofiel** impliciet FAQ wil: zijn standaard-\`sections\` bevat \`faq\`, **of** het profiel heeft \`compactLandingDefaultFaq\` (lokale dienst: kapper, garage, horeca, sportschool, …). Voldoet geen van beide → **geen** \`faq\`-sectie en **geen** \`#faq\` in de nav.`;
+
+  if (n === 3) {
+    return `
+=== STRIKTE LANDINGS — STUDIO (min. 3, max. 5 homepage-secties; deze run: **3**) ===
+
+Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`marketingPages\` en mogen andere \`id\`'s hebben.
+
+**Van toepassing op deze opdracht:** lever precies **3** rijen in \`sections\` met **exact** deze volgorde en JSON-\`id\`'s: \`hero\` → \`features\` → \`footer\`.
+
+1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** de beeld- of mediakant **gevuld** (Unsplash/gradient met textuur) — **geen** lege/zwarte placeholderkolom.
+2. \`features\` — **kernblok:** diensten/USP's **en** eventueel compacte trust (2–3 cijfers of een kleine logo-rij) in **dezelfde** sectie — **geen** aparte \`stats\`/\`brands\`/\`steps\` op de homepage in deze run.
+3. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op de landing in deze run.
+
+**Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie; aparte \`stats\`, \`brands\`, \`steps\`, \`faq\` op \`sections\`.
+
+**Nav-ankers:** alleen \`#hero\`, \`#features\`, \`#footer\` — **geen** \`#over-ons\`.
+
+**Herhaling-check (concept):** elke sectie unieke rol; twee blokken met dezelfde boodschap → het zwakkere schrappen.
+`;
+  }
+
+  const includeFaq = sectionIds.includes("faq");
+  const countLine =
+    n === 5 && includeFaq
+      ? "**5** rijen in `sections` (exact deze volgorde)"
+      : "**4** rijen in `sections` (exact deze volgorde — **zonder** `faq`)";
 
   const navAnchors = includeFaq
     ? "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#faq`, `#footer`"
     : "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#footer`";
-
-  const faqDetect = `**FAQ wel of niet:** de server zet \`faq\` in de sectielijst als **(a)** naam+briefing FAQ-trefwoorden bevat (**faq**, **veelgestelde vragen**, **veel gestelde**, **vragen en antwoorden**, **help center** / **helpcentrum** — zelfde regex als elders), **of (b)** het gedetecteerde **brancheprofiel** impliciet FAQ wil: zijn standaard-\`sections\` bevat \`faq\`, **of** het profiel heeft \`compactLandingDefaultFaq\` (lokale dienst: kapper, garage, horeca, sportschool, …). Voldoet geen van beide → **geen** \`faq\`-sectie en **geen** \`#faq\` in de nav.`;
 
   const tailList = includeFaq
     ? `4. \`faq\` — **max. 6** vragen (bij voorkeur \`<details><summary>…\` per vraag).
@@ -1310,7 +1473,7 @@ function buildStrictLandingPageComposerMarkdown(includeFaq: boolean): string {
     : `4. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). In deze run: **geen** \`faq\`-rij (geen FAQ-signalen in naam+briefing).`;
 
   return `
-=== STRIKTE LANDINGS — STUDIO (max. 5 secties op de homepage, vaste volgorde) ===
+=== STRIKTE LANDINGS — STUDIO (min. 3, max. 5 secties op de homepage; vaste volgorde) ===
 
 Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`marketingPages\` en mogen andere \`id\`'s hebben.
 
@@ -1341,7 +1504,7 @@ function buildMarqueeForbiddenPromptLine(): string {
  */
 function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean): string {
   const multiPageLine = marketingMultiPage
-    ? "- **Multi-page homepage:** houd \`sections\` bondig (richtlijn **4–6** secties); **geen** volledige “over ons”-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben — verwijs met één zin + link.\n"
+    ? `- **Multi-page homepage:** houd \`sections\` bondig (**max. ${HOMEPAGE_SECTION_BUDGET_MAX}** secties in deze studio-run); **geen** volledige “over ons”-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben — verwijs met één zin + link.\n`
     : "";
   return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
@@ -1359,14 +1522,19 @@ function buildLandingOutputQualityGuardsMarkdown(input: {
   preserve: boolean;
   strictLanding: boolean;
   marketingMultiPage: boolean;
+  /** 3-sectie compactplan: géén aparte stats/brands-band. */
+  ultraCompactLanding?: boolean;
 }): string {
   if (input.preserve) return "";
   const multiPageLine = input.marketingMultiPage
     ? "- **Multi-page:** een subpagina in \`marketingPages\` mag een eigen koppenblok hebben, maar **herhaal niet** op de **homepage** dezelfde hoofdbelofte + dezelfde primaire knoppen als een tweede “landing-hero”; gebruik de subroute voor detail en link ernaar.\n"
     : "";
-  const strictLine = input.strictLanding
-    ? "- **Compacte landing:** \`stats\`/\`brands\` is je **enige** aparte bewijsband — **geen** tweede “wij werken met”- of logo-rij in \`features\`/\`footer\` die hetzelfde vertrouwen opnieuw verpakt. Footer: hoogstens **één** discrete merkenrij **als** de briefing partners/merken noemt.\n"
-    : "";
+  const strictLine =
+    input.strictLanding && !input.ultraCompactLanding
+      ? "- **Compacte landing:** \`stats\`/\`brands\` is je **enige** aparte bewijsband — **geen** tweede “wij werken met”- of logo-rij in \`features\`/\`footer\` die hetzelfde vertrouwen opnieuw verpakt. Footer: hoogstens **één** discrete merkenrij **als** de briefing partners/merken noemt.\n"
+      : input.strictLanding && input.ultraCompactLanding
+        ? "- **Ultra-compacte landing (3 secties):** vertrouwen en diensten horen **in** \`features\` samen — **geen** aparte \`stats\`/\`brands\`/\`steps\`-sectie op de homepage.\n"
+        : "";
   return `
 === ONTWERP-RITME & TRUST (premium zonder oppervlakkige herhaling) ===
 - **Hoogstens één zware “signature” boven de vouw op de landing:** als de \`hero\` al full-bleed split (tekst | groot beeld) of gelijkwaardig zwaar visueel blok is, mag **geen** volgende landingssectie opnieuw dezelfde dramatische full-viewport split als **tweede pseudo-hero**. Kies daarna band, grid, kaarten of editorial — **andere rol, ander ritme**.
@@ -1468,22 +1636,26 @@ function buildMinimalWebsiteGenerationUserPrompt(
   const section1 = preserve ? `${buildUpgradeMergeSection()}\n\n` : "";
   const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
   const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve);
-  const { section4Nav, section5IdsNote, requiredIdsLine } = buildOperationalNavParts(
-    preserve,
-    options?.sectionIdsHint,
-  );
+  const industryProbeMin = combinedIndustryProbeText(businessName, description);
   const marketingMultiPage = !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
   const strictLanding = !preserve;
+  const strictLandingSectionIdsMin = strictLanding ? [...buildCompactLandingSectionIds(industryProbeMin)] : undefined;
+  const { section4Nav, section5IdsNote, requiredIdsLine } = buildOperationalNavParts(
+    preserve,
+    options?.sectionIdsHint,
+    strictLandingSectionIdsMin,
+  );
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
-  const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(briefingRefImages);
-  const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
-  const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(
-    detectIndustry(combinedIndustryProbeText(businessName, description)),
+  const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(
+    briefingRefImages,
+    options?.briefingReferenceImagesVisionExtract,
   );
+  const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
+  const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(detectIndustry(industryProbeMin));
   const mpKeysLine =
     marketingMultiPage && marketingPageSlugsForTail.length > 0
       ? marketingPageSlugsForTail.map((s) => `\`${s}\``).join(", ")
@@ -1512,17 +1684,17 @@ ${section1}=== KERN (technisch) ===
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
 2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\` (zie §3B).
 3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? ` + **verplicht** \`marketingPages\` (exact deze keys: ${mpKeysLine || "zie §3B"}) + \`contactSections\` (contact-subpagina: minstens één sectie met <form>; **niet** op de homepage)` : ""}.
-4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : strictLanding ? "**Landings-`sections` (compact):** exact **4 of 5** secties (zie STRIKTE LANDINGS: FAQ alleen bij FAQ-signalen in naam+briefing) in de volgorde van de opdrachtregel — **geen** extra secties op de homepage; subpagina's staan in `marketingPages` / contact in `contactSections`." : "Geen vast sjabloon — de briefing is leidend."}
+4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : strictLanding && strictLandingSectionIdsMin ? `**Landings-\`sections\` (compact):** exact **${strictLandingSectionIdsMin.length}** sectie(s) (min. ${HOMEPAGE_SECTION_BUDGET_MIN}, max. ${HOMEPAGE_SECTION_BUDGET_MAX} — zie STRIKTE LANDINGS) in de volgorde van de opdrachtregel — **geen** extra secties op de homepage; subpagina's staan in \`marketingPages\` / contact in \`contactSections\`.` : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
 
 ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet in de HTML zichtbaar terugkomen. ${preserve ? "" : "Oranje alleen als het inhoudelijk past."}
 
 === 3. PAGINA → HTML (Tailwind) ===
-${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(combinedIndustryProbeText(businessName, description))) : ""}
+${strictLanding && strictLandingSectionIdsMin ? buildStrictLandingPageComposerMarkdown(strictLandingSectionIdsMin) : ""}
 ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
-${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage }) : ""}
+${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage, ultraCompactLanding: strictLandingSectionIdsMin?.length === 3 }) : ""}
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
@@ -1571,19 +1743,22 @@ export function buildWebsiteGenerationUserPrompt(
 
   const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
   const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve);
-  const { section4Nav, section5IdsNote, requiredIdsLine } = buildOperationalNavParts(
-    preserve,
-    options?.sectionIdsHint,
-  );
+  const industryProbe = combinedIndustryProbeText(businessName, description);
   const marketingMultiPage = !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
   const strictLanding = !preserve;
+  const strictLandingSectionIds = strictLanding ? [...buildCompactLandingSectionIds(industryProbe)] : undefined;
+  const { section4Nav, section5IdsNote, requiredIdsLine } = buildOperationalNavParts(
+    preserve,
+    options?.sectionIdsHint,
+    strictLandingSectionIds,
+  );
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
 
-  const industryProbe = combinedIndustryProbeText(businessName, description);
-  const sectionIdsForBlocks = strictLanding
-    ? [...buildCompactLandingSectionIds(industryProbe)]
-    : (options?.sectionIdsHint ?? buildSectionIdsFromBriefing(industryProbe));
+  const sectionIdsForBlocks =
+    strictLanding && strictLandingSectionIds
+      ? strictLandingSectionIds
+      : (options?.sectionIdsHint ?? buildSectionIdsFromBriefing(industryProbe));
   const detectedSections = new Set(sectionIdsForBlocks);
   const brancheSectionBlocks = buildBrancheSectionPromptBlocks(detectedSections);
   const industryHint = buildIndustryPromptHint(businessName, description);
@@ -1591,7 +1766,10 @@ export function buildWebsiteGenerationUserPrompt(
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
   const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
-  const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(briefingRefImages);
+  const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(
+    briefingRefImages,
+    options?.briefingReferenceImagesVisionExtract,
+  );
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
   const mpKeysLine =
     marketingMultiPage && marketingPageSlugsForTail.length > 0
@@ -1639,12 +1817,12 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 **Kleur in HTML:** laat \`config.theme\` ook in de markup terugkomen (achtergronden, accenten, CTA) — niet alleen in metadata. Als de briefing warm beige/zand vraagt, vermijd een volledig koud-grijs default-palet tenzij dat bewust past.
 
 === 3. PAGINA COMPOSEREN → HTML (Tailwind) ===
-${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(industryProbe)) : ""}
+${strictLanding && strictLandingSectionIds ? buildStrictLandingPageComposerMarkdown(strictLandingSectionIds) : ""}
 ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
-${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage }) : ""}
+${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage, ultraCompactLanding: strictLandingSectionIds?.length === 3 }) : ""}
 
-**Vrijheid:** ${strictLanding ? "Binnen de **vijf** vaste secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s." : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
+**Vrijheid:** ${strictLanding && strictLandingSectionIds ? `Binnen de **${strictLandingSectionIds.length}** vaste landings-secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s.` : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
 **Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie §3B"}) + contact` : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie §3B"}); **geen** \`#…\`-nav naar inhoud die op een subroute staat. ` : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
@@ -1803,6 +1981,27 @@ async function prepareGenerateSiteClaudeCall(
       error: e instanceof Error ? e.message : "Ongeldige marketingPageSlugs.",
     };
   }
+
+  const briefingRefForVision = mergedPromptOptions.briefingReferenceImages?.filter((img) => img.url?.trim()) ?? [];
+  const skipBriefingVision =
+    process.env.SITE_GENERATION_BRIEFING_VISION?.trim().toLowerCase() === "0" ||
+    process.env.SITE_GENERATION_BRIEFING_VISION?.trim().toLowerCase() === "false";
+  const preProvidedVisionExtract = mergedPromptOptions.briefingReferenceImagesVisionExtract?.trim() ?? "";
+  let briefingReferenceImagesVisionExtract = preProvidedVisionExtract;
+  let briefingVisionApiCalled = false;
+  if (!preProvidedVisionExtract && !skipBriefingVision && briefingRefForVision.length > 0) {
+    const visionModel = process.env.ANTHROPIC_BRIEFING_VISION_MODEL?.trim() || supportModel;
+    const extracted = await extractBriefingReferenceImagesWithVision({
+      client,
+      model: visionModel,
+      businessName: businessName.trim(),
+      descriptionSnippet: description.trim().slice(0, 2000),
+      images: briefingRefForVision,
+    });
+    briefingReferenceImagesVisionExtract = extracted.text.trim();
+    briefingVisionApiCalled = extracted.visionApiCalled;
+  }
+
   const pipelineFeedback: GenerationPipelineFeedback = {
     model: generateModel,
     interpreted: {
@@ -1819,11 +2018,22 @@ async function prepareGenerateSiteClaudeCall(
       strictLandingPageContract: strictLandingContract,
       compactLandingIncludesFaq: strictLandingContract ? shouldIncludeCompactLandingFaq(industryProbe) : undefined,
       ...(marketingPageSlugs ? { marketingPageSlugs: [...marketingPageSlugs] } : {}),
+      ...(briefingRefForVision.length > 0
+        ? {
+            briefingVisionExtract: {
+              visionApiCalled: briefingVisionApiCalled,
+              briefingImageUrls: briefingRefForVision.length,
+              extractChars: briefingReferenceImagesVisionExtract.length,
+            },
+          }
+        : {}),
     },
   };
 
-  const { referenceStyleUrl, ...promptOptsForBuild } = mergedPromptOptions;
+  const { referenceStyleUrl, briefingReferenceImagesVisionExtract: _providedVisionIgnored, ...promptOptsForBuild } =
+    mergedPromptOptions;
   void referenceStyleUrl;
+  void _providedVisionIgnored;
   const corePrompt = buildWebsiteGenerationUserPrompt(
     businessName,
     description,
@@ -1834,6 +2044,7 @@ async function prepareGenerateSiteClaudeCall(
       ...(referenceSiteSnapshot ? { referenceSiteSnapshot } : {}),
       minimalPrompt,
       ...(marketingPageSlugs ? { marketingPageSlugs: [...marketingPageSlugs] } : {}),
+      ...(briefingReferenceImagesVisionExtract ? { briefingReferenceImagesVisionExtract } : {}),
     },
   );
   const mainUserPrompt = corePrompt;

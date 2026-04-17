@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyHomepageSectionBudget,
   buildSectionIdsFromBriefing,
   combinedIndustryProbeText,
   detectIndustry,
@@ -24,11 +25,13 @@ describe("combinedIndustryProbeText + branche-secties", () => {
     const probe = combinedIndustryProbeText("", "Website voor onze kapsalon in Utrecht");
     expect(detectIndustry(probe)?.id).toBe("hair_salon");
     const ids = buildSectionIdsFromBriefing(probe);
-    expect(ids).toEqual(expect.arrayContaining(["hero", "features", "gallery", "about", "footer"]));
+    expect(ids).toEqual(expect.arrayContaining(["hero", "features", "gallery", "footer"]));
+    expect(ids.length).toBeGreaterThanOrEqual(3);
+    expect(ids.length).toBeLessThanOrEqual(5);
     expect(ids).not.toContain("team");
   });
 
-  it("hair_salon: team-sectie bij expliciete team-taal in briefing", () => {
+  it("hair_salon: team-sectie bij expliciete team-taal in briefing (keyword krijgt voorrang in budget)", () => {
     const probe = combinedIndustryProbeText("", "Kapsalon met ervaren team van stylisten in Utrecht");
     expect(detectIndustry(probe)?.id).toBe("hair_salon");
     expect(buildSectionIdsFromBriefing(probe)).toContain("team");
@@ -46,5 +49,13 @@ describe("combinedIndustryProbeText + branche-secties", () => {
   it("strip gallery wanneer briefing duidelijke webshop-signalen heeft", () => {
     const probe = combinedIndustryProbeText("", "Online bestellen via onze webshop, verzorgingsproducten");
     expect(buildSectionIdsFromBriefing(probe)).not.toContain("gallery");
+  });
+
+  it("applyHomepageSectionBudget: max 5 en kortere briefing → 4 secties", () => {
+    const short = "Kapper";
+    const long = "x".repeat(120);
+    const many = ["hero", "features", "gallery", "about", "team", "brands", "footer"];
+    expect(applyHomepageSectionBudget(short, many).length).toBe(4);
+    expect(applyHomepageSectionBudget(long, many).length).toBe(5);
   });
 });
