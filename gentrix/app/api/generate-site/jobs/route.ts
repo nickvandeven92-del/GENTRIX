@@ -43,7 +43,6 @@ export async function POST(request: Request) {
     description: d.description,
     ...(d.clientImages?.length ? { clientImages: d.clientImages } : {}),
     ...(d.reference_style_url ? { reference_style_url: d.reference_style_url } : {}),
-    ...(d.landing_page_only !== undefined ? { landing_page_only: d.landing_page_only } : {}),
     ...(slug ? { subfolder_slug: slug } : {}),
     ...(d.generation_preset_ids?.length ? { generation_preset_ids: d.generation_preset_ids } : {}),
     ...(d.layout_archetypes?.length ? { layout_archetypes: d.layout_archetypes } : {}),

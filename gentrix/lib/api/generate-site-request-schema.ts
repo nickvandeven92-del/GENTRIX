@@ -18,11 +18,6 @@ export const generateSiteRequestBodySchema = z.object({
   generation_preset_ids: z.array(z.string().min(1).max(120)).max(24).optional(),
   layout_archetypes: z.array(z.string().min(1).max(120)).max(24).optional(),
   /**
-   * `true` = alleen landings-`sections` (geen `marketingPages` + `contactSections` in één run).
-   * Kortere generatie; subpagina's kun je later alsnog toevoegen via upgrade/editor.
-   */
-  landing_page_only: z.boolean().optional(),
-  /**
    * Multipage: forceer exact deze `marketingPages`-keys (1–8, slug-formaat).
    * Weglaten = server kiest (service-default of retail-detectie).
    */

@@ -107,8 +107,6 @@ export type GenerationPipelineFeedback = {
     };
     /** `true` bij SITE_GENERATION_MINIMAL_PROMPT of `minimalPrompt` in options. */
     minimalPrompt?: boolean;
-    /** `landingPageOnly` + geen upgrade: strikte 5-sectie-landingspagina (studio-contract). */
-    landingPageOnly?: boolean;
     strictLandingPageContract?: boolean;
     /** Of strikte one-pager \`faq\` in de sectielijst heeft (FAQ-keywords in naam+briefing). */
     compactLandingIncludesFaq?: boolean;
@@ -242,7 +240,7 @@ export function shouldIncludeCompactLandingFaq(industryProbeText: string): boole
 }
 
 /**
- * Vaste volgorde voor **landingPageOnly** (nieuwe site, geen upgrade):
+ * Vaste volgorde voor de **landings-`sections`** (nieuwe site, geen upgrade — max. 5):
  * hero → bewijs → werkwijze/diensten → [faq als briefing FAQ vraagt] → footer.
  * **4** secties zonder FAQ-signalen; **5** met (max. 5 secties totaal).
  */
@@ -919,12 +917,6 @@ export type GenerateSitePromptOptions = {
   existingSiteTailwindJson?: string | null;
   varianceNonce?: string;
   sectionIdsHint?: string[];
-  /**
-   * `true` = geen `marketingPages` + `contactSections` in één JSON (alleen landings-`sections`).
-   * Kortere model-run — vergelijkbaar met “één pagina eerst” i.p.v. volledige marketing-multi-route.
-   * Ook: env `SITE_GENERATION_LANDING_ONLY=1` wanneer hier `undefined`.
-   */
-  landingPageOnly?: boolean;
   /** Korte prompt (geen branche/stijl/variatie). Ook: env `SITE_GENERATION_MINIMAL_PROMPT=1`. */
   minimalPrompt?: boolean;
   clientImages?: ClientImage[];
@@ -1298,14 +1290,16 @@ function buildStrictLandingPageComposerMarkdown(includeFaq: boolean): string {
     : `4. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). In deze run: **geen** \`faq\`-rij (geen FAQ-signalen in naam+briefing).`;
 
   return `
-=== STRIKTE LANDINGS — STUDIO (max. 5 secties, vaste volgorde) ===
+=== STRIKTE LANDINGS — STUDIO (max. 5 secties op de homepage, vaste volgorde) ===
+
+Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`marketingPages\` en mogen andere \`id\`'s hebben.
 
 ${faqDetect}
 
 **Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan — \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
 
-1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero.
-2. \`stats\` **of** \`brands\` — precies **één** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen.
+1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** de beeld- of mediakant **gevuld** (Unsplash/gradient met textuur) — **geen** lege/zwarte placeholderkolom.
+2. \`stats\` **of** \`brands\` — precies **één** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen. **Geen** tweede “wij werken met”-strook in \`features\`/\`footer\` die hetzelfde doet — één trust-laag op de homepage.
 3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Elk item **titel + max. één korte regel** — geen kaart-vullende alinea’s.
 ${tailList}
 
@@ -1330,11 +1324,35 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
     ? "- **Multi-page homepage:** houd \`sections\` bondig (richtlijn **4–6** secties); **geen** volledige “over ons”-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben — verwijs met één zin + link.\n"
     : "";
   return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
-- **Geen tweede hero:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
+- **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
 - **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
 - **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. Op de marketingpagina: hoogstens **één** sterk sfeerbeeld in de hero **of** één beeld in een split bij \`about\`/\`features\` — niet beide als beeldzwembad.
 ${multiPageLine}`;
+}
+
+/**
+ * Anti-patterns uit QA (tweede pseudo-hero, lege mediakolom, dubbele merkenstrook).
+ * Alleen nieuwe sites — bij upgrade (`preserve`) geen extra sturing.
+ */
+function buildLandingOutputQualityGuardsMarkdown(input: {
+  preserve: boolean;
+  strictLanding: boolean;
+  marketingMultiPage: boolean;
+}): string {
+  if (input.preserve) return "";
+  const multiPageLine = input.marketingMultiPage
+    ? "- **Multi-page:** een subpagina in \`marketingPages\` mag een eigen koppenblok hebben, maar **herhaal niet** op de **homepage** dezelfde hoofdbelofte + dezelfde primaire knoppen als een tweede “landing-hero”; gebruik de subroute voor detail en link ernaar.\n"
+    : "";
+  const strictLine = input.strictLanding
+    ? "- **Compacte landing:** \`stats\`/\`brands\` is je **enige** aparte bewijsband — **geen** tweede “wij werken met”- of logo-rij in \`features\`/\`footer\` die hetzelfde vertrouwen opnieuw verpakt. Footer: hoogstens **één** discrete merkenrij **als** de briefing partners/merken noemt.\n"
+    : "";
+  return `
+=== ONTWERP-RITME & TRUST (premium zonder oppervlakkige herhaling) ===
+- **Hoogstens één zware “signature” boven de vouw op de landing:** als de \`hero\` al full-bleed split (tekst | groot beeld) of gelijkwaardig zwaar visueel blok is, mag **geen** volgende landingssectie opnieuw dezelfde dramatische full-viewport split als **tweede pseudo-hero**. Kies daarna band, grid, kaarten of editorial — **andere rol, ander ritme**.
+- **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Vul met passende Unsplash (\`<img>\` of \`background-image\`), een inhoudelijke gradient of textuur, of ontwerp **zonder** aparte mediakolom (typografie-led enkelkolom).
+- **Merken / “wij werken met”:** alleen waar de briefing partners, leveranciers, merken, retail-assortiment of expliciet logo-trust noemt. **Geen** decoratieve fictieve merken; **geen** redundante trust-laag die hetzelfde doet als je bewijsblok.
+${strictLine}${multiPageLine}`;
 }
 
 /** Gedeeld tussen volledige en minimale user-prompt (§3B t/m §5). */
@@ -1416,19 +1434,6 @@ export function isSiteGenerationMinimalPromptFromEnv(): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
-/** Alleen landings-`sections` genereren (geen vaste vier marketing-subpagina's + contact-JSON). */
-export function isSiteGenerationLandingPageOnlyFromEnv(): boolean {
-  const v = process.env.SITE_GENERATION_LANDING_ONLY?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
-}
-
-/** `true`/`false` expliciet van client; bij `undefined` → env. */
-export function resolveLandingPageOnlyFlag(explicit?: boolean): boolean {
-  if (explicit === true) return true;
-  if (explicit === false) return false;
-  return isSiteGenerationLandingPageOnlyFromEnv();
-}
-
 /** Alleen briefing + CONTENT AUTHORITY + studio-contract + technische tail — geen INDUSTRY/DESIGNTAAL/variatie/§1/shop-blokken. */
 function buildMinimalWebsiteGenerationUserPrompt(
   businessName: string,
@@ -1437,7 +1442,6 @@ function buildMinimalWebsiteGenerationUserPrompt(
   options?: GenerateSitePromptOptions,
 ): string {
   const preserve = Boolean(options?.preserveLayoutUpgrade);
-  const landingPageOnly = Boolean(options?.landingPageOnly);
   const packageBlock = getGenerationPackagePromptBlock(undefined, { preserveLayoutUpgrade: preserve });
   const existingBlock = buildExistingSiteJsonBlock(options?.existingSiteTailwindJson);
   const upgrade0A = preserve ? `${buildUpgradePreserveLayoutBlock()}\n\n` : "";
@@ -1448,9 +1452,9 @@ function buildMinimalWebsiteGenerationUserPrompt(
     preserve,
     options?.sectionIdsHint,
   );
-  const marketingMultiPage = !preserve && !landingPageOnly;
+  const marketingMultiPage = !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
-  const strictLanding = landingPageOnly && !preserve;
+  const strictLanding = !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
@@ -1486,7 +1490,7 @@ ${section1}=== KERN (technisch) ===
 1. Output = **één geldig JSON** volgens §5 — geen markdown, code fences of tekst eromheen.
 2. **Responsive** layout; landings-sectie-\`id\`'s kloppen met \`href="#…"\` **op de landing**; cross-pagina via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\` (zie §3B).
 3. Altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? ` + **verplicht** \`marketingPages\` (exact deze keys: ${mpKeysLine || "zie §3B"}) + \`contactSections\` (contact-subpagina: minstens één sectie met <form>; **niet** op de homepage)` : ""}.
-4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : strictLanding ? "**Strikte one-pager:** exact **4 of 5** secties (zie STRIKTE LANDINGS: FAQ alleen bij FAQ-signalen in naam+briefing) in de volgorde van de opdrachtregel — geen extra secties." : "Geen vast sjabloon — de briefing is leidend."}
+4. ${preserve ? "**Upgrade:** respecteer §0A en de bestaande JSON hierboven." : strictLanding ? "**Landings-`sections` (compact):** exact **4 of 5** secties (zie STRIKTE LANDINGS: FAQ alleen bij FAQ-signalen in naam+briefing) in de volgorde van de opdrachtregel — **geen** extra secties op de homepage; subpagina's staan in `marketingPages` / contact in `contactSections`." : "Geen vast sjabloon — de briefing is leidend."}
 
 === 2. THEMA / KLEUR ===
 
@@ -1496,6 +1500,7 @@ ${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(combinedIndustryProbeText(businessName, description))) : ""}
 ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
+${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage }) : ""}
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
@@ -1531,7 +1536,6 @@ export function buildWebsiteGenerationUserPrompt(
     return buildMinimalWebsiteGenerationUserPrompt(businessName, description, recentClientNames, options);
   }
   const preserve = Boolean(options?.preserveLayoutUpgrade);
-  const landingPageOnly = Boolean(options?.landingPageOnly);
   const variance = preserve
     ? buildUpgradePreserveLayoutBlock()
     : buildVarianceBlock(businessName, description, recentClientNames, options?.varianceNonce);
@@ -1549,9 +1553,9 @@ export function buildWebsiteGenerationUserPrompt(
     preserve,
     options?.sectionIdsHint,
   );
-  const marketingMultiPage = !preserve && !landingPageOnly;
+  const marketingMultiPage = !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
-  const strictLanding = landingPageOnly && !preserve;
+  const strictLanding = !preserve;
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
 
   const industryProbe = combinedIndustryProbeText(businessName, description);
@@ -1614,6 +1618,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 ${strictLanding ? buildStrictLandingPageComposerMarkdown(shouldIncludeCompactLandingFaq(industryProbe)) : ""}
 ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
+${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage }) : ""}
 
 **Vrijheid:** ${strictLanding ? "Binnen de **vijf** vaste secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s." : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
@@ -1621,7 +1626,7 @@ ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMult
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
-**Hero (\`#hero\`):** eerste indruk = **typografie + beeld**, niet een **brochure**: zie **COPY — MINDER IS MEER** — **geen** twee alinea’s onder de kop. **Één primaire CTA** en optioneel **één secundaire** (werkende \`href\`). **Verboden:** decoratief **scroll**-label in de hero. Volg **§VIEWPORT**. Combineer met **foto (Unsplash), split of gradient**; **Achtergrond-\`<video>\`:** alleen met **concrete https-URL** in de briefing; anders foto/gradient + \`data-animation\` / AOS. Houd je aan **BRANCHE-INSPIRATIE**.
+**Hero (\`#hero\`):** eerste indruk = **typografie + beeld**, niet een **brochure**: zie **COPY — MINDER IS MEER** — **geen** twee alinea’s onder de kop. **Één primaire CTA** en optioneel **één secundaire** (werkende \`href\`). **Verboden:** decoratief **scroll**-label in de hero. Volg **§VIEWPORT**. Combineer met **foto (Unsplash), split of gradient**; bij **split/immersive:** de beeldzijde mag **niet** een lege of zinloze donkere vlakte zijn — Unsplash, gradient met textuur, of geen aparte mediakolom. **Achtergrond-\`<video>\`:** alleen met **concrete https-URL** in de briefing; anders foto/gradient + \`data-animation\` / AOS. Houd je aan **BRANCHE-INSPIRATIE**.
 
 **Klantfoto's:** blijven **buiten** de hero (zie blok KLANTFOTO'S hierboven).
 
@@ -1680,7 +1685,7 @@ type PreparedGenerateSiteClaudeCall = {
   pipelineFeedback: GenerationPipelineFeedback;
   /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
   useMarketingMultiPage: boolean;
-  /** `landingPageOnly` + geen upgrade: harde 5-sectie-validatie na parse. */
+  /** Geen upgrade: harde max. 5-sectie-validatie op landings-`sections` na parse. */
   strictLandingContract: boolean;
   /** Multipage: exacte `marketingPages`-keys (prompt + Zod + validatie). */
   marketingPageSlugs?: readonly string[];
@@ -1714,7 +1719,6 @@ async function prepareGenerateSiteClaudeCall(
   const mergedPromptOptions: GenerateSitePromptOptions = {
     ...promptOptions,
     varianceNonce: promptOptions?.varianceNonce ?? randomUUID(),
-    landingPageOnly: resolveLandingPageOnlyFlag(promptOptions?.landingPageOnly),
   };
 
   const refUrlRequested = mergedPromptOptions.referenceStyleUrl?.trim();
@@ -1740,7 +1744,7 @@ async function prepareGenerateSiteClaudeCall(
   }
 
   const industryProbe = combinedIndustryProbeText(businessName, description);
-  const strictLandingContract = Boolean(mergedPromptOptions.landingPageOnly) && !preserveLayout;
+  const strictLandingContract = !preserveLayout;
   const briefingSectionIds = strictLandingContract
     ? [...buildCompactLandingSectionIds(industryProbe)]
     : buildSectionIdsFromBriefing(industryProbe, mergedPromptOptions.sectionIdsHint);
@@ -1759,7 +1763,7 @@ async function prepareGenerateSiteClaudeCall(
   const styleResolved = resolveStyleDetection(description);
   const minimalPrompt =
     Boolean(mergedPromptOptions.minimalPrompt) || isSiteGenerationMinimalPromptFromEnv();
-  const useMarketingMultiPage = !preserveLayout && !mergedPromptOptions.landingPageOnly;
+  const useMarketingMultiPage = !preserveLayout;
   let marketingPageSlugs: readonly string[] | undefined;
   try {
     marketingPageSlugs = useMarketingMultiPage
@@ -1788,7 +1792,6 @@ async function prepareGenerateSiteClaudeCall(
       styleDetectionSource: styleResolved.source,
       ...(referenceStyleField ? { referenceStyle: referenceStyleField } : {}),
       minimalPrompt,
-      landingPageOnly: mergedPromptOptions.landingPageOnly,
       strictLandingPageContract: strictLandingContract,
       compactLandingIncludesFaq: strictLandingContract ? shouldIncludeCompactLandingFaq(industryProbe) : undefined,
       ...(marketingPageSlugs ? { marketingPageSlugs: [...marketingPageSlugs] } : {}),
@@ -1956,6 +1959,16 @@ function finalizeGenerateSiteFromClaudeText(
         error: `Site-regels: ${ruleErrors.join(" ")}`,
         rawText: textBody,
       };
+    }
+    if (options.strictLandingContract) {
+      const strictErrors = validateStrictLandingPageContract(mapped.sections);
+      if (strictErrors.length > 0) {
+        return {
+          ok: false,
+          error: `Strikte landingspagina: ${strictErrors.join(" ")}`,
+          rawText: textBody,
+        };
+      }
     }
     return { ok: true, data: mapped };
   }

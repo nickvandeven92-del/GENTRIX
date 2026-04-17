@@ -318,8 +318,6 @@ export function GeneratorForm({
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
-  /** Geen marketingPages + contact in één run — merkbaar korter (minder timeout-risico). */
-  const [landingPageOnly, setLandingPageOnly] = useState(false);
   /** Chat + preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
   /** `split` = twee kolommen; `editor` / `preview` = één paneel op volle breedte (binnen de studio-shell). */
@@ -469,8 +467,6 @@ export function GeneratorForm({
       if (refTrim.length > 0) {
         body.reference_style_url = refTrim;
       }
-      body.landing_page_only = landingPageOnly;
-
       if (!USE_LEGACY_NDJSON_STREAM) {
         const startRes = await fetch("/api/generate-site/jobs", {
           method: "POST",
@@ -938,22 +934,6 @@ export function GeneratorForm({
             className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
             placeholder="Kort of uitgebreid: doelgroep, aanbod, toon, CTA. Mag een zin; de Denklijn breidt uit op de server."
           />
-        </div>
-        <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-          <input
-            id="landingPageOnly"
-            type="checkbox"
-            checked={landingPageOnly}
-            onChange={(e) => setLandingPageOnly(e.target.checked)}
-            disabled={descriptionLocked}
-            className="mt-1 size-4 shrink-0 rounded border-slate-300 text-indigo-600"
-          />
-          <label htmlFor="landingPageOnly" className={cn("text-sm text-slate-700", descriptionLocked && "opacity-60")}>
-            <span className="font-medium text-slate-800">Alleen landingspagina</span>
-            <span className="mt-0.5 block text-xs font-normal text-slate-500">
-              Sneldere run; subpagina&apos;s later uitbreiden.
-            </span>
-          </label>
         </div>
 
         <button

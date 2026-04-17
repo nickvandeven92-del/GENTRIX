@@ -19,7 +19,7 @@ const FORBIDDEN_STRICT_LANDING_IDS = new Set([
 ]);
 
 /**
- * Harde checks voor **landingPageOnly** one-pagers (studio-contract).
+ * Harde checks voor de **landings-`sections`** (compact max. 5, studio-contract) bij nieuwe sites.
  * **4** secties = zonder `faq`; **5** = met `faq` vóór `footer`.
  */
 export function validateStrictLandingPageContract(sections: TailwindSection[]): string[] {
