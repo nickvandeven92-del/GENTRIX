@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SITE_SIGNATURE_ARCHETYPE_LABELS, siteSignatureSchema } from "@/lib/ai/site-signature-schema";
 
 /**
  * Visuele assen afgeleid van de **referentiesite** (HTML-excerpt) — leidend op compositie & UI-schil,
@@ -218,9 +219,17 @@ export const designGenerationContractSchema = z.object({
   toneSummary: z.string().max(500).optional(),
   /** Alleen vullen wanneer er een referentie-excerpt in de Denklijn-run zat; anders weglaten. */
   referenceVisualAxes: referenceVisualAxesSchema.optional(),
+  /**
+   * Site-signatuur: één compositie-lijn + meetbare anti-templates (Denklijn levert dit bij nieuwe runs).
+   * Optioneel voor **legacy** opgeslagen contracten zonder dit veld.
+   */
+  siteSignature: siteSignatureSchema.optional(),
 });
 
 export type DesignGenerationContract = z.infer<typeof designGenerationContractSchema>;
+
+export type { SiteSignature } from "@/lib/ai/site-signature-schema";
+export { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
 
 /** JSON-envelop die het rationale-model één keer levert. */
 export const designRationaleEnvelopeSchema = z.object({
@@ -301,6 +310,27 @@ export function buildDesignContractPromptInjection(
     "=== CONTRACT → HTML (geen lege belofte in copy — wél uitvoeren) ===",
     "Dit contract is **bindend gedrag** voor deze ene JSON-response: `config.theme` en dominante achtergronden moeten `paletteMode` en (indien gezet) `referenceVisualAxes.paletteIntent` **zichtbaar** volgen; sectieritme, kaartstijl, randbehandeling en hero-compositie moeten de assen **concreet** vertalen (Tailwind + `data-animation`/`studio-border-reveal` waar contract en briefing dat vragen).",
     "",
+    ...(contract.siteSignature
+      ? (() => {
+          const sig = contract.siteSignature;
+          const label = SITE_SIGNATURE_ARCHETYPE_LABELS[sig.archetype];
+          const anti = sig.anti_templates_nl.join(" · ");
+          return [
+            "=== SITE-SIGNATURE (Denklijn — bindend) ===",
+            `- **Archetype:** \`${sig.archetype}\` — ${label}`,
+            `- **Commitment:** ${sig.commitment_nl}`,
+            `- **Anti-templates (niet als default-patroon tenzij de briefing expliciet om dat patroon vraagt):** ${anti}`,
+            "",
+            "**Uitvoering:** `config.style` bevat **minstens één zin** die deze signature expliciet noemt (eigen woorden, geen copy-paste van dit blok). De **hero** en **minstens één vervolgsectie** laten zien dat je dit archetype meent (layout, ritme, typografie of beeld — niet alleen tekst).",
+            "**Later (zelfreview):** verzwak deze signature niet naar generieke SaaS-stijl tenzij dat een **harde validator-fout**, **claim-conflict** of **expliciete briefing-tegenstrijd** oplost.",
+            "",
+          ];
+        })()
+      : [
+            "=== SITE-SIGNATURE ===",
+            "(Geen `siteSignature` in dit contract — kies in `config.style` alsnog **één** duidelijke compositie-lijn + vermijd generieke 3×2 marketing-defaults tenzij de briefing dat expliciet vraagt.)",
+            "",
+          ]),
     "=== BEELDEN (harde sector-eis) ===",
     "- Elke `https://images.unsplash.com/...` in `sections[].html` moet **inhoudelijk** passen bij `imageryMustReflect`, eventuele `heroImageSearchHints`, en de briefing-branche. **Verboden** als dominant beeld: off-topic stock (bv. kantoorinterieur, plantenmacro’s, kerken, scuba onderwater, abstracte code/matrix-walls, generieke stad zonder link naar de sector) tenzij dat letterlijk in `imageryMustReflect` of de briefing staat.",
     "- **Hero:** minstens één sterk visueel dat `heroVisualSubject` en de sector weerspiegelt (Unsplash met **passende** `photo-` id, split-layout met sectorfoto, of — **alleen** als de briefing een **concrete https-video-URL** bevat — `<video>` met exact die bron). Geen stock-video zonder URL in de briefing. Een **kale** effen kleurvlak-hero zonder sectoranker is **niet** voldoende als dit contract spanning/attractiepark/expressieve hero beschrijft.",
@@ -348,6 +378,9 @@ export function buildUnsplashThemeContextWithContract(
     contract.heroImageSearchHints,
     axes?.paletteIntent,
     axes?.heroComposition,
+    contract.siteSignature
+      ? `Signature ${contract.siteSignature.archetype}: ${contract.siteSignature.commitment_nl}`
+      : "",
     ...contract.imageryMustReflect,
   ]
     .filter((s) => typeof s === "string" && s.trim().length > 0)

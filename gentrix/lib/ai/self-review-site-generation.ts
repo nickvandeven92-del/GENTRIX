@@ -67,6 +67,7 @@ ${buildContentAuthorityPolicyBlock()}
 
 === VISUEEL / UX ===
 - **Strakker ≠ saver:** vermijd revisies die vooral "veiliger", grijzer of **anoniemer** maken **zonder** validator-, claim- of briefing-reden. Een **distinctief** concept (sterk palet, editorial layout, duidelijke niche) mag **niet** worden afgevlakt naar standaard drie-kaarten tenzij dat een echte fout herstelt.
+- **Site-signature:** als \`siteSignature\` in het designcontract staat: **behoud** archetype + commitment + anti-templates **inhoudelijk** — geen terugtrekken naar generieke SaaS-layout tenzij validator, claims of briefing dat **expliciet** vereist. Anti-template-regels zijn **geen** optionele suggesties.
 - Ontbrekende \`<h1>\`, kapotte interne \`href="#…"\`, identieke canonieke \`/site/…\` of \`https://…/site/…\` **zonder** passend \`#\` op meerdere menu-items, of zichtbare placeholder-copy: **repareren** (zet interne navigatie op \`#<sectie-id>\` die in de markup bestaat).
 - Verminder **onnodige lengte** binnen secties: dubbele stats/testimonial/CTA-banen samenvatten of één rustig blok maken **zonder** secties te droppen. Zelfde twee hoofdknoppen (shop + contact) die al in de hero staan **niet** opnieuw als aparte full-bleed band vóór de footer — laat één set staan of herschrijf naar een **tekstlink**.
 - **Hero en USP-kaarten:** knip **lange** \`<p>\`-blokken en tweede alinea’s in de hero; per feature-kaart **max. één** korte zin onder de titel — **billboard-copy**, geen brochure.
@@ -174,6 +175,16 @@ function formatDesignContractForReview(c: DesignGenerationContract): string {
         formatReferenceVisualAxesForPrompt(axes),
       ].join("\n")
     : "";
+  const sig = c.siteSignature;
+  const sigSection = sig
+    ? [
+        "",
+        "**SITE-SIGNATURE (anti-template — niet terugvlakken naar generiek):**",
+        `- **Archetype:** \`${sig.archetype}\``,
+        `- **Commitment:** ${sig.commitment_nl}`,
+        `- **Anti-templates:** ${sig.anti_templates_nl.join(" · ")}`,
+      ].join("\n")
+    : "";
   return [
     `- **Hero-visueel:** ${c.heroVisualSubject}`,
     ...(c.heroImageSearchHints ? [`- **Foto-zoekhints:** ${c.heroImageSearchHints}`] : []),
@@ -182,6 +193,7 @@ function formatDesignContractForReview(c: DesignGenerationContract): string {
     `- **Beeld vermijden:** ${avoid}`,
     `- **Motion (motionLevel):** ${c.motionLevel}`,
     ...(c.toneSummary ? [`- **Toon:** ${c.toneSummary}`] : []),
+    sigSection,
     axesSection,
   ].join("\n");
 }

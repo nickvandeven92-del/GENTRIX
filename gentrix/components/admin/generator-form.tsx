@@ -34,6 +34,7 @@ import { postProcessTailwindSectionsForStreamingPreview } from "@/lib/ai/generat
 import {
   slugifyToSectionId,
   type GeneratedTailwindPage,
+  type MasterPromptPageConfig,
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
@@ -45,6 +46,10 @@ import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwin
 import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 import { consumeGenerateSiteNdjsonBuffer } from "@/lib/api/generate-site-stream-events";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import {
+  buildConceptRefinementInstruction,
+  type ConceptRefinementDirection,
+} from "@/lib/ai/concept-refinement-instructions";
 import type { GenerateSiteStreamNdjsonEvent } from "@/lib/ai/generate-site-with-claude";
 import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-feedback";
 import { isValidSubfolderSlug } from "@/lib/slug";
@@ -113,6 +118,7 @@ export function GeneratorForm({
   const [designRationaleSkipReason, setDesignRationaleSkipReason] = useState<string | null>(null);
   const [designContract, setDesignContract] = useState<DesignGenerationContract | null>(null);
   const [designContractWarning, setDesignContractWarning] = useState<string | null>(null);
+  const [conceptRefineLoading, setConceptRefineLoading] = useState(false);
   /** Stream stopte zonder `complete` (vaak timeout/proxy) — toch laatste secties tonen. */
   const [streamEndedWithoutComplete, setStreamEndedWithoutComplete] = useState(false);
 
@@ -132,6 +138,57 @@ export function GeneratorForm({
       return [...prev, { id, text: trimmed }];
     });
   }, []);
+
+  const runConceptRefinement = useCallback(
+    async (direction: ConceptRefinementDirection) => {
+      const page = generatedTailwind;
+      if (!page || loading) return;
+      setConceptRefineLoading(true);
+      setError(null);
+      try {
+        const instruction = buildConceptRefinementInstruction(direction, designContract);
+        const res = await fetch("/api/ai-edit-site", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instruction,
+            sections: page.sections,
+            config: page.config,
+          }),
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          data?: { sections: TailwindSection[]; config?: TailwindPageConfig | null };
+        };
+        if (!res.ok || json.ok !== true || !json.data?.sections) {
+          setError(
+            typeof json.error === "string" && json.error.trim()
+              ? json.error.trim()
+              : !res.ok
+                ? "Conceptverfijning mislukt (serverfout)."
+                : "Conceptverfijning mislukt.",
+          );
+          return;
+        }
+        setGeneratedTailwind((prev) =>
+          prev
+            ? {
+                ...prev,
+                sections: json.data!.sections,
+                config: (json.data!.config ?? prev.config) as MasterPromptPageConfig,
+              }
+            : prev,
+        );
+      } catch {
+        setError("Netwerkfout bij conceptverfijning.");
+      } finally {
+        setConceptRefineLoading(false);
+      }
+    },
+    [generatedTailwind, designContract, loading],
+  );
 
   const detectedIndustryId = pipelineFeedback?.interpreted?.detectedIndustryId;
 
@@ -976,6 +1033,46 @@ export function GeneratorForm({
             <span className="font-mono">{generatedTailwind.config.theme.accent}</span> ·{" "}
             {generatedTailwind.sections.length} secties
           </p>
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+            <p className="text-xs font-medium text-indigo-950 dark:text-indigo-100">Concept verfijnen</p>
+            <p className="mt-1 text-[11px] leading-snug text-indigo-900/85 dark:text-indigo-200/90">
+              Lichte tweede pass via de editor-API: zelfde sectie-<code className="font-mono text-[10px]">id</code>
+              ’s, alleen HTML-aanpassingen. Alleen de huidige landingspagina (
+              {generatedTailwind.sections.length} secties).
+            </p>
+            {conceptRefineLoading ? (
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-indigo-900 dark:text-indigo-100">
+                <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                Bezig met verfijnen…
+              </p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={conceptRefineLoading || loading}
+                onClick={() => void runConceptRefinement("strakker_zakelijk")}
+                className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+              >
+                Strakker / zakelijk
+              </button>
+              <button
+                type="button"
+                disabled={conceptRefineLoading || loading}
+                onClick={() => void runConceptRefinement("durfder_editorial")}
+                className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+              >
+                Durfder / editorial
+              </button>
+              <button
+                type="button"
+                disabled={conceptRefineLoading || loading}
+                onClick={() => void runConceptRefinement("meer_beweging")}
+                className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+              >
+                Meer beweging
+              </button>
+            </div>
+          </div>
           <DutchSpellcheckPanel
             sections={generatedTailwind.sections.map((s, i) => ({
               id: s.id ?? slugifyToSectionId(s.sectionName, i),

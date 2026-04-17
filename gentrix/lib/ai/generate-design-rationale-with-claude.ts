@@ -3,6 +3,7 @@ import { clampMaxTokensNonStreaming } from "@/lib/ai/anthropic-nonstream-limits"
 import {
   designGenerationContractSchema,
   designRationaleEnvelopeSchema,
+  SITE_SIGNATURE_ARCHETYPE_LABELS,
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
@@ -39,6 +40,19 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 - \`imageryMustReflect\` — **JSON-array** van 1–12 korte strings (bv. \`["sector","lifestyle"]\`). Liever **geen** enkele doorlopende CSV-string; als je toch één string gebruikt: splits met komma’s of puntkomma’s (max. 12 onderdelen).
 - \`imageryAvoid\` (optioneel) — **JSON-array** van max. 12 strings (zelfde stijl als \`imageryMustReflect\`), of leeg weglaten.
 - \`motionLevel\` moet **samenhangen** met \`referenceVisualAxes.motionStyle\` wanneer assen aanwezig zijn (geen tegenstrijdig extreme pair zonder uitleg in rationale_nl).
+- **\`siteSignature\` (verplicht object in \`contract\`)** — voorkomt generieke “marketing-default” output. Velden:
+  - \`archetype\` — **exact één** van deze strings (JSON):
+    - \`"editorial_typography"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.editorial_typography}
+    - \`"asymmetric_split_hero"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.asymmetric_split_hero}
+    - \`"horizontal_editorial_band"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.horizontal_editorial_band}
+    - \`"bento_uneven_grid"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.bento_uneven_grid}
+    - \`"minimal_luxury_sparse"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.minimal_luxury_sparse}
+    - \`"warm_paper_rhythm"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.warm_paper_rhythm}
+    - \`"conversion_forward"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.conversion_forward}
+    - \`"immersive_media_hero"\` — ${SITE_SIGNATURE_ARCHETYPE_LABELS.immersive_media_hero}
+  - \`commitment_nl\` — **28–420 tekens** Nederlands: concreet **wat deze site visueel onderscheidt** van een standaard landingspagina (compositie, ritme, type, beeld — geen loze superlatieven).
+  - \`anti_templates_nl\` — **JSON-array** van **1 tot 4** strings (elk **12–160** tekens), concrete **verboden generieke patronen** (bv. “geen identieke 3×2 USP-kaarten achter elkaar”, “geen standaard blauwe SaaS-gradient op wit”). Kies patronen die **bij deze briefing** echt risico zijn — niet willekeurig.
+  Leg in \`rationale_nl\` kort uit **waarom** dit archetype + anti-templates bij **deze** briefing passen.
 - **imageryAvoid vs. winkel/webshop:** als de briefing een **fysieke winkel**, **webshop**, **online bestellen** of duidelijke **productverkoop** in deze sector noemt, zet dan **geen** brede vermijdingen als "retail", "winkelsfeer" of "winkelomgeving" — dat laat de generator ten onrechte generieke natuur- of hobbyfoto’s kiezen i.p.v. sectorjuiste uitrusting, water/visserij of een nette specialistische winkelsetting. Vermijd alleen **niet passende** retail (supermarkt, winkelcentrum zonder sectorlink, kantoor-stock) en expliciet off-topic beelden.
 
 === contract — referenceVisualAxes (verplicht bij REFERENTIESITE-excerpt) ===

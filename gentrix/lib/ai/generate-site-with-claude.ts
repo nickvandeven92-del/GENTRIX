@@ -1277,7 +1277,8 @@ function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
 - **Kleur:** op diezelfde \`div\` optioneel \`[--studio-br-rgb:212_175_55]\` (goud), \`[--studio-br-rgb:34_197_94]\`, enz., en/of \`[--studio-br-a:0.85]\`.
 - **Waar:** onder \`h2\`/\`h3\`, tussen kop en paragraaf, onder prijs-/USP-kaarten — waar een **editoriale / premium** lijn past.
 - **Verplicht** als de briefing vraagt om **rand**, **randen**, **border**, **kader**, **omlijning**, **gouden/teken accent-lijn**, **lijntjes die meebewegen / meegroeien met scroll**, of vergelijkbare UI-motion: **minstens 3** reveals op de landing (\`--h\` en/of \`--v\`). Combineer met \`data-animation\`; **niet** op horizontaal scrollende ticker-/logo-banden plakken.
-- **Laser (\`studio-laser-*\`):** blijft een **aparte, zeldzame** sfeer-optie (cyber/neon/sci-fi) — **niet** verplicht en **niet** als vervanging van border-reveal voor normale winkel-/retail-/premium-briefings.`;
+- **Laser (\`studio-laser-*\`):** blijft een **aparte, zeldzame** sfeer-optie (cyber/neon/sci-fi) — **niet** verplicht en **niet** als vervanging van border-reveal voor normale winkel-/retail-/premium-briefings.
+- **Volledige omtrek × document-scroll (\`data-studio-scroll-border\`):** alleen als de briefing echt een **kaderrand om een blok** vraagt die **met scroll** verder “dichtloopt”. Wrapper: \`data-studio-scroll-border\` + verplicht \`style="--studio-sb-stroke:…"\` (hex/rgb — **geen** fallback-kleur in de studio). Optioneel \`--studio-sb-width\` (px). **Geen** \`<script>\` in secties — de shell levert JS + SVG.`;
 }
 
 function buildStrictLandingPageComposerMarkdown(includeFaq: boolean): string {

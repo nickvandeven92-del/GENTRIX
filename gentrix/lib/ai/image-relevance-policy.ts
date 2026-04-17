@@ -458,8 +458,13 @@ function effectiveSectionRule(bucket: string, bundle: NicheDomainBundle | null):
 }
 
 export function buildContractAvoidList(contract: DesignGenerationContract | null | undefined): string[] {
-  if (!contract?.imageryAvoid?.length) return [];
-  return contract.imageryAvoid.filter((x) => x.trim().length > 1);
+  const base = contract?.imageryAvoid?.length
+    ? contract.imageryAvoid.filter((x) => x.trim().length > 1)
+    : [];
+  const sig = contract?.siteSignature?.anti_templates_nl?.length
+    ? contract.siteSignature.anti_templates_nl.filter((x) => x.trim().length > 1)
+    : [];
+  return [...base, ...sig];
 }
 
 export function buildContractMustTokens(contract: DesignGenerationContract | null | undefined): string[] {

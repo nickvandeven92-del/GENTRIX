@@ -619,7 +619,7 @@ export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-pre
 /**
  * Nood-CSS als `disableScrollRevealAnimations` expliciet aan staat: geen paused keyframes / IO.
  * Normale weergave: STUDIO_DATA_ANIMATION_CSS + STUDIO_BORDER_REVEAL_CSS + STUDIO_MARQUEE_CSS + STUDIO_LASER_LINE_CSS
- * + STUDIO_SCROLL_REVEAL_SCRIPT + STUDIO_NAV_SCROLL_CONTRAST_* (sticky nav op lichte achtergrond).
+ * + STUDIO_SCROLL_REVEAL_SCRIPT + STUDIO_SCROLL_BORDER_* + STUDIO_NAV_SCROLL_CONTRAST_* (sticky nav op lichte achtergrond).
  */
 export const STUDIO_DATA_ANIMATION_DISABLED_CSS = `/* Geen scroll-reveal: inhoud met data-animation direct zichtbaar */
 [data-animation] {
@@ -897,6 +897,116 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
       var q=document.querySelectorAll(".studio-border-reveal:not(.studio-in-view)");
       for(var m=0;m<q.length;m++)q[m].classList.add("studio-in-view");
     },1600);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();
+</script>`;
+
+/**
+ * Volledige kaderrand (SVG-stroke) waarvan het **zichtbare deel** meeloopt met **document-scroll**:
+ * start **75%** van de omtrek (pad start linksonder, met de klok mee), eindigt op **100%** onderaan de pagina.
+ * **Geen** standaardkleur: zonder geldige `--studio-sb-stroke` op dezelfde wrapper tekent het script niets.
+ *
+ * Markup: wrapper met `data-studio-scroll-border` + `style="--studio-sb-stroke:#…"` (of `rgb(…)`); `position`/`isolation` zit in bundel-CSS.
+ * Inhoud als directe kinderen krijgt automatisch `z-index:1` boven de SVG.
+ * Optioneel: `--studio-sb-width` (px, default 2). `data-studio-scroll-border="0"` schakelt één instance uit.
+ */
+export const STUDIO_SCROLL_BORDER_CSS = `/* SVG-kader: stroke wordt door script gezet; pointer-events blijven op inhoud */
+[data-studio-scroll-border] {
+  position: relative;
+  isolation: isolate;
+}
+.studio-scroll-border__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+[data-studio-scroll-border] > *:not(.studio-scroll-border__svg) {
+  position: relative;
+  z-index: 1;
+}`;
+
+/** Zie STUDIO_SCROLL_BORDER_CSS — `data-gentrix-static-scroll-border="1"` = altijd 100% rand (geen scroll-koppeling). */
+export const STUDIO_SCROLL_BORDER_SCRIPT = `<script>
+(function(){
+  function strokeVar(el){
+    return getComputedStyle(el).getPropertyValue("--studio-sb-stroke").trim();
+  }
+  function strokeW(el){
+    var w=parseFloat(getComputedStyle(el).getPropertyValue("--studio-sb-width"));
+    return isFinite(w)&&w>0?w:2;
+  }
+  function pathD(w,h,sw){
+    var i=sw/2;
+    return "M "+i+" "+(h-i)+" L "+(w-i)+" "+(h-i)+" L "+(w-i)+" "+i+" L "+i+" "+i+" Z";
+  }
+  function perim(w,h,sw){
+    return Math.max(0,2*(w+h-2*sw));
+  }
+  function scrollT(){
+    var r=document.documentElement;
+    var max=Math.max(1,r.scrollHeight-r.clientHeight);
+    return Math.min(1,Math.max(0,r.scrollTop/max));
+  }
+  function bootOne(host){
+    if(host.getAttribute("data-studio-scroll-border")==="0")return;
+    if(!strokeVar(host))return;
+    var staticMode=document.documentElement.getAttribute("data-gentrix-static-scroll-border")==="1";
+    var reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var svg=host.querySelector(".studio-scroll-border__svg");
+    if(!svg||svg.namespaceURI!=="http://www.w3.org/2000/svg"){
+      svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+      svg.setAttribute("class","studio-scroll-border__svg");
+      svg.setAttribute("aria-hidden","true");
+      svg.setAttribute("focusable","false");
+      host.insertBefore(svg,host.firstChild);
+    }
+    var pathEl=svg.querySelector("path");
+    if(!pathEl){
+      pathEl=document.createElementNS("http://www.w3.org/2000/svg","path");
+      pathEl.setAttribute("fill","none");
+      pathEl.setAttribute("stroke-linejoin","miter");
+      pathEl.setAttribute("stroke-linecap","butt");
+      svg.appendChild(pathEl);
+    }
+    function paint(){
+      var sw=strokeW(host);
+      var col=strokeVar(host);
+      if(!col){svg.style.display="none";return;}
+      svg.style.display="";
+      var rw=host.clientWidth;
+      var rh=host.clientHeight;
+      if(rw<4||rh<4)return;
+      svg.setAttribute("viewBox","0 0 "+rw+" "+rh);
+      svg.setAttribute("preserveAspectRatio","none");
+      pathEl.setAttribute("d",pathD(rw,rh,sw));
+      pathEl.setAttribute("stroke",col);
+      pathEl.setAttribute("stroke-width",String(sw));
+      pathEl.setAttribute("vector-effect","non-scaling-stroke");
+      var P=perim(rw,rh,sw);
+      if(P<=0)return;
+      var t=staticMode||reduce?1:scrollT();
+      var frac=0.75+0.25*t;
+      var L=P*frac;
+      pathEl.setAttribute("stroke-dasharray",L+" "+(P*2));
+      pathEl.setAttribute("stroke-dashoffset","0");
+    }
+    paint();
+    window.addEventListener("resize",paint,{passive:true});
+    if(!(staticMode||reduce))window.addEventListener("scroll",paint,{passive:true});
+    if(typeof ResizeObserver!=="undefined"){
+      var ro=new ResizeObserver(function(){paint();});
+      ro.observe(host);
+    }
+  }
+  function boot(){
+    var hosts=document.querySelectorAll("[data-studio-scroll-border]");
+    for(var i=0;i<hosts.length;i++)bootOne(hosts[i]);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
@@ -1323,6 +1433,14 @@ export function sanitizeTailwindFragment(html: string): string {
       "stroke-width",
       "stroke-linecap",
       "stroke-linejoin",
+      "stroke-dasharray",
+      "stroke-dashoffset",
+      "pathLength",
+      "pathlength",
+      "vector-effect",
+      "preserveAspectRatio",
+      "focusable",
+      "data-studio-scroll-border",
       "data-animation",
       "data-aos",
       "data-aos-offset",
@@ -1998,8 +2116,6 @@ export function buildTailwindIframeSrcDoc(
   });
   const existingHeaderLinks = extractHeaderNavLinks(body);
   const shouldInject = shouldInjectStudioAutoMobileNav(body);
-  console.log("[nav] shouldInject:", shouldInject);
-  console.log("[nav] sections.length:", sections.length);
   let studioAutoMobileNavInjected = false;
   if (sections.length > 0 && shouldInject) {
     body = `${buildStudioAutoMobileNavHeaderHtml(
@@ -2047,9 +2163,12 @@ export function buildTailwindIframeSrcDoc(
     "\n" +
     STUDIO_MARQUEE_CSS +
     "\n" +
-    STUDIO_LASER_LINE_CSS;
+    STUDIO_LASER_LINE_CSS +
+    "\n" +
+    STUDIO_SCROLL_BORDER_CSS;
   const scrollRevealScript = options?.disableScrollRevealAnimations ? "" : STUDIO_SCROLL_REVEAL_SCRIPT;
   const motionDisabled = Boolean(options?.disableScrollRevealAnimations);
+  const scrollBorderScript = STUDIO_SCROLL_BORDER_SCRIPT;
   const { headLink: aosHeadLink, bodyScripts: aosBodyScripts } = getStudioAosHtmlFragments(motionDisabled);
   const { bodyScripts: gsapBodyScripts } = getStudioGsapHtmlFragments(motionDisabled);
   const faviconLink = buildFaviconLinkTagForLogoSet(options?.logoSet);
@@ -2103,6 +2222,7 @@ export function buildTailwindIframeSrcDoc(
     : "width=device-width, initial-scale=1";
 
   const studioMobileAttr = options?.studioMobileEditorFrame ? ` data-gentrix-studio-mobile="1"` : "";
+  const staticScrollBorderAttr = motionDisabled ? ` data-gentrix-static-scroll-border="1"` : "";
   const studioMobileCss = options?.studioMobileEditorFrame
     ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
     : "";
@@ -2114,7 +2234,7 @@ export function buildTailwindIframeSrcDoc(
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   let out = `<!DOCTYPE html>
-<html lang="nl"${iframeShellAttr}${studioMobileAttr}>
+<html lang="nl"${iframeShellAttr}${studioMobileAttr}${staticScrollBorderAttr}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
@@ -2159,7 +2279,7 @@ ${buildAlpineMobileHeaderScopeRepairScript()}
 ${buildStudioHeaderNavAlpineClampScript()}
 ${buildStudioIframeNavResetOnDesktopViewportScript()}
 ${buildLucidePostAlpineRescanScript()}
-${scrollRevealScript}${gsapBodyScripts}${aosBodyScripts}
+${scrollRevealScript}${scrollBorderScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}

@@ -2,6 +2,7 @@
 
 import { Brain, Clock, Loader2, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
 
 export type GenerationDetailsBodyProps = {
@@ -162,6 +163,38 @@ export function GenerationDetailsBody({
                 </div>
               ) : null}
             </dl>
+            {designContract.siteSignature ? (
+              <div className="mt-3 border-t border-emerald-200/80 pt-3 dark:border-emerald-800/60">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                  Site-signatuur
+                </h4>
+                <dl className="mt-1.5 grid gap-1.5 text-[11px] text-emerald-950 dark:text-emerald-100">
+                  <div>
+                    <dt className="text-emerald-800/80 dark:text-emerald-300/90">Archetype</dt>
+                    <dd className="font-mono text-[11px]">{designContract.siteSignature.archetype}</dd>
+                    <dd className="mt-0.5 text-emerald-900/95 dark:text-emerald-100/95">
+                      {SITE_SIGNATURE_ARCHETYPE_LABELS[designContract.siteSignature.archetype]}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-emerald-800/80 dark:text-emerald-300/90">Commitment</dt>
+                    <dd className="mt-0.5 leading-snug">{designContract.siteSignature.commitment_nl}</dd>
+                  </div>
+                  {designContract.siteSignature.anti_templates_nl.length > 0 ? (
+                    <div>
+                      <dt className="text-emerald-800/80 dark:text-emerald-300/90">Anti-templates</dt>
+                      <dd>
+                        <ul className="mt-0.5 list-inside list-disc space-y-0.5 leading-snug">
+                          {designContract.siteSignature.anti_templates_nl.map((line, i) => (
+                            <li key={i}>{line}</li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </div>
+            ) : null}
             {designContract.referenceVisualAxes ? (
               <div className="mt-3 border-t border-emerald-200/80 pt-3 dark:border-emerald-800/60">
                 <h4 className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">

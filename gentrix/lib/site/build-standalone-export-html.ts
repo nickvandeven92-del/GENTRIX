@@ -21,6 +21,8 @@ import {
   STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS,
   STUDIO_NAV_SCROLL_CONTRAST_SCRIPT,
   STUDIO_SCROLL_REVEAL_SCRIPT,
+  STUDIO_SCROLL_BORDER_CSS,
+  STUDIO_SCROLL_BORDER_SCRIPT,
   STUDIO_SITE_CREDIT_BODY_HTML,
   STUDIO_SITE_CREDIT_CSS,
   getStudioAosHtmlFragments,
@@ -177,6 +179,7 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_BORDER_REVEAL_CSS}
     ${STUDIO_MARQUEE_CSS}
     ${STUDIO_LASER_LINE_CSS}
+    ${STUDIO_SCROLL_BORDER_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
@@ -189,7 +192,7 @@ export function buildStandaloneExportHtmlDocument(
 <body class="min-h-screen antialiased text-slate-900${radiusClass}"${studioAutoMobileNavInjected ? ` id="top"` : ""}>
 ${bodyInner}
 ${STUDIO_SITE_CREDIT_BODY_HTML}
-${STUDIO_SCROLL_REVEAL_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
+${STUDIO_SCROLL_REVEAL_SCRIPT}${STUDIO_SCROLL_BORDER_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${lucideBlock}<script>
 (function(){
@@ -232,6 +235,7 @@ Technisch
 - Beweging: elementen met \`data-animation\` (fade-up, slide-in-left, …) animeren wanneer ze in beeld komen (eigen Intersection Observer). **AOS** staat via unpkg (\`data-aos\`). **GSAP 3** staat via jsDelivr: \`gsap\`, **ScrollTrigger**, **Flip**, **MotionPathPlugin**, **Observer** — gebruik ze in **Eigen JS** (\`gsap.to\`, timelines, ScrollTrigger); **geen** eigen \`<script>\` in sectie-HTML. **Niet** \`data-aos\` en \`data-animation\` op hetzelfde element. Bij “verminder beweging” schakelt AOS uit; beperk zware GSAP in Eigen JS zelf.
 - Sticky/fixed top-nav: automatische donkere menu-tekst op lichte achtergrond (scroll) — zet \`data-studio-skip-nav-tone\` op een wrapper om dit uit te zetten.
 - Accent-lijnen: \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`--v\` (verticaal) — lijn “groeit” van ~72% naar 100% bij scroll (zelfde observer als data-animation). Optioneel \`[--studio-br-rgb:R_G_B]\` voor kleur.
+- Volledig kader: \`data-studio-scroll-border\` + \`--studio-sb-stroke\` (verplicht op die wrapper) — zichtbare rand ~75%→100% mee met **document-scroll**; geen eigen \`<script>\`.
 - Horizontale ticker (\`studio-marquee\`): wordt **niet** meer gegenereerd; bestaande geëxporteerde pagina’s kunnen de klassen nog bevatten — de bundel levert nog compatibiliteits-CSS; pauzeert bij “verminder beweging”.
 - Premium merk-SVG: alleen als de site is gegenereerd met ENABLE_BRAND_LOGO_SYSTEM=1 in .env.local; het logo hoort dan als inline-SVG of img in index.html te staan (niet als los bestand in images/). Ontbrak het in de model-HTML, dan voegt de export/publicatie automatisch het primary-SVG toe na de eerste header/nav/section (attribuut data-studio-brand-mark).
 - Eigen JS/CSS uit de HTML-editor staan in index.html; controleer die code voordat je publiceert.

@@ -16,6 +16,16 @@ const sampleAxes = {
   cardStyle: "soft_shadow" as const,
 };
 
+const sampleSiteSignature = {
+  archetype: "minimal_luxury_sparse" as const,
+  commitment_nl:
+    "Rustige luxe met veel witruimte en één sterk visueel anker in de hero; geen drukke marketing-stack of tegelmuur.",
+  anti_templates_nl: [
+    "Geen identieke 3-koloms USP-kaarten achter elkaar op de hele pagina",
+    "Geen standaard SaaS-blauwe gradient op wit als dominante achtergrond",
+  ],
+};
+
 describe("designGenerationContractSchema", () => {
   it("accepteert contract met referenceVisualAxes", () => {
     const raw = {
@@ -23,6 +33,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "dark",
       imageryMustReflect: ["water"],
       motionLevel: "moderate",
+      siteSignature: sampleSiteSignature,
       referenceVisualAxes: sampleAxes,
     };
     const r = designGenerationContractSchema.safeParse(raw);
@@ -39,6 +50,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "dark" as const,
       imageryMustReflect: ["x"],
       motionLevel: "moderate" as const,
+      siteSignature: sampleSiteSignature,
       referenceVisualAxes: { ...sampleAxes, motionStyle: "marquee_forward" as const },
     };
     const r = designGenerationContractSchema.safeParse(raw);
@@ -55,6 +67,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "dark" as const,
       imageryMustReflect: ["barbershop"],
       motionLevel: "subtle" as const,
+      siteSignature: sampleSiteSignature,
     };
     const r = designGenerationContractSchema.safeParse(raw);
     expect(r.success).toBe(true);
@@ -73,12 +86,27 @@ describe("designGenerationContractSchema", () => {
       imageryAvoid: ["generiek kantoor", "losse plant macro zonder context"],
       motionLevel: "moderate",
       toneSummary: "Warm en vakbekwaam.",
+      siteSignature: sampleSiteSignature,
     };
     const r = designGenerationContractSchema.safeParse(raw);
     expect(r.success).toBe(true);
     if (r.success) {
       expect(r.data.motionLevel).toBe("moderate");
       expect(r.data.imageryAvoid.length).toBe(2);
+    }
+  });
+
+  it("accepteert contract zonder siteSignature (legacy)", () => {
+    const raw = {
+      heroVisualSubject: "Minimaal onderwerp voor contract.",
+      paletteMode: "light" as const,
+      imageryMustReflect: ["test"],
+      motionLevel: "none" as const,
+    };
+    const r = designGenerationContractSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.siteSignature).toBeUndefined();
     }
   });
 
@@ -89,6 +117,7 @@ describe("designGenerationContractSchema", () => {
       imageryMustReflect: "werkplaats, vakmanschap; gereedschap",
       imageryAvoid: "stock kantoor, generieke handdruk",
       motionLevel: "subtle" as const,
+      siteSignature: sampleSiteSignature,
     };
     const r = designGenerationContractSchema.safeParse(raw);
     expect(r.success).toBe(true);
@@ -104,6 +133,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "MIXED",
       imageryMustReflect: ["x"],
       motionLevel: "moderate",
+      siteSignature: sampleSiteSignature,
     });
     expect(mixed.success).toBe(true);
     if (mixed.success) expect(mixed.data.paletteMode).toBe("either");
@@ -113,6 +143,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "warm",
       imageryMustReflect: ["x"],
       motionLevel: "moderate",
+      siteSignature: sampleSiteSignature,
     });
     expect(warm.success).toBe(true);
     if (warm.success) expect(warm.data.paletteMode).toBe("light");
@@ -124,6 +155,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "either" as const,
       imageryMustReflect: ["zwemparadijs"],
       motionLevel: "HIGH",
+      siteSignature: sampleSiteSignature,
     };
     const r = designGenerationContractSchema.safeParse(raw);
     expect(r.success).toBe(true);
@@ -138,6 +170,7 @@ describe("designGenerationContractSchema", () => {
       paletteMode: "either" as const,
       imageryMustReflect: 42,
       motionLevel: "none" as const,
+      siteSignature: sampleSiteSignature,
     };
     const r = designGenerationContractSchema.safeParse(raw);
     expect(r.success).toBe(true);
@@ -154,6 +187,7 @@ describe("buildDesignContractPromptInjection", () => {
       paletteMode: "either",
       imageryMustReflect: ["a", "b"],
       motionLevel: "subtle",
+      siteSignature: sampleSiteSignature,
     });
     const block = buildDesignContractPromptInjection(c);
     expect(block).toContain("Test hero");
@@ -168,6 +202,7 @@ describe("buildDesignContractPromptInjection", () => {
       paletteMode: "dark",
       imageryMustReflect: ["achtbaan", "publiek"],
       motionLevel: "strong",
+      siteSignature: sampleSiteSignature,
     });
     const block = buildDesignContractPromptInjection(c);
     expect(block).toContain("ZELFCONTROLE");
@@ -176,12 +211,27 @@ describe("buildDesignContractPromptInjection", () => {
     expect(block).not.toContain("studio-marquee");
   });
 
+  it("voegt SITE-SIGNATURE toe wanneer siteSignature gezet is", () => {
+    const c = designGenerationContractSchema.parse({
+      heroVisualSubject: "Test hero",
+      paletteMode: "light",
+      imageryMustReflect: ["x"],
+      motionLevel: "subtle",
+      siteSignature: sampleSiteSignature,
+    });
+    const block = buildDesignContractPromptInjection(c);
+    expect(block).toContain("SITE-SIGNATURE");
+    expect(block).toContain("minimal_luxury_sparse");
+    expect(block).toContain(sampleSiteSignature.commitment_nl.slice(0, 40));
+  });
+
   it("voegt assen- en rolverdeling toe wanneer referenceVisualAxes gezet is", () => {
     const c = designGenerationContractSchema.parse({
       heroVisualSubject: "Test hero",
       paletteMode: "light",
       imageryMustReflect: ["x"],
       motionLevel: "subtle",
+      siteSignature: sampleSiteSignature,
       referenceVisualAxes: sampleAxes,
     });
     const block = buildDesignContractPromptInjection(c, { url: "https://ref.example/" });
