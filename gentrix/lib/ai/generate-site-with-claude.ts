@@ -129,7 +129,8 @@ export type GenerationPipelineFeedback = {
 };
 
 const DEFAULT_GENERATE_MODEL = "claude-sonnet-4-6";
-const DEFAULT_SUPPORT_MODEL = "claude-sonnet-4-6";
+/** Denklijn, self-review, briefing-vision (tenzij `ANTHROPIC_BRIEFING_VISION_MODEL`): Haiku = veel kortere wall-time dan Sonnet. */
+const DEFAULT_SUPPORT_MODEL = "claude-haiku-4-5-20251001";
 /** Streaming site-build: ruim genoeg voor marketing multi-page + zware secties (binnen model/stream-limiet). */
 const DEFAULT_MAX_OUTPUT_TOKENS = 30_720;
 
@@ -1925,7 +1926,10 @@ async function prepareGenerateSiteClaudeCall(
   }
 
   const generateModel = process.env.ANTHROPIC_GENERATE_MODEL ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_GENERATE_MODEL;
-  const supportModel = process.env.ANTHROPIC_MODEL ?? DEFAULT_SUPPORT_MODEL;
+  const supportModel =
+    process.env.ANTHROPIC_SUPPORT_MODEL?.trim() ||
+    process.env.ANTHROPIC_MODEL?.trim() ||
+    DEFAULT_SUPPORT_MODEL;
   const client = new Anthropic({ apiKey });
 
   const { systemText: knowledgeSystem, userPrefixBlocks } = await getKnowledgeContextForClaude();
