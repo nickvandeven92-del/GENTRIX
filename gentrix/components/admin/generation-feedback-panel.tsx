@@ -142,12 +142,12 @@ export function GenerationFeedbackPanel({
       {loading && !hasSiteOutput ? (
         <p className="mx-3 mb-2 text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
           Zie je tussendoor sectienamen in het log? Dat is ruwe HTML uit de stream; het laatste vinkje komt pas als de
-          server ook **nabewerking** klaar heeft (o.a. stock-stap, validatie). Dat is **niet** hetzelfde als “geen
-          foto’s”. Bij time-outs: laat{" "}
+          server ook **nabewerking** klaar heeft (o.a. stock-stap, validatie). Standaard gebruikt de studio **jobs +
+          polling**; transport kiest de client via{" "}
           <code className="rounded bg-white px-0.5 font-mono text-[9px] dark:bg-zinc-800">
-            NEXT_PUBLIC_SITE_GENERATION_USE_STREAM
+            /api/admin/site-generation-transport
           </code>{" "}
-          uit op productie — standaard draait de zware stap als server-job zonder lange browser-verbinding.
+          (server-env <code className="font-mono text-[9px]">SITE_GENERATION_TRANSPORT=jobs|stream</code>).
         </p>
       ) : null}
 

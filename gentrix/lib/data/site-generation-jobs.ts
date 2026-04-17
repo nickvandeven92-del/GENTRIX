@@ -110,15 +110,17 @@ async function updateJob(
     design_contract_json: Json | null;
     design_contract_warning: string | null;
   }>,
-): Promise<void> {
+): Promise<boolean> {
   const supabase = createServiceRoleClient();
   const { error } = await supabase
     .from("site_generation_jobs")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", jobId);
   if (error) {
-    console.warn("[site_generation_jobs update]", jobId, error.message);
+    console.error("[site_generation_jobs update]", jobId, error.message);
+    return false;
   }
+  return true;
 }
 
 /**
@@ -126,11 +128,14 @@ async function updateJob(
  * Roept aan vanuit `after()` op de job-route.
  */
 export async function markSiteGenerationJobFailed(jobId: string, message: string): Promise<void> {
-  await updateJob(jobId, {
+  const ok = await updateJob(jobId, {
     status: "failed",
     error_message: message.slice(0, 4_000),
     completed_at: new Date().toISOString(),
   });
+  if (!ok) {
+    console.error("[site_generation_jobs] markSiteGenerationJobFailed: update mislukte", jobId);
+  }
 }
 
 export async function runSiteGenerationJob(jobId: string): Promise<void> {
@@ -153,7 +158,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   const businessName = String(req.businessName ?? "").trim();
   const description = String(req.description ?? "").trim();
   if (!businessName || !description) {
-    await updateJob(jobId, {
+    void updateJob(jobId, {
       status: "failed",
       completed_at: new Date().toISOString(),
       error_message: "Ongeldige job: businessName of description ontbreekt.",
@@ -304,21 +309,30 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   const result = await consumeGenerateSiteReadableStream(stream, onEvent);
 
   if (result.ok) {
-    await updateJob(jobId, {
+    const saved = await updateJob(jobId, {
       status: "succeeded",
       result_json: result.data,
       progress_message: "Generatie voltooid",
       completed_at: new Date().toISOString(),
     });
+    if (!saved) {
+      await markSiteGenerationJobFailed(
+        jobId,
+        "Generatie geslaagd maar opslaan in de database mislukte (vaak: JSON te groot voor `result_json`, of DB-timeout). Verklein de briefing/secties of verhoog database-limiet.",
+      );
+    }
     return;
   }
 
-  await updateJob(jobId, {
+  const failSaved = await updateJob(jobId, {
     status: "failed",
     error_message: result.error,
     progress_message: null,
     completed_at: new Date().toISOString(),
   });
+  if (!failSaved) {
+    console.error("[runSiteGenerationJob] Kon failed-status niet opslaan", jobId);
+  }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[runSiteGenerationJob]", jobId, e);

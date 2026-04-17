@@ -137,7 +137,10 @@ export function GenerationDetailsBody({
               Nog geen denklijn zichtbaar. De server berekent de denklijn wel — bij <strong className="font-medium">server-job</strong>{" "}
               (standaard) komt de tekst in de database en verschijnt hier na de volgende poll (enkele seconden). Voor
               woord-voor-woord live tijdens de run: zet{" "}
-              <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">NEXT_PUBLIC_SITE_GENERATION_USE_STREAM=true</code>.
+              <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">SITE_GENERATION_TRANSPORT=stream</code>{" "}
+              (server-env; zie transport-API) of legacy{" "}
+              <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">NEXT_PUBLIC_SITE_GENERATION_USE_STREAM=true</code>{" "}
+              na rebuild.
             </p>
           )}
           {designContractWarning ? (

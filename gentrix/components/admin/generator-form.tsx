@@ -58,8 +58,11 @@ import { cn } from "@/lib/utils";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
 
-/** `true` = oude NDJSON-stream naar de browser; default = server-job + polling (stabieler bij lange runs). */
-const USE_LEGACY_NDJSON_STREAM = process.env.NEXT_PUBLIC_SITE_GENERATION_USE_STREAM === "true";
+/**
+ * Alleen fallback als `/api/admin/site-generation-transport` faalt.
+ * `NEXT_PUBLIC_*` wordt bij build ingevuld — voor runtime (Vercel zonder rebuild) gebruikt de client de API.
+ */
+const USE_LEGACY_NDJSON_STREAM_FALLBACK = process.env.NEXT_PUBLIC_SITE_GENERATION_USE_STREAM === "true";
 
 type ApiOk = { ok: true; outputFormat: "tailwind_sections"; data: GeneratedTailwindPage };
 type ApiErr = { ok: false; error: string; rawText?: string };
@@ -578,7 +581,24 @@ export function GeneratorForm({
       if (refTrim.length > 0) {
         body.reference_style_url = refTrim;
       }
-      if (!USE_LEGACY_NDJSON_STREAM) {
+
+      let useLegacyNdjsonStream = USE_LEGACY_NDJSON_STREAM_FALLBACK;
+      try {
+        const tr = await fetch("/api/admin/site-generation-transport", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        const tj = (await tr.json()) as { ok?: boolean; mode?: string };
+        if (tr.ok && tj.ok === true && tj.mode === "stream") {
+          useLegacyNdjsonStream = true;
+        } else if (tr.ok && tj.ok === true && tj.mode === "jobs") {
+          useLegacyNdjsonStream = false;
+        }
+      } catch {
+        /* netwerk: fallback build-time env */
+      }
+
+      if (!useLegacyNdjsonStream) {
         const startRes = await fetch("/api/generate-site/jobs", {
           method: "POST",
           credentials: "include",
@@ -636,6 +656,22 @@ export function GeneratorForm({
               return;
             }
             const { job } = jp;
+            const updatedAtMs = job.updated_at ? new Date(job.updated_at).getTime() : 0;
+            const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
+            if (job.status === "running" && staleMs > 7 * 60 * 1000 && i > 3) {
+              setError(
+                "De serverjob maakt te lang geen voortgang (meer dan 7 minuten sinds de laatste database-update). Dat gebeurt vaak als de worker wordt afgebroken (serverless-limiet) terwijl de job op «running» bleef staan, of als het resultaat niet in de database paste. Probeer opnieuw. Tip: zet op de server `SITE_GENERATION_TRANSPORT=stream` voor directe NDJSON, of verhoog `maxDuration` op Vercel Pro.",
+              );
+              setDesignRationaleLoading(false);
+              return;
+            }
+            if (job.status === "queued" && staleMs > 4 * 60 * 1000 && i > 30) {
+              setError(
+                "De job blijft te lang in de wachtrij (worker start niet). Controleer deployment, `site_generation_jobs`-migratie en of `/api/generate-site/jobs/[id]` bereikbaar is.",
+              );
+              setDesignRationaleLoading(false);
+              return;
+            }
             if (job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object") {
               setPipelineFeedback(job.pipeline_feedback_json as GenerationPipelineFeedback);
             }
@@ -677,7 +713,14 @@ export function GeneratorForm({
                 );
               }
             }
-            if (job.status === "succeeded" && job.result) {
+            if (job.status === "succeeded") {
+              if (!job.result) {
+                setError(
+                  "De job staat op «gelukt» maar er is geen opgeslagen resultaat (vaak een database-fout bij grote JSON). Probeer opnieuw of kort de briefing in.",
+                );
+                setDesignRationaleLoading(false);
+                return;
+              }
               setGeneratedTailwind(job.result);
               setStreamPhase("Generatie voltooid");
               appendGenerationActivity("Klaar — resultaat geladen.");
@@ -691,7 +734,7 @@ export function GeneratorForm({
             }
           }
           setError(
-            "Polling gestopt (timeout na ~16 min). Controleer de job in de database of probeer opnieuw; voor maximale live-feedback: NEXT_PUBLIC_SITE_GENERATION_USE_STREAM.",
+            "Polling gestopt (timeout na ~16 min). Controleer de job in de database of probeer opnieuw. Voor live NDJSON: `SITE_GENERATION_TRANSPORT=stream` (server-env, werkt zonder frontend-rebuild).",
           );
           return;
         }
