@@ -10,11 +10,11 @@ import {
 } from "@/lib/data/site-generation-jobs";
 
 /**
- * `after()`-work deelt dit plafond met de POST-response. 300s is te kort voor zware studio-runs
- * (Denklijn + grote JSON + Unsplash): Vercel breekt dan hard af en de job blijft soms op `running`
- * hangen zonder verdere DB-updates. Op Pro: 800 (zie stream-route).
+ * `after()`-work deelt dit plafond met de POST-response.
+ * **Vercel Hobby:** `maxDuration` mag hier max. **300** zijn — hoger faalt de deploy.
+ * Op **Pro:** zet in deze file desnoods **800** als zware runs tegen 5 min plafond lopen.
  */
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();
