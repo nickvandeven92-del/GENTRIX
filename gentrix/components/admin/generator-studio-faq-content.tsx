@@ -20,7 +20,8 @@ export function GeneratorStudioFaqContent() {
             opslaan bij die klant.
           </li>
           <li>
-            Klik <strong>Genereer site</strong>; de preview verschijnt rechts als de run klaar is (server-job + poll).
+            Klik <strong>Genereer site</strong>; status en secties lopen binnen via een NDJSON-stream; de preview rechts
+            volgt zodra de run klaar is (of bij een afgebroken stream: laatste tussentijdse secties).
           </li>
           <li>
             Sla op via het paneel onderaan. Na concept: briefing vast — verdere edits via tab <strong>Bewerken</strong>.

@@ -4,11 +4,11 @@ import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
 export type SiteGenerationTransportMode = "jobs" | "stream";
 
 /**
- * Studio gebruikt **altijd** server-jobs + polling (stabiel op Vercel). Browser-NDJSON-stream is verwijderd.
- * Route blijft bestaan voor compatibiliteit; `mode` is altijd `jobs`. Oude env-vars worden genegeerd.
+ * Site-studio (`GeneratorForm`) gebruikt **NDJSON** (`POST /api/generate-site/stream`). Async jobs + DB blijven
+ * beschikbaar voor achtergrond/scripts, maar de studio pollt niet meer.
  */
 export function resolveSiteGenerationTransportMode(): SiteGenerationTransportMode {
-  return "jobs";
+  return "stream";
 }
 
 export async function GET() {

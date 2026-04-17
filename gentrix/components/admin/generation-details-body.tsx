@@ -7,7 +7,7 @@ import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-cla
 
 export type GenerationDetailsBodyProps = {
   feedback: GenerationPipelineFeedback | null;
-  /** Als er geen `generation_meta` is (bijv. alleen server-job): toon formulierbriefing. */
+  /** Als er nog geen `generation_meta` is (vroeg in de stream): toon formulierbriefing. */
   fallbackBrief?: { businessName: string; description: string };
   /** Zit er een optionele referentie-URL in het formulier (wel/niet referentiesite-fetch). */
   referenceStyleRequested?: boolean;
@@ -105,7 +105,7 @@ export function GenerationDetailsBody({
               <p className="leading-relaxed text-violet-900/80 dark:text-violet-200/85">
                 De tekst verschijnt <strong className="font-medium">in één keer</strong> zodra die ronde klaar is — er is
                 (nog) geen woord-voor-woord live stream van de denklijn. De tijdlijn hierboven en{" "}
-                <strong className="font-medium">Stap:</strong> komen uit de server-job (poll elke ~2s).
+                <strong className="font-medium">Stap:</strong> komen uit dezelfde NDJSON-stream als de site-generatie.
               </p>
               {interpreted ? (
                 <p className="leading-relaxed text-violet-900/80 dark:text-violet-200/85">
@@ -356,9 +356,8 @@ export function GenerationDetailsBody({
               Briefing (formulier)
             </h3>
             <p className="mt-2 text-xs text-amber-950/90 dark:text-amber-100/90">
-              Er is nog geen pipeline-interpretatie (JSON) van de server binnengekomen — typisch bij{" "}
-              <strong className="font-medium">server-job</strong> i.p.v. NDJSON-stream. Hieronder wat je in het formulier
-              hebt ingevuld.
+              Er is nog geen pipeline-interpretatie (JSON) van de server binnengekomen — bijvoorbeeld net na start of
+              vóór het eerste stream-event. Hieronder wat je in het formulier hebt ingevuld.
             </p>
             <dl className="mt-2 grid gap-2 text-sm text-slate-800 dark:text-zinc-200">
               <div>

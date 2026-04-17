@@ -50,25 +50,15 @@ import type { GenerationPipelineFeedback } from "@/lib/api/generation-pipeline-f
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
 import {
-  SITE_GENERATION_JOB_CLIENT_WALL_GRACE_MS,
-  SITE_GENERATION_JOB_MAX_DURATION_SEC,
-} from "@/lib/config/site-generation-job";
+  consumeGenerateSiteNdjsonBuffer,
+  type GenerateSiteStreamNdjsonEvent,
+} from "@/lib/api/generate-site-stream-events";
 import { cn } from "@/lib/utils";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
 
-const SITE_GENERATION_JOBS_MIGRATION_ERROR_RE = /site_generation_jobs|generatie-job aanmaken/i;
-
-/**
- * Jobs + polling: max. tijd dat **deze browser** blijft vragen naar status (niet hetzelfde als Vercel `maxDuration`).
- * 480 × 2s ≈ 16 min na de eerste poll.
- */
-const SITE_JOB_POLL_INTERVAL_MS = 2000;
-const SITE_JOB_POLL_MAX_ROUNDS = 480;
-const SITE_JOB_POLL_MAX_MINUTES = Math.max(
-  1,
-  Math.round(((SITE_JOB_POLL_MAX_ROUNDS - 1) * SITE_JOB_POLL_INTERVAL_MS) / 60_000),
-);
+/** Max. ruwe JSON-log in tekens (token-stream); voorkomt geheugenproblemen in de browser. */
+const SITE_STREAM_LOG_MAX_CHARS = 400_000;
 
 /** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
@@ -134,8 +124,7 @@ export function GeneratorForm({
   const [streamEndedWithoutComplete, setStreamEndedWithoutComplete] = useState(false);
 
   const streamJsonBufferRef = useRef("");
-  const pollAbortRef = useRef(false);
-  const lastPolledJobProgressRef = useRef<string | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
   /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
@@ -533,7 +522,7 @@ export function GeneratorForm({
 
   useEffect(() => {
     return () => {
-      pollAbortRef.current = true;
+      streamAbortRef.current?.abort();
     };
   }, []);
 
@@ -583,156 +572,183 @@ export function GeneratorForm({
         body.reference_style_url = refTrim;
       }
 
-      const startRes = await fetch("/api/generate-site/jobs", {
+      appendGenerationActivity("Generatie via NDJSON-stream naar deze pagina (geen job-poll).");
+      setDesignRationaleLoading(false);
+
+      const ac = new AbortController();
+      streamAbortRef.current = ac;
+
+      const res = await fetch("/api/generate-site/stream", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/x-ndjson, application/json",
+        },
         body: JSON.stringify(body),
+        signal: ac.signal,
       });
-      const startPayload = (await startRes.json()) as
-        | { ok: true; jobId: string }
-        | { ok: false; error: string };
-      if (!startRes.ok || !startPayload.ok || !("jobId" in startPayload)) {
-        const err = !startPayload.ok ? startPayload.error : "Job start mislukt.";
-        const migration =
-          typeof err === "string" && SITE_GENERATION_JOBS_MIGRATION_ERROR_RE.test(err);
-        setError(
-          migration
-            ? "Server-jobs zijn niet geconfigureerd (database-tabel `site_generation_jobs` ontbreekt). Voer de Supabase-migraties uit op dit project en deploy opnieuw."
-            : err,
-        );
+
+      if (!res.ok) {
+        let errText = `Generatie start mislukt (${res.status}).`;
+        try {
+          const j = (await res.json()) as { error?: string };
+          if (typeof j.error === "string" && j.error.trim()) errText = j.error.trim();
+        } catch {
+          /* body was geen JSON */
+        }
+        setError(errText);
         return;
       }
 
-      appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
-      pollAbortRef.current = false;
-      lastPolledJobProgressRef.current = null;
-      /** Denklijn-tekst bestaat pas ná `generation_meta` + aparte rationale-API; tot die tijd geen “uitleg”-spinner i.v.m. wachtrij/prepare. */
-      setDesignRationaleLoading(false);
-      for (let i = 0; i < SITE_JOB_POLL_MAX_ROUNDS; i++) {
-        if (pollAbortRef.current) break;
-        if (i > 0) await new Promise((r) => setTimeout(r, SITE_JOB_POLL_INTERVAL_MS));
-        const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, {
-          credentials: "include",
-          cache: "no-store",
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("ndjson") && !ct.includes("x-ndjson")) {
+        try {
+          const j = (await res.json()) as { error?: string };
+          setError(
+            typeof j.error === "string" && j.error.trim()
+              ? j.error.trim()
+              : "Onverwacht antwoordformaat (geen NDJSON-stream).",
+          );
+        } catch {
+          setError("Onverwacht antwoordformaat van de server.");
+        }
+        return;
+      }
+
+      if (!res.body) {
+        setError("Geen response-stream van de server.");
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let sawComplete = false;
+      let sawError = false;
+      let pipelineSeen = false;
+      let receivedAnySection = false;
+
+      const appendStreamLogChunk = (chunk: string) => {
+        if (!chunk) return;
+        setStreamLog((prev) => {
+          const next = prev + chunk;
+          return next.length <= SITE_STREAM_LOG_MAX_CHARS ? next : next.slice(next.length - SITE_STREAM_LOG_MAX_CHARS);
         });
-        const jp = (await jr.json()) as
-          | {
-              ok: true;
-              job: {
-                status: string;
-                progress_message: string | null;
-                error_message: string | null;
-                result: GeneratedTailwindPage | null;
-                updated_at?: string;
-                started_at?: string | null;
-                pipeline_feedback_json?: unknown;
-                denklijn_text?: string | null;
-                denklijn_skip_reason?: string | null;
-                design_contract_json?: unknown;
-                design_contract_warning?: string | null;
-                /** Server `maxDuration` (s); keepalives verversen `updated_at` dus niet daarop vertrouwen. */
-                server_max_duration_sec?: number;
-              };
-            }
-          | { ok: false; error: string };
-        if (!jr.ok || !jp.ok) {
-          setError(!jp.ok ? jp.error : "Jobstatus ophalen mislukt.");
-          return;
+      };
+
+      const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
+        if (ev.type === "status") {
+          const m = ev.message.trim();
+          if (m) {
+            setStreamPhase(m);
+            appendGenerationActivity(m);
+          }
         }
-        const { job } = jp;
-        const maxSec =
-          typeof job.server_max_duration_sec === "number" && job.server_max_duration_sec > 0
-            ? job.server_max_duration_sec
-            : SITE_GENERATION_JOB_MAX_DURATION_SEC;
-        const wallLimitMs = maxSec * 1000 + SITE_GENERATION_JOB_CLIENT_WALL_GRACE_MS;
-        const startedAtMs = job.started_at ? new Date(job.started_at).getTime() : 0;
-        const runningWallMs = startedAtMs > 0 ? Date.now() - startedAtMs : 0;
-        if (job.status === "running" && startedAtMs > 0 && runningWallMs > wallLimitMs && i > 3) {
-          setError(
-            `De job blijft op «bezig» terwijl de run langer duurt dan het hosting-plafond (~${maxSec}s functie + marge). Vaak is de worker gestopt terwijl de database nog op «running» staat (keepalives verversen «laatste update» — daarom meten we vanaf starttijd). Probeer opnieuw. Op Vercel Pro: verhoog SITE_GENERATION_JOB_MAX_DURATION_SEC in lib/config/site-generation-job.ts en deploy.`,
-          );
-          setDesignRationaleLoading(false);
-          return;
-        }
-        const updatedAtMs = job.updated_at ? new Date(job.updated_at).getTime() : 0;
-        const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
-        if (job.status === "queued" && staleMs > 4 * 60 * 1000 && i > 30) {
-          setError(
-            "De job blijft te lang in de wachtrij (worker start niet). Controleer deployment, `site_generation_jobs`-migratie en of `/api/generate-site/jobs/[id]` bereikbaar is.",
-          );
-          setDesignRationaleLoading(false);
-          return;
-        }
-        if (job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object") {
-          setPipelineFeedback(job.pipeline_feedback_json as GenerationPipelineFeedback);
-        }
-        const hasPipeline = job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object";
-        const hasDenk = job.denklijn_text != null && job.denklijn_text.length > 0;
-        const hasSkip = job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0;
-        if (hasDenk) {
-          setDesignRationale(job.denklijn_text ?? null);
-          setDesignRationaleSkipReason(null);
-          setDesignRationaleLoading(false);
-        } else if (hasSkip) {
-          setDesignRationale(null);
-          setDesignRationaleSkipReason(job.denklijn_skip_reason ?? null);
-          setDesignRationaleLoading(false);
-        } else if (job.status === "running" && hasPipeline) {
+        if (ev.type === "generation_meta") {
+          pipelineSeen = true;
+          setPipelineFeedback(ev.feedback);
           setDesignRationaleLoading(true);
-        } else if (job.status === "running" && !hasPipeline) {
+        }
+        if (ev.type === "design_rationale") {
+          const hasText = ev.text != null && ev.text.trim().length > 0;
+          if (hasText) {
+            setDesignRationale(ev.text!.trim());
+            setDesignRationaleSkipReason(null);
+          } else if (ev.skipReason?.trim()) {
+            setDesignRationale(null);
+            setDesignRationaleSkipReason(ev.skipReason.trim());
+          }
           setDesignRationaleLoading(false);
+          if (ev.contract != null) {
+            setDesignContract(ev.contract);
+            setDesignContractWarning(ev.contractWarning?.trim() || null);
+          } else {
+            setDesignContract(null);
+            setDesignContractWarning(ev.contractWarning?.trim() || null);
+          }
         }
-        if (job.design_contract_json != null && typeof job.design_contract_json === "object") {
-          setDesignContract(job.design_contract_json as DesignGenerationContract);
-          setDesignContractWarning(job.design_contract_warning?.trim() || null);
+        if (ev.type === "self_review") {
+          appendGenerationActivity(
+            ev.ran
+              ? ev.refined
+                ? "Zelfreview toegepast."
+                : "Zelfreview afgerond (geen wijziging)."
+              : "Zelfreview overgeslagen.",
+          );
         }
-        const msg = job.progress_message?.trim() ?? "";
-        if (msg && msg !== lastPolledJobProgressRef.current) {
-          lastPolledJobProgressRef.current = msg;
-          setStreamPhase(msg);
-          appendGenerationActivity(msg);
-        } else if (job.status === "running" && i > 0 && i % 5 === 0) {
-          /** Tijd sinds echte job-start (started_at); `updated_at` loopt door keepalives omhoog en misleidt bij Denklijn. */
-          const refMs = startedAtMs > 0 ? startedAtMs : updatedAtMs;
-          if (refMs > 0) {
-            const ageSec = Math.round((Date.now() - refMs) / 1000);
-            if (ageSec > 35) {
-              const baseline =
-                lastPolledJobProgressRef.current?.trim() ||
-                msg.trim() ||
-                "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
-              setStreamPhase(
-                `${baseline} · run bezig sinds ~${ageSec}s (Denklijn is géén live token-stream; deze pagina blijft nog tot ca. ${SITE_JOB_POLL_MAX_MINUTES} min pollen).`,
-              );
+        if (ev.type === "token") {
+          streamJsonBufferRef.current += ev.content;
+          appendStreamLogChunk(ev.content);
+        }
+        if (ev.type === "section_complete") {
+          receivedAnySection = true;
+          const sec = ev.section;
+          const name = sec.sectionName?.trim() || sec.id;
+          setStreamingSections((prev) => {
+            const idx = prev.findIndex((s) => s.id === sec.id);
+            const row: TailwindSection = { id: sec.id, sectionName: name, html: sec.html };
+            if (idx >= 0) {
+              const copy = [...prev];
+              copy[idx] = { ...copy[idx], ...row };
+              return copy;
             }
+            return [...prev, row];
+          });
+        }
+        if (ev.type === "complete") {
+          if (ev.outputFormat === "tailwind_sections") {
+            setGeneratedTailwind(ev.data);
+            setStreamEndedWithoutComplete(false);
+            sawComplete = true;
+            setStreamPhase("Generatie voltooid");
+            appendGenerationActivity("Klaar — stream afgerond.");
+          } else {
+            sawError = true;
+            setError("Alleen Tailwind-studio-output wordt in dit scherm ondersteund.");
           }
         }
-        if (job.status === "succeeded") {
-          if (!job.result) {
-            setError(
-              "De job staat op «gelukt» maar er is geen opgeslagen resultaat (vaak een database-fout bij grote JSON). Probeer opnieuw of kort de briefing in.",
-            );
-            setDesignRationaleLoading(false);
-            return;
-          }
-          setGeneratedTailwind(job.result);
-          setStreamPhase("Generatie voltooid");
-          appendGenerationActivity("Klaar — resultaat geladen.");
-          setDesignRationaleLoading(false);
-          return;
+        if (ev.type === "error") {
+          sawError = true;
+          setError(ev.message);
+          if (ev.rawText) setRawFallback(ev.rawText);
         }
-        if (job.status === "failed") {
-          setError(job.error_message ?? "Generatie mislukt.");
-          setDesignRationaleLoading(false);
-          return;
+      };
+
+      try {
+        while (!sawComplete && !sawError) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer = consumeGenerateSiteNdjsonBuffer(
+            buffer,
+            decoder.decode(value, { stream: true }),
+            handleNdjsonEvent,
+          );
+        }
+        if (buffer.trim()) {
+          buffer = consumeGenerateSiteNdjsonBuffer(buffer, "\n", handleNdjsonEvent);
+        }
+      } finally {
+        await reader.cancel().catch(() => {});
+        streamAbortRef.current = null;
+      }
+
+      if (!sawComplete && !sawError) {
+        if (receivedAnySection) {
+          setStreamEndedWithoutComplete(true);
+          setStreamPhase("Stream gestopt vóór «klaar» — concept hieronder kan onvolledig zijn.");
+          appendGenerationActivity("Geen complete-event; laatste tussentijdse secties worden getoond.");
+        } else {
+          setError(
+            pipelineSeen
+              ? "Stream eindigde zonder resultaat (vaak time-out of netwerk). Probeer opnieuw of kort de briefing in."
+              : "Stream eindigde onverwacht vóór interpretatie. Controleer netwerk en probeer opnieuw.",
+          );
         }
       }
-      setError(
-        `Na ongeveer ${SITE_JOB_POLL_MAX_MINUTES} minuten is deze pagina gestopt met wachten (geen klaar-signaal). Probeer opnieuw. Blijft het mis: laat beheer de job/hosting nalopen — de server kan eerder zijn gestopt dan deze pagina.`,
-      );
-      return;
-    } catch {
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (e instanceof Error && e.name === "AbortError") return;
       setError("Netwerkfout of server niet bereikbaar.");
     } finally {
       setLoading(false);
@@ -1353,8 +1369,8 @@ export function GeneratorForm({
                       De preview verschijnt hier pas als de run <strong className="font-medium text-zinc-800 dark:text-zinc-200">volledig</strong> klaar is.
                       Hieronder wat de server onderweg deed.
                       <span className="mt-2 block text-[11px] text-zinc-500 dark:text-zinc-500">
-                        Weinig nieuwe regels in het log is normaal tijdens Denklijn of het grote model — dat betekent niet
-                        dat de job vastloopt.
+                        Weinig nieuwe regels in het log is normaal tijdens Denklijn of het grote model — dat betekent
+                        niet dat de stream vastzit.
                       </span>
                     </p>
                     {streamPhase ? (
