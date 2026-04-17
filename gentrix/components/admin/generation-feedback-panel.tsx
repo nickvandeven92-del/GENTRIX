@@ -142,12 +142,9 @@ export function GenerationFeedbackPanel({
       {loading && !hasSiteOutput ? (
         <p className="mx-3 mb-2 text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
           Zie je tussendoor sectienamen in het log? Dat is ruwe HTML uit de stream; het laatste vinkje komt pas als de
-          server ook **nabewerking** klaar heeft (o.a. stock-stap, validatie). Standaard gebruikt de studio **jobs +
-          polling**; transport kiest de client via{" "}
-          <code className="rounded bg-white px-0.5 font-mono text-[9px] dark:bg-zinc-800">
-            /api/admin/site-generation-transport
-          </code>{" "}
-          (server-env <code className="font-mono text-[9px]">SITE_GENERATION_TRANSPORT=jobs|stream</code>).
+          server ook **nabewerking** klaar heeft (o.a. stock-stap, validatie). Minuten zonder nieuwe regel kan gewoon
+          zijn: de zware stap draait op de server. Hoe verbinding en transport precies lopen, staat op de server — daar
+          hoef je als gebruiker normaal niets voor te tunen.
         </p>
       ) : null}
 

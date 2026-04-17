@@ -69,6 +69,17 @@ type ApiErr = { ok: false; error: string; rawText?: string };
 
 const SITE_GENERATION_JOBS_MIGRATION_ERROR_RE = /site_generation_jobs|generatie-job aanmaken/i;
 
+/**
+ * Jobs + polling: max. tijd dat **deze browser** blijft vragen naar status (niet hetzelfde als Vercel `maxDuration`).
+ * 480 × 2s ≈ 16 min na de eerste poll.
+ */
+const SITE_JOB_POLL_INTERVAL_MS = 2000;
+const SITE_JOB_POLL_MAX_ROUNDS = 480;
+const SITE_JOB_POLL_MAX_MINUTES = Math.max(
+  1,
+  Math.round(((SITE_JOB_POLL_MAX_ROUNDS - 1) * SITE_JOB_POLL_INTERVAL_MS) / 60_000),
+);
+
 /** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
 
@@ -625,11 +636,9 @@ export function GeneratorForm({
           lastPolledJobProgressRef.current = null;
           /** Denklijn-tekst bestaat pas ná `generation_meta` + aparte rationale-API; tot die tijd geen “uitleg”-spinner i.v.m. wachtrij/prepare. */
           setDesignRationaleLoading(false);
-          /** ~16 min: lange Claude-runs + zelfreview/Unsplash ruim boven client-timeout houden. */
-          const maxJobPolls = 480;
-          for (let i = 0; i < maxJobPolls; i++) {
+          for (let i = 0; i < SITE_JOB_POLL_MAX_ROUNDS; i++) {
             if (pollAbortRef.current) break;
-            if (i > 0) await new Promise((r) => setTimeout(r, 2000));
+            if (i > 0) await new Promise((r) => setTimeout(r, SITE_JOB_POLL_INTERVAL_MS));
             const jr = await fetch(`/api/generate-site/jobs/${startPayload.jobId}`, {
               credentials: "include",
               cache: "no-store",
@@ -660,7 +669,7 @@ export function GeneratorForm({
             const staleMs = updatedAtMs > 0 ? Date.now() - updatedAtMs : 0;
             if (job.status === "running" && staleMs > 7 * 60 * 1000 && i > 3) {
               setError(
-                "De serverjob maakt te lang geen voortgang (meer dan 7 minuten sinds de laatste database-update). Dat gebeurt vaak als de worker wordt afgebroken (serverless-limiet) terwijl de job op «running» bleef staan, of als het resultaat niet in de database paste. Probeer opnieuw. Tip: zet op de server `SITE_GENERATION_TRANSPORT=stream` voor directe NDJSON, of verhoog `maxDuration` op Vercel Pro.",
+                "De job blijft op «bezig» staan maar de server heeft meer dan 7 minuten geen voortgang meer weggeschreven. Vaak is de worker op de hosting gestopt (tijdslimiet) terwijl de database nog op «running» staat. Probeer opnieuw. Blijft dit terugkomen: vraag beheer om een langere functieduur op de hosting of om live stream-modus voor generatie.",
               );
               setDesignRationaleLoading(false);
               return;
@@ -709,7 +718,7 @@ export function GeneratorForm({
                   msg.trim() ||
                   "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
                 setStreamPhase(
-                  `${baseline} · laatste statussync ${ageSec}s geleden — gebruikelijk; harde timeout pas na ~16 min.`,
+                  `${baseline} · laatste statusupdate ${ageSec}s geleden — bij zware generaties normaal; deze pagina blijft nog tot ca. ${SITE_JOB_POLL_MAX_MINUTES} min opnieuw vragen.`,
                 );
               }
             }
@@ -734,7 +743,7 @@ export function GeneratorForm({
             }
           }
           setError(
-            "Polling gestopt (timeout na ~16 min). Controleer de job in de database of probeer opnieuw. Voor live NDJSON: `SITE_GENERATION_TRANSPORT=stream` (server-env, werkt zonder frontend-rebuild).",
+            `Na ongeveer ${SITE_JOB_POLL_MAX_MINUTES} minuten is deze pagina gestopt met wachten (geen klaar-signaal). Probeer opnieuw. Blijft het mis: laat beheer de job/hosting nalopen — de server kan eerder zijn gestopt dan deze pagina.`,
           );
           return;
         }

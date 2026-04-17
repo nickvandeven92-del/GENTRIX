@@ -1,6 +1,7 @@
 import type {
   ClaudeTailwindMarketingSiteOutput,
   ClaudeTailwindPageOutput,
+  GeneratedTailwindPage,
   MasterPromptPageConfig,
   TailwindPageConfig,
   TailwindSection,
@@ -11,6 +12,10 @@ import {
   STUDIO_CONTACT_PATH_PLACEHOLDER,
   STUDIO_SITE_BASE_PLACEHOLDER,
 } from "@/lib/site/studio-section-visibility";
+import {
+  cleanupStrippedStockMarkup,
+  stripAllUnsplashPhotoUrlsInHtml,
+} from "@/lib/ai/unsplash-image-replace";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -1287,4 +1292,47 @@ export function ensureClaudeMarketingSiteJsonHasContactSections(
   }
   const row = buildDefaultClaudeMarketingContactSectionRow(primary, accent, slugs);
   return { ...o, contactSections: [row] };
+}
+
+// ---------------------------------------------------------------------------
+// Studio: vaste image-vrije output (geen stock-API, geen <img> / video / iframe)
+// ---------------------------------------------------------------------------
+
+function stripRasterMediaElementsFromHtml(html: string): string {
+  let out = html;
+  out = out.replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, "");
+  out = out.replace(/<video\b[^>]*>[\s\S]*?<\/video>/gi, "");
+  out = out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
+  out = out.replace(/<img\b[^>]*>/gi, "");
+  out = out.replace(/<source\b[^>]*\/?>/gi, "");
+  return out;
+}
+
+function studioImageFreeSingleHtml(html: string): string {
+  let s = stripRasterMediaElementsFromHtml(html);
+  s = stripAllUnsplashPhotoUrlsInHtml(s);
+  s = cleanupStrippedStockMarkup(s);
+  return s;
+}
+
+function mapSectionsImageFree(sections: TailwindSection[]): TailwindSection[] {
+  return sections.map((s) => ({ ...s, html: studioImageFreeSingleHtml(s.html) }));
+}
+
+/** Na generatie: verwijdert alle raster-/embed-media en resterende Unsplash-URL's (deterministisch, geen API). */
+export function applyStudioImageFreeHtmlPass(page: GeneratedTailwindPage): GeneratedTailwindPage {
+  return {
+    ...page,
+    sections: mapSectionsImageFree(page.sections),
+    ...(page.contactSections?.length
+      ? { contactSections: mapSectionsImageFree(page.contactSections) }
+      : {}),
+    ...(page.marketingPages && Object.keys(page.marketingPages).length > 0
+      ? {
+          marketingPages: Object.fromEntries(
+            Object.entries(page.marketingPages).map(([k, v]) => [k, mapSectionsImageFree(v)]),
+          ),
+        }
+      : {}),
+  };
 }

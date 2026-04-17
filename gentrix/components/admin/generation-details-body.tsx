@@ -126,21 +126,16 @@ export function GenerationDetailsBody({
               Geen denklijn: <span className="font-mono">{designRationaleSkipReason}</span>
               {designRationaleSkipReason.includes("SKIP_DESIGN_RATIONALE") ? (
                 <span className="block pt-1 text-violet-700/80">
-                  Tip: haal{" "}
-                  <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">SKIP_DESIGN_RATIONALE</code> uit je env
-                  om dit weer aan te zetten.
+                  De denklijn staat op de server uit (overslaan). Wil je die weer: laat beheer de overslaan-optie in de
+                  omgeving uitzetten.
                 </span>
               ) : null}
             </p>
           ) : (
             <p className="mt-2 text-xs text-violet-800/70">
-              Nog geen denklijn zichtbaar. De server berekent de denklijn wel — bij <strong className="font-medium">server-job</strong>{" "}
-              (standaard) komt de tekst in de database en verschijnt hier na de volgende poll (enkele seconden). Voor
-              woord-voor-woord live tijdens de run: zet{" "}
-              <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">SITE_GENERATION_TRANSPORT=stream</code>{" "}
-              (server-env; zie transport-API) of legacy{" "}
-              <code className="rounded bg-white/80 px-1 dark:bg-violet-900/50">NEXT_PUBLIC_SITE_GENERATION_USE_STREAM=true</code>{" "}
-              na rebuild.
+              Nog geen denklijn zichtbaar. Bij de standaardmodus (job op de server) wordt de tekst eerst weggeschreven en
+              verschijnt hij hier na de volgende sync — even geduld. Live woord-voor-woord kan, als beheer de
+              stream-modus op de server inschakelt.
             </p>
           )}
           {designContractWarning ? (

@@ -276,9 +276,12 @@ export const claudeTailwindSectionRowSchema = z.object({
   name: z.string().min(1).max(120).optional(),
 });
 
+/** Studio-generatie: één compacte landingspagina (sneller, minder timeout). */
+export const STUDIO_GENERATION_MAX_SECTIONS = 4;
+
 export const claudeTailwindPageOutputSchema = z.object({
   config: masterPromptPageConfigSchema,
-  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(24),
+  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(STUDIO_GENERATION_MAX_SECTIONS),
 });
 
 export type ClaudeTailwindPageOutput = z.infer<typeof claudeTailwindPageOutputSchema>;
@@ -308,7 +311,7 @@ const marketingPageKeyFromClaudeSchema = z
   .refine((s) => !RESERVED_MARKETING_PAGE_KEYS.has(s), "Gereserveerde marketing-slug");
 
 const claudeMarketingPagesRecordSchema = z
-  .record(marketingPageKeyFromClaudeSchema, z.array(claudeTailwindSectionRowSchema).min(1).max(16))
+  .record(marketingPageKeyFromClaudeSchema, z.array(claudeTailwindSectionRowSchema).min(1).max(STUDIO_GENERATION_MAX_SECTIONS))
   .superRefine((rec, ctx) => {
     if (Object.keys(rec).length > 8) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Maximaal 8 marketing-subpagina's." });
@@ -317,8 +320,8 @@ const claudeMarketingPagesRecordSchema = z
 
 const claudeTailwindMarketingSiteBaseSchema = z.object({
   config: masterPromptPageConfigSchema,
-  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(24),
-  contactSections: z.array(claudeTailwindSectionRowSchema).min(1).max(12),
+  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(STUDIO_GENERATION_MAX_SECTIONS),
+  contactSections: z.array(claudeTailwindSectionRowSchema).min(1).max(STUDIO_GENERATION_MAX_SECTIONS),
 });
 
 /**

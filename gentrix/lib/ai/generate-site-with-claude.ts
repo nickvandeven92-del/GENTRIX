@@ -3,7 +3,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { generateDesignRationaleWithClaude } from "@/lib/ai/generate-design-rationale-with-claude";
 import {
   buildDesignContractPromptInjection,
-  buildUnsplashThemeContextWithContract,
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
@@ -55,14 +54,7 @@ import {
   applySelfReviewToGeneratedPage,
   isSiteSelfReviewEnabled,
 } from "@/lib/ai/self-review-site-generation";
-import {
-  DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION,
-  htmlMayContainUnsplashPhotoUrl,
-  replaceUnsplashImagesInSections,
-  stripAllUnsplashFromSections,
-} from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
-import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
 import { maybeEnhanceHero } from "@/lib/ai/enhance-hero-section";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
@@ -1053,9 +1045,23 @@ export type GenerateSitePromptOptions = {
    * Anders: server kiest set o.a. via retail-detectie of service-default.
    */
   marketingPageSlugs?: string[];
+  /** `true` = multipage JSON; `false` = alleen `sections`. Standaard in prepare: één pagina tenzij upgrade van multipage. */
+  marketingMultiPageHint?: boolean;
 };
 
 const UPGRADE_PROMPT_JSON_MAX = 150_000;
+
+function tailwindJsonHasNonEmptyMarketingPages(json: string | null | undefined): boolean {
+  if (!json?.trim()) return false;
+  try {
+    const o = JSON.parse(json) as { marketingPages?: unknown };
+    const mp = o.marketingPages;
+    if (mp == null || typeof mp !== "object" || Array.isArray(mp)) return false;
+    return Object.keys(mp as Record<string, unknown>).length > 0;
+  } catch {
+    return false;
+  }
+}
 
 export function extractSectionIdsFromTailwindUpgradeJson(json: string): string[] | null {
   try {
@@ -1199,21 +1205,23 @@ function buildSiteGenerationSalesCopyGuidanceLine(): string {
 }
 
 /**
- * Standaard image-vrij (Lovable-achtig): geen anonieme stock-foto's; Unsplash alleen in expliciete \`gallery\` (server).
+ * Stock beperken; **klant-uploads** (blok KLANTFOTO'S) en briefing-vision blijven expliciet toegestaan.
  */
 function buildStockImageryAgencyDefaultMarkdown(): string {
-  return `- **Beeld — standaard zonder stock-foto's (studio-default):**
-  - **Standaard:** **geen** \`https://images.unsplash.com/photo-…\` in **\`hero\`**, **\`features\`**, **\`about\`**, … — klanten hebben weinig aan generieke stock; werk met **typografie**, **gradient**, **patroon**, **SVG**, eventueel **\`<video>\`** met echte https-URL uit de briefing. De server **neutraliseert** losse Unsplash-URL's + ruimt lege stock-\`<img>\` op.
-  - **Alleen \`id="gallery"\`:** daar **mag** je Unsplash-placeholders (\`photo-…\`) zetten als de site echt een fotogalerij nodig heeft; de server lost ze **daar** via de API op. Zonder \`gallery\`-sectie: **geen** stock-foto's op de site.
-  - **Optioneel hero-stock (agency):** zet server-env \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` — dan mag de hero wél Unsplash-placeholders krijgen die de server matcht.
-  - **Klantfoto's** (eigen URL's in de opdracht): **wel** overal waar het past, **inclusief hero** — dat zijn géén Unsplash-URL's.`;
+  return `- **Beeld (studio):**
+  - **Spaarzaamheid (verplicht):** vul de site **niet** met gegenereerde of decoratieve foto's. **Geen** raster waarin elke USP-, team- of prijskaart **verplicht** een eigen \`<img>\` + zware border/schaduw krijgt. Zonder blok **KLANTFOTO'S**: liever **nul** \`<img>\` op de hele landingspagina — typografie, witruimte, gradient, SVG. **Met** KLANTFOTO'S: alleen **die** URL's; **niet** elke sectie volplakken — één sterke plek (vaak hero) + gericht hergebruik waar het echt dient; geen “6× dezelfde stock-stijl”.
+  - **Klant-uploads** (blok **KLANTFOTO'S**): als die URL's in de opdracht staan, **verplicht** prominent gebruiken met \`<img src="…">\` (**exact** dezelfde https-URL als in de lijst) + zinvolle \`alt\` — **niet** vervangen door Unsplash of verzonnen URL's.
+  - **Briefing-screenshots** + eventuele **vision**-tekst: gebruik voor **inhoud en toon**; geen volledige “browser”-schermafdruk als één giant \`<img>\` tenzij de briefing dat expliciet vraagt — zie blok **BRIEFING-REFERENTIEBEELDEN**.
+  - **Stock / Unsplash:** geen anonieme stock buiten **\`<section id="gallery">\`** (\`images.unsplash.com/photo-…\`); elders worden die URL's geneutraliseerd. **\`gallery\`:** alleen als de briefing **expliciet** een fotogalerij wil — **geen** standaard collage van veel stock-foto's “omdat het kan”.
+  - **Geen** \`via.placeholder\`, \`example.com\`-foto's of verzonnen beeld-URL's.
+  - **\`<video>\` / \`<iframe>\`:** alleen met **concrete** https-URL in de geschreven briefing; anders gradient + \`data-animation\` / AOS.`;
 }
 
 /** Gedeelde copy-dichtheid: voorkomt dat het model hero + USP-kaarten volschrijft met alinea’s. */
 function buildMinimalMarketingCopyContractMarkdown(): string {
   return `=== COPY — MINDER IS MEER (verplicht) ===
 - **Hero (\`#hero\`):** **geen** lange lichaamstekst. Maximaal: **één** \`h1\` (of vergelijkbaar display) + optioneel **één** korte kicker/regel erboven (**≤ 6 woorden**) + **hoogstens één** extra regel onder de kop (**≤ 12 woorden**, één zin of fragment). **Verboden in de hero:** twee of meer \`<p>\`-alinea’s; uitleg die beter onder de vouw past; “vertel”-marketing in plaats van **klap**.
-- **Hero — geen stock:** **geen** \`images.unsplash.com\` in de hero (tenzij studio expliciet \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` heeft); hero visueel = typografie, gradient, patroon, SVG, **klantfoto-URL** of briefing-video — zie **Beeld — standaard zonder stock-foto's**.
+- **Hero — media:** zie **Beeld (studio)**. **Zonder** blok KLANTFOTO'S: geen \`<img>\` naar verzonnen URL's — typografie, gradient, SVG. **Met** KLANTFOTO'S: gebruik de **beste** upload prominent in de hero (\`src\` = exacte klant-URL).
 - **USP / feature-kaarten / stappen:** per item **titel + hoogstens één korte regel** (**≤ 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
 - **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina’s: **kern + witruimte** — geen drie identieke marketing-alinea’s achter elkaar.
 - **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van “professioneel klinkend door veel woorden”.
@@ -1267,11 +1275,11 @@ ${slugHints}
 === 4. TECHNISCHE HTML-REGELS ===
 
 - Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
-- **Afbeeldingen (standaard image-vrij):** **geen** anonieme stock op de hele site **behalve** optioneel in **\`<section id="gallery">\`** — zie **COPY — MINDER IS MEER** (beeld). **Hero:** geen stock-foto; gradient/typografie of **klant-URL**. In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
-  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** (server verwijdert ze). Studio kan hero-stock aanzetten met env — vermijd tenzij nodig. Voor \`gallery\`: \`alt\` in het **Engels** als scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
-  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\` tenzij hero-env aan staat).
+- **Afbeeldingen:** zie **Beeld (studio)** — **spaarzaam**; geen volsite vol **\`<img>\`**-kaarten. **Geen** anonieme stock **behalve** optioneel in **\`<section id="gallery">\`** wanneer de briefing dat echt vraagt. **Hero:** geen stock-foto; gradient/typografie of **klant-URL** uit **KLANTFOTO'S**.
+  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** (server verwijdert ze). Geen standaard “12 foto's”-galerij zonder briefing-reden. Voor \`gallery\`: \`alt\` in het **Engels** als scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
+  - **Eigen beelden:** alleen **klant-**URL's uit de opdracht — **geen** Unsplash buiten \`gallery\` tenzij hero-env aan staat.
   - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten toegestane stock-zone\`**.
-  - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto.
+  - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto; geen decoratieve fotomuur.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
 
@@ -1352,16 +1360,17 @@ function buildClientImagesPromptBlock(clientImages: ClientImage[]): string {
   if (clientImages.length === 0) return "";
   const list = clientImages.map((img, i) => `${i + 1}. ${img.url}${img.label ? ` — ${img.label}` : ""}`).join("\n");
   return `
-=== KLANTFOTO'S (VERPLICHT VERWERKEN) ===
+=== KLANTFOTO'S (VERPLICHT IN DE SITE ALS ZE MEESTUUR) ===
 
-De klant heeft **eigen foto's** aangeleverd — **echte** beelden, geen anonieme stock. Gebruik ze **prominent**; ze maken de site persoonlijk.
+De klant heeft **eigen foto's** aangeleverd — **echte** beelden, geen anonieme stock. Gebruik ze **prominent** in de HTML; ze maken de site persoonlijk.
 
 ${list}
 
 **Regels voor klantfoto's:**
-- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) — gebruik dan \`<img src="…">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (zie COPY — geen Unsplash).
-- **Ook in \`about\`, \`features\`, \`team\`, marketing-subpagina's:** verdeel de uploads logisch; elk bestand minstens **één keer** duidelijk zichtbaar (geen micro-thumbnails). **\`gallery\`:** mag meerdere klantfoto's combineren met eventuele Unsplash-placeholders **alleen** in die sectie.
-- Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover ...">\` of \`background-image\` + \`bg-cover bg-center\` met de **exacte** klant-URL.
+- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) — gebruik dan \`<img src="…">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (geen Unsplash als vervanger).
+- **Spaarzaam:** **niet** elke kaart of kolom een eigen foto — dat wordt snel druk. Verdeel uploads **logisch**; elk bestand minstens **één keer** duidelijk zichtbaar is genoeg; liever **grote rust** dan een muur van gelijkvormige fototegels met dikke kaders.
+- **Ook in \`about\`, \`features\`, \`team\`, marketing-subpagina's:** alleen waar het de leesbaarheid dient. **\`gallery\`:** mag meerdere klantfoto's combineren; **geen** Unsplash buiten \`gallery\` tenzij de server expliciet hero-stock toestaat.
+- Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover …">\` of \`background-image\` + \`bg-cover bg-center\` met de **exacte** klant-URL.
 - **Geen aanvullen met Unsplash** buiten een eventuele \`gallery\`-sectie — lege visuele plekken: gradient, patroon of icoon.
 - Geef elke klantfoto een beschrijvende \`alt\`-tekst (label of context).
 
@@ -1388,11 +1397,13 @@ ${extracted}
     : `**Briefing-beelden zonder vision-tekst:** je ziet hieronder alleen **URL's** naar afbeeldingen. Er is **geen** extractieblok meegeleverd (vision uit of download faalde). Baseer concrete citaten en claims dan op de **geschreven briefing**; gebruik de afbeeldingen hoogstens als vage richting, niet als betrouwbare OCR-bron.`;
 
   const testimonialLine = extracted
-    ? `- **Reviews in de extractie:** zet ze strak in HTML; geen externe review-widgets; geen “officieel Google”-claims tenzij de extractie dat letterlijk toont.`
-    : `- **Bij review-/Google-screenshot-intentie:** bouw een **strakke testimonial-sectie** in HTML: kaarten met **border** / subtiele schaduw, duidelijke hiërarchie (kop, korte quote, initiaal of voornaam **alleen** als de briefing die noemt), eventueel **2–4 kolommen** of een **eenvoudige horizontale scroll** met Alpine (geen externe review-widgets). Teksten: **uitsluitend** wat uit de **briefing** volgt of korte, generieke positieve formuleringen zonder verzonnen namen, datums of “officieel Google”-claims (CONTENT AUTHORITY).`;
+    ? `- **Reviews in de extractie:** zet feiten strak in **tekst** (kop + korte quotes); **geen** muur van kaarten met dikke kaders of ingeladen schermafdrukken; geen externe review-widgets; geen “officieel Google”-claims tenzij de extractie dat letterlijk toont.`
+    : `- **Bij review-/Google-screenshot-intentie:** hetzelfde: **typografie-led**, max. **één** subtiel quote-blok; geen raster van screenshot-tegels met zware borders. Teksten: **uitsluitend** wat uit de **briefing** volgt of korte, generieke positieve formuleringen zonder verzonnen namen, datums of “officieel Google”-claims (CONTENT AUTHORITY).`;
 
   return `
-=== BRIEFING-REFERENTIEBEELDEN (screenshots / voorbeelden — niet hetzelfde als KLANTFOTO'S) ===
+=== BRIEFING-REFERENTIEBEELDEN (screenshots — server **vision** = tekst uit plaatjes; los van animatie) ===
+
+**Vision** hier = optionele **tekstextractie** uit je bijgevoegde plaatjes (wat er staat), **niet** “foto’s op de site” en **niet** hetzelfde als scroll- of GSAP-animatie — die regel je met \`data-animation\` / AOS / \`config.style\` (zie §3 animatie).
 
 De gebruiker heeft **afbeeldingen bij de opdracht** gezet (bijv. reviews, flyer, prijslijst, voorbeeld-UI). Publieke URL's:
 
@@ -1525,7 +1536,7 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
 - **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
-- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** Unsplash op marketing/landingspagina's behalve een echte \`gallery\`; andere secties = typografie/gradient of **klantfoto**.
+- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** Unsplash op marketing/landingspagina's behalve een echte \`gallery\`; andere secties = typografie/gradient of **spaarzame klantfoto** (zie **Beeld (studio)** — géén volsite-raster).
 ${multiPageLine}`;
 }
 
@@ -1553,7 +1564,7 @@ function buildLandingOutputQualityGuardsMarkdown(input: {
   return `
 === ONTWERP-RITME & TRUST (premium zonder oppervlakkige herhaling) ===
 - **Hoogstens één zware “signature” boven de vouw op de landing:** als de \`hero\` al full-bleed split (tekst | groot beeld) of gelijkwaardig zwaar visueel blok is, mag **geen** volgende landingssectie opnieuw dezelfde dramatische full-viewport split als **tweede pseudo-hero**. Kies daarna band, grid, kaarten of editorial — **andere rol, ander ritme**.
-- **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Gebruik **gradient/textuur**, typografie-led, of **klantfoto-URL** — **geen** Unsplash buiten \`id: "gallery"\`; geen tweede “stock-theater” naast de hero, of ontwerp **zonder** aparte mediakolom.
+- **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Gebruik **gradient/textuur** of typografie-led; **klantfoto** alleen als die in de opdracht zit en het rustig oogt — **geen** Unsplash buiten \`id: "gallery"\`; geen tweede “stock-theater” naast de hero, en **geen** opeenstapeling van decoratieve fotokaarten om secties “vol” te maken.
 - **Merken / “wij werken met”:** alleen waar de briefing partners, leveranciers, merken, retail-assortiment of expliciet logo-trust noemt. **Geen** decoratieve fictieve merken; **geen** redundante trust-laag die hetzelfde doet als je bewijsblok.
 ${strictLine}${multiPageLine}`;
 }
@@ -1580,11 +1591,11 @@ ${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten *
 === 4. TECHNISCHE HTML-REGELS ===
 
 - Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
-- **Afbeeldingen (standaard image-vrij):** **geen** anonieme stock op de hele site **behalve** optioneel in **\`<section id="gallery">\`** — zie **COPY — MINDER IS MEER** (beeld). **Hero:** geen stock-foto; gradient/typografie of **klant-URL**. In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
-  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** (server verwijdert ze). Studio kan hero-stock aanzetten met env — vermijd tenzij nodig. Voor \`gallery\`: \`alt\` in het **Engels** als scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
-  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\` tenzij hero-env aan staat).
+- **Afbeeldingen:** zie **Beeld (studio)** — **spaarzaam**; geen volsite vol **\`<img>\`**-kaarten. **Geen** anonieme stock **behalve** optioneel in **\`<section id="gallery">\`** wanneer de briefing dat echt vraagt. **Hero:** geen stock-foto; gradient/typografie of **klant-URL** uit **KLANTFOTO'S**.
+  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** (server verwijdert ze). Geen standaard “12 foto's”-galerij zonder briefing-reden. Voor \`gallery\`: \`alt\` in het **Engels** als scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
+  - **Eigen beelden:** alleen **klant-**URL's uit de opdracht — **geen** Unsplash buiten \`gallery\` tenzij hero-env aan staat.
   - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten toegestane stock-zone\`**.
-  - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto.
+  - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto; geen decoratieve fotomuur.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
 
@@ -1650,7 +1661,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
   const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
   const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve);
   const industryProbeMin = combinedIndustryProbeText(businessName, description);
-  const marketingMultiPage = !preserve;
+  const marketingMultiPage = options?.marketingMultiPageHint ?? !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
   const strictLanding = !preserve;
   const strictLandingSectionIdsMin = strictLanding ? [...buildCompactLandingSectionIds(industryProbeMin)] : undefined;
@@ -1711,8 +1722,7 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
-- **Klantfoto's:** volg het blok hierboven (hero **mag** met upload).
-- **Stock (Unsplash):** standaard **alleen \`id: "gallery"\`** (max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** resolves per sectie); elders worden \`images.unsplash.com\`-URL's **geneutraliseerd** (image-vrije site). Optioneel hero: \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\`. Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` voor Unsplash **overal** (oud gedrag).
+- **Klantfoto's / uploads:** zie blok **KLANTFOTO'S** en **Beeld (studio)** — bij meegestuurde URL's **wel** in de HTML (\`src\` exact gelijk).
 
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
@@ -1758,7 +1768,7 @@ export function buildWebsiteGenerationUserPrompt(
   const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
   const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve);
   const industryProbe = combinedIndustryProbeText(businessName, description);
-  const marketingMultiPage = !preserve;
+  const marketingMultiPage = options?.marketingMultiPageHint ?? !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
   const strictLanding = !preserve;
   const strictLandingSectionIds = strictLanding ? [...buildCompactLandingSectionIds(industryProbe)] : undefined;
@@ -1862,9 +1872,7 @@ ${buildMarqueeForbiddenPromptLine()}
 
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
-**Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik **gradient + motion** zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
-
-**Foto's:** **geen** \`images.unsplash.com\` behalve in **\`id: "gallery"\`** — zie COPY. Max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** stock-resolves in \`gallery\`; elders alleen **eigen/klant-**URL's of geen foto. Hero-stock alleen als studio \`SITE_GENERATION_UNSPLASH_ALLOW_HERO=1\` gebruikt.
+**Video / foto's:** geen verzonnen stock of placeholder-URL's; **wel** klant-uploads volgens **KLANTFOTO'S**; overige regels onder **Beeld (studio)** en COPY.
 
 ${section3Tail}${section3HeroHeight}
 
