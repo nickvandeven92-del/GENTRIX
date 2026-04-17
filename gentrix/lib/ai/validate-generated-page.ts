@@ -112,7 +112,7 @@ export function validateGeneratedPageHtml(html: string, plan: HomepagePlan): Gen
       /\bbg-gray-950\b/.test(heroHtml);
     if (!hasCinematicLayer && !hasSubtleDepth && flatDarkShell) {
       warnings.push(
-        "Hero (#hero): effen donker zonder foto én zonder zichtbare gradient/textuur — kan als leeg vlak ogen; overweeg Unsplash-foto of gradient als de briefing dat niet expliciet minimal wil. Achtergrondvideo alleen als de briefing expliciet om beweging/video vraagt.",
+        "Hero (#hero): effen donker zonder zichtbare gradient/textuur/typografie-anker — kan als leeg vlak ogen; voeg gradient, patroon of (bij uploads) klantbeeld toe als de briefing dat niet expliciet minimal wil. Achtergrondvideo alleen als de briefing expliciet om beweging/video vraagt.",
       );
     }
   }

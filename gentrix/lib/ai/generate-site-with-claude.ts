@@ -55,7 +55,10 @@ import {
   applySelfReviewToGeneratedPage,
   isSiteSelfReviewEnabled,
 } from "@/lib/ai/self-review-site-generation";
-import { replaceUnsplashImagesInSections } from "@/lib/ai/unsplash-image-replace";
+import {
+  DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION,
+  replaceUnsplashImagesInSections,
+} from "@/lib/ai/unsplash-image-replace";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
@@ -490,7 +493,7 @@ Warme tinten: terracotta, warm oranje, zachtgeel. Achtergronden in \`bg-orange-5
 - **Spacing:** compact maar niet claustrofobisch; donkere banden mogen \`py-20\` hebben.
 - **Hero:** full-bleed **sfeerbeeld** dat industrieel aanvoelt (exposed brick, leder/staal, dramatisch licht, workshop) + korte kop; of typografisch op **donker beton/zwart** met subtiele gradient/noise — **geen** witte hero met twee knalrode knoppen.
 - **Sector ≠ zware industrie:** bij **sportvisserij / visartikelen / tackle / boten** betekent “stoer industrieel” **rauw metaal, molens, braided line, nat dek/hout, kleine vissersboot/kotter, haven met vissersschepen** — **niet** bulkterminals, havenkranen, hoogovens, bergtoppen of alpiene landschappen (dat mist de branche).
-- **Barbershop + industrieel:** combineer rauwe loft-sfeer met vakmanschap: donkere tonen, koper/roest/barnijs als accent, Unsplash op **barber workshop / leather chair / steel mirror** — niet alleen generiek rood/zwart contrast.`,
+- **Barbershop + industrieel:** combineer rauwe loft-sfeer met vakmanschap: donkere tonen, koper/roest/barnijs als accent — **typografie + gradient/textuur** (geen stock-foto tenzij \`gallery\`).`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Beton- en staaltinten: \`bg-zinc-900\`, \`bg-neutral-900\`, \`bg-slate-950\`, \`text-zinc-300\`. Accent: **roest, koper, barnijs, gedesatureerd oranje of amber** — of koel **staalblauw**. **Vermijd** puur \`red-500\` + \`bg-white\` als hoofdpalet (pizza-tent); rood hoogstens zeer donker (\`red-950\`) of als dunne lijn, niet als grote vlakken.`,
   },
@@ -598,7 +601,7 @@ Ivoor/warm wit + crème of diep navy + crème; accent: goud/brons **of** diep wi
     label: "Skeuomorphism",
     designLanguage: `**DESIGNTAAL: SKEUOMORPHISM** (richtlijn — briefing wint bij conflict)
 - **Diepte:** licht lijkt van boven — \`bg-gradient-to-b\` op knoppen/vlakken, subtiele inner shadow (\`shadow-inner\`), afgeronde “object”-vormen.
-- **Materialen:** hints van **leer, papier, hout** via warme tinten en textuur (Unsplash-achtergrond of zeer subtiele noise — geen overdreven 2010-iOS).
+- **Materialen:** hints van **leer, papier, hout** via warme tinten, textuur en **CSS-gradient/noise** — geen stock-foto tenzij \`gallery\`.
 - **Knoppen:** mogen **relief** hebben (\`border-b-4\` donkerder rand); toggles/schuifjes als fysieke controls waar het past.
 - **Typografie:** serif of warme sans; uitstraling “ tastbaar ”.
 - **Balans:** moderne spacing (\`py-16\`+) zodat het niet oubollig wordt; combineer met **flat** secties als adempauze.`,
@@ -972,6 +975,7 @@ function buildBrancheSectionPromptBlocks(sectionIds: Set<string>): string {
   if (sectionIds.has("gallery")) {
     blocks.push(`**=== GALERIJ (id: "gallery") ===**
 Alleen zinvol voor **portfolio / interieur / voor-na** (briefing vraagt expliciet om beeldoverzicht). **Niet** voor webshop-/productcatalogus: dat hoort in de shop-module.
+- **Enige** sectie waar **Unsplash** (\`images.unsplash.com/photo-…\`) mag — elders verboden; zie **COPY — MINDER IS MEER** (beeld).
 - Max. **4–6** beelden, strak grid of editorial — geen “18-tegels om lengte te maken”.
 - Unsplash passend bij branche; eigen stijl i.p.v. standaard hover-scale op elke foto.`);
   }
@@ -1182,14 +1186,27 @@ function buildSiteGenerationSalesCopyGuidanceLine(): string {
   return `- **Copy (conversie / sales):** **Minder is meer** — billboard- en posterlogica: krachtige woorden, geen brochure-lengte. Elke zin moet iets **nieuws** zeggen; **geen** vulling (“ontdek ons…”, “bij ons staat kwaliteit centraal…”) zonder concrete briefing-hook. **Spaarzame** CTA’s met werkende \`href\` (één primair + hoogstens één secundair). **Geen** verzonnen prijzen, stats, reviews of “limited time” — zie CONTENT AUTHORITY.`;
 }
 
+/**
+ * Geen onbekende stock: alleen klant-uploads + optioneel `gallery` met Unsplash (server vult daar de API).
+ */
+function buildStockImageryAgencyDefaultMarkdown(): string {
+  return `- **Beeld — geen onbekende stock (standaard):**
+  - **Verboden:** \`https://images.unsplash.com/photo-…\` in **\`hero\`**, **\`features\`**, **\`about\`**, **\`pricing\`**, **\`footer\`**, … — de studio **verwijdert** die URL's **en** laat daarna **geen** lege stock-\`<img>\` staan (Lovable-achtig: geen raster van “ongebruikte” foto’s buiten \`gallery\`).
+  - **Hero:** visuele kracht uit **typografie**, **gradient**, **patroon**, **SVG**, eventueel **\`<video>\`** met echte https-URL uit de briefing — **geen** stock-foto van onbekende fotografen.
+  - **Klantfoto's** (eigen URL's in de opdracht): **wel** overal gebruiken waar het past, **inclusief hero** als de upload sterk genoeg is — dat zijn géén Unsplash-URL's.
+  - **Alleen \`gallery\`:** daar mag je Unsplash-placeholders (\`photo-…\`) zetten; de server lost ze daar via de API op. Zonder \`gallery\`-sectie: **nul** stock-foto's op de site.`;
+}
+
 /** Gedeelde copy-dichtheid: voorkomt dat het model hero + USP-kaarten volschrijft met alinea’s. */
 function buildMinimalMarketingCopyContractMarkdown(): string {
   return `=== COPY — MINDER IS MEER (verplicht) ===
 - **Hero (\`#hero\`):** **geen** lange lichaamstekst. Maximaal: **één** \`h1\` (of vergelijkbaar display) + optioneel **één** korte kicker/regel erboven (**≤ 6 woorden**) + **hoogstens één** extra regel onder de kop (**≤ 12 woorden**, één zin of fragment). **Verboden in de hero:** twee of meer \`<p>\`-alinea’s; uitleg die beter onder de vouw past; “vertel”-marketing in plaats van **klap**.
-- **Hero-stock (\`<img>\` Unsplash):** de \`alt\` van de **hero**-foto wordt in de studio **gemengd met briefing + Denklijn-contract** om de zoekopdracht te bouwen — schrijf \`alt\` daarom in het **Engels** als **5–12 concrete scene-keywords** die de **branche + gewenste sfeer** letterlijk beschrijven (bijv. \`neon city street night red lights amsterdam canal\`, \`barbershop interior leather chairs vintage mirrors\`). **Vermijd** vage generieke \`alt\` zoals \`business people\` of \`happy team\` tenzij de briefing dat echt vraagt.
+- **Hero — geen Unsplash:** zie **Beeld — geen onbekende stock**; hero visueel zonder \`images.unsplash.com\`.
 - **USP / feature-kaarten / stappen:** per item **titel + hoogstens één korte regel** (**≤ 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
 - **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina’s: **kern + witruimte** — geen drie identieke marketing-alinea’s achter elkaar.
-- **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van “professioneel klinkend door veel woorden”.`;
+- **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van “professioneel klinkend door veel woorden”.
+
+${buildStockImageryAgencyDefaultMarkdown()}`;
 }
 
 /** §3B–§5 voor multi-route marketing: landing + vaste subpagina's + contact. */
@@ -1238,13 +1255,11 @@ ${slugHints}
 === 4. TECHNISCHE HTML-REGELS ===
 
 - Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
-- **Afbeeldingen — BELANGRIJK:** De foto moet **inhoudelijk kloppen** bij de tekst ernaast. Een sectie over waterglijbanen toont waterglijbanen, niet een kantoor. Een restaurant toont eten, niet cosmetica.
-  - Gebruik \`https://images.unsplash.com/photo-XXXX?auto=format&fit=crop&w=800&q=80\` met een \`photo-\` id dat het juiste onderwerp toont. Relevante beelden helpen; gradient/kleurvlak mag als het past.
-  - \`alt\`-tekst beschrijft wat de foto **moet** tonen (bijv. \`alt="Barbershop interieur met klassieke stoelen en warme verlichting"\`), niet een generieke beschrijving.
-  - **Hero + Unsplash (studio):** de zoekopdracht voor de **hero** wordt **branche-eerst** samengesteld uit **briefing + Denklijn-contract**, daarna aangevuld met jouw \`alt\` — schrijf hero-\`alt\` dus als **concrete Engelse zoekkeywords** voor de sector (zie **COPY — MINDER IS MEER** → hero-stock).
-  - **Volwassen commerce / lingerie / erotische retail (18+ in briefing):** **nooit** stock met **kinderen, klaslokaal, speelplaats, babykamer, houten speelblokken, knuffels, LEGO, kids toys** — dat is een **ernstige fout** (ook bij brede zoektermen). Richt Unsplash-zoektermen en \`alt\` op **nacht-stad, neon, fluweel/zijde textuur, donkere boutique/hotel-sfeer, abstracte gloed** — of **geen foto** (gradient + sterke typografie) i.p.v. verkeerde niche-beelden.
-  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en foto's die **niet matchen** met de context van het blok.
-  - Voor overige secties (niet-hero): als je geen passende foto vindt, is een sfeervolle **gradient of kleurvlak** acceptabel — maar probeer altijd **eerst** een goede foto.
+- **Afbeeldingen:** **Geen** anonieme stock buiten **\`id: "gallery"\`** — zie **COPY — MINDER IS MEER** (beeld). In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
+  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** — zie **COPY — MINDER IS MEER** (beeld). Voor \`gallery\`: \`alt\` in het **Engels** als concrete scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
+  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\`).
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten \`gallery\`**.
+  - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
 
@@ -1327,17 +1342,16 @@ function buildClientImagesPromptBlock(clientImages: ClientImage[]): string {
   return `
 === KLANTFOTO'S (VERPLICHT VERWERKEN) ===
 
-De klant heeft **eigen foto's** aangeleverd. Gebruik deze **in plaats van** Unsplash-stockfoto's. Dit zijn echte foto's van het bedrijf — ze maken de website persoonlijk en authentiek.
+De klant heeft **eigen foto's** aangeleverd — **echte** beelden, geen anonieme stock. Gebruik ze **prominent**; ze maken de site persoonlijk.
 
 ${list}
 
 **Regels voor klantfoto's:**
-- **NIET in de hero gebruiken.** De hero moet altijd een sterke, professionele Unsplash-foto hebben die de branche visueel neerzet. Klantfoto's zijn vaak niet van hero-kwaliteit (resolutie, compositie, belichting). De hero moet op eigen kracht imponeren.
-- **Wel prominent in andere secties:** \`about\` (over ons), \`features\` of andere marketing-secties met **split-layout, kaarten of een strak grid** — foto's groot genoeg (geen verstopte thumbnails). Als de sectielijst **wel** \`gallery\` bevat: mag ook daar. **Zonder** \`gallery\`-sectie (normaal bij webshop/retail): verdeel de klantfoto's over \`about\`/\`features\` (en evt. team) zodat **elke** upload alsnog duidelijk zichtbaar is.
-- **Alle aangeleverde foto's moeten zichtbaar in de site komen.** Verdeel ze logisch over de secties (excl. hero).
-- Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover ...">\` of als achtergrondbeeld via inline \`style\` attribuut met \`background-image\` + \`bg-cover bg-center\`.
-- **Aanvullen mag:** als er meer visuele plekken zijn dan klantfoto's, vul aan met passende Unsplash-foto's of decoratieve gradiënten. Maar klantfoto's hebben **altijd voorrang** op stockfoto's (behalve in de hero).
-- Geef elke klantfoto een beschrijvende \`alt\`-tekst gebaseerd op het label of de context.
+- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) — gebruik dan \`<img src="…">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (zie COPY — geen Unsplash).
+- **Ook in \`about\`, \`features\`, \`team\`, marketing-subpagina's:** verdeel de uploads logisch; elk bestand minstens **één keer** duidelijk zichtbaar (geen micro-thumbnails). **\`gallery\`:** mag meerdere klantfoto's combineren met eventuele Unsplash-placeholders **alleen** in die sectie.
+- Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover ...">\` of \`background-image\` + \`bg-cover bg-center\` met de **exacte** klant-URL.
+- **Geen aanvullen met Unsplash** buiten een eventuele \`gallery\`-sectie — lege visuele plekken: gradient, patroon of icoon.
+- Geef elke klantfoto een beschrijvende \`alt\`-tekst (label of context).
 
 `;
 }
@@ -1377,7 +1391,7 @@ ${sourceAuthority}
 - Dit blok staat **los** van **KLANTFOTO'S**: de klantfoto-regels gelden **niet** op deze URL's.
 - **Verboden:** de screenshot-URL als **één grote** \`<img>\` (volledig Google-/browser-/desktop-scherm) in een testimonials-/reviews-sectie — dat is geen professionele site, dat is een ingeladen schermafdruk.
 ${testimonialLine}
-- **Gebruik van de URL's:** hoogstens ter ondersteuning als de briefing expliciet vraagt om “deze afbeelding tonen”; anders **geen** \`<img src="…">\` naar deze screenshot-URL's in de reviews-sectie — gebruik Unsplash/sfeerbeeld of alleen typografie als visueel anker.
+- **Gebruik van de URL's:** hoogstens ter ondersteuning als de briefing expliciet vraagt om “deze afbeelding tonen”; anders **geen** \`<img src="…">\` naar deze screenshot-URL's in de reviews-sectie — **geen** Unsplash als vervanger; gebruik typografie, gradient of abstract patroon als anker.
 - Als de briefing niet zegt waar een screenshot hoort: **geen** full-bleed screenshot op de pagina.
 
 `;
@@ -1443,7 +1457,7 @@ Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`ma
 
 **Van toepassing op deze opdracht:** lever precies **3** rijen in \`sections\` met **exact** deze volgorde en JSON-\`id\`'s: \`hero\` → \`features\` → \`footer\`.
 
-1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** de beeld- of mediakant **gevuld** (Unsplash/gradient met textuur) — **geen** lege/zwarte placeholderkolom.
+1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** mediakant **gevuld** met **gradient/textuur/SVG** of **klantfoto-URL** — **geen** Unsplash; **geen** lege/zwarte placeholderkolom.
 2. \`features\` — **kernblok:** diensten/USP's **en** eventueel compacte trust (2–3 cijfers of een kleine logo-rij) in **dezelfde** sectie — **geen** aparte \`stats\`/\`brands\`/\`steps\` op de homepage in deze run.
 3. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op de landing in deze run.
 
@@ -1470,7 +1484,7 @@ ${faqDetect}
 
 **Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan — \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
 
-1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** de beeld- of mediakant **gevuld** (Unsplash/gradient met textuur) — **geen** lege/zwarte placeholderkolom.
+1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** mediakant **gevuld** met **gradient/textuur/SVG** of **klantfoto-URL** — **geen** Unsplash; **geen** lege/zwarte placeholderkolom.
 2. \`stats\` **of** \`brands\` — precies **één** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen. **Geen** tweede “wij werken met”-strook in \`features\`/\`footer\` die hetzelfde doet — één trust-laag op de homepage.
 3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Bij **kapper/barbershop/salon**-profielen: **uitsluitend** \`features\` (geen \`steps\` op de landing). Elk item **titel + max. één korte regel** — geen kaart-vullende alinea’s.
 ${tailList}
@@ -1499,7 +1513,7 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
 - **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
-- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. Op de marketingpagina: hoogstens **één** sterk sfeerbeeld in de hero **of** één beeld in een split bij \`about\`/\`features\` — niet beide als beeldzwembad.
+- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** Unsplash op marketing/landingspagina's behalve in een echte \`gallery\`; hero = typografie/gradient of **klantfoto**.
 ${multiPageLine}`;
 }
 
@@ -1527,7 +1541,7 @@ function buildLandingOutputQualityGuardsMarkdown(input: {
   return `
 === ONTWERP-RITME & TRUST (premium zonder oppervlakkige herhaling) ===
 - **Hoogstens één zware “signature” boven de vouw op de landing:** als de \`hero\` al full-bleed split (tekst | groot beeld) of gelijkwaardig zwaar visueel blok is, mag **geen** volgende landingssectie opnieuw dezelfde dramatische full-viewport split als **tweede pseudo-hero**. Kies daarna band, grid, kaarten of editorial — **andere rol, ander ritme**.
-- **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Vul met passende Unsplash (\`<img>\` of \`background-image\`), een inhoudelijke gradient of textuur, of ontwerp **zonder** aparte mediakolom (typografie-led enkelkolom).
+- **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Gebruik **gradient/textuur**, typografie-led, of **klantfoto-URL** — **geen** Unsplash buiten \`id: "gallery"\`; geen tweede “stock-theater” naast de hero, of ontwerp **zonder** aparte mediakolom.
 - **Merken / “wij werken met”:** alleen waar de briefing partners, leveranciers, merken, retail-assortiment of expliciet logo-trust noemt. **Geen** decoratieve fictieve merken; **geen** redundante trust-laag die hetzelfde doet als je bewijsblok.
 ${strictLine}${multiPageLine}`;
 }
@@ -1554,13 +1568,11 @@ ${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten *
 === 4. TECHNISCHE HTML-REGELS ===
 
 - Tailwind + toegestane tags. **Alpine.js** (\`x-*\`, \`@\`, \`:\`) volgens het blok "INTERACTIVITEIT (Alpine.js)" hierboven. Geen \`<script>\` of \`<style>\` **in** sectie-fragmenten, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links.
-- **Afbeeldingen — BELANGRIJK:** De foto moet **inhoudelijk kloppen** bij de tekst ernaast. Een sectie over waterglijbanen toont waterglijbanen, niet een kantoor. Een restaurant toont eten, niet cosmetica.
-  - Gebruik \`https://images.unsplash.com/photo-XXXX?auto=format&fit=crop&w=800&q=80\` met een \`photo-\` id dat het juiste onderwerp toont. Relevante beelden helpen; gradient/kleurvlak mag als het past.
-  - \`alt\`-tekst beschrijft wat de foto **moet** tonen (bijv. \`alt="Barbershop interieur met klassieke stoelen en warme verlichting"\`), niet een generieke beschrijving.
-  - **Hero + Unsplash (studio):** de zoekopdracht voor de **hero** wordt **branche-eerst** samengesteld uit **briefing + Denklijn-contract**, daarna aangevuld met jouw \`alt\` — schrijf hero-\`alt\` dus als **concrete Engelse zoekkeywords** voor de sector (zie **COPY — MINDER IS MEER** → hero-stock).
-  - **Volwassen commerce / lingerie / erotische retail (18+ in briefing):** **nooit** stock met **kinderen, klaslokaal, speelplaats, babykamer, houten speelblokken, knuffels, LEGO, kids toys** — dat is een **ernstige fout** (ook bij brede zoektermen). Richt Unsplash-zoektermen en \`alt\` op **nacht-stad, neon, fluweel/zijde textuur, donkere boutique/hotel-sfeer, abstracte gloed** — of **geen foto** (gradient + sterke typografie) i.p.v. verkeerde niche-beelden.
-  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en foto's die **niet matchen** met de context van het blok.
-  - Voor overige secties (niet-hero): als je geen passende foto vindt, is een sfeervolle **gradient of kleurvlak** acceptabel — maar probeer altijd **eerst** een goede foto.
+- **Afbeeldingen:** **Geen** anonieme stock buiten **\`id: "gallery"\`** — zie **COPY — MINDER IS MEER** (beeld). In \`gallery\`: elke foto moet **inhoudelijk kloppen** (waterglijbaan ≠ kantoor).
+  - **Unsplash:** **alleen** binnen **\`<section id="gallery">\`** (placeholders \`photo-…\`); elders **verboden** — zie **COPY — MINDER IS MEER** (beeld). Voor \`gallery\`: \`alt\` in het **Engels** als concrete scene-keywords; **volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden — bij twijfel gradient i.p.v. foto.
+  - **Eigen beelden:** \`<img src="https://…">\` mag naar **eigen** of **klant-**URL's (geen Unsplash buiten \`gallery\`).
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, verzonnen paden, en **\`images.unsplash.com\` buiten \`gallery\`**.
+  - **Overige secties:** gradient, patroon, typografie, SVG — geen stock-foto.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
 
@@ -1687,7 +1699,8 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 - **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
-- **Klantfoto's:** volg het blok hierboven (niet in de hero).
+- **Klantfoto's:** volg het blok hierboven (hero **mag** met upload).
+- **Stock (Unsplash):** standaard **alleen** in **\`id: "gallery"\`** (max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** resolves per sectie); elders worden \`images.unsplash.com\`-URL's **geneutraliseerd**. Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` als je oude “stock overal”-gedrag wilt.
 
 ${buildSiteGenerationDataAnimationInstructionsMarkdown()}
 
@@ -1817,9 +1830,9 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
-**Hero (\`#hero\`):** eerste indruk = **typografie + beeld**, niet een **brochure**: zie **COPY — MINDER IS MEER** — **geen** twee alinea’s onder de kop. **Één primaire CTA** en optioneel **één secundaire** (werkende \`href\`). **Verboden:** decoratief **scroll**-label in de hero. Volg **§VIEWPORT**. Combineer met **foto (Unsplash), split of gradient**; bij **split/immersive:** de beeldzijde mag **niet** een lege of zinloze donkere vlakte zijn — Unsplash, gradient met textuur, of geen aparte mediakolom. **Achtergrond-\`<video>\`:** alleen met **concrete https-URL** in de briefing; anders foto/gradient + \`data-animation\` / AOS. Houd je aan **BRANCHE-INSPIRATIE**.
+**Hero (\`#hero\`):** eerste indruk = **typografie + (optioneel) eigen beeld of gradient**, niet een **brochure**: zie **COPY — MINDER IS MEER** — **geen** twee alinea’s onder de kop. **Één primaire CTA** en optioneel **één secundaire** (werkende \`href\`). **Verboden:** decoratief **scroll**-label in de hero. Volg **§VIEWPORT**. **Geen** Unsplash in de hero — **wel** klant-upload-URL's als die sterk genoeg zijn; anders split met **gradient/textuur/SVG**. **Achtergrond-\`<video>\`:** alleen met **concrete https-URL** in de briefing; anders gradient + \`data-animation\` / AOS. Houd je aan **BRANCHE-INSPIRATIE**.
 
-**Klantfoto's:** blijven **buiten** de hero (zie blok KLANTFOTO'S hierboven).
+**Klantfoto's:** zie blok **KLANTFOTO'S** — hero **mag** met upload.
 
 **Verdere secties:** typisch \`py-16 md:py-24\` en \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of jouw ontwerp dat vraagt. Wissel achtergronden voor ritme; **geen** harde eis op aantal donkere banden.
 
@@ -1837,9 +1850,9 @@ ${buildMarqueeForbiddenPromptLine()}
 
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
-**Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik Unsplash/gradient + motion zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
+**Video-hero:** \`<video>\` **alleen** met een **https-URL** die letterlijk in de briefing of bijlagen staat — **geen** verzonnen of “standaard” stock-URL's. Zonder zo'n URL: **geen** fullscreen stock-video; gebruik **gradient + motion** zoals elders. Bij een echte videobron: \`autoplay muted loop playsinline\`, \`bg-black\` op wrapper, \`preload="auto"\`; **geen** \`poster\` met een **andere** stockfoto dan de video (knippert bij buffer/loop).
 
-**Foto's:** relevante Unsplash waar het helpt; gradient of kleurvlak mag. Match onderwerp met tekst.
+**Foto's:** **geen** \`images.unsplash.com\` buiten **\`id: "gallery"\`** — zie COPY. In \`gallery\`: max. **${DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION}** stock-resolves; elders alleen **eigen/klant-**URL's of geen foto.
 
 ${section3Tail}${section3HeroHeight}
 
@@ -2682,7 +2695,7 @@ export function createGenerateSiteReadableStream(
         if (process.env.UNSPLASH_ACCESS_KEY) {
           send(controller, {
             type: "status",
-            message: "Afbeeldingen matchen via Unsplash…",
+            message: "Stock opruimen (alleen galerij krijgt Unsplash-resolve)…",
           });
         }
         const stopUnsplashKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);

@@ -31,6 +31,7 @@ PAGINA-OMVANG:
 
 VISUELE & COMPOSITIE-BAR:
 - Gebruik **STUDIO STRUCTUUR** + **LOVABLE 2.0** als richting; technische kaders (\`data-layout\`/\`data-slot\`, toegankelijkheid) waar genoemd in het user-bericht. **Geen vaste design-preset** die utilities voorschrijft — kies Tailwind en compositie die het beste bij de briefing passen (premium, niet generiek). **Premium of luxe betekent niet automatisch een donker site-thema** — lichte, editoriale of gemixte sites zijn even geldig als donkere.
+- **Stock-foto's:** standaard **geen** anonieme stock op de site — alleen in **\`id: "gallery"\`** (zie user-bericht); elders typografie/gradient of **klant-URL's**.
 - **Anti-"veilig denken":** geen voorzichtige MKB-/SaaS-default (grijs-blauw, drie gelijke icoonkaarten, timide typografie) **als** de briefing ruimte geeft voor karakter. CONTENT AUTHORITY verbiedt **verzonnen feiten** — **niet** gedurfde compositie, kleur, ritme of beeldtaal die wél past bij de input.
 
 BIJ CONFLICT:
@@ -61,6 +62,7 @@ PAGINA-OMVANG:
 
 TECHNISCH + VISUEEL:
 - Volg **STUDIO STRUCTUUR** in het user-bericht (\`data-layout\`/\`data-slot\` waar van toepassing). Geen verplichte \`_design_preset\`-snippetten: vrij ontwerpen binnen briefing + structuurregels.
+- **Geen anonieme stock** behalve in **\`gallery\`** (zie user-bericht); klant-URL's wel overal.
 - **Niet "veilig" kleuren:** vermijd standaardgeneriek palet als de briefing iets anders impliceert; feiten blijven binnen CONTENT AUTHORITY.
 
 BIJ CONFLICT:

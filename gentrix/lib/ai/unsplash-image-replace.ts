@@ -21,6 +21,129 @@ const INTER_REQUEST_DELAY_MS = 120;
 const UNSPLASH_URL_RE =
   /https:\/\/images\.unsplash\.com\/photo-[a-zA-Z0-9_-]+[^"'\s)>]*/g;
 
+/** Standaard cap: te veel stock per sectie = trage Unsplash-stap + visuele herhaling. */
+export const DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION = 4;
+
+function parseEnvPositiveInt(name: string, fallback: number): number {
+  const v = process.env[name]?.trim();
+  if (!v) return fallback;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+export type ReplaceUnsplashRelevanceOptions = {
+  designContract?: DesignGenerationContract | null;
+  pageIntent?: UnsplashPageIntent;
+  /** Overschrijft \`UNSPLASH_MAX_IMAGES_PER_SECTION\` voor deze call. */
+  maxImagesPerSection?: number;
+  /** Overschrijft \`UNSPLASH_MAX_IMAGES_PER_PAGE\` (0 in env = uit). */
+  maxImagesPerPage?: number;
+  /**
+   * `false` = Unsplash overal resolven (oud gedrag). Standaard **aan**: alleen sectie-\`id: "gallery"\` krijgt API-resolve;
+   * elders worden \`images.unsplash.com/photo-…\` geneutraliseerd (geen onbekende stock).
+   */
+  galleryOnlyStock?: boolean;
+};
+
+/** Standaard: geen stock-foto's behalve in \`gallery\` (zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` voor oud gedrag). */
+export function isGalleryOnlyUnsplashStockMode(opts?: ReplaceUnsplashRelevanceOptions): boolean {
+  if (opts?.galleryOnlyStock === false) return false;
+  if (opts?.galleryOnlyStock === true) return true;
+  const v = process.env.SITE_GENERATION_UNSPLASH_GALLERY_ONLY?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "off" || v === "no") return false;
+  return true;
+}
+
+export function isUnsplashGallerySection(sec: Pick<TailwindSection, "id">): boolean {
+  return String(sec.id ?? "").trim().toLowerCase() === "gallery";
+}
+
+/** Verwijdert alle Unsplash-photo-URL's uit HTML (placeholder); geen API. */
+export function stripAllUnsplashPhotoUrlsInHtml(html: string): string {
+  const ranges: { start: number; end: number }[] = [];
+  const re = new RegExp(UNSPLASH_URL_RE.source, UNSPLASH_URL_RE.flags);
+  for (const m of html.matchAll(re)) {
+    if (m.index === undefined) continue;
+    ranges.push({ start: m.index, end: m.index + m[0].length });
+  }
+  return replaceOverflowUnsplashRanges(html, ranges);
+}
+
+export function stripAllUnsplashFromSections(sections: TailwindSection[]): TailwindSection[] {
+  return sections.map((s) => {
+    let html = stripAllUnsplashPhotoUrlsInHtml(s.html);
+    html = cleanupStrippedStockMarkup(html);
+    return html === s.html ? s : { ...s, html };
+  });
+}
+
+function resolveUnsplashImageLimits(opts?: ReplaceUnsplashRelevanceOptions): {
+  perSection: number;
+  perPage: number | null;
+} {
+  const perSection =
+    opts?.maxImagesPerSection ?? parseEnvPositiveInt("UNSPLASH_MAX_IMAGES_PER_SECTION", DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION);
+  if (opts?.maxImagesPerPage != null) {
+    return { perSection, perPage: opts.maxImagesPerPage > 0 ? opts.maxImagesPerPage : null };
+  }
+  const envPage = parseEnvPositiveInt("UNSPLASH_MAX_IMAGES_PER_PAGE", 0);
+  return { perSection, perPage: envPage > 0 ? envPage : null };
+}
+
+/** Mini-transparante GIF: tijdelijke src tussen range-replace en opruimen van `<img>`. */
+const UNSPLASH_OVERFLOW_PLACEHOLDER =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+function escapeForRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Verwijdert `<img>` waarvan de src exact onze strip-placeholder is (geen klant-URL). */
+export function removeImgsWithStrippedStockPlaceholder(html: string): string {
+  const esc = escapeForRegExp(UNSPLASH_OVERFLOW_PLACEHOLDER);
+  return html.replace(new RegExp(`<img\\b[^>]*\\bsrc=["']${esc}["'][^>]*>`, "gi"), "");
+}
+
+/** Vervangt `url(placeholder)` door `none` zodat geen lege stock-achtergrond blijft hangen. */
+export function neutralizeStrippedStockBackgroundUrls(html: string): string {
+  const esc = escapeForRegExp(UNSPLASH_OVERFLOW_PLACEHOLDER);
+  return html.replace(new RegExp(`url\\(\\s*["']?${esc}["']?\\s*\\)`, "gi"), "none");
+}
+
+/** Na Unsplash-strip: schone DOM zonder placeholder-`<img>` / lege bg-url. */
+export function cleanupStrippedStockMarkup(html: string): string {
+  return neutralizeStrippedStockBackgroundUrls(removeImgsWithStrippedStockPlaceholder(html));
+}
+
+/** Voor tests: vervangt overschotten `photo-` URL-segmenten (zonder Unsplash API). */
+export function replaceOverflowUnsplashRanges(html: string, ranges: { start: number; end: number }[]): string {
+  if (ranges.length === 0) return html;
+  const sorted = [...ranges].sort((a, b) => b.start - a.start);
+  let out = html;
+  for (const { start, end } of sorted) {
+    if (start < 0 || end > out.length || start >= end) continue;
+    const slice = out.slice(start, end);
+    if (!slice.includes("images.unsplash.com/photo-")) continue;
+    out = out.slice(0, start) + UNSPLASH_OVERFLOW_PLACEHOLDER + out.slice(end);
+  }
+  return out;
+}
+
+function replaceOccurrenceLimited(html: string, search: string, replacement: string, maxOccurrences: number): string {
+  if (maxOccurrences <= 0 || !search) return html;
+  let count = 0;
+  let idx = 0;
+  let result = html;
+  while (count < maxOccurrences) {
+    const pos = result.indexOf(search, idx);
+    if (pos === -1) break;
+    result = result.slice(0, pos) + replacement + result.slice(pos + search.length);
+    idx = pos + replacement.length;
+    count++;
+  }
+  return result;
+}
+
 /** Extract the alt attribute value from the <img> tag that contains the URL. */
 function extractAltForUrl(html: string, url: string): string | null {
   const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -177,21 +300,26 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * - Deduplicates queries: same alt text → same result set.
  * - Uniqueness: picks different photos from the result set for the same query.
  * - Respects rate limits with inter-request delays and a total timeout.
+ * - **Cap:** standaard `DEFAULT_UNSPLASH_MAX_IMAGES_PER_SECTION` resolves per sectie (+ optioneel per pagina); rest → transparante placeholder (geen extra API).
+ * - **Gallery-only (standaard):** Unsplash wordt **alleen** in secties met \`id: "gallery"\` via de API opgelost; elders → placeholder (geen onbekende stock). Zet \`SITE_GENERATION_UNSPLASH_GALLERY_ONLY=0\` om overal te resolven.
  * @param themeContext Optioneel: korte bedrijfsbeschrijving; wordt gemengd in de zoekterm voor betere branche-match.
- * @param relevance Optioneel: deterministische relevantie (gates + score) op Unsplash-resultaten — raakt generator-layout/copy niet.
+ * @param relevance Optioneel: relevantie + optioneel `maxImagesPerSection` / `maxImagesPerPage` (of env `UNSPLASH_MAX_*`).
  */
 export async function replaceUnsplashImagesInSections(
   sections: TailwindSection[],
   accessKey?: string,
   themeContext?: string,
-  relevance?: {
-    designContract?: DesignGenerationContract | null;
-    pageIntent?: UnsplashPageIntent;
-  },
+  relevance?: ReplaceUnsplashRelevanceOptions,
 ): Promise<TailwindSection[]> {
-  if (!accessKey) return sections;
+  const galleryOnlyStock = isGalleryOnlyUnsplashStockMode(relevance);
 
-  // 1. Collect all URLs + their queries across all sections.
+  if (!accessKey) {
+    return stripAllUnsplashFromSections(sections);
+  }
+
+  const limits = resolveUnsplashImageLimits(relevance);
+
+  // 1. Collect URL entries (capped) + per-sectie kept-telling + overflow-ranges.
   type UrlEntry = {
     url: string;
     query: string;
@@ -201,32 +329,59 @@ export async function replaceUnsplashImagesInSections(
   };
 
   const entries: UrlEntry[] = [];
+  const keptUrlCountsPerSection = new Map<number, Map<string, number>>();
+  const overflowRangesBySection = new Map<number, { start: number; end: number }[]>();
+
+  let pageKeptCount = 0;
 
   for (let si = 0; si < sections.length; si++) {
     const sec = sections[si];
     const sectionId = sec.id ?? `section-${si}`;
-    const matches = sec.html.matchAll(UNSPLASH_URL_RE);
-    for (const m of matches) {
+    const localKept = new Map<string, number>();
+    const localOverflow: { start: number; end: number }[] = [];
+    let sectionKeptCount = 0;
+
+    const allowUnsplashApiResolve = !galleryOnlyStock || isUnsplashGallerySection(sec);
+
+    const matchList = [...sec.html.matchAll(UNSPLASH_URL_RE)];
+    for (const m of matchList) {
       const url = m[0];
-      const alt = extractAltForUrl(sec.html, url);
-      const query = composeUnsplashSearchQuery({
-        altText: alt,
-        sectionName: sec.sectionName ?? sectionId,
-        sectionId,
-        sectionIndex: si,
-        themeContext,
-      });
-      entries.push({
-        url,
-        query,
-        sectionIdx: si,
-        sectionId,
-        sectionName: sec.sectionName ?? sectionId,
-      });
+      const idx = m.index;
+      if (idx === undefined) continue;
+      const end = idx + url.length;
+      const withinSection = sectionKeptCount < limits.perSection;
+      const withinPage = limits.perPage == null || pageKeptCount < limits.perPage;
+
+      if (allowUnsplashApiResolve && withinSection && withinPage) {
+        sectionKeptCount += 1;
+        pageKeptCount += 1;
+        localKept.set(url, (localKept.get(url) ?? 0) + 1);
+        const alt = extractAltForUrl(sec.html, url);
+        const query = composeUnsplashSearchQuery({
+          altText: alt,
+          sectionName: sec.sectionName ?? sectionId,
+          sectionId,
+          sectionIndex: si,
+          themeContext,
+        });
+        entries.push({
+          url,
+          query,
+          sectionIdx: si,
+          sectionId,
+          sectionName: sec.sectionName ?? sectionId,
+        });
+      } else {
+        localOverflow.push({ start: idx, end });
+      }
     }
+
+    keptUrlCountsPerSection.set(si, localKept);
+    if (localOverflow.length > 0) overflowRangesBySection.set(si, localOverflow);
   }
 
-  if (entries.length === 0) return sections;
+  const overflowTotal = [...overflowRangesBySection.values()].reduce((n, a) => n + a.length, 0);
+  if (entries.length === 0 && overflowTotal === 0) return sections;
 
   // 2. Deduplicate queries and fetch results.
   const queryCache = new Map<string, UnsplashSearchResult[]>();
@@ -281,21 +436,34 @@ export async function replaceUnsplashImagesInSections(
     }
   }
 
-  if (replacements.size === 0) return sections;
+  if (replacements.size === 0 && overflowTotal === 0) return sections;
 
-  // 4. Apply replacements to section HTML.
-  const updated = sections.map((sec) => {
+  // 4. Eerst overflow → placeholder; daarna max. N× `oldUrl` → `newUrl` per sectie (zelfde URL meerdere keren in sectie).
+  const updated = sections.map((sec, si) => {
     let html = sec.html;
+    const overflows = overflowRangesBySection.get(si);
+    if (overflows?.length) {
+      html = replaceOverflowUnsplashRanges(html, overflows);
+    }
+    const keptMap = keptUrlCountsPerSection.get(si) ?? new Map();
     for (const [oldUrl, newUrl] of replacements) {
-      if (html.includes(oldUrl)) {
-        html = html.split(oldUrl).join(newUrl);
+      const k = keptMap.get(oldUrl) ?? 0;
+      if (k > 0) {
+        html = replaceOccurrenceLimited(html, oldUrl, newUrl, k);
       }
+    }
+    if (galleryOnlyStock && !isUnsplashGallerySection(sec)) {
+      html = cleanupStrippedStockMarkup(html);
     }
     return html !== sec.html ? { ...sec, html } : sec;
   });
 
+  const cappedOccurrences = [...keptUrlCountsPerSection.values()].reduce((n, m) => {
+    for (const c of m.values()) n += c;
+    return n;
+  }, 0);
   console.log(
-    `[unsplash] Replaced ${replacements.size} image(s) across ${entries.length} occurrence(s).`,
+    `[unsplash] galleryOnly=${galleryOnlyStock} — replaced ${replacements.size} distinct URL(s); ${cappedOccurrences} kept occurrence(s); ${overflowTotal} overflow → placeholder (cap ${limits.perSection}/sectie${limits.perPage != null ? `, ${limits.perPage}/pagina` : ""}).`,
   );
 
   return updated;
