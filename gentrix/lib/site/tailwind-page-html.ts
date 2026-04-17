@@ -119,11 +119,13 @@ export const STUDIO_SITE_CREDIT_URL =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GENTRIX_CREDIT_URL?.trim()) || "https://gentrix.nl";
 
 /**
- * Subtiele signatuur (**By GENTRIX**). Studio injecteert dit in iframe + export — los van model-HTML.
- * **Onder midden** van de viewport: zo lijkt het niet één regel met “Zakelijk portaal” / copyright rechtsonder.
- * `z-index` onder typische nav (`~50`) en overlays.
+ * Signatuur **By GENTRIX** — bewust klein, maar **leesbaar** op donkere footers: lichte tekst op donkere pill.
+ * **Geen** `transform: translateX(-50%)` en **geen** `backdrop-filter`: die combinaties geven in Chromium
+ * vaak **wazige / korrelige** tekstraster (subpixels). Centreren met `width: max-content` + `margin: 0 auto`
+ * en iets vollere achtergrond i.p.v. frosted blur.
+ * **Onder midden** van de viewport. `z-index` onder typische nav (`~50`) en overlays.
  */
-export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;left:50%;right:auto;bottom:max(0.65rem, env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:28;margin:0;padding:0 0.5rem;max-width:min(calc(100vw - 1.25rem), 20rem);text-align:center;font-family:ui-sans-serif, system-ui, sans-serif;font-size:10px;line-height:1.25;font-weight:500;letter-spacing:0.02em;color:rgba(100,116,139,0.72);pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.35)}[data-studio-site-credit] a{color:inherit;text-decoration:none;pointer-events:auto;font-weight:600;letter-spacing:0.06em;outline-offset:3px}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(51,65,85,0.92)}}@media (prefers-color-scheme:dark){[data-studio-site-credit]{color:rgba(203,213,225,0.55);text-shadow:0 1px 3px rgba(0,0,0,0.55)}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(248,250,252,0.78)}}}`;
+export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;left:0;right:0;bottom:max(0.65rem, env(safe-area-inset-bottom, 0px));width:max-content;max-width:min(calc(100vw - 1.25rem), 22rem);margin:0 auto;z-index:28;box-sizing:border-box;padding:0.35rem 0.75rem;text-align:center;font-family:ui-sans-serif, system-ui, sans-serif;font-size:11px;line-height:1.2;font-weight:500;letter-spacing:0.02em;color:rgba(248,250,252,0.92);pointer-events:none;white-space:nowrap;border-radius:9999px;background:rgba(15,23,42,0.9);box-shadow:0 1px 2px rgba(0,0,0,0.35);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}[data-studio-site-credit] a{color:inherit;text-decoration:underline;text-decoration-color:rgba(248,250,252,0.35);text-underline-offset:2px;pointer-events:auto;font-weight:600;letter-spacing:0.05em;outline-offset:3px}@media (hover:hover){[data-studio-site-credit] a:hover{color:#fff;text-decoration-color:rgba(255,255,255,0.55)}}`;
 
 export const STUDIO_SITE_CREDIT_BODY_HTML = `<div data-studio-site-credit translate="no">By <a href="${STUDIO_SITE_CREDIT_URL}" target="_blank" rel="noopener noreferrer" aria-label="GENTRIX — meer informatie">GENTRIX</a></div>`;
 
@@ -2285,6 +2287,11 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS}
     /* Vaste top-nav (fixed) + hash-scroll: zonder padding komen koppen onder de balk (afgeknipt, "overlap"). */
     html { scroll-padding-top: 5.5rem; }
+    /* Voorkom wazige rasterisatie op kleine tekst in footers (Chromium + transforms/filters in model-HTML). */
+    footer, [role="contentinfo"] {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
     body { font-family: ${fontStack}; }
     ${rootCss}
     ${animationCss}
