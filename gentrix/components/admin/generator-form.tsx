@@ -66,6 +66,13 @@ type ApiErr = { ok: false; error: string; rawText?: string };
 
 const SITE_GENERATION_JOBS_MIGRATION_ERROR_RE = /site_generation_jobs|generatie-job aanmaken/i;
 
+/** Screenshots/reviews bij de opdracht — los van klantfoto's (max. in schema / API). */
+const BRIEFING_REF_IMAGES_MAX = 6;
+
+function allowedImageMime(t: string): boolean {
+  return t === "image/png" || t === "image/jpeg" || t === "image/webp" || t === "image/gif";
+}
+
 type GeneratorFormProps = {
   initialSubfolderSlug?: string;
   initialClientName?: string;
@@ -316,6 +323,7 @@ export function GeneratorForm({
   const previewPendingUntilComplete = Boolean(loading && !generatedTailwind && !streamEndedWithoutComplete);
 
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
+  const [briefingImages, setBriefingImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
   /** Chat + preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
@@ -326,6 +334,7 @@ export function GeneratorForm({
   const [rightPaneMode, setRightPaneMode] = useState<StudioRightPaneMode>("preview");
   const [portalReady, setPortalReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const briefingFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setPortalReady(true), []);
 
@@ -398,6 +407,99 @@ export function GeneratorForm({
     [slugFromUrl, descriptionLocked],
   );
 
+  const uploadBriefingFile = useCallback(
+    async (file: File) => {
+      if (descriptionLocked) return;
+      const busy = briefingImages.filter((i) => i.url || i.uploading).length;
+      if (busy >= BRIEFING_REF_IMAGES_MAX) {
+        setImageUploadError(`Maximaal ${BRIEFING_REF_IMAGES_MAX} briefing-beelden.`);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setImageUploadError("Bestand te groot (max. 5 MB).");
+        return;
+      }
+      const allowed = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+      if (!allowed.includes(file.type)) {
+        setImageUploadError("Alleen PNG, JPEG, WebP of GIF toegestaan.");
+        return;
+      }
+      setImageUploadError(null);
+      const placeholder = { url: "", label: file.name, uploading: true };
+      setBriefingImages((prev) => [...prev, placeholder]);
+
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("subfolder_slug", slugFromUrl || "studio-uploads");
+        const res = await fetch("/api/upload/site-asset", { method: "POST", credentials: "include", body: form });
+        const json = (await res.json()) as { ok: boolean; url?: string; error?: string };
+        if (!json.ok || !json.url) {
+          setBriefingImages((prev) => prev.filter((img) => img !== placeholder));
+          setImageUploadError(json.error ?? "Upload mislukt.");
+          return;
+        }
+        setBriefingImages((prev) =>
+          prev.map((img) => (img === placeholder ? { url: json.url!, label: file.name, uploading: false } : img)),
+        );
+      } catch {
+        setBriefingImages((prev) => prev.filter((img) => img !== placeholder));
+        setImageUploadError("Upload mislukt (netwerkfout).");
+      }
+    },
+    [slugFromUrl, descriptionLocked, briefingImages],
+  );
+
+  const queueBriefingImageFiles = useCallback(
+    (files: File[]) => {
+      if (descriptionLocked) return;
+      const busy = briefingImages.filter((i) => i.url || i.uploading).length;
+      const room = Math.max(0, BRIEFING_REF_IMAGES_MAX - busy);
+      for (const f of files.slice(0, room)) void uploadBriefingFile(f);
+    },
+    [descriptionLocked, briefingImages, uploadBriefingFile],
+  );
+
+  const handleBriefingDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (descriptionLocked) return;
+      const files = Array.from(e.dataTransfer.files).filter((f) => allowedImageMime(f.type));
+      queueBriefingImageFiles(files);
+    },
+    [queueBriefingImageFiles, descriptionLocked],
+  );
+
+  const handleBriefingFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (descriptionLocked) return;
+      const files = Array.from(e.target.files ?? []).filter((f) => allowedImageMime(f.type));
+      queueBriefingImageFiles(files);
+      e.target.value = "";
+    },
+    [queueBriefingImageFiles, descriptionLocked],
+  );
+
+  const handleDescriptionPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (descriptionLocked) return;
+      const items = e.clipboardData?.items;
+      if (!items?.length) return;
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it?.kind === "file") {
+          const f = it.getAsFile();
+          if (f && allowedImageMime(f.type)) files.push(f);
+        }
+      }
+      if (files.length === 0) return;
+      e.preventDefault();
+      queueBriefingImageFiles(files);
+    },
+    [descriptionLocked, queueBriefingImageFiles],
+  );
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -453,11 +555,20 @@ export function GeneratorForm({
     setLoading(true);
     try {
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
+      const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
       const body: Record<string, unknown> = {
         businessName,
         description,
         ...(readyImages.length > 0
           ? { clientImages: readyImages.map((img) => ({ url: img.url, label: img.label || undefined })) }
+          : {}),
+        ...(readyBriefing.length > 0
+          ? {
+              briefingReferenceImages: readyBriefing.map((img) => ({
+                url: img.url,
+                label: img.label || undefined,
+              })),
+            }
           : {}),
       };
       if (slugFromUrl && isValidSubfolderSlug(slugFromUrl)) {
@@ -903,6 +1014,73 @@ export function GeneratorForm({
               </div>
               {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Briefing-beelden <span className="font-normal text-slate-400">(optioneel, max. {BRIEFING_REF_IMAGES_MAX})</span>
+              </label>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Screenshots (bijv. reviews): sleep hierheen, klik <strong className="font-medium text-slate-600">Toevoegen</strong>, of{" "}
+                <strong className="font-medium text-slate-600">plak in het tekstveld</strong> hieronder. Dit is <strong>niet</strong> hetzelfde
+                als klantfoto&apos;s — die blijven apart.
+              </p>
+              <div
+                onDrop={handleBriefingDrop}
+                onDragOver={(ev) => {
+                  if (!descriptionLocked) ev.preventDefault();
+                }}
+                className={cn(
+                  "mt-2 flex min-h-[56px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-indigo-200/80 bg-white/70 p-2.5 dark:border-indigo-800/60 dark:bg-zinc-900/30",
+                  !descriptionLocked && briefingImages.length < BRIEFING_REF_IMAGES_MAX && "hover:border-indigo-400",
+                  descriptionLocked && "pointer-events-none opacity-60",
+                )}
+              >
+                {briefingImages.map((img, i) => (
+                  <div
+                    key={img.url || `b-${i}`}
+                    className="group relative size-14 shrink-0 overflow-hidden rounded-md border border-indigo-100 bg-white shadow-sm dark:border-indigo-900/50"
+                  >
+                    {img.uploading ? (
+                      <div className="flex size-full items-center justify-center">
+                        <Loader2 className="size-4 animate-spin text-indigo-400" />
+                      </div>
+                    ) : (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.url} alt={img.label} className="size-full object-cover" />
+                        <button
+                          type="button"
+                          disabled={descriptionLocked}
+                          onClick={() => setBriefingImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {briefingImages.length < BRIEFING_REF_IMAGES_MAX && (
+                  <button
+                    type="button"
+                    disabled={descriptionLocked}
+                    onClick={() => briefingFileInputRef.current?.click()}
+                    className="flex size-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-indigo-300 text-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ImagePlus className="size-4" />
+                    <span className="text-[9px] font-medium">Toevoegen</span>
+                  </button>
+                )}
+                <input
+                  ref={briefingFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple
+                  disabled={descriptionLocked}
+                  className="hidden"
+                  onChange={handleBriefingFileSelect}
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div>
@@ -918,7 +1096,12 @@ export function GeneratorForm({
                   <strong className="font-medium text-slate-700">Bewerken</strong> in site-studio (zelfde URL met slug) voor
                   HTML-wijzigingen via AI-chat.
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              Afbeeldingen plakken met <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl+V</kbd>{" "}
+              gaat naar briefing-beelden (niet naar klantfoto&apos;s). Sleep afbeeldingen naar het kader <strong className="font-medium text-slate-600">Briefing-beelden</strong> hierboven.
+            </p>
+          )}
           <textarea
             id="description"
             name="description"
@@ -930,8 +1113,9 @@ export function GeneratorForm({
               if (descriptionLocked) return;
               setDescription(e.target.value);
             }}
+            onPaste={handleDescriptionPaste}
             readOnly={descriptionLocked}
-            className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
+            className={cn("mt-1", fieldClass, descriptionLocked && fieldLockedClass)}
             placeholder="Kort of uitgebreid: doelgroep, aanbod, toon, CTA. Mag een zin; de Denklijn breidt uit op de server."
           />
         </div>

@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     businessName: d.businessName,
     description: d.description,
     ...(d.clientImages?.length ? { clientImages: d.clientImages } : {}),
+    ...(d.briefingReferenceImages?.length ? { briefingReferenceImages: d.briefingReferenceImages } : {}),
     ...(d.reference_style_url ? { reference_style_url: d.reference_style_url } : {}),
     ...(slug ? { subfolder_slug: slug } : {}),
     ...(d.generation_preset_ids?.length ? { generation_preset_ids: d.generation_preset_ids } : {}),

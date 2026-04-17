@@ -36,6 +36,9 @@ export async function POST(request: Request) {
     const referenceStyleUrl = parsed.data.reference_style_url;
     const promptOpts: GenerateSitePromptOptions = {
       ...(parsed.data.clientImages?.length ? { clientImages: parsed.data.clientImages } : {}),
+      ...(parsed.data.briefingReferenceImages?.length
+        ? { briefingReferenceImages: parsed.data.briefingReferenceImages }
+        : {}),
       ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
       ...(parsed.data.marketing_page_slugs?.length ? { marketingPageSlugs: parsed.data.marketing_page_slugs } : {}),
     };

@@ -48,10 +48,12 @@ export async function POST(request: Request) {
   const businessName = parsed.data.businessName;
   const description = parsed.data.description;
   const clientImages = parsed.data.clientImages ?? [];
+  const briefingReferenceImages = parsed.data.briefingReferenceImages ?? [];
   const referenceStyleUrl = parsed.data.reference_style_url;
 
   const promptOpts: GenerateSitePromptOptions = {
     ...(clientImages.length > 0 ? { clientImages } : {}),
+    ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
     ...(parsed.data.marketing_page_slugs?.length ? { marketingPageSlugs: parsed.data.marketing_page_slugs } : {}),
   };

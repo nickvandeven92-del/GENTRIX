@@ -14,6 +14,11 @@ export const generateSiteRequestBodySchema = z.object({
   subfolder_slug: z.string().min(2).max(64).optional(),
   /** Optioneel: klantfoto's die in de gegenereerde site verwerkt moeten worden. */
   clientImages: z.array(clientImageSchema).max(8).optional(),
+  /**
+   * Optioneel: screenshots / referenties bij de opdracht (reviews, mood) — **niet** dezelfde semantiek als
+   * `clientImages`; apart promptblok. Max. 6.
+   */
+  briefingReferenceImages: z.array(clientImageSchema).max(6).optional(),
   /** Observability / kwaliteit (fase 5): optioneel meesturen vanuit studio. */
   generation_preset_ids: z.array(z.string().min(1).max(120)).max(24).optional(),
   layout_archetypes: z.array(z.string().min(1).max(120)).max(24).optional(),

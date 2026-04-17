@@ -142,6 +142,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     businessName?: string;
     description?: string;
     clientImages?: { url: string; label?: string }[];
+    briefingReferenceImages?: { url: string; label?: string }[];
     reference_style_url?: string;
     marketing_page_slugs?: string[];
     subfolder_slug?: string;
@@ -162,9 +163,11 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
 
   const recentNames = await getRecentClientNamesForPrompt(3);
   const clientImages = req.clientImages ?? [];
+  const briefingReferenceImages = req.briefingReferenceImages ?? [];
   const referenceStyleUrl = req.reference_style_url?.trim();
   const promptOpts: GenerateSitePromptOptions = {
     ...(clientImages.length > 0 ? { clientImages } : {}),
+    ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
     ...(req.marketing_page_slugs?.length ? { marketingPageSlugs: req.marketing_page_slugs } : {}),
   };

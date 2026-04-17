@@ -920,6 +920,8 @@ export type GenerateSitePromptOptions = {
   /** Korte prompt (geen branche/stijl/variatie). Ook: env `SITE_GENERATION_MINIMAL_PROMPT=1`. */
   minimalPrompt?: boolean;
   clientImages?: ClientImage[];
+  /** Screenshots/referenties bij de briefing (los van klantfoto's). */
+  briefingReferenceImages?: ClientImage[];
   /** Alleen server-side: uit formulier/API; wordt in \`prepareGenerateSiteClaudeCall\` omgezet naar \`referenceSiteSnapshot\`. */
   referenceStyleUrl?: string;
   /** Snapshot na fetch — wordt in de user-prompt ingevoegd. */
@@ -1225,6 +1227,24 @@ ${list}
 `;
 }
 
+function buildBriefingReferenceImagesPromptBlock(images: ClientImage[]): string {
+  if (images.length === 0) return "";
+  const list = images.map((img, i) => `${i + 1}. ${img.url}${img.label ? ` — ${img.label}` : ""}`).join("\n");
+  return `
+=== BRIEFING-REFERENTIEBEELDEN (screenshots / voorbeelden — niet hetzelfde als KLANTFOTO'S) ===
+
+De gebruiker heeft **afbeeldingen bij de opdracht** gezet (bijv. screenshot van reviews, voorbeeld-UI). Publieke URL's:
+
+${list}
+
+- Dit blok staat **los** van **KLANTFOTO'S** hierboven: de regels voor klantfoto's (hero, verplicht zichtbaar, enz.) gelden **alleen** voor dat aparte blok — **wijzig die interpretatie niet** voor deze URL's.
+- Gebruik deze beelden **waar de tekstuele briefing het vraagt** (bijv. “zet deze reviews op de site” → sectie met testimonials/reviews en echte \`<img src="…">\` naar bovenstaande URL's, met zinvolle \`alt\`).
+- Als de briefing niet expliciet zegt waar een screenshot hoort: kies **max. één** logische plek of laat een beeld weg — geen zinloze duplicaten over de hele pagina.
+- **Geen** verzonnen cijfers of reviewtekst; alleen wat uit de briefing of duidelijk uit het beeld volgt.
+
+`;
+}
+
 function buildReferenceSitePromptBlock(
   snap: GenerateSitePromptOptions["referenceSiteSnapshot"],
   businessName: string,
@@ -1458,6 +1478,8 @@ function buildMinimalWebsiteGenerationUserPrompt(
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
+  const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
+  const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(briefingRefImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
   const sectorRouterMin = buildSectorRouterAndCreativeMandateMarkdown(
     detectIndustry(combinedIndustryProbeText(businessName, description)),
@@ -1476,7 +1498,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
 ${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
-${clientImagesBlock}${referenceSiteBlock}
+${clientImagesBlock}${briefingRefBlock}${referenceSiteBlock}
 
 ${sectorRouterMin}
 
@@ -1568,6 +1590,8 @@ export function buildWebsiteGenerationUserPrompt(
 
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
   const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
+  const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
+  const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(briefingRefImages);
   const referenceSiteBlock = buildReferenceSitePromptBlock(options?.referenceSiteSnapshot, businessName);
   const mpKeysLine =
     marketingMultiPage && marketingPageSlugsForTail.length > 0
@@ -1579,7 +1603,7 @@ export function buildWebsiteGenerationUserPrompt(
 Bedrijfsnaam: ${businessName}
 Context / branche: ${description}
 ${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
-${clientImagesBlock}${referenceSiteBlock}
+${clientImagesBlock}${briefingRefBlock}${referenceSiteBlock}
 === SFEER (lees de briefing) ===
 
 Let op woorden als vintage, modern, strak, warm, luxe, beige, donker, speels — én expliciete stijlen zoals **glassmorphism**, **neumorphism**, **flat/minimal**, **gradients**, **brutalism**, **cyberpunk/futuristisch**, **editorial**, **skeuomorphism** — vertaal ze naar kleur, typografie en beeld **als de briefing dat impliceert**.
