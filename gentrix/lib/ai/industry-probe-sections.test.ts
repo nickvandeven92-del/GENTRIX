@@ -20,8 +20,16 @@ describe("combinedIndustryProbeText + branche-secties", () => {
     expect(ids).toContain("footer");
   });
 
-  it("matcht nog steeds op klassieke kapper-omschrijving", () => {
+  it("matcht nog steeds op klassieke kapper-omschrijving (strakke standaardsecties)", () => {
     const probe = combinedIndustryProbeText("", "Website voor onze kapsalon in Utrecht");
+    expect(detectIndustry(probe)?.id).toBe("hair_salon");
+    const ids = buildSectionIdsFromBriefing(probe);
+    expect(ids).toEqual(expect.arrayContaining(["hero", "features", "gallery", "about", "footer"]));
+    expect(ids).not.toContain("team");
+  });
+
+  it("hair_salon: team-sectie bij expliciete team-taal in briefing", () => {
+    const probe = combinedIndustryProbeText("", "Kapsalon met ervaren team van stylisten in Utrecht");
     expect(detectIndustry(probe)?.id).toBe("hair_salon");
     expect(buildSectionIdsFromBriefing(probe)).toContain("team");
   });

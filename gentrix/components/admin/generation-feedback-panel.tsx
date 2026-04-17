@@ -135,6 +135,17 @@ export function GenerationFeedbackPanel({
         ))}
       </ul>
 
+      {loading && !hasSiteOutput ? (
+        <p className="mx-3 mb-2 text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
+          Zie je tussendoor sectienamen in het log? Dat is ruwe HTML uit de stream; de checklist vinkt pas aan als de
+          hele run klaar is (validatie, zelfreview, enz.). Bij time-outs: laat{" "}
+          <code className="rounded bg-white px-0.5 font-mono text-[9px] dark:bg-zinc-800">
+            NEXT_PUBLIC_SITE_GENERATION_USE_STREAM
+          </code>{" "}
+          uit op productie — standaard draait de zware stap als server-job zonder lange browser-verbinding.
+        </p>
+      ) : null}
+
       {designContractWarning ? (
         <p className="mx-3 mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
           {designContractWarning}

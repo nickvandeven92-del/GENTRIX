@@ -269,7 +269,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       sectionCount += 1;
       const label = ev.section.sectionName?.trim() || ev.section.id;
       writeProgress(
-        `Sectie in concept: ${label} (${sectionCount} sectie${sectionCount === 1 ? "" : "s"} ontvangen)`,
+        `Sectie in concept: ${label} (${sectionCount} sectie${sectionCount === 1 ? "" : "s"} — HTML uit model-stream; run nog niet af)`,
       );
       return;
     }
