@@ -3,6 +3,11 @@ import { isReservedMarketingPageSlug } from "@/lib/ai/tailwind-sections-schema";
 /** Standaard dienstverlening / leadgen — geen productcatalog. */
 export const DEFAULT_SERVICE_MARKETING_SLUGS = ["wat-wij-doen", "werkwijze", "over-ons", "faq"] as const;
 
+/** Zelfde als service-default maar **zonder** `werkwijze` (o.a. kappers: proces op de site weinig waarde). */
+export const DEFAULT_SERVICE_MARKETING_SLUGS_NO_PROCESS = ["wat-wij-doen", "over-ons", "faq"] as const;
+
+const HAIR_SALON_MARKETING_SKIP_PROCESS_IDS = new Set<string>(["barber", "hair_salon", "womens_salon"]);
+
 /** Webshop / productgericht — kortere set zonder verplicht “over ons”. */
 export const DEFAULT_RETAIL_MARKETING_SLUGS = ["collectie", "service-retour", "faq"] as const;
 
@@ -72,6 +77,10 @@ export function resolveMarketingPageSlugsForGeneration(options: {
   }
   if (prefersRetailMarketingSlugs(options.detectedIndustryId, options.combinedProbe)) {
     return [...DEFAULT_RETAIL_MARKETING_SLUGS];
+  }
+  const id = options.detectedIndustryId?.trim();
+  if (id && HAIR_SALON_MARKETING_SKIP_PROCESS_IDS.has(id)) {
+    return [...DEFAULT_SERVICE_MARKETING_SLUGS_NO_PROCESS];
   }
   return [...DEFAULT_SERVICE_MARKETING_SLUGS];
 }

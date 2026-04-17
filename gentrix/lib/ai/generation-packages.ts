@@ -99,7 +99,7 @@ const PORTAL_AND_MOCKS = `${PORTAL_MARKUP_RULES}
   - **Zakelijk portaal mock:** facturen/overzicht/documenten (kaarten, placeholders).
   - **Boeken / afspraken (ondernemer-mock):** statische UI in portaal-sectie mag; op de **publieke** marketingpagina **geen** \`id: "booking"\` en **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` in nieuwe builds (beheerder voegt het vaste blok + toggles later toe). Geen nep-formulier op de marketingpagina dat data post.
   - **Klant-dashboard mock** (“Mijn afspraken”, placeholders) waar passend.
-- Op de **publieke** marketingpagina: duidelijke link in header/footer naar het portaal met \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` (bv. “Zakelijk portaal” of “Inloggen ondernemers”).
+- Op de **publieke** marketingpagina: duidelijke link in header/footer naar het portaal met \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` (bv. “Zakelijk portaal” of “Inloggen ondernemers”). **Footer:** zet die portaal-link **bij de andere footer-navigatielinks** (zelfde rij of dezelfde linkgroep als Diensten / FAQ / Contact) — **niet** geïsoleerd helemaal rechtsonder naast kleine copyright-/signature-tekst; bezoekers moeten portaal als gewone site-link herkennen.
 - Publieke nav: **geen** volledige dashboard-HTML buiten de gemarkeerde portal-secties.
 - **Verboden:** werkende backend, database-koppelingen in HTML, \`<script>\` voor echte auth.`;
 

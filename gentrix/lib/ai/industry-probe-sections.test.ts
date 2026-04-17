@@ -27,7 +27,7 @@ describe("combinedIndustryProbeText + branche-secties", () => {
     const ids = buildSectionIdsFromBriefing(probe);
     expect(ids).toEqual(expect.arrayContaining(["hero", "features", "gallery", "footer"]));
     expect(ids.length).toBeGreaterThanOrEqual(3);
-    expect(ids.length).toBeLessThanOrEqual(5);
+    expect(ids.length).toBeLessThanOrEqual(4);
     expect(ids).not.toContain("team");
   });
 
@@ -51,11 +51,11 @@ describe("combinedIndustryProbeText + branche-secties", () => {
     expect(buildSectionIdsFromBriefing(probe)).not.toContain("gallery");
   });
 
-  it("applyHomepageSectionBudget: max 5 en kortere briefing → 4 secties", () => {
+  it("applyHomepageSectionBudget: max 4 secties", () => {
     const short = "Kapper";
     const long = "x".repeat(120);
     const many = ["hero", "features", "gallery", "about", "team", "brands", "footer"];
     expect(applyHomepageSectionBudget(short, many).length).toBe(4);
-    expect(applyHomepageSectionBudget(long, many).length).toBe(5);
+    expect(applyHomepageSectionBudget(long, many).length).toBe(4);
   });
 });

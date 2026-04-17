@@ -12,7 +12,7 @@ function sec(id: string, html: string): TailwindSection {
 }
 
 describe("shouldIncludeCompactLandingFaq / buildCompactLandingSectionIds", () => {
-  it("zet faq bij FAQ-trefwoorden, bij branche-met-faq-in-sections, of bij compactLandingDefaultFaq-profielen", () => {
+  it("compacte landing heeft geen faq-sectie op sections (FAQ via marketingPages)", () => {
     expect(shouldIncludeCompactLandingFaq("")).toBe(false);
     expect(buildCompactLandingSectionIds("").join(",")).toBe("hero,stats,features,footer");
 
@@ -21,11 +21,20 @@ describe("shouldIncludeCompactLandingFaq / buildCompactLandingSectionIds", () =>
     );
 
     expect(shouldIncludeCompactLandingFaq("Veelgestelde vragen over onze diensten")).toBe(true);
-    expect(buildCompactLandingSectionIds("Veelgestelde vragen over onze diensten").join(",")).toContain("faq");
+    expect(buildCompactLandingSectionIds("Veelgestelde vragen over onze diensten").join(",")).not.toContain("faq");
+    expect(buildCompactLandingSectionIds("Veelgestelde vragen over onze diensten").join(",")).toBe(
+      "hero,stats,features,footer",
+    );
 
     const barberProbe = combinedIndustryProbeText("Herenkapster De Snijder", "");
     expect(shouldIncludeCompactLandingFaq(barberProbe)).toBe(true);
-    expect(buildCompactLandingSectionIds(barberProbe).join(",")).toContain("faq");
+    expect(buildCompactLandingSectionIds(barberProbe).join(",")).toBe("hero,stats,features,footer");
+  });
+
+  it("kappers/branches: geen steps op de landing", () => {
+    expect(buildCompactLandingSectionIds("Barbershop fade en baard Vught werkwijze in stappen").join(",")).toBe(
+      "hero,stats,features,footer",
+    );
   });
 });
 
@@ -39,25 +48,25 @@ describe("validateStrictLandingPageContract", () => {
     expect(validateStrictLandingPageContract(sections)).toEqual([]);
   });
 
-  it("accepteert een geldige 5-sectie-opzet met faq", () => {
+  it("accepteert een geldige 4-sectie-opzet zonder faq", () => {
     const sections = [
       sec("hero", '<section id="hero"><a class="rounded-full bg-white">A</a></section>'),
       sec("stats", '<section id="stats"></section>'),
       sec("features", '<section id="features"></section>'),
-      sec("faq", '<section id="faq"><details></details>'.repeat(6) + "</section>"),
       sec("footer", '<section id="footer"></section>'),
     ];
     expect(validateStrictLandingPageContract(sections)).toEqual([]);
   });
 
-  it("accepteert een geldige 4-sectie-opzet zonder faq", () => {
+  it("wijst 5 secties af", () => {
     const sections = [
       sec("hero", "<section></section>"),
       sec("stats", "<section></section>"),
       sec("features", "<section></section>"),
+      sec("faq", "<section></section>"),
       sec("footer", "<section></section>"),
     ];
-    expect(validateStrictLandingPageContract(sections)).toEqual([]);
+    expect(validateStrictLandingPageContract(sections).some((e) => /3|4|5/i.test(e))).toBe(true);
   });
 
   it("wijst stats én brands af", () => {
@@ -80,24 +89,13 @@ describe("validateStrictLandingPageContract", () => {
     expect(validateStrictLandingPageContract(sections).some((e) => /marquee|ticker/i.test(e))).toBe(true);
   });
 
-  it("wijst meer dan 6 FAQ-items af", () => {
-    const sections = [
-      sec("hero", "<section></section>"),
-      sec("stats", "<section></section>"),
-      sec("features", "<section></section>"),
-      sec("faq", `<section id="faq">${"<details></details>".repeat(7)}</section>`),
-      sec("footer", "<section></section>"),
-    ];
-    expect(validateStrictLandingPageContract(sections).some((e) => /FAQ|6/i.test(e))).toBe(true);
-  });
-
-  it("wijst faq af bij precies 4 secties", () => {
+  it("wijst faq op landing af", () => {
     const sections = [
       sec("hero", "<section></section>"),
       sec("stats", "<section></section>"),
       sec("features", "<section></section>"),
       sec("faq", "<section></section>"),
     ];
-    expect(validateStrictLandingPageContract(sections).some((e) => /footer|4/i.test(e))).toBe(true);
+    expect(validateStrictLandingPageContract(sections).some((e) => /faq|Verboden|footer|3|4/i.test(e))).toBe(true);
   });
 });

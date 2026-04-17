@@ -16,20 +16,20 @@ const FORBIDDEN_STRICT_LANDING_IDS = new Set([
   "shop",
   "gallery",
   "testimonials",
+  /** Homepage max. 4 secties — FAQ alleen in `marketingPages["faq"]`. */
+  "faq",
 ]);
 
 /**
  * Harde checks voor de **landings-`sections`** (studio-contract) bij nieuwe sites.
- * **3** = ultra-compact (`hero` → `features` → `footer`); **4** = zonder `faq`; **5** = met `faq` vóór `footer`.
+ * **3** = ultra-compact (`hero` → `features`|`steps` → `footer`); **4** = bewijsband + middenblok + `footer` (geen `faq` op de landing).
  */
 export function validateStrictLandingPageContract(sections: TailwindSection[]): string[] {
   const errors: string[] = [];
   const n = sections.length;
 
-  if (n !== 3 && n !== 4 && n !== 5) {
-    errors.push(
-      `Strikte landingspagina: **3** (ultra-compact), **4** (zonder FAQ) of **5** (met FAQ vóór footer); nu ${n}.`,
-    );
+  if (n !== 3 && n !== 4) {
+    errors.push(`Strikte landingspagina: **3** (ultra-compact) of **4** (standaard compact); nu ${n}.`);
     return errors;
   }
 
@@ -51,10 +51,7 @@ export function validateStrictLandingPageContract(sections: TailwindSection[]): 
     if (ids.includes("stats") || ids.includes("brands")) {
       errors.push("Bij 3 landings-secties mag geen aparte `stats`- of `brands`-sectie — trust hoort in `features`.");
     }
-    if (ids.includes("faq")) {
-      errors.push("Bij 3 landings-secties mag geen `faq`-sectie op `sections`.");
-    }
-  } else {
+  } else if (n === 4) {
     const proofId = ids[1];
     if (proofId !== "stats" && proofId !== "brands") {
       errors.push('Tweede sectie: `id` moet `stats` (cijfers/KPI) of `brands` (logo-partners) zijn — precies één type bewijs.');
@@ -63,16 +60,6 @@ export function validateStrictLandingPageContract(sections: TailwindSection[]): 
     const middleId = ids[2];
     if (middleId !== "steps" && middleId !== "features") {
       errors.push('Derde sectie: `id` moet `steps` (werkwijze) of `features` (diensten) zijn — kies één van de twee.');
-    }
-
-    if (n === 5) {
-      if (ids[3] !== "faq") {
-        errors.push('Bij 5 secties moet de vierde `id: "faq"` zijn (max. 6 vragen in de HTML).');
-      }
-    } else {
-      if (ids.includes("faq")) {
-        errors.push('Bij 4 secties mag geen `faq`-sectie voorkomen (verwijder `faq` of voeg geen FAQ-blok toe).');
-      }
     }
 
     if (ids.filter((x) => x === "stats").length + ids.filter((x) => x === "brands").length > 1) {
@@ -86,7 +73,7 @@ export function validateStrictLandingPageContract(sections: TailwindSection[]): 
   for (const id of ids) {
     if (id && FORBIDDEN_STRICT_LANDING_IDS.has(id)) {
       errors.push(
-        `Verboden sectie-id op strikte landingspagina: "${id}" (geen over-ons, team, pricing, shop, galerij, testimonials of aparte CTA-sectie).`,
+        `Verboden sectie-id op strikte landingspagina: "${id}" (geen over-ons, team, pricing, shop, galerij, testimonials, landing-faq of aparte CTA-sectie).`,
       );
     }
   }
@@ -96,17 +83,6 @@ export function validateStrictLandingPageContract(sections: TailwindSection[]): 
     errors.push(
       "Verboden: scrollende tekst-/logo-banners (marquee/ticker: `studio-marquee`, `studio-marquee-track` of `<marquee>`).",
     );
-  }
-
-  const faqSection = sections.find((s) => (s.id ?? "").trim().toLowerCase() === "faq");
-  if (faqSection) {
-    const detailsCount = (faqSection.html.match(/<\s*details\b/gi) ?? []).length;
-    const dtCount = (faqSection.html.match(/<\s*dt\b/gi) ?? []).length;
-    const h3Faqish = (faqSection.html.match(/<\s*h3\b/gi) ?? []).length;
-    const qCount = Math.max(detailsCount, dtCount > 0 ? dtCount : 0, h3Faqish);
-    if (qCount > 6) {
-      errors.push(`FAQ-sectie: maximaal 6 vragen; geschat ${qCount} op basis van <details>/<dt>/<h3>-telling.`);
-    }
   }
 
   return errors;

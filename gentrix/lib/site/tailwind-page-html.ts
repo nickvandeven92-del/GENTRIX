@@ -119,10 +119,11 @@ export const STUDIO_SITE_CREDIT_URL =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GENTRIX_CREDIT_URL?.trim()) || "https://gentrix.nl";
 
 /**
- * Subtiele vaste hoek-signatuur (**By GENTRIX**). Studio injecteert dit in iframe + export — los van model-HTML.
- * Rechtsonder: overlapt minder vaak met copyright links in footers. `z-index` onder typische nav (`~50`) en overlays.
+ * Subtiele signatuur (**By GENTRIX**). Studio injecteert dit in iframe + export — los van model-HTML.
+ * **Onder midden** van de viewport: zo lijkt het niet één regel met “Zakelijk portaal” / copyright rechtsonder.
+ * `z-index` onder typische nav (`~50`) en overlays.
  */
-export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;right:max(0.65rem, env(safe-area-inset-right, 0px));left:auto;bottom:max(0.65rem, env(safe-area-inset-bottom, 0px));z-index:28;margin:0;padding:0;font-family:ui-sans-serif, system-ui, sans-serif;font-size:10px;line-height:1.25;font-weight:500;letter-spacing:0.02em;color:rgba(100,116,139,0.72);pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.35)}[data-studio-site-credit] a{color:inherit;text-decoration:none;pointer-events:auto;font-weight:600;letter-spacing:0.06em;outline-offset:3px}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(51,65,85,0.92)}}@media (prefers-color-scheme:dark){[data-studio-site-credit]{color:rgba(203,213,225,0.55);text-shadow:0 1px 3px rgba(0,0,0,0.55)}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(248,250,252,0.78)}}}`;
+export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;left:50%;right:auto;bottom:max(0.65rem, env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:28;margin:0;padding:0 0.5rem;max-width:min(calc(100vw - 1.25rem), 20rem);text-align:center;font-family:ui-sans-serif, system-ui, sans-serif;font-size:10px;line-height:1.25;font-weight:500;letter-spacing:0.02em;color:rgba(100,116,139,0.72);pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.35)}[data-studio-site-credit] a{color:inherit;text-decoration:none;pointer-events:auto;font-weight:600;letter-spacing:0.06em;outline-offset:3px}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(51,65,85,0.92)}}@media (prefers-color-scheme:dark){[data-studio-site-credit]{color:rgba(203,213,225,0.55);text-shadow:0 1px 3px rgba(0,0,0,0.55)}@media (hover:hover){[data-studio-site-credit] a:hover{color:rgba(248,250,252,0.78)}}}`;
 
 export const STUDIO_SITE_CREDIT_BODY_HTML = `<div data-studio-site-credit translate="no">By <a href="${STUDIO_SITE_CREDIT_URL}" target="_blank" rel="noopener noreferrer" aria-label="GENTRIX — meer informatie">GENTRIX</a></div>`;
 

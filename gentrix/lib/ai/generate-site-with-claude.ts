@@ -251,10 +251,11 @@ export function shouldIncludeCompactLandingFaq(industryProbeText: string): boole
 }
 
 /**
- * Vaste volgorde voor de **landings-`sections`** (nieuwe site, geen upgrade — max. **5**):
- * hero → bewijs → werkwijze/diensten → [faq als briefing FAQ vraagt] → footer.
- * **3** bij korte briefing zonder FAQ/merken/stappen-signalen: **hero → features → footer** (kern = één `features`-blok).
- * Anders **4** zonder FAQ-signalen of **5** met FAQ.
+ * Vaste volgorde voor de **landings-`sections`** (nieuwe site, geen upgrade — max. **4**):
+ * hero → bewijs (`stats`/`brands`) → diensten (`features` of uitzonderlijk `steps`) → footer.
+ * **Geen** aparte `faq`-rij op de landing: FAQ hoort op de marketing-subpagina `faq`.
+ * **3** bij korte briefing zonder merken/stappen-signalen: **hero → features → footer**.
+ * Bij **barber / hair_salon / womens_salon**: nooit `steps` (werkwijze) op de landing — altijd `features`.
  */
 export function buildCompactLandingSectionIds(description: string): readonly string[] {
   const trimmed = description.trim();
@@ -266,6 +267,9 @@ export function buildCompactLandingSectionIds(description: string): readonly str
     description,
   );
   const faqWanted = shouldIncludeCompactLandingFaq(description);
+  const industry = detectIndustry(trimmed);
+  const skipStepsForHair =
+    industry?.id === "barber" || industry?.id === "hair_salon" || industry?.id === "womens_salon";
 
   /** Minimaal 3: hero + kern + footer; lege/minimale input → klassieke 4-sectie (stats + features). */
   const lightBrief =
@@ -282,17 +286,14 @@ export function buildCompactLandingSectionIds(description: string): readonly str
 
   const prefersLogos = hasBrandSignals;
   const proofId = prefersLogos ? "brands" : "stats";
-  const middleId = hasStepsSignals ? "steps" : "features";
+  const middleId = skipStepsForHair ? "features" : hasStepsSignals ? "steps" : "features";
   const core: string[] = ["hero", proofId, middleId];
-  if (faqWanted) {
-    core.push("faq");
-  }
   core.push("footer");
   return core as readonly string[];
 }
 
 /** Hard max. homepage-secties (studio-budget); min = hero + kern + footer. */
-export const HOMEPAGE_SECTION_BUDGET_MAX = 5;
+export const HOMEPAGE_SECTION_BUDGET_MAX = 4;
 export const HOMEPAGE_SECTION_BUDGET_MIN = 3;
 
 const KERN_SECTION_IDS = new Set([
@@ -311,8 +312,7 @@ const KERN_SECTION_IDS = new Set([
 ]);
 
 /**
- * Kap/verrijk homepage-secties: **min. 3**, **max. 5**, standaard **4 of 5** afhankelijk van briefing-rijkdom
- * (keywords of voldoende tekstlengte → max. 5; anders max. 4).
+ * Kap/verrijk homepage-secties: **min. 3**, **max. 4**, standaard **4** bij rijkere briefing **of** **3** bij kortere input.
  */
 export function applyHomepageSectionBudget(description: string, orderedIds: string[]): string[] {
   const deduped = [...new Set(orderedIds.map((id) => id.trim()).filter(Boolean))].filter(
@@ -336,9 +336,7 @@ export function applyHomepageSectionBudget(description: string, orderedIds: stri
 
   const withoutFooter = ids.filter((x) => x !== "footer");
   const hasFooter = ids.includes("footer");
-  const extraHits = analyzeBriefingForSections(description);
-  const rich = extraHits.length > 0 || description.trim().length >= 100;
-  const softCap = rich ? HOMEPAGE_SECTION_BUDGET_MAX : 4;
+  const softCap = HOMEPAGE_SECTION_BUDGET_MAX;
   const targetCount = Math.min(
     HOMEPAGE_SECTION_BUDGET_MAX,
     Math.max(HOMEPAGE_SECTION_BUDGET_MIN, Math.min(ids.length, softCap)),
@@ -348,7 +346,7 @@ export function applyHomepageSectionBudget(description: string, orderedIds: stri
   const needBody = targetCount - footerPart.length;
   const middleOnly = withoutFooter.filter((id) => id !== "hero");
   const briefingExtra = new Set(analyzeBriefingForSections(description));
-  /** Keyword-secties eerst — zo blijft bv. `team` zichtbaar binnen het max. van 5. */
+  /** Keyword-secties eerst — zo blijft bv. `team` zichtbaar binnen het max. van 4. */
   const sortedMiddle = [
     ...middleOnly.filter((id) => briefingExtra.has(id)),
     ...middleOnly.filter((id) => !briefingExtra.has(id)),
@@ -1300,7 +1298,7 @@ ${t}
 function buildOperationalNavParts(
   preserve: boolean,
   sectionIdsHint: string[] | undefined,
-  /** Compacte nieuwe-site-landingsplan (min. 3 / max. 5) — wint over generieke fallback voor §5. */
+  /** Compacte nieuwe-site-landingsplan (min. 3 / max. 4) — wint over generieke fallback voor §5. */
   resolvedLandingSectionIds?: string[],
 ): Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote"> {
   const section4Nav = preserve
@@ -1435,11 +1433,11 @@ function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
 
 function buildStrictLandingPageComposerMarkdown(sectionIds: readonly string[]): string {
   const n = sectionIds.length;
-  const faqDetect = `**FAQ wel of niet:** de server zet \`faq\` in de sectielijst als **(a)** naam+briefing FAQ-trefwoorden bevat (**faq**, **veelgestelde vragen**, **veel gestelde**, **vragen en antwoorden**, **help center** / **helpcentrum** — zelfde regex als elders), **of (b)** het gedetecteerde **brancheprofiel** impliciet FAQ wil: zijn standaard-\`sections\` bevat \`faq\`, **of** het profiel heeft \`compactLandingDefaultFaq\` (lokale dienst: kapper, garage, horeca, sportschool, …). Voldoet geen van beide → **geen** \`faq\`-sectie en **geen** \`#faq\` in de nav.`;
+  const faqDetect = `**FAQ (landings-\`sections\`):** de homepage heeft **geen** \`faq\`-rij — maximaal **4** secties. **Wel:** als naam+briefing FAQ-trefwoorden bevat **of** het brancheprofiel FAQ relevant vindt (\`compactLandingDefaultFaq\`, …), bouw dan een volledige FAQ-pagina onder \`marketingPages["faq"]\` en zet **FAQ** in de hoofdnav als link naar \`__STUDIO_SITE_BASE__/faq\` (geen \`#faq\` op de landing).`;
 
   if (n === 3) {
     return `
-=== STRIKTE LANDINGS — STUDIO (min. 3, max. 5 homepage-secties; deze run: **3**) ===
+=== STRIKTE LANDINGS — STUDIO (min. 3, max. 4 homepage-secties; deze run: **3**) ===
 
 Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`marketingPages\` en mogen andere \`id\`'s hebben.
 
@@ -1457,38 +1455,29 @@ Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`ma
 `;
   }
 
-  const includeFaq = sectionIds.includes("faq");
-  const countLine =
-    n === 5 && includeFaq
-      ? "**5** rijen in `sections` (exact deze volgorde)"
-      : "**4** rijen in `sections` (exact deze volgorde — **zonder** `faq`)";
-
-  const navAnchors = includeFaq
-    ? "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#faq`, `#footer`"
-    : "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#footer`";
-
-  const tailList = includeFaq
-    ? `4. \`faq\` — **max. 6** vragen (bij voorkeur \`<details><summary>…\` per vraag).
-5. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen).`
-    : `4. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). In deze run: **geen** \`faq\`-rij (geen FAQ-signalen in naam+briefing).`;
+  const countLine = "**4** rijen in `sections` (exact deze volgorde)";
+  const navAnchors = "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#footer`";
+  const tailList = `4. \`footer\` — **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op \`sections\` in deze studio-run — FAQ hoort op de marketing-subpagina \`faq\` (en in de nav via \`__STUDIO_SITE_BASE__/faq\`).`;
 
   return `
-=== STRIKTE LANDINGS — STUDIO (min. 3, max. 5 secties op de homepage; vaste volgorde) ===
+=== STRIKTE LANDINGS — STUDIO (min. 3, max. 4 secties op de homepage; vaste volgorde) ===
 
 Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`marketingPages\` en mogen andere \`id\`'s hebben.
 
 ${faqDetect}
 
+**FAQ op de site:** als naam+briefing FAQ-trefwoorden of het brancheprofiel FAQ relevant vindt, lever **inhoudelijke FAQ** op de **subpagina** \`marketingPages["faq"]\` — **niet** als aparte \`faq\`-rij in \`sections\` (homepage blijft max. 4 secties).
+
 **Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan — \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
 
 1. \`hero\` — **alleen** krachtige kop + **max. één** ultrakorte regel (≤12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of “vertel”-tekst in de hero. **Split/immersive:** de beeld- of mediakant **gevuld** (Unsplash/gradient met textuur) — **geen** lege/zwarte placeholderkolom.
 2. \`stats\` **of** \`brands\` — precies **één** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen. **Geen** tweede “wij werken met”-strook in \`features\`/\`footer\` die hetzelfde doet — één trust-laag op de homepage.
-3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Elk item **titel + max. één korte regel** — geen kaart-vullende alinea’s.
+3. \`steps\` **of** \`features\` — precies **één** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Bij **kapper/barbershop/salon**-profielen: **uitsluitend** \`features\` (geen \`steps\` op de landing). Elk item **titel + max. één korte regel** — geen kaart-vullende alinea’s.
 ${tailList}
 
-**Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie.
+**Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie; een \`faq\`-sectie op \`sections\`.
 
-**Nav-ankers:** alleen ${navAnchors} — **geen** \`#over-ons\`.
+**Nav-ankers:** alleen ${navAnchors} — **geen** \`#over-ons\`; link naar FAQ via \`__STUDIO_SITE_BASE__/faq\` wanneer \`marketingPages\` een \`faq\`-key heeft.
 
 **Herhaling-check (concept):** elke sectie unieke rol; twee blokken met dezelfde boodschap → het zwakkere schrappen.
 `;
@@ -1887,7 +1876,7 @@ type PreparedGenerateSiteClaudeCall = {
   pipelineFeedback: GenerationPipelineFeedback;
   /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
   useMarketingMultiPage: boolean;
-  /** Geen upgrade: harde max. 5-sectie-validatie op landings-`sections` na parse. */
+  /** Geen upgrade: harde max. 4-sectie-validatie op landings-`sections` na parse. */
   strictLandingContract: boolean;
   /** Multipage: exacte `marketingPages`-keys (prompt + Zod + validatie). */
   marketingPageSlugs?: readonly string[];

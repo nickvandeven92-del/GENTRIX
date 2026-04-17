@@ -42,7 +42,8 @@ Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk a
 - **Hero-idee:** grote cinematic foto (interieur met stoelen/spiegels, warm licht) die **het beeld vult**; kop in **elegant serif**, kort (paar woorden), **geen** lange paragraaf in de hero — uitleg pas onder de vouw. Vermijd "billboard" all-caps extrabold sans + twee grote knoppen (voelt goedkoop). **Geen** achtergrond-\`<video>\` tenzij de briefing **expliciet** om bewegende achtergrond / video / loop vraagt — standaard **Unsplash-foto**.
 - **Diensten-idee:** een elegante verticale prijslijst (\`divide-y\`) werkt hier vaak beter dan kaarten — het voelt als een menukaart. Maar een creatief grid kan ook werken als het past.
 - **Content:** focus op herenknippen, baardverzorging, hot towel shave, traditioneel scheren. Doelgroep is mannelijk. Gebruik woorden als "heren", "gentleman", "vakmanschap".
-- **Typische elementen:** werkplaats-galerij, WhatsApp-booking, openingstijden. **Geen** verplichte "merken-rij" — alleen als de briefing expliciet merken/partners/producten noemt (dan wordt sectie \`brands\` via keywords toegevoegd).`,
+- **Typische elementen:** werkplaats-galerij, WhatsApp-booking, openingstijden. **Geen** verplichte "merken-rij" — alleen als de briefing expliciet merken/partners/producten noemt (dan wordt sectie \`brands\` via keywords toegevoegd).
+- **Studio-compact:** geen aparte \`steps\`/\`werkwijze\`-sectie op de homepage — diensten/USP’s in \`features\`; FAQ op de marketing-subpagina \`faq\` (homepage max. 4 secties).`,
   },
   {
     id: "hair_salon",
@@ -59,7 +60,8 @@ Dit is een kapsalon die zowel dames als heren bedient. Focus op haarverzorging, 
 - **Diensten-idee:** een elegante prijslijst per categorie, gescheiden in **Dames** en **Heren** (of apart: Knippen, Kleuren, Behandelingen). Prijzen in euro's. Menukaart-gevoel.
 - **Content:** breed scala — knippen dames & heren, kleuren, highlights/balayage, keratine, föhnen/stylen, baardtrimmen. Toon dat iedereen welkom is.
 - **Team & merken:** standaard **geen** aparte \`team\`/\`brands\`-secties — verwerk in \`about\`/\`features\` of voeg toe via briefing (keywords).
-- **Typische elementen:** behandelingenmenu (dames + heren), resultaat-galerij, online booking-CTA, openingstijden.`,
+- **Typische elementen:** behandelingenmenu (dames + heren), resultaat-galerij, online booking-CTA, openingstijden.
+- **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 4 landings-secties).`,
   },
   {
     id: "womens_salon",
@@ -76,7 +78,8 @@ Dit is een kapsalon specifiek voor vrouwen. De sfeer is vrouwelijk, verfijnd en 
 - **Content:** vrouwelijke doelgroep. Diensten als balayage, highlights, ombré, extensions, bruidsstyling, keratine-behandelingen, föhnen & stylen, krullenknip. Gebruik woorden als "verwennerij", "transformatie", "jouw moment", "stralen".
 - **Team:** stylisten (vrouwelijke termen: "onze stylistes") met specialisaties en portretfoto's.
 - **Foto's:** vrouwen met prachtig haar, salon-interieur met vrouwelijke sfeer, close-ups van kleurresultaten. Unsplash zoektermen: "woman hair salon", "hair coloring", "balayage hair", "bridal hairstyle".
-- **Typische elementen:** uitgebreid behandelingenmenu, voor/na galerij (kleurresultaten), team stylistes, merkpartners (Kérastase, L'Oréal Professionnel, Olaplex, Davines), reviews van klanten, online booking-CTA, openingstijden.`,
+- **Typische elementen:** uitgebreid behandelingenmenu, voor/na galerij (kleurresultaten), team stylistes, merkpartners (Kérastase, L'Oréal Professionnel, Olaplex, Davines), reviews van klanten, online booking-CTA, openingstijden.
+- **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 4 landings-secties).`,
   },
   {
     id: "retail_electronics",
