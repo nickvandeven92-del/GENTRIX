@@ -9,7 +9,7 @@ import {
   runSiteGenerationJob,
 } from "@/lib/data/site-generation-jobs";
 
-/** Zelfde als stream-route: `after()` mag tot ~5 min doorwerken na HTTP-response. */
+/** Zelfde als stream-route: `after()`-work deelt `maxDuration` van deze route (zie stream-route). */
 export const maxDuration = 300;
 
 export async function POST(request: Request) {

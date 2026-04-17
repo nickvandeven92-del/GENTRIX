@@ -2560,26 +2560,44 @@ export function createGenerateSiteReadableStream(
         let usage: MessageDeltaUsage | null = null;
         let stop_reason: string | null = null;
 
-        for await (const ev of streamClaudeMessageText(p.client, {
-          model: p.generateModel,
-          max_tokens: p.max_tokens,
-          system: p.system,
-          userContent: userContentForGeneration,
-        })) {
-          if (ev.type === "delta") {
-            buffer += ev.text;
-            send(controller, { type: "token", content: ev.text });
-            extractTick += 1;
-            if (buffer.length < 120_000 || extractTick % 14 === 0) {
-              const { newSections } = tryExtractCompletedSections(buffer, sentSectionIds);
-              for (const section of newSections) {
-                send(controller, { type: "section_complete", section });
-              }
+        /** Tijdens de grootste model-stream soms tientallen seconden tussen deltas; proxies/CDN's knippen dan de NDJSON-verbinding. Extra pings naast `token`-events. */
+        const CLAUDE_MAIN_STREAM_KEEPALIVE_MS = 12_000;
+        const stopMainStreamKeepalive = (() => {
+          const tick = () => {
+            try {
+              send(controller, { type: "keepalive" });
+            } catch {
+              /* stream gesloten */
             }
-          } else {
-            usage = ev.usage;
-            stop_reason = ev.stop_reason;
+          };
+          tick();
+          const id = setInterval(tick, CLAUDE_MAIN_STREAM_KEEPALIVE_MS);
+          return () => clearInterval(id);
+        })();
+        try {
+          for await (const ev of streamClaudeMessageText(p.client, {
+            model: p.generateModel,
+            max_tokens: p.max_tokens,
+            system: p.system,
+            userContent: userContentForGeneration,
+          })) {
+            if (ev.type === "delta") {
+              buffer += ev.text;
+              send(controller, { type: "token", content: ev.text });
+              extractTick += 1;
+              if (buffer.length < 120_000 || extractTick % 14 === 0) {
+                const { newSections } = tryExtractCompletedSections(buffer, sentSectionIds);
+                for (const section of newSections) {
+                  send(controller, { type: "section_complete", section });
+                }
+              }
+            } else {
+              usage = ev.usage;
+              stop_reason = ev.stop_reason;
+            }
           }
+        } finally {
+          stopMainStreamKeepalive();
         }
 
         const stopUsageKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
