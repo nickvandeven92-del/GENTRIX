@@ -536,12 +536,12 @@ export function GeneratorForm({
             const hasDenk = job.denklijn_text != null && job.denklijn_text.length > 0;
             const hasSkip = job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0;
             if (hasDenk) {
-              setDesignRationale(job.denklijn_text);
+              setDesignRationale(job.denklijn_text ?? null);
               setDesignRationaleSkipReason(null);
               setDesignRationaleLoading(false);
             } else if (hasSkip) {
               setDesignRationale(null);
-              setDesignRationaleSkipReason(job.denklijn_skip_reason);
+              setDesignRationaleSkipReason(job.denklijn_skip_reason ?? null);
               setDesignRationaleLoading(false);
             } else if (job.status === "running" && hasPipeline) {
               setDesignRationaleLoading(true);
