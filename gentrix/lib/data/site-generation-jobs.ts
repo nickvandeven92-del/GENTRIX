@@ -225,7 +225,10 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   const onEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
     const now = Date.now();
     if (ev.type === "status") {
-      if (now - lastStreamStatusThrottleAt < 2_500) return;
+      const msgTrim = ev.message.trim();
+      const forceProgress =
+        msgTrim.includes("Denklijn") || msgTrim.includes("Pagina genereren") || msgTrim.includes("Zelfreview");
+      if (!forceProgress && now - lastStreamStatusThrottleAt < 2_500) return;
       lastStreamStatusThrottleAt = now;
       writeProgress(ev.message);
       return;

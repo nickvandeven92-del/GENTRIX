@@ -2237,13 +2237,15 @@ export function createGenerateSiteReadableStream(
     async start(controller) {
       const streamWallClockStartMs = Date.now();
       try {
+        const hasRefStyleUrl = Boolean(promptOptions?.referenceStyleUrl?.trim());
         send(controller, {
           type: "status",
-          message:
-            "Generatie gestart — briefing en context worden voorbereid (kan ½–2 min duren bij referentiesite of zware context).",
+          message: hasRefStyleUrl
+            ? "Generatie gestart — briefing en context worden voorbereid (kan ½–2 min duren: referentiesite ophalen en zware context)."
+            : "Generatie gestart — briefing en context worden voorbereid (typisch ½–2 min; langer bij een uitgebreide briefing of veel opties).",
         });
 
-        /** Zonder pings blijft async `site_generation_jobs` minutenlang zonder `updated_at` tijdens o.a. referentiesite-fetch + promptbouw. */
+        /** Zonder pings blijft async `site_generation_jobs` minutenlang zonder `updated_at` tijdens o.a. (optionele) referentiesite-fetch + promptbouw. */
         const stopPrepareKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         let prepared: Awaited<ReturnType<typeof prepareGenerateSiteClaudeCall>>;
         try {

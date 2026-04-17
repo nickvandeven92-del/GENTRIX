@@ -496,7 +496,8 @@ export function GeneratorForm({
           appendGenerationActivity("Server-job gestart — verbinding blijft kort open; generatie draait op de server.");
           pollAbortRef.current = false;
           lastPolledJobProgressRef.current = null;
-          setDesignRationaleLoading(true);
+          /** Denklijn-tekst bestaat pas ná `generation_meta` + aparte rationale-API; tot die tijd geen “uitleg”-spinner i.v.m. wachtrij/prepare. */
+          setDesignRationaleLoading(false);
           /** ~16 min: lange Claude-runs + zelfreview/Unsplash ruim boven client-timeout houden. */
           const maxJobPolls = 480;
           for (let i = 0; i < maxJobPolls; i++) {
@@ -531,13 +532,20 @@ export function GeneratorForm({
             if (job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object") {
               setPipelineFeedback(job.pipeline_feedback_json as GenerationPipelineFeedback);
             }
-            if (job.denklijn_text != null && job.denklijn_text.length > 0) {
+            const hasPipeline = job.pipeline_feedback_json != null && typeof job.pipeline_feedback_json === "object";
+            const hasDenk = job.denklijn_text != null && job.denklijn_text.length > 0;
+            const hasSkip = job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0;
+            if (hasDenk) {
               setDesignRationale(job.denklijn_text);
               setDesignRationaleSkipReason(null);
               setDesignRationaleLoading(false);
-            } else if (job.denklijn_skip_reason != null && job.denklijn_skip_reason.length > 0) {
+            } else if (hasSkip) {
               setDesignRationale(null);
               setDesignRationaleSkipReason(job.denklijn_skip_reason);
+              setDesignRationaleLoading(false);
+            } else if (job.status === "running" && hasPipeline) {
+              setDesignRationaleLoading(true);
+            } else if (job.status === "running" && !hasPipeline) {
               setDesignRationaleLoading(false);
             }
             if (job.design_contract_json != null && typeof job.design_contract_json === "object") {
@@ -549,13 +557,18 @@ export function GeneratorForm({
               lastPolledJobProgressRef.current = msg;
               setStreamPhase(msg);
               appendGenerationActivity(msg);
-            } else if (job.status === "running" && job.updated_at && i > 0 && i % 15 === 0) {
+            } else if (job.status === "running" && job.updated_at && i > 0 && i % 5 === 0) {
+              /** Geen nieuwe `progress_message` (bijv. lange Denklijn-API): niet elke poll een bijna-gelijke regel in het log — dat voelt als “hangen”. */
               const ageSec = Math.round((Date.now() - new Date(job.updated_at).getTime()) / 1000);
-              appendGenerationActivity(
-                ageSec > 45
-                  ? `Server nog bezig — laatste voortgangsupdate ${new Date(job.updated_at).toLocaleTimeString()} (${ageSec}s geleden). Lange stappen: referentiesite ophalen, Denklijn, groot model; tot ~16 min is normaal.`
-                  : `Server nog bezig (laatste update ${new Date(job.updated_at).toLocaleTimeString()}).`,
-              );
+              if (ageSec > 35) {
+                const baseline =
+                  lastPolledJobProgressRef.current?.trim() ||
+                  msg.trim() ||
+                  "Server voert een lange stap uit (o.a. Denklijn of zware JSON-generatie).";
+                setStreamPhase(
+                  `${baseline} · laatste statussync ${ageSec}s geleden — gebruikelijk; harde timeout pas na ~16 min.`,
+                );
+              }
             }
             if (job.status === "succeeded" && job.result) {
               setGeneratedTailwind(job.result);
@@ -1232,6 +1245,7 @@ export function GeneratorForm({
                 <GenerationDetailsBody
                   feedback={pipelineFeedback}
                   fallbackBrief={{ businessName: businessName.trim(), description: description.trim() }}
+                  referenceStyleRequested={referenceStyleUrl.trim().length > 0}
                   designRationale={designRationale}
                   designRationaleLoading={designRationaleLoading}
                   designRationaleSkipReason={designRationaleSkipReason}
@@ -1257,6 +1271,10 @@ export function GeneratorForm({
                     <p className="text-center text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
                       De preview verschijnt hier pas als de run <strong className="font-medium text-zinc-800 dark:text-zinc-200">volledig</strong> klaar is.
                       Hieronder wat de server onderweg deed.
+                      <span className="mt-2 block text-[11px] text-zinc-500 dark:text-zinc-500">
+                        Weinig nieuwe regels in het log is normaal tijdens Denklijn of het grote model — dat betekent niet
+                        dat de job vastloopt.
+                      </span>
                     </p>
                     {streamPhase ? (
                       <p className="max-w-md text-center text-xs text-indigo-800 dark:text-indigo-200">

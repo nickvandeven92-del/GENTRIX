@@ -9,6 +9,8 @@ export type GenerationDetailsBodyProps = {
   feedback: GenerationPipelineFeedback | null;
   /** Als er geen `generation_meta` is (bijv. alleen server-job): toon formulierbriefing. */
   fallbackBrief?: { businessName: string; description: string };
+  /** Zit er een optionele referentie-URL in het formulier (wel/niet referentiesite-fetch). */
+  referenceStyleRequested?: boolean;
   designRationale?: string | null;
   designRationaleLoading?: boolean;
   designRationaleSkipReason?: string | null;
@@ -25,6 +27,7 @@ export type GenerationDetailsBodyProps = {
 export function GenerationDetailsBody({
   feedback,
   fallbackBrief,
+  referenceStyleRequested = false,
   designRationale = null,
   designRationaleLoading = false,
   designRationaleSkipReason = null,
@@ -83,9 +86,34 @@ export function GenerationDetailsBody({
             Denklijn (AI)
           </h3>
           {designRationaleLoading ? (
-            <div className="mt-2 flex items-center gap-2 text-xs text-violet-900/80">
-              <Loader2 className="size-3.5 animate-spin shrink-0" aria-hidden />
-              Bezig met uitleg…
+            <div className="mt-2 space-y-2 text-xs text-violet-900/85 dark:text-violet-100/90">
+              <div className="flex items-center gap-2">
+                <Loader2 className="size-3.5 animate-spin shrink-0" aria-hidden />
+                <span>
+                  {interpreted
+                    ? "Denklijn wordt uitgeschreven (aparte modelronde: NL-uitleg + JSON-designcontract)…"
+                    : referenceStyleRequested
+                      ? "Server bereidt de briefing voor (wachtrij, referentiesite, prompt); daarna volgt de denklijn…"
+                      : "Server bereidt de briefing voor (wachtrij, prompt); daarna volgt de denklijn…"}
+                </span>
+              </div>
+              {streamPhase ? (
+                <p className="rounded-md bg-white/70 px-2 py-1.5 text-[11px] font-medium text-violet-950 dark:bg-violet-950/40 dark:text-violet-100">
+                  Stap: {streamPhase}
+                </p>
+              ) : null}
+              <p className="leading-relaxed text-violet-900/80 dark:text-violet-200/85">
+                De tekst verschijnt <strong className="font-medium">in één keer</strong> zodra die ronde klaar is — er is
+                (nog) geen woord-voor-woord live stream van de denklijn. De tijdlijn hierboven en{" "}
+                <strong className="font-medium">Stap:</strong> komen uit de server-job (poll elke ~2s).
+              </p>
+              {interpreted ? (
+                <p className="leading-relaxed text-violet-900/80 dark:text-violet-200/85">
+                  Je kunt nu al sturen op basis van <strong className="font-medium">Briefing (pipeline)</strong>{" "}
+                  hieronder (branche, sectievolgorde, referentie) — dat is dezelfde interpretatie die straks aan de
+                  bouw-prompt hangt.
+                </p>
+              ) : null}
             </div>
           ) : designRationale ? (
             <div className="mt-2 space-y-2 text-sm leading-relaxed text-violet-950 dark:text-violet-100">
