@@ -1,4 +1,5 @@
 import { slugifyToSectionId, type TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import { buildMarketingSlugSegmentResolutionMap } from "@/lib/site/marketing-path-aliases";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 
 const FORM_IN_SECTION_RE = /<form\b/i;
@@ -94,6 +95,7 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
   const baseAbs = `${origin}${basePath}${tokenQ}`;
   const contactAbs = `${origin}${contactPath}${tokenQ}`;
   const marketingSlugs = (input.marketingSlugs ?? []).filter((s) => typeof s === "string" && s.trim().length > 0);
+  const mseg = buildMarketingSlugSegmentResolutionMap(marketingSlugs);
   const mabs: Record<string, string> = {};
   for (const k of marketingSlugs) {
     mabs[k] = `${origin}${basePath}/${encodeURIComponent(k)}${tokenQ}`;
@@ -112,6 +114,7 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
     lids: input.landingSectionIds,
     ms: marketingSlugs,
     mabs,
+    mseg,
     mcur: input.view === "marketing" ? (input.activeMarketingSlug ?? "").trim() : "",
   };
   const json = JSON.stringify(cfg);
@@ -119,6 +122,14 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
 var CFG=${json};
 function isBase(p){return p===CFG.basePath||p===CFG.basePath+"/"||(CFG.legB&&(p===CFG.legB||p===CFG.legB+"/"));}
 function isContact(p){return p===CFG.contactPath||p===CFG.contactPath+"/"||(CFG.legC&&(p===CFG.legC||p===CFG.legC+"/"));}
+function marketingSegKey(basePath,p){
+  if(p.indexOf(basePath+"/")!==0)return "";
+  var tail=p.slice(basePath.length+1);
+  var seg0=(tail.split("/")[0]||"").split("?")[0];
+  if(!seg0)return "";
+  try{seg0=decodeURIComponent(seg0);}catch(_){}
+  return seg0.toLowerCase();
+}
 function isMarketingPath(p){
   if(!CFG.ms||!CFG.ms.length)return null;
   for(var i=0;i<CFG.ms.length;i++){
@@ -128,6 +139,17 @@ function isMarketingPath(p){
     if(CFG.prevBase){
       var mp2=CFG.prevBase+"/"+k;
       if(p===mp2||p===mp2+"/")return k;
+    }
+  }
+  var sk=marketingSegKey(CFG.basePath,p);
+  if(sk&&CFG.mseg&&CFG.mseg[sk])return CFG.mseg[sk];
+  if(CFG.legB){
+    var sk2=marketingSegKey(CFG.legB,p);
+    if(sk2&&CFG.mseg&&CFG.mseg[sk2])return CFG.mseg[sk2];
+  }
+  if(sk){
+    for(var j=0;j<CFG.ms.length;j++){
+      if((CFG.ms[j]||"").toLowerCase()===sk)return CFG.ms[j];
     }
   }
   return null;

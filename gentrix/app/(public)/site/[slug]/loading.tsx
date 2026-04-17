@@ -1,12 +1,10 @@
-/** Directe feedback tijdens RSC + Supabase; Tailwind CDN kan daarna nog even nodig hebben voor styling. */
+import { PublicSitePageSkeleton } from "@/components/site/public-site-page-skeleton";
+
+/** Korte RSC-fase: zelfde shell als client-iframe-build → minder visuele “knip” dan spinner + tekst. */
 export default function PublicSiteSlugLoading() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-zinc-50 text-zinc-600">
-      <div
-        className="size-10 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600"
-        aria-hidden
-      />
-      <p className="text-sm">Site laden…</p>
+    <div className="flex min-h-dvh flex-col bg-white">
+      <PublicSitePageSkeleton />
     </div>
   );
 }

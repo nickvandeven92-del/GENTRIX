@@ -28,6 +28,7 @@ import {
   buildContactSubpageCaptureNavScript,
   type ContactSubpageNavScriptInput,
 } from "@/lib/site/tailwind-contact-subpage";
+import { buildMarketingSlugSegmentResolutionMap } from "@/lib/site/marketing-path-aliases";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
 import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
@@ -1674,9 +1675,14 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
  *
  * **Concept + token:** zorg dat interne `/site/{slug}/…`-links de `token`-query behouden (en oude `/preview/…`-links naar `/site/…` normaliseren).
  */
-export function buildStudioSinglePageInternalNavScript(
-  draftSiteNavRewrite: { slug: string; token: string } | null,
-): string {
+export type DraftSiteNavRewriteForIframe = {
+  slug: string;
+  token: string;
+  /** Lage segment → canonieke `marketingPages`-key (zelfde als contact-nav `mseg`). */
+  mseg?: Record<string, string>;
+};
+
+export function buildStudioSinglePageInternalNavScript(draftSiteNavRewrite: DraftSiteNavRewriteForIframe | null): string {
   const draftJson =
     draftSiteNavRewrite != null &&
     typeof draftSiteNavRewrite.slug === "string" &&
@@ -1686,6 +1692,9 @@ export function buildStudioSinglePageInternalNavScript(
       ? JSON.stringify({
           slug: draftSiteNavRewrite.slug.trim(),
           token: draftSiteNavRewrite.token.trim(),
+          ...(draftSiteNavRewrite.mseg && Object.keys(draftSiteNavRewrite.mseg).length > 0
+            ? { mseg: draftSiteNavRewrite.mseg }
+            : {}),
         })
       : "null";
   return `<script>
@@ -1709,13 +1718,27 @@ export function buildStudioSinglePageInternalNavScript(
         });
         return out.toString();
       }
+      function fixMarketingPathIfNeeded(fullPath){
+        if(!DRAFT_SITE_NAV_REWRITE.mseg)return fullPath;
+        if(fullPath.indexOf(prefSite+"/")!==0)return fullPath;
+        var rel=fullPath.slice(prefSite.length+1);
+        var firstSeg=(rel.split("/")[0]||"").split("?")[0];
+        if(!firstSeg)return fullPath;
+        var segDec=firstSeg;
+        try{segDec=decodeURIComponent(firstSeg);}catch(__){}
+        var repl=DRAFT_SITE_NAV_REWRITE.mseg[segDec.toLowerCase()];
+        if(!repl)return fullPath;
+        return prefSite+"/"+encodeURIComponent(repl);
+      }
       if(path===prefPrev||path.indexOf(prefPrev+"/")===0){
         var tailPrev=path.slice(prefPrev.length);
-        var outP=new URL(u.origin+prefSite+tailPrev);
+        var outP=new URL(u.origin+fixMarketingPathIfNeeded(prefSite+tailPrev));
         return mergeQuery(outP);
       }
       if(path!==prefSite&&path.indexOf(prefSite+"/")!==0)return absUrl;
+      var fixedPath=fixMarketingPathIfNeeded(path);
       var outS=new URL(u.toString());
+      if(fixedPath!==path)outS.pathname=fixedPath;
       return mergeQuery(outS);
     }catch(_){return absUrl;}
   }
@@ -2214,8 +2237,20 @@ export function buildTailwindIframeSrcDoc(
 
   const draftTok = options?.draftPublicPreviewToken?.trim() ?? "";
   const draftSlug = options?.publishedSlug?.trim() ?? "";
-  const draftSiteNavRewrite =
-    draftTok.length > 0 && draftSlug.length > 0 ? { slug: draftSlug, token: draftTok } : null;
+  const marketingSlugsForDraft =
+    contactSubpageNav?.marketingSlugs?.filter((s): s is string => typeof s === "string" && s.trim().length > 0) ?? [];
+  const msegForDraft =
+    draftTok.length > 0 && marketingSlugsForDraft.length > 0
+      ? buildMarketingSlugSegmentResolutionMap(marketingSlugsForDraft)
+      : null;
+  const draftSiteNavRewrite: DraftSiteNavRewriteForIframe | null =
+    draftTok.length > 0 && draftSlug.length > 0
+      ? {
+          slug: draftSlug,
+          token: draftTok,
+          ...(msegForDraft && Object.keys(msegForDraft).length > 0 ? { mseg: msegForDraft } : {}),
+        }
+      : null;
 
   const viewportContent = options?.previewMatchParentWindowBreakpoints
     ? "width=1280, initial-scale=1"

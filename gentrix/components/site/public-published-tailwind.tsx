@@ -12,6 +12,7 @@ import {
 import type { ContactSubpageNavScriptInput } from "@/lib/site/tailwind-contact-subpage";
 import { PublishedTailwindAssets } from "@/components/site/published-tailwind-assets";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
+import { PublicSitePageSkeleton } from "@/components/site/public-site-page-skeleton";
 import { cn } from "@/lib/utils";
 
 function escapeHtmlForSrcDocTitle(s: string): string {
@@ -83,49 +84,54 @@ export function PublicPublishedTailwind({
 
   useEffect(() => {
     let cancelled = false;
-    try {
-      const contactSubpageNav =
-        contactSubpageNavBase && typeof window !== "undefined"
-          ? { ...contactSubpageNavBase, pageOrigin: window.location.origin }
-          : undefined;
-      let doc = buildTailwindIframeSrcDoc(filtered, pageConfig, {
-        previewPostMessageBridge: false,
-        userCss,
-        userJs,
-        logoSet,
-        publishedSlug: publishedSlug?.trim(),
-        draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
-        appointmentsEnabled,
-        webshopEnabled,
-        /* Scroll-reveal: `data-animation` + `.studio-border-reveal` + STUDIO_SCROLL_REVEAL_SCRIPT;
-         * `data-studio-scroll-border` + STUDIO_SCROLL_BORDER_* (tailwind-page-html).
-         * Hero + eerste secties: CSS-vrijstelling; ~1,6s IO-fallback voorkomt stuck states in iframes. */
-        compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
-        previewScriptOrigin: window.location.origin,
-        navBrandLabel: navBrandLabel?.trim() || undefined,
-        ...(contactSubpageNav ? { contactSubpageNav } : {}),
-      });
-      if (typeof window !== "undefined") {
-        doc = rewriteStudioDevOriginsInHtml(doc, window.location.origin);
+    /** Eén macrotask uitstellen zodat de browser eerst spinner/layout kan painten (zware sync `buildTailwindIframeSrcDoc` blokkeert anders meteen de main thread). */
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      try {
+        const contactSubpageNav =
+          contactSubpageNavBase && typeof window !== "undefined"
+            ? { ...contactSubpageNavBase, pageOrigin: window.location.origin }
+            : undefined;
+        let doc = buildTailwindIframeSrcDoc(filtered, pageConfig, {
+          previewPostMessageBridge: false,
+          userCss,
+          userJs,
+          logoSet,
+          publishedSlug: publishedSlug?.trim(),
+          draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
+          appointmentsEnabled,
+          webshopEnabled,
+          /* Scroll-reveal: `data-animation` + `.studio-border-reveal` + STUDIO_SCROLL_REVEAL_SCRIPT;
+           * `data-studio-scroll-border` + STUDIO_SCROLL_BORDER_* (tailwind-page-html).
+           * Hero + eerste secties: CSS-vrijstelling; ~1,6s IO-fallback voorkomt stuck states in iframes. */
+          compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
+          previewScriptOrigin: window.location.origin,
+          navBrandLabel: navBrandLabel?.trim() || undefined,
+          ...(contactSubpageNav ? { contactSubpageNav } : {}),
+        });
+        if (typeof window !== "undefined") {
+          doc = rewriteStudioDevOriginsInHtml(doc, window.location.origin);
+        }
+        if (doc.length > MAX_SRC_DOC_CHARS) {
+          doc = fallbackSrcDoc(
+            documentTitle,
+            "Deze pagina is te groot om hier te tonen. Verklein de site in de editor of splits content.",
+          );
+        }
+        if (!cancelled) queueMicrotask(() => setSrcDoc(doc));
+      } catch {
+        if (!cancelled) {
+          const fallback = fallbackSrcDoc(
+            documentTitle,
+            "Deze site kan tijdelijk niet worden opgebouwd. Vernieuw de pagina of neem contact op met de beheerder.",
+          );
+          queueMicrotask(() => setSrcDoc(fallback));
+        }
       }
-      if (doc.length > MAX_SRC_DOC_CHARS) {
-        doc = fallbackSrcDoc(
-          documentTitle,
-          "Deze pagina is te groot om hier te tonen. Verklein de site in de editor of splits content.",
-        );
-      }
-      if (!cancelled) queueMicrotask(() => setSrcDoc(doc));
-    } catch {
-      if (!cancelled) {
-        const fallback = fallbackSrcDoc(
-          documentTitle,
-          "Deze site kan tijdelijk niet worden opgebouwd. Vernieuw de pagina of neem contact op met de beheerder.",
-        );
-        queueMicrotask(() => setSrcDoc(fallback));
-      }
-    }
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(t);
     };
   }, [
     filtered,
@@ -158,14 +164,11 @@ export function PublicPublishedTailwind({
     return (
       <PublishedTailwindNavBridge>
         <div
-          className={cn(
-            "flex min-h-[50vh] w-full flex-1 flex-col items-center justify-center bg-white text-sm text-zinc-500",
-            className,
-          )}
+          className={cn("flex min-h-0 w-full flex-1 flex-col bg-white", className)}
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
           <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
-          <span className="mt-4">Site laden…</span>
+          <PublicSitePageSkeleton embedded={embedded} />
         </div>
       </PublishedTailwindNavBridge>
     );
