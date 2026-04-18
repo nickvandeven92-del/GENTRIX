@@ -63,6 +63,30 @@ const SITE_STREAM_LOG_MAX_CHARS = 400_000;
 /** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
 
+/** Eerste regel = vaak bedrijfsnaam; alleen-URL → hostnaam als titel. */
+function deriveStudioBusinessName(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  const firstLine = (trimmed.split(/\r?\n/)[0] ?? "").trim();
+  if (!firstLine) return "";
+  if (/^https?:\/\//i.test(firstLine)) {
+    try {
+      const host = new URL(firstLine).hostname.replace(/^www\./i, "");
+      if (!host) return "Website";
+      return host.length <= 200 ? host : host.slice(0, 200);
+    } catch {
+      return "Website";
+    }
+  }
+  return firstLine.length <= 200 ? firstLine : firstLine.slice(0, 200);
+}
+
+function extractFirstHttpUrl(text: string): string | undefined {
+  const m = text.match(/https?:\/\/[^\s<>"')]+/i);
+  if (!m?.[0]) return undefined;
+  return m[0].replace(/[.,;:!?)]+$/u, "").slice(0, 2000);
+}
+
 function allowedImageMime(t: string): boolean {
   return t === "image/png" || t === "image/jpeg" || t === "image/webp" || t === "image/gif";
 }
@@ -100,12 +124,14 @@ export function GeneratorForm({
 }: GeneratorFormProps) {
   const slugFromUrl = initialSubfolderSlug?.trim() || undefined;
 
-  const [businessName, setBusinessName] = useState(() =>
-    slugFromUrl ? (initialClientName?.trim() ?? "") : "",
-  );
-  const [description, setDescription] = useState(() =>
-    slugFromUrl ? (initialClientDescription?.trim() ?? "") : "",
-  );
+  const [briefingText, setBriefingText] = useState(() => {
+    if (!slugFromUrl) return "";
+    const name = initialClientName?.trim() ?? "";
+    const desc = (initialClientDescription ?? "").trim();
+    if (name && desc) return `${name}\n\n${desc}`;
+    return name || desc;
+  });
+  const businessName = useMemo(() => deriveStudioBusinessName(briefingText), [briefingText]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawFallback, setRawFallback] = useState<string | null>(null);
@@ -318,7 +344,6 @@ export function GeneratorForm({
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [briefingImages, setBriefingImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
-  const [referenceStyleUrl, setReferenceStyleUrl] = useState("");
   /** Chat + preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
   /** `split` = twee kolommen; `editor` / `preview` = één paneel op volle breedte (binnen de studio-shell). */
@@ -327,7 +352,6 @@ export function GeneratorForm({
   const [rightPaneMode, setRightPaneMode] = useState<StudioRightPaneMode>("preview");
   const [portalReady, setPortalReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const briefingFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setPortalReady(true), []);
 
@@ -453,22 +477,14 @@ export function GeneratorForm({
     [descriptionLocked, briefingImages, uploadBriefingFile],
   );
 
-  const handleBriefingDrop = useCallback(
+  /** Referentie-/briefing-afbeeldingen: drop op het grote tekstveld (niet op klantfoto-zone). */
+  const handleBriefingAreaDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       if (descriptionLocked) return;
       const files = Array.from(e.dataTransfer.files).filter((f) => allowedImageMime(f.type));
+      if (files.length === 0) return;
       queueBriefingImageFiles(files);
-    },
-    [queueBriefingImageFiles, descriptionLocked],
-  );
-
-  const handleBriefingFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (descriptionLocked) return;
-      const files = Array.from(e.target.files ?? []).filter((f) => allowedImageMime(f.type));
-      queueBriefingImageFiles(files);
-      e.target.value = "";
     },
     [queueBriefingImageFiles, descriptionLocked],
   );
@@ -515,9 +531,18 @@ export function GeneratorForm({
 
   useEffect(() => {
     if (!slugFromUrl) return;
-    setBusinessName(initialClientName?.trim() ?? "");
-    if (existingDraftLocked) return;
-    setDescription(initialClientDescription?.trim() ?? "");
+    const name = initialClientName?.trim() ?? "";
+    const desc = (initialClientDescription ?? "").trim();
+    if (existingDraftLocked) {
+      if (!name) return;
+      setBriefingText((prev) => {
+        const lines = prev.split(/\r?\n/);
+        const tail = lines.slice(1).join("\n");
+        return tail.trim() ? `${name}\n${tail}` : name;
+      });
+      return;
+    }
+    setBriefingText(name && desc ? `${name}\n\n${desc}` : name || desc);
   }, [slugFromUrl, initialClientName, initialClientDescription, existingDraftLocked]);
 
   useEffect(() => {
@@ -550,8 +575,8 @@ export function GeneratorForm({
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
       const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
       const body: Record<string, unknown> = {
-        businessName,
-        description,
+        businessName: deriveStudioBusinessName(briefingText),
+        description: briefingText.trim(),
         ...(readyImages.length > 0
           ? { clientImages: readyImages.map((img) => ({ url: img.url, label: img.label || undefined })) }
           : {}),
@@ -567,9 +592,9 @@ export function GeneratorForm({
       if (slugFromUrl && isValidSubfolderSlug(slugFromUrl)) {
         body.subfolder_slug = slugFromUrl;
       }
-      const refTrim = referenceStyleUrl.trim();
-      if (refTrim.length > 0) {
-        body.reference_style_url = refTrim;
+      const refFromBriefing = extractFirstHttpUrl(briefingText);
+      if (refFromBriefing) {
+        body.reference_style_url = refFromBriefing;
       }
 
       appendGenerationActivity("Generatie via NDJSON-stream naar deze pagina (geen job-poll).");
@@ -851,130 +876,129 @@ export function GeneratorForm({
         </p>
 
         <div>
-          <label htmlFor="businessName" className="block text-sm font-medium text-slate-700">
-            Bedrijfsnaam
+          <label className="block text-sm font-medium text-slate-700">
+            Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
           </label>
-          <input
-            id="businessName"
-            name="businessName"
-            type="text"
-            required
-            maxLength={200}
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            className={fieldClass}
-            placeholder="Bijv. Jouw Bedrijfsnaam BV"
-          />
-        </div>
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/35 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/25">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-indigo-900 dark:text-indigo-100">
-            Referentie &amp; beelden
+          <p className="mt-0.5 text-xs text-slate-500">
+            Alleen beelden die <strong className="font-medium text-slate-600">in de site</strong> mogen verschijnen. Referentie-URL en
+            referentie-screenshots horen in het tekstveld hieronder (plakken of slepen).
           </p>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="referenceStyleUrl" className="block text-sm font-medium text-slate-700">
-                Referentiesite <span className="font-normal text-slate-400">(optioneel)</span>
-              </label>
-              <input
-                id="referenceStyleUrl"
-                name="referenceStyleUrl"
-                type="url"
-                disabled={descriptionLocked}
-                className={cn(fieldClass, descriptionLocked && fieldLockedClass)}
-                value={referenceStyleUrl}
-                onChange={(e) => setReferenceStyleUrl(e.target.value)}
-                placeholder="https://… — stijl/structuur als hint"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
-              </label>
-              <div
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                className={cn(
-                  "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
-                  !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
-                  descriptionLocked && "pointer-events-none opacity-60",
-                )}
-              >
-                {clientImages.map((img, i) => (
-                  <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                    {img.uploading ? (
-                      <div className="flex size-full items-center justify-center">
-                        <Loader2 className="size-4 animate-spin text-slate-400" />
-                      </div>
-                    ) : (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img.url} alt={img.label} className="size-full object-cover" />
-                        <button
-                          type="button"
-                          disabled={descriptionLocked}
-                          onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </>
-                    )}
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            className={cn(
+              "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
+              !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
+              descriptionLocked && "pointer-events-none opacity-60",
+            )}
+          >
+            {clientImages.map((img, i) => (
+              <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                {img.uploading ? (
+                  <div className="flex size-full items-center justify-center">
+                    <Loader2 className="size-4 animate-spin text-slate-400" />
                   </div>
-                ))}
-                {clientImages.length < 8 && (
-                  <button
-                    type="button"
-                    disabled={descriptionLocked}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ImagePlus className="size-5" />
-                    <span className="text-[10px] font-medium">Upload</span>
-                  </button>
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.url} alt={img.label} className="size-full object-cover" />
+                    <button
+                      type="button"
+                      disabled={descriptionLocked}
+                      onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </>
                 )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  multiple
-                  disabled={descriptionLocked}
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
               </div>
-              {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Briefing-beelden <span className="font-normal text-slate-400">(optioneel, max. {BRIEFING_REF_IMAGES_MAX})</span>
-              </label>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Screenshots (reviews, prijslijst, voorbeeld-UI, flyer): sleep hierheen, klik{" "}
-                <strong className="font-medium text-slate-600">Toevoegen</strong>, of{" "}
-                <strong className="font-medium text-slate-600">plak in het tekstveld</strong> hieronder. Dit is <strong>niet</strong> hetzelfde
-                als klantfoto&apos;s — die blijven apart. De server leest op de achtergrond{" "}
-                <strong className="text-slate-600">zichtbare tekst en inhoud</strong> uit deze beelden (vision) en neemt dat mee in de
-                generatie; de schriftelijke omschrijving blijft ook belangrijk.
-              </p>
-              <div
-                onDrop={handleBriefingDrop}
-                onDragOver={(ev) => {
-                  if (!descriptionLocked) ev.preventDefault();
-                }}
-                className={cn(
-                  "mt-2 flex min-h-[56px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-indigo-200/80 bg-white/70 p-2.5 dark:border-indigo-800/60 dark:bg-zinc-900/30",
-                  !descriptionLocked && briefingImages.length < BRIEFING_REF_IMAGES_MAX && "hover:border-indigo-400",
-                  descriptionLocked && "pointer-events-none opacity-60",
-                )}
+            ))}
+            {clientImages.length < 8 && (
+              <button
+                type="button"
+                disabled={descriptionLocked}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <ImagePlus className="size-5" />
+                <span className="text-[10px] font-medium">Upload</span>
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              disabled={descriptionLocked}
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </div>
+          {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
+        </div>
+
+        <div>
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700">
+              Opdracht
+            </label>
+            <StudioThemeStylesHint />
+          </div>
+          {descriptionLocked ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Briefing is beveiligd zodra er een concept-site is of je net hebt gegenereerd. Gebruik de tab{" "}
+              <strong className="font-medium text-slate-700">Bewerken</strong> in site-studio (zelfde URL met slug) voor HTML-wijzigingen
+              via AI-chat.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              Eerste regel: meestal je <strong className="font-medium text-slate-600">bedrijfsnaam</strong>. Daarna vrije tekst; plak een{" "}
+              <strong className="font-medium text-slate-600">referentie-URL</strong> waar dan ook in de tekst.{" "}
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl+V</kbd> of{" "}
+              <strong className="font-medium text-slate-600">sleep afbeeldingen</strong> op het veld voor referentie-screenshots (max.{" "}
+              {BRIEFING_REF_IMAGES_MAX}) — niet voor klantfoto&apos;s.
+            </p>
+          )}
+          <div
+            onDrop={handleBriefingAreaDrop}
+            onDragOver={(ev) => {
+              if (!descriptionLocked) ev.preventDefault();
+            }}
+            className={cn(
+              "mt-1.5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-950",
+              descriptionLocked && "opacity-90",
+            )}
+          >
+            <textarea
+              id="studioBriefing"
+              name="studioBriefing"
+              required={!descriptionLocked}
+              maxLength={4000}
+              rows={10}
+              value={briefingText}
+              onChange={(e) => {
+                if (descriptionLocked) return;
+                setBriefingText(e.target.value);
+              }}
+              onPaste={handleDescriptionPaste}
+              readOnly={descriptionLocked}
+              className={cn(
+                "block min-h-[200px] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
+                descriptionLocked && fieldLockedClass,
+              )}
+              placeholder="Ask GENTRIX…"
+            />
+            {briefingImages.length > 0 ? (
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 px-2 py-2 dark:border-zinc-800">
                 {briefingImages.map((img, i) => (
                   <div
                     key={img.url || `b-${i}`}
-                    className="group relative size-14 shrink-0 overflow-hidden rounded-md border border-indigo-100 bg-white shadow-sm dark:border-indigo-900/50"
+                    className="group relative size-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white dark:border-zinc-700"
                   >
                     {img.uploading ? (
                       <div className="flex size-full items-center justify-center">
-                        <Loader2 className="size-4 animate-spin text-indigo-400" />
+                        <Loader2 className="size-3.5 animate-spin text-indigo-400" />
                       </div>
                     ) : (
                       <>
@@ -992,65 +1016,9 @@ export function GeneratorForm({
                     )}
                   </div>
                 ))}
-                {briefingImages.length < BRIEFING_REF_IMAGES_MAX && (
-                  <button
-                    type="button"
-                    disabled={descriptionLocked}
-                    onClick={() => briefingFileInputRef.current?.click()}
-                    className="flex size-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-indigo-300 text-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ImagePlus className="size-4" />
-                    <span className="text-[9px] font-medium">Toevoegen</span>
-                  </button>
-                )}
-                <input
-                  ref={briefingFileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  multiple
-                  disabled={descriptionLocked}
-                  className="hidden"
-                  onChange={handleBriefingFileSelect}
-                />
               </div>
-            </div>
+            ) : null}
           </div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-              Omschrijving
-            </label>
-            <StudioThemeStylesHint />
-          </div>
-          {descriptionLocked ? (
-            <p className="mt-1 text-xs text-slate-500">
-                  Briefing is beveiligd zodra er een concept-site is of je net hebt gegenereerd. Gebruik de tab{" "}
-                  <strong className="font-medium text-slate-700">Bewerken</strong> in site-studio (zelfde URL met slug) voor
-                  HTML-wijzigingen via AI-chat.
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-slate-500">
-              Afbeeldingen plakken met <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl+V</kbd>{" "}
-              gaat naar briefing-beelden (niet naar klantfoto&apos;s). Sleep afbeeldingen naar het kader <strong className="font-medium text-slate-600">Briefing-beelden</strong> hierboven.
-            </p>
-          )}
-          <textarea
-            id="description"
-            name="description"
-            required={!descriptionLocked}
-            maxLength={4000}
-            rows={8}
-            value={description}
-            onChange={(e) => {
-              if (descriptionLocked) return;
-              setDescription(e.target.value);
-            }}
-            onPaste={handleDescriptionPaste}
-            readOnly={descriptionLocked}
-            className={cn("mt-1", fieldClass, descriptionLocked && fieldLockedClass)}
-            placeholder="Kort of uitgebreid: doelgroep, aanbod, toon, CTA. Mag een zin; de Denklijn breidt uit op de server."
-          />
         </div>
 
         <button
@@ -1195,7 +1163,7 @@ export function GeneratorForm({
               detectedIndustryId ? { detectedIndustryId } : undefined
             }
             defaultName={businessName}
-            defaultDescription={description}
+            defaultDescription={briefingText.trim()}
             defaultSubfolderSlug={slugFromUrl}
             defaultPublishStatus="draft"
             generatorMode
@@ -1341,8 +1309,11 @@ export function GeneratorForm({
               {rightPaneMode === "details" ? (
                 <GenerationDetailsBody
                   feedback={pipelineFeedback}
-                  fallbackBrief={{ businessName: businessName.trim(), description: description.trim() }}
-                  referenceStyleRequested={referenceStyleUrl.trim().length > 0}
+                  fallbackBrief={{
+                    businessName: deriveStudioBusinessName(briefingText).trim(),
+                    description: briefingText.trim(),
+                  }}
+                  referenceStyleRequested={Boolean(extractFirstHttpUrl(briefingText))}
                   designRationale={designRationale}
                   designRationaleLoading={designRationaleLoading}
                   designRationaleSkipReason={designRationaleSkipReason}
