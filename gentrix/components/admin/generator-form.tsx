@@ -118,7 +118,16 @@ export function GeneratorForm({
     if (name && desc) return `${name}\n\n${desc}`;
     return name || desc;
   });
-  const businessName = useMemo(() => deriveStudioBusinessNameFromBriefing(briefingText), [briefingText]);
+  /** Laatst verzonden opdracht — blijft beschikbaar als het veld na verzenden leeg is (zoals Lovable). */
+  const [sentBriefingSnapshot, setSentBriefingSnapshot] = useState<string | null>(null);
+  /** Verzonden prompts als chatbellen boven het invoerveld. */
+  const [submittedPromptTurns, setSubmittedPromptTurns] = useState<{ id: string; text: string }[]>([]);
+
+  const briefingForDerivation = briefingText.trim() || sentBriefingSnapshot?.trim() || "";
+  const businessName = useMemo(
+    () => deriveStudioBusinessNameFromBriefing(briefingForDerivation),
+    [briefingForDerivation],
+  );
   const previewClientLabel = useMemo(() => {
     const b = businessName.trim();
     if (isStudioUndecidedBrandName(b)) return "Concept";
@@ -539,6 +548,15 @@ export function GeneratorForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const prompt = briefingText.trim();
+    if (!prompt) return;
+
+    if (!descriptionLocked) {
+      setSentBriefingSnapshot(prompt);
+      setSubmittedPromptTurns((prev) => [...prev, { id: crypto.randomUUID(), text: prompt }]);
+      setBriefingText("");
+    }
+
     setError(null);
     setRawFallback(null);
     setGeneratedTailwind(null);
@@ -562,8 +580,8 @@ export function GeneratorForm({
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
       const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
       const body: Record<string, unknown> = {
-        businessName: deriveStudioBusinessNameFromBriefing(briefingText),
-        description: briefingText.trim(),
+        businessName: deriveStudioBusinessNameFromBriefing(prompt),
+        description: prompt,
         ...(readyImages.length > 0
           ? { clientImages: readyImages.map((img) => ({ url: img.url, label: img.label || undefined })) }
           : {}),
@@ -579,7 +597,7 @@ export function GeneratorForm({
       if (slugFromUrl && isValidSubfolderSlug(slugFromUrl)) {
         body.subfolder_slug = slugFromUrl;
       }
-      const refFromBriefing = extractFirstHttpUrl(briefingText);
+      const refFromBriefing = extractFirstHttpUrl(prompt);
       if (refFromBriefing) {
         body.reference_style_url = refFromBriefing;
       }
@@ -958,6 +976,21 @@ export function GeneratorForm({
           {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
         </div>
 
+        {submittedPromptTurns.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Verzonden opdrachten</p>
+            <div className="max-h-56 space-y-2 overflow-y-auto pr-0.5" role="log" aria-live="polite">
+              {submittedPromptTurns.map((turn) => (
+                <div key={turn.id} className="flex justify-end">
+                  <div className="max-w-[min(100%,28rem)] whitespace-pre-wrap rounded-2xl rounded-br-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-indigo-900/50 dark:bg-indigo-950/60 dark:text-zinc-100">
+                    {turn.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div>
           <div className="flex items-center gap-1.5">
             <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700">
@@ -1003,7 +1036,7 @@ export function GeneratorForm({
                 "block min-h-[200px] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
                 descriptionLocked && fieldLockedClass,
               )}
-              placeholder="Ask GENTRIX..."
+              placeholder={submittedPromptTurns.length > 0 ? "Volgende opdracht…" : "Ask GENTRIX…"}
             />
             {briefingImages.length > 0 ? (
               <div className="flex flex-wrap gap-2 border-t border-slate-100 px-2 py-2 dark:border-zinc-800">
@@ -1181,7 +1214,7 @@ export function GeneratorForm({
               detectedIndustryId ? { detectedIndustryId } : undefined
             }
             defaultName={displayStudioBrandNameForUi(businessName) || previewClientLabel}
-            defaultDescription={briefingText.trim()}
+            defaultDescription={briefingForDerivation}
             defaultSubfolderSlug={slugFromUrl}
             defaultPublishStatus="draft"
             generatorMode
@@ -1328,10 +1361,12 @@ export function GeneratorForm({
                 <GenerationDetailsBody
                   feedback={pipelineFeedback}
                   fallbackBrief={{
-                    businessName: displayStudioBrandNameForUi(deriveStudioBusinessNameFromBriefing(briefingText)),
-                    description: briefingText.trim(),
+                    businessName: displayStudioBrandNameForUi(
+                      deriveStudioBusinessNameFromBriefing(briefingForDerivation),
+                    ),
+                    description: briefingForDerivation,
                   }}
-                  referenceStyleRequested={Boolean(extractFirstHttpUrl(briefingText))}
+                  referenceStyleRequested={Boolean(extractFirstHttpUrl(briefingForDerivation))}
                   designRationale={designRationale}
                   designRationaleLoading={designRationaleLoading}
                   designRationaleSkipReason={designRationaleSkipReason}
