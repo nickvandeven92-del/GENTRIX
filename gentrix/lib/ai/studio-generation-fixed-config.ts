@@ -17,8 +17,6 @@ export const STUDIO_SITE_GENERATION = {
    * Nieuwere Sonnet-modellen ondersteunen veel hogere output; streaming omzeilt de non-stream SDK-timeout.
    */
   maxOutputTokens: 64_000,
-  /** Standaard geen minimale prompt; `minimalPrompt: true` in de API-request wint. */
-  minimalPromptDefault: false,
   briefingVisionEnabled: true,
   /** Kleine JSON-planfase vóór HTML: copy-budget + CTA; sectie-id's blijven server-side vast. */
   compositionPlanEnabled: true,

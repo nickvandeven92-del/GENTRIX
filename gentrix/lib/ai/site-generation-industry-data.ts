@@ -43,7 +43,7 @@ Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk a
 - **Diensten-idee:** een elegante verticale prijslijst (\`divide-y\`) werkt hier vaak beter dan kaarten — het voelt als een menukaart. Maar een creatief grid kan ook werken als het past.
 - **Content:** focus op herenknippen, baardverzorging, hot towel shave, traditioneel scheren. Doelgroep is mannelijk. Gebruik woorden als "heren", "gentleman", "vakmanschap".
 - **Typische elementen:** werkplaats-galerij, WhatsApp-booking, openingstijden. **Geen** verplichte "merken-rij" — alleen als de briefing expliciet merken/partners/producten noemt (dan wordt sectie \`brands\` via keywords toegevoegd).
-- **Studio-compact:** geen aparte \`steps\`/\`werkwijze\`-sectie op de homepage — diensten/USP’s in \`features\`; FAQ op de marketing-subpagina \`faq\` (homepage max. 4 secties).`,
+- **Studio-compact:** geen aparte \`steps\`/\`werkwijze\`-sectie op de homepage — diensten/USP’s in \`features\`; FAQ op de marketing-subpagina \`faq\` (homepage max. 5 secties).`,
   },
   {
     id: "hair_salon",
@@ -61,7 +61,7 @@ Dit is een kapsalon die zowel dames als heren bedient. Focus op haarverzorging, 
 - **Content:** breed scala — knippen dames & heren, kleuren, highlights/balayage, keratine, föhnen/stylen, baardtrimmen. Toon dat iedereen welkom is.
 - **Team & merken:** standaard **geen** aparte \`team\`/\`brands\`-secties — verwerk in \`about\`/\`features\` of voeg toe via briefing (keywords).
 - **Typische elementen:** behandelingenmenu (dames + heren), resultaat-galerij, online booking-CTA, openingstijden.
-- **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 4 landings-secties).`,
+- **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 5 landings-secties).`,
   },
   {
     id: "womens_salon",
@@ -79,7 +79,7 @@ Dit is een kapsalon specifiek voor vrouwen. De sfeer is vrouwelijk, verfijnd en 
 - **Team:** stylisten (vrouwelijke termen: "onze stylistes") met specialisaties en portretfoto's.
 - **Beeld:** **geen** stock in de hero (typografie/gradient of klantfoto); **Geen** externe stock-URL's; **met \`gallery\`:** alleen **klant-**foto-URL's uit de briefing.
 - **Typische elementen:** uitgebreid behandelingenmenu, voor/na galerij (kleurresultaten), team stylistes, merkpartners (Kérastase, L'Oréal Professionnel, Olaplex, Davines), reviews van klanten, online booking-CTA, openingstijden.
-- **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 4 landings-secties).`,
+- **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 5 landings-secties).`,
   },
   {
     id: "retail_electronics",

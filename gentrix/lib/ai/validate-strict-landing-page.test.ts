@@ -36,6 +36,12 @@ describe("shouldIncludeCompactLandingFaq / buildCompactLandingSectionIds", () =>
       "hero,stats,features,footer",
     );
   });
+
+  it("5 secties: werkwijze-signalen en geen kappersprofiel → features + steps gescheiden", () => {
+    const d =
+      "Digitaal bureau voor MKB. Onze werkwijze: intake, ontwerp en oplevering in duidelijke stappen. We werken met vaste partners en KPI-dashboards.";
+    expect(buildCompactLandingSectionIds(d).join(",")).toBe("hero,brands,features,steps,footer");
+  });
 });
 
 describe("validateStrictLandingPageContract", () => {
@@ -58,15 +64,27 @@ describe("validateStrictLandingPageContract", () => {
     expect(validateStrictLandingPageContract(sections)).toEqual([]);
   });
 
-  it("wijst 5 secties af", () => {
+  it("accepteert een geldige 5-sectie-opzet (proof + features + steps)", () => {
+    const sections = [
+      sec("hero", '<section id="hero"></section>'),
+      sec("stats", '<section id="stats"></section>'),
+      sec("features", '<section id="features"></section>'),
+      sec("steps", '<section id="steps"></section>'),
+      sec("footer", '<section id="footer"></section>'),
+    ];
+    expect(validateStrictLandingPageContract(sections)).toEqual([]);
+  });
+
+  it("wijst 6 secties af", () => {
     const sections = [
       sec("hero", "<section></section>"),
       sec("stats", "<section></section>"),
       sec("features", "<section></section>"),
+      sec("steps", "<section></section>"),
       sec("faq", "<section></section>"),
       sec("footer", "<section></section>"),
     ];
-    expect(validateStrictLandingPageContract(sections).some((e) => /3|4|5/i.test(e))).toBe(true);
+    expect(validateStrictLandingPageContract(sections).length).toBeGreaterThan(0);
   });
 
   it("wijst stats én brands af", () => {
@@ -84,7 +102,7 @@ describe("validateStrictLandingPageContract", () => {
       sec("hero", '<section id="hero"></section>'),
       sec("stats", "<section></section>"),
       sec("features", "<section></section>"),
-      sec("footer", '<section id="footer"><div class="studio-marquee-track"></div></section>'),
+      sec("footer", '<section id="footer"><div class="studio-marquee-track"></div></footer>'),
     ];
     expect(validateStrictLandingPageContract(sections).some((e) => /marquee|ticker/i.test(e))).toBe(true);
   });
@@ -96,6 +114,8 @@ describe("validateStrictLandingPageContract", () => {
       sec("features", "<section></section>"),
       sec("faq", "<section></section>"),
     ];
-    expect(validateStrictLandingPageContract(sections).some((e) => /faq|Verboden|footer|3|4/i.test(e))).toBe(true);
+    expect(validateStrictLandingPageContract(sections).some((e) => /faq|Verboden|footer|3|4|5/i.test(e))).toBe(
+      true,
+    );
   });
 });

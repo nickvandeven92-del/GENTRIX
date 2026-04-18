@@ -16,20 +16,21 @@ const FORBIDDEN_STRICT_LANDING_IDS = new Set([
   "shop",
   "gallery",
   "testimonials",
-  /** Homepage max. 4 secties — FAQ alleen in `marketingPages["faq"]`. */
+  /** Homepage max. 5 secties — FAQ alleen in `marketingPages["faq"]`. */
   "faq",
 ]);
 
 /**
  * Harde checks voor de **landings-`sections`** (studio-contract) bij nieuwe sites.
- * **3** = ultra-compact (`hero` → `features`|`steps` → `footer`); **4** = bewijsband + middenblok + `footer` (geen `faq` op de landing).
+ * **3** = ultra-compact (`hero` → `features`|`steps` → `footer`); **4** = bewijsband + middenblok + `footer`;
+ * **5** = bewijs + `features` + `steps` + `footer` (geen `faq` op de landing).
  */
 export function validateStrictLandingPageContract(sections: TailwindSection[]): string[] {
   const errors: string[] = [];
   const n = sections.length;
 
-  if (n !== 3 && n !== 4) {
-    errors.push(`Strikte landingspagina: **3** (ultra-compact) of **4** (standaard compact); nu ${n}.`);
+  if (n !== 3 && n !== 4 && n !== 5) {
+    errors.push(`Strikte landingspagina: **3** (ultra-compact), **4** (compact) of **5** (diensten + werkwijze); nu ${n}.`);
     return errors;
   }
 
@@ -67,6 +68,20 @@ export function validateStrictLandingPageContract(sections: TailwindSection[]): 
     }
     if (ids.filter((x) => x === "steps").length + ids.filter((x) => x === "features").length > 1) {
       errors.push('Niet meerdere werkwijze/diensten-secties: maximaal één `steps` of één `features`.');
+    }
+  } else if (n === 5) {
+    const proofId = ids[1];
+    if (proofId !== "stats" && proofId !== "brands") {
+      errors.push('Tweede sectie (5-sectieplan): `id` moet `stats` of `brands` zijn.');
+    }
+    if (ids[2] !== "features") {
+      errors.push('Derde sectie (5-sectieplan): `id` moet `features` zijn (diensten/USP).');
+    }
+    if (ids[3] !== "steps") {
+      errors.push('Vierde sectie (5-sectieplan): `id` moet `steps` zijn (werkwijze).');
+    }
+    if (ids.filter((x) => x === "stats").length + ids.filter((x) => x === "brands").length > 1) {
+      errors.push('Niet meerdere bewijs-secties: maximaal één `stats` of één `brands`.');
     }
   }
 

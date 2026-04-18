@@ -82,7 +82,7 @@ function enrichLeisureBrandIdentity(base: BrandIdentity, description: string): B
 
 /**
  * Deterministische merk-DNA vóór logo-creatie (geen extra API).
- * Creatieve specs komen uit {@link generateLogoCandidatesWithClaude}.
+ * (Losse logo-generatorhelpers zijn uit de actieve codebase verwijderd.)
  */
 export function buildBrandIdentity(
   businessName: string,

@@ -59,15 +59,13 @@ describe("buildWebsiteGenerationUserPrompt — §0B ingebed", () => {
     expect(full).toMatch(/Black Friday|black friday/i);
   });
 
-  it("minimale prompt: CONTENT AUTHORITY wél, branche-/designtaal-blokken weg", () => {
-    const minimal = buildWebsiteGenerationUserPrompt("Test BV", "Kapper in Utrecht premium luxe modern.", [], {
+  it("`minimalPrompt` wordt genegeerd: zelfde volledige prompt als zonder vlag", () => {
+    const full = buildWebsiteGenerationUserPrompt("Test BV", "Kapper in Utrecht premium luxe modern.", [], undefined);
+    const withFlag = buildWebsiteGenerationUserPrompt("Test BV", "Kapper in Utrecht premium luxe modern.", [], {
       minimalPrompt: true,
     });
-    expect(minimal).toContain("CONTENT AUTHORITY");
-    expect(minimal).not.toContain("BRANCHE-INSPIRATIE (gedetecteerd");
-    expect(minimal).not.toContain("DESIGNTAAL (gedetecteerd");
-    expect(minimal).not.toContain("=== 0A. INSPIRATIE");
-    expect(minimal).toContain("exhaustief");
-    expect(minimal).toContain("=== 3B.");
+    expect(withFlag).toContain("CONTENT AUTHORITY");
+    expect(withFlag).toContain("BRANCHE-INSPIRATIE (gedetecteerd");
+    expect(withFlag.length).toBe(full.length);
   });
 });
