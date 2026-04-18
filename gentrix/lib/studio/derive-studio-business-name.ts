@@ -33,7 +33,7 @@ export function deriveStudioBusinessNameFromBriefing(text: string): string {
   }
 
   const voorNl = trimmed.match(
-    /\b(?:website|webshop|webpagina|site|pagina|landing\s*page)\s+voor\s+(.+?)(?=\s+met\b|\n|$)/is,
+    /\b(?:website|webshop|webpagina|site|pagina|landing\s*page)\s+voor\s+([\s\S]+?)(?=\s+met\b|\n|$)/i,
   );
   if (voorNl?.[1]) {
     const v = clampStudioBrandName(voorNl[1]);
@@ -41,7 +41,7 @@ export function deriveStudioBusinessNameFromBriefing(text: string): string {
   }
 
   const voorEn = trimmed.match(
-    /\b(?:website|webshop|site|page|landing\s*page)\s+for\s+(.+?)(?=\s+with\b|\n|$)/is,
+    /\b(?:website|webshop|site|page|landing\s*page)\s+for\s+([\s\S]+?)(?=\s+with\b|\n|$)/i,
   );
   if (voorEn?.[1]) {
     const v = clampStudioBrandName(voorEn[1]);
