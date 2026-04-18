@@ -68,10 +68,13 @@ import {
 } from "@/lib/ai/strip-unsplash-urls";
 import {
   applyAiHeroImageToGeneratedPage,
-  generatedPageMayUseAiHeroImage,
+  appendPrebakedHeroImageToUserContent,
   briefingWantsAiGeneratedHeroImage,
+  generatedPageMayUseAiHeroImage,
+  generateStudioHeroImagePublicUrl,
   getAiHeroImagePostProcessSkipReason,
   isAiHeroImagePostProcessEnabled,
+  shouldRunStudioHeroImagePipeline,
   startOpenAiHeroImagePrefetch,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
@@ -2329,6 +2332,8 @@ export type ExecuteGenerateSitePhase2Input = {
   streamHooks?: GenerateSiteStreamHooks;
   /** OpenAI DALL-E parallel aan Claude (start na denklijn in stream en in `generateSiteWithClaude`). */
   prefetchedHeroB64Promise?: Promise<string | null>;
+  /** Zelfde asset als vóór HTML (asset-first); apply gebruikt dit i.p.t. tweede DALL-E. */
+  prebakedHeroPublicUrl?: string | null;
 };
 
 export async function executeGenerateSitePhase2(
@@ -2343,6 +2348,7 @@ export async function executeGenerateSitePhase2(
     promptOptions,
     streamHooks,
     prefetchedHeroB64Promise,
+    prebakedHeroPublicUrl,
   } = input;
 
   let textBody = "";
@@ -2411,6 +2417,7 @@ export async function executeGenerateSitePhase2(
     designContract,
     subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
     prefetchedHeroB64Promise,
+    prebakedHeroPublicUrl: prebakedHeroPublicUrl ?? null,
   });
 
   data = { ...data, sections: maybeEnhanceHero(data.sections, data.config, description) };
@@ -2494,20 +2501,41 @@ export async function generateSiteWithClaude(
       compNs.ok ? compNs.raw : null,
     );
   }
-  const userContentWithComposition = appendCompositionPlanToUserContent(
+  let userContentWithComposition = appendCompositionPlanToUserContent(
     userContentForGeneration,
     buildCompositionPlanPromptInjection(compositionPlanNs),
   );
 
+  const clientImgCount = promptOptions?.clientImages?.length ?? 0;
+  let prebakedHeroPublicUrl: string | null = null;
+  let prefetchedHeroB64Promise: Promise<string | null>;
+
+  if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
+    prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
+      businessName,
+      description,
+      designContract,
+      subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+    });
+    if (prebakedHeroPublicUrl) {
+      userContentWithComposition = appendPrebakedHeroImageToUserContent(
+        userContentWithComposition,
+        prebakedHeroPublicUrl,
+      );
+    }
+  }
+
   const skipHeroPrefetch =
-    (promptOptions?.clientImages?.length ?? 0) > 0 &&
-    !briefingWantsAiGeneratedHeroImage(description);
-  const prefetchedHeroB64Promise = startOpenAiHeroImagePrefetch({
-    businessName,
-    description,
-    designContract,
-    skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
-  });
+    clientImgCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
+  prefetchedHeroB64Promise =
+    !skipHeroPrefetch && !prebakedHeroPublicUrl
+      ? startOpenAiHeroImagePrefetch({
+          businessName,
+          description,
+          designContract,
+          skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
+        })
+      : Promise.resolve(null);
 
   return executeGenerateSitePhase2({
     prepared: p,
@@ -2518,6 +2546,7 @@ export async function generateSiteWithClaude(
     promptOptions,
     streamHooks,
     prefetchedHeroB64Promise,
+    prebakedHeroPublicUrl,
   });
 }
 
@@ -2745,22 +2774,6 @@ export function createGenerateSiteReadableStream(
             : rationale.error?.slice(0, 400),
         );
 
-        const skipHeroPrefetch =
-          (promptOptions?.clientImages?.length ?? 0) > 0 &&
-          !briefingWantsAiGeneratedHeroImage(description);
-        const prefetchedHeroB64Promise = startOpenAiHeroImagePrefetch({
-          businessName,
-          description,
-          designContract,
-          skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
-        });
-        if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch) {
-          send(controller, {
-            type: "status",
-            message: "Hero-foto: OpenAI gestart (loopt parallel met compositie + pagina-HTML)…",
-          });
-        }
-
         const canonicalSectionIds = p.pipelineFeedback.interpreted.sections ?? [];
         let compositionPlan: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIds);
         let compositionSource: "model" | "fallback" = "fallback";
@@ -2812,6 +2825,62 @@ export function createGenerateSiteReadableStream(
           userContentForGeneration,
           buildCompositionPlanPromptInjection(compositionPlan),
         );
+
+        const clientImgCount = promptOptions?.clientImages?.length ?? 0;
+        let prebakedHeroPublicUrl: string | null = null;
+        let prefetchedHeroB64Promise: Promise<string | null>;
+
+        if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
+          send(controller, {
+            type: "status",
+            message: "Hero-sfeerbeeld eerst genereren (asset-first, daarna HTML)…",
+          });
+          const stopHeroPrebakeKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+          try {
+            prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
+              businessName,
+              description,
+              designContract,
+              subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+            });
+          } finally {
+            stopHeroPrebakeKeepalive();
+          }
+          trace("prebaked_hero_done", prebakedHeroPublicUrl ? "url_ok" : "null");
+          if (prebakedHeroPublicUrl) {
+            userContentForGeneration = appendPrebakedHeroImageToUserContent(
+              userContentForGeneration,
+              prebakedHeroPublicUrl,
+            );
+            send(controller, {
+              type: "status",
+              message: "Hero-sfeerbeeld klaar — pagina-HTML wordt nu met deze URL geschreven.",
+            });
+          } else if (isAiHeroImagePostProcessEnabled()) {
+            send(controller, {
+              type: "status",
+              message: "Hero-sfeerbeeld kon niet vooraf worden gemaakt — fallback na HTML (OpenAI).",
+            });
+          }
+        }
+
+        const skipHeroPrefetch =
+          clientImgCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
+        prefetchedHeroB64Promise =
+          !skipHeroPrefetch && !prebakedHeroPublicUrl
+            ? startOpenAiHeroImagePrefetch({
+                businessName,
+                description,
+                designContract,
+                skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
+              })
+            : Promise.resolve(null);
+        if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch && !prebakedHeroPublicUrl) {
+          send(controller, {
+            type: "status",
+            message: "Hero-foto: OpenAI gestart (loopt parallel met pagina-HTML)…",
+          });
+        }
 
         send(controller, { type: "status", message: "Pagina genereren (HTML/JSON)…" });
         trace("main_stream_start", `model=${p.generateModel}`);
@@ -2964,8 +3033,9 @@ export function createGenerateSiteReadableStream(
         if (mayAiHero) {
           send(controller, {
             type: "status",
-            message:
-              isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch
+            message: prebakedHeroPublicUrl
+              ? "Hero: vooraf gegenereerde foto controleren / in `#hero` plaatsen…"
+              : isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch
                 ? "Hero: AI-foto uploaden en in de hero injecteren…"
                 : "Hero: AI-foto genereren (OpenAI) en opslaan…",
           });
@@ -2978,6 +3048,7 @@ export function createGenerateSiteReadableStream(
             designContract,
             subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
             prefetchedHeroB64Promise,
+            prebakedHeroPublicUrl,
           });
         } finally {
           stopAiHeroKeepalive();

@@ -20,6 +20,11 @@ import {
   type GenerateSitePromptOptions,
   type PreparedGenerateSiteClaudeCall,
 } from "@/lib/ai/generate-site-with-claude";
+import {
+  appendPrebakedHeroImageToUserContent,
+  generateStudioHeroImagePublicUrl,
+  shouldRunStudioHeroImagePipeline,
+} from "@/lib/ai/ai-hero-image-postprocess";
 import { getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
@@ -40,6 +45,8 @@ export type SiteGenerationJobCheckpointV1 = {
   designContract: DesignGenerationContract | null;
   /** Alleen velden die na de stream nog nodig zijn (upgrade, subfolder, …). */
   promptOptionsTail?: Pick<GenerateSitePromptOptions, "preserveLayoutUpgrade" | "siteStorageSubfolderSlug">;
+  /** Zelfde PNG als monolithische asset-first stap; fase 2 injecteert zonder nieuwe DALL-E. */
+  prebakedHeroPublicUrl?: string | null;
 };
 
 function serializePrepared(p: PreparedGenerateSiteClaudeCall): SerializedPreparedGenerateSiteClaudeCallV1 {
@@ -148,10 +155,27 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
     compositionPlanNs = mergeCompositionPlanWithCanonical(canonicalSectionIdsNs, compNs.ok ? compNs.raw : null);
   }
 
-  const userContentWithComposition = appendCompositionPlanToUserContent(
+  let userContentWithComposition = appendCompositionPlanToUserContent(
     userContentForGeneration,
     buildCompositionPlanPromptInjection(compositionPlanNs),
   );
+
+  const clientImgCount = promptOptions?.clientImages?.length ?? 0;
+  let prebakedHeroPublicUrl: string | null = null;
+  if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
+    prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
+      businessName,
+      description,
+      designContract,
+      subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+    });
+    if (prebakedHeroPublicUrl) {
+      userContentWithComposition = appendPrebakedHeroImageToUserContent(
+        userContentWithComposition,
+        prebakedHeroPublicUrl,
+      );
+    }
+  }
 
   const checkpoint: SiteGenerationJobCheckpointV1 = {
     v: 1,
@@ -160,6 +184,7 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
     prepared: serializePrepared(p),
     userContentWithComposition,
     designContract,
+    prebakedHeroPublicUrl,
     promptOptionsTail: {
       ...(promptOptions?.preserveLayoutUpgrade != null
         ? { preserveLayoutUpgrade: promptOptions.preserveLayoutUpgrade }
@@ -203,6 +228,9 @@ export function buildPhase2InputFromCheckpoint(
     businessName: checkpoint.businessName,
     description: checkpoint.description,
     promptOptions,
+    /** Fase 1 draait asset-first; fase 2 heeft geen parallelle prefetch in checkpoint. */
+    prefetchedHeroB64Promise: Promise.resolve(null),
+    prebakedHeroPublicUrl: checkpoint.prebakedHeroPublicUrl ?? null,
   };
 }
 

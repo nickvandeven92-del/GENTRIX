@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
   Code2,
   Columns2,
   ExternalLink,
@@ -365,8 +366,29 @@ export function GeneratorForm({
   const [portalReady, setPortalReady] = useState(false);
   /** Voor “bezig s”-indicator in het feedbackpaneel (Lovable-achtige doorlooptijd). */
   const [runStartedAtMs, setRunStartedAtMs] = useState<number | null>(null);
+  /** Korte “Klaar!”-flash op de preview vóór de iframe (rustige overgang). */
+  const [studioPreviewReadyFlash, setStudioPreviewReadyFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const studioReadyFeedbackLine = useMemo(() => {
+    const r = designRationale?.trim();
+    if (r) {
+      const first = (r.split(/\n\n+/)[0] ?? r).trim();
+      return first.length > 220 ? `${first.slice(0, 217)}…` : first;
+    }
+    const bits = designContract
+      ? [designContract.paletteMode, designContract.motionLevel].filter(Boolean).join(" · ")
+      : "";
+    if (bits) return `Het ontwerp volgt je briefing (${bits}).`;
+    return "Het concept staat zo in de preview.";
+  }, [designRationale, designContract]);
+
+  useEffect(() => {
+    if (!studioPreviewReadyFlash) return;
+    const id = window.setTimeout(() => setStudioPreviewReadyFlash(false), 1150);
+    return () => window.clearTimeout(id);
+  }, [studioPreviewReadyFlash]);
 
   useEffect(() => setPortalReady(true), []);
 
@@ -603,6 +625,8 @@ export function GeneratorForm({
     setStreamEndedWithoutComplete(false);
     setGenerationActivity([]);
     setRightPaneMode("preview");
+    setPanelLayout("split");
+    setStudioPreviewReadyFlash(false);
     setLoading(true);
     setRunStartedAtMs(Date.now());
     try {
@@ -768,6 +792,7 @@ export function GeneratorForm({
         if (ev.type === "complete") {
           if (ev.outputFormat === "tailwind_sections") {
             setGeneratedTailwind(ev.data);
+            setStudioPreviewReadyFlash(true);
             setStreamEndedWithoutComplete(false);
             sawComplete = true;
             setStreamPhase("Generatie voltooid");
@@ -881,8 +906,6 @@ export function GeneratorForm({
     ];
   }, [generatedTailwind, loading, conceptRefineLoading, runConceptRefinement]);
 
-  const fieldClass =
-    "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20";
   const fieldLockedClass =
     "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-600 placeholder:text-slate-400 focus:border-slate-200 focus:ring-0";
 
@@ -941,14 +964,219 @@ export function GeneratorForm({
       </div>
     ) : null;
 
+  const renderBriefingForm = (variant: "zen" | "studio") => {
+    const zen = variant === "zen";
+    const opdrachtBlock = (
+      <div>
+        <div className="flex items-center gap-1.5">
+          <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+            Opdracht
+          </label>
+          <StudioThemeStylesHint />
+        </div>
+        {descriptionLocked ? (
+          <p className="mt-1 text-xs text-slate-500">
+            Briefing is beveiligd zodra er een concept-site is. HTML-aanpassingen: tab{" "}
+            <strong className="font-medium text-slate-700 dark:text-slate-200">Bewerken</strong> (zelfde URL met slug).
+          </p>
+        ) : (
+          <span id="studio-briefing-a11y-hint" className="sr-only">
+            Plak URL&apos;s, tekst en referentie-afbeeldingen; klantfoto&apos;s alleen bij het klantfoto-vak{" "}
+            {zen ? "hierboven" : "hieronder"}.
+          </span>
+        )}
+        <div
+          onDrop={handleBriefingAreaDrop}
+          onDragOver={(ev) => {
+            if (!descriptionLocked) ev.preventDefault();
+          }}
+          className={cn(
+            "mt-1.5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-950",
+            zen && "shadow-md",
+            descriptionLocked && "opacity-90",
+          )}
+        >
+          <textarea
+            id="studioBriefing"
+            name="studioBriefing"
+            aria-describedby={descriptionLocked ? undefined : "studio-briefing-a11y-hint"}
+            required={!descriptionLocked}
+            maxLength={4000}
+            rows={zen ? 8 : 10}
+            value={briefingText}
+            onChange={(e) => {
+              if (descriptionLocked) return;
+              setBriefingText(e.target.value);
+            }}
+            onPaste={handleDescriptionPaste}
+            readOnly={descriptionLocked}
+            className={cn(
+              "block w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
+              zen ? "min-h-[220px]" : "min-h-[200px]",
+              descriptionLocked && fieldLockedClass,
+            )}
+            placeholder={submittedPromptTurns.length > 0 ? "Volgende opdracht…" : "Ask GENTRIX…"}
+          />
+          {briefingImages.length > 0 ? (
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 px-2 py-2 dark:border-zinc-800">
+              {briefingImages.map((img, i) => (
+                <div
+                  key={img.url || `b-${i}`}
+                  className="group relative size-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white dark:border-zinc-700"
+                >
+                  {img.uploading ? (
+                    <div className="flex size-full items-center justify-center">
+                      <Loader2 className="size-3.5 animate-spin text-indigo-400" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt={img.label} className="size-full object-cover" />
+                      <button
+                        type="button"
+                        disabled={descriptionLocked}
+                        onClick={() => setBriefingImages((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+
+    const klantFotosBlock = (
+      <div>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+          Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
+        </label>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Alleen beelden voor <strong className="font-medium text-slate-600 dark:text-slate-300">in de site</strong>; de
+          rest in het opdrachtveld {zen ? "hieronder" : "hierboven"}.
+        </p>
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          className={cn(
+            "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
+            zen && "min-h-[96px] justify-center border-slate-300/90 bg-white dark:border-zinc-600",
+            !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
+            descriptionLocked && "pointer-events-none opacity-60",
+          )}
+        >
+          {clientImages.map((img, i) => (
+            <div
+              key={img.url || i}
+              className={cn(
+                "group relative shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-700",
+                zen ? "size-20" : "size-16",
+              )}
+            >
+              {img.uploading ? (
+                <div className="flex size-full items-center justify-center">
+                  <Loader2 className="size-4 animate-spin text-slate-400" />
+                </div>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.url} alt={img.label} className="size-full object-cover" />
+                  <button
+                    type="button"
+                    disabled={descriptionLocked}
+                    onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+          {clientImages.length < 8 && (
+            <button
+              type="button"
+              disabled={descriptionLocked}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50",
+                zen ? "size-20" : "size-16",
+              )}
+            >
+              <ImagePlus className="size-5" />
+              <span className="text-[10px] font-medium">Upload</span>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            disabled={descriptionLocked}
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        </div>
+        {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
+      </div>
+    );
+
+    return (
+      <form onSubmit={onSubmit} className={cn("space-y-3", zen && "space-y-6")}>
+        {zen ? (
+          <>
+            {klantFotosBlock}
+            {opdrachtBlock}
+          </>
+        ) : (
+          <>
+            {opdrachtBlock}
+            {klantFotosBlock}
+          </>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm",
+            "hover:bg-[#5558e8] disabled:cursor-not-allowed disabled:opacity-60",
+            zen && "w-full justify-center py-3 text-base shadow-md",
+          )}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Genereren…
+            </>
+          ) : (
+            <>
+              <Send className="size-4" aria-hidden />
+              Genereer site
+            </>
+          )}
+        </button>
+      </form>
+    );
+  };
+
+  const showZenFirstRunComposer =
+    !existingDraftLocked &&
+    submittedPromptTurns.length === 0 &&
+    !loading &&
+    generatedTailwind == null;
+
   const renderPanels = () => (
       <ResizableEditorPanels
         storageKey="gentrix-studio-generator-sidebar-px"
         className="min-h-0 flex-1"
         visiblePanels={visiblePanelsProp}
-        defaultSidebarPx={420}
-        minSidebarPx={280}
-        maxSidebarPx={560}
+        defaultSidebarPx={332}
+        minSidebarPx={248}
+        maxSidebarPx={420}
         minMainPx={480}
         sidebar={
           <div className="flex min-h-0 flex-1 flex-col gap-0 pr-1">
@@ -1205,170 +1433,7 @@ export function GeneratorForm({
               ) : null}
             </div>
             <div className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-              <form onSubmit={onSubmit} className="space-y-3">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700">
-              Opdracht
-            </label>
-            <StudioThemeStylesHint />
-          </div>
-          {descriptionLocked ? (
-            <p className="mt-1 text-xs text-slate-500">
-              Briefing is beveiligd zodra er een concept-site is. HTML-aanpassingen: tab{" "}
-              <strong className="font-medium text-slate-700">Bewerken</strong> (zelfde URL met slug).
-            </p>
-          ) : (
-            <span id="studio-briefing-a11y-hint" className="sr-only">
-              Plak URL&apos;s, tekst en referentie-afbeeldingen; klantfoto&apos;s alleen in het vak hierboven.
-            </span>
-          )}
-          <div
-            onDrop={handleBriefingAreaDrop}
-            onDragOver={(ev) => {
-              if (!descriptionLocked) ev.preventDefault();
-            }}
-            className={cn(
-              "mt-1.5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-950",
-              descriptionLocked && "opacity-90",
-            )}
-          >
-            <textarea
-              id="studioBriefing"
-              name="studioBriefing"
-              aria-describedby={descriptionLocked ? undefined : "studio-briefing-a11y-hint"}
-              required={!descriptionLocked}
-              maxLength={4000}
-              rows={10}
-              value={briefingText}
-              onChange={(e) => {
-                if (descriptionLocked) return;
-                setBriefingText(e.target.value);
-              }}
-              onPaste={handleDescriptionPaste}
-              readOnly={descriptionLocked}
-              className={cn(
-                "block min-h-[200px] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
-                descriptionLocked && fieldLockedClass,
-              )}
-              placeholder={submittedPromptTurns.length > 0 ? "Volgende opdracht…" : "Ask GENTRIX…"}
-            />
-            {briefingImages.length > 0 ? (
-              <div className="flex flex-wrap gap-2 border-t border-slate-100 px-2 py-2 dark:border-zinc-800">
-                {briefingImages.map((img, i) => (
-                  <div
-                    key={img.url || `b-${i}`}
-                    className="group relative size-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white dark:border-zinc-700"
-                  >
-                    {img.uploading ? (
-                      <div className="flex size-full items-center justify-center">
-                        <Loader2 className="size-3.5 animate-spin text-indigo-400" />
-                      </div>
-                    ) : (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img.url} alt={img.label} className="size-full object-cover" />
-                        <button
-                          type="button"
-                          disabled={descriptionLocked}
-                          onClick={() => setBriefingImages((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
-          </label>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Alleen beelden voor <strong className="font-medium text-slate-600">in de site</strong>; de rest in het
-            opdrachtveld hierboven.
-          </p>
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            className={cn(
-              "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
-              !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
-              descriptionLocked && "pointer-events-none opacity-60",
-            )}
-          >
-            {clientImages.map((img, i) => (
-              <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                {img.uploading ? (
-                  <div className="flex size-full items-center justify-center">
-                    <Loader2 className="size-4 animate-spin text-slate-400" />
-                  </div>
-                ) : (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={img.label} className="size-full object-cover" />
-                    <button
-                      type="button"
-                      disabled={descriptionLocked}
-                      onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-            {clientImages.length < 8 && (
-              <button
-                type="button"
-                disabled={descriptionLocked}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ImagePlus className="size-5" />
-                <span className="text-[10px] font-medium">Upload</span>
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              multiple
-              disabled={descriptionLocked}
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-          </div>
-          {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm",
-            "hover:bg-[#5558e8] disabled:cursor-not-allowed disabled:opacity-60",
-          )}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Genereren…
-            </>
-          ) : (
-            <>
-              <Send className="size-4" aria-hidden />
-              Genereer site
-            </>
-          )}
-        </button>
-      </form>
+              {renderBriefingForm("studio")}
             </div>
           </div>
         }
@@ -1554,14 +1619,29 @@ export function GeneratorForm({
                   </div>
                 </div>
               ) : generatorViewPayload ? (
-                <PublishedSiteView
-                  payload={generatorViewPayload}
-                  className="min-h-0 flex-1"
-                  publishedSlug={slugFromUrl}
-                  draftPublicPreviewToken={draftPublicPreviewToken}
-                  appointmentsEnabled={appointmentsEnabled}
-                  webshopEnabled={webshopEnabled}
-                />
+                studioPreviewReadyFlash ? (
+                  <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 py-12 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-300">
+                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100 shadow-inner dark:bg-emerald-950/70">
+                      <Check className="size-9 text-emerald-700 dark:text-emerald-300" strokeWidth={2.5} aria-hidden />
+                    </div>
+                    <div className="max-w-md space-y-2">
+                      <p className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Klaar!</p>
+                      <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{studioReadyFeedbackLine}</p>
+                    </div>
+                    <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300">Preview opent zo…</p>
+                  </div>
+                ) : (
+                  <div className="relative min-h-0 flex-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
+                    <PublishedSiteView
+                      payload={generatorViewPayload}
+                      className="min-h-0 flex-1"
+                      publishedSlug={slugFromUrl}
+                      draftPublicPreviewToken={draftPublicPreviewToken}
+                      appointmentsEnabled={appointmentsEnabled}
+                      webshopEnabled={webshopEnabled}
+                    />
+                  </div>
+                )
               ) : (
                 <div className="flex min-h-[min(360px,50dvh)] flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
                   <Monitor className="size-10 text-zinc-300 dark:text-zinc-600" aria-hidden />
@@ -1582,7 +1662,24 @@ export function GeneratorForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {portalReady && previewFullscreen
+      {showZenFirstRunComposer ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center overflow-auto bg-gradient-to-b from-zinc-50 via-white to-zinc-50/90 px-4 py-10 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950">
+          <div className="w-full max-w-xl space-y-3 pb-8 text-center">
+            <p className="text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-100">
+              Site-studio · eerste generatie
+            </p>
+            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+              Alleen klantfoto&apos;s en je opdracht — rustig overzicht. Als je op{" "}
+              <strong className="font-medium text-zinc-700 dark:text-zinc-300">Genereer site</strong> drukt, opent het{" "}
+              <strong className="font-medium text-zinc-700 dark:text-zinc-300">split scherm</strong> met voortgang links en
+              preview rechts.
+            </p>
+          </div>
+          <div className="w-full max-w-xl shrink-0 rounded-2xl border border-zinc-200/90 bg-white/95 p-6 shadow-md shadow-zinc-200/40 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/90 dark:shadow-black/40">
+            {renderBriefingForm("zen")}
+          </div>
+        </div>
+      ) : portalReady && previewFullscreen
         ? createPortal(
             <div className="fixed inset-0 z-[1000] flex flex-col overflow-hidden bg-zinc-100 p-2 shadow-2xl dark:bg-zinc-950 sm:p-3">
               <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200 bg-zinc-100 px-2 py-2 dark:border-zinc-800 dark:bg-zinc-900">

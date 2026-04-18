@@ -13,7 +13,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Site-generatie (user-bericht, stream, finalisatie)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:
-      "prepareGenerateSiteClaudeCall: kennis, referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; generateSiteCompositionPlanWithClaude (copy-budget); stream; finalizeGenerateSiteFromClaudeText; self-review + strip oude stock-URL's + optionele AI-hero; createGenerateSiteReadableStream voor NDJSON.",
+      "prepareGenerateSiteClaudeCall: kennis, referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; generateSiteCompositionPlanWithClaude (copy-budget); **asset-first hero** (DALL-E + upload vóór HTML, URL in user-prompt) waar de pipeline actief is; stream; finalizeGenerateSiteFromClaudeText; self-review + strip oude stock-URL's + AI-hero-inject als vangnet; createGenerateSiteReadableStream voor NDJSON.",
   },
   {
     label: "System prompts (volledig vs minimal)",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendPrebakedHeroImageToUserContent,
   heroSectionOpenTagHasInjectableHeroId,
   injectAiHeroImageIntoHeroSectionHtml,
   shouldAttemptAiHeroImageForHtml,
@@ -43,5 +44,12 @@ describe("ai-hero-image-postprocess", () => {
     const out = injectAiHeroImageIntoHeroSectionHtml(html, "https://example.com/x.png");
     expect(out).not.toBeNull();
     expect(out).toContain("data-gentrix-ai-hero-img=");
+  });
+
+  it("appendPrebakedHeroImageToUserContent plakt URL-blok achter string user content", () => {
+    const out = appendPrebakedHeroImageToUserContent("BEGIN", "https://cdn.example.com/hero.png") as string;
+    expect(out.startsWith("BEGIN")).toBe(true);
+    expect(out).toContain("https://cdn.example.com/hero.png");
+    expect(out).toContain("ASSET-FIRST");
   });
 });

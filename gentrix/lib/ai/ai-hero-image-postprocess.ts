@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { GeneratedTailwindPage, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -140,9 +141,87 @@ export type OpenAiHeroPrefetchInput = {
 };
 
 /**
+ * Zelfde drempel als `startOpenAiHeroImagePrefetch`: wanneer `false`, geen server-side hero-beeld
+ * (meestal klantfoto's voor de hero, tenzij briefing expliciet AI-hero vraagt).
+ */
+export function shouldRunStudioHeroImagePipeline(
+  description: string,
+  clientImageCount: number,
+): boolean {
+  if (!isAiHeroImagePostProcessEnabled()) return false;
+  const skipPrefetchBecauseLikelyClientHero =
+    clientImageCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
+  return !skipPrefetchBecauseLikelyClientHero;
+}
+
+/**
+ * DALL-E + upload **vóór** de grote HTML/JSON-run (Lovable-achtig: asset eerst, daarna compositie).
+ * Retourneert `null` bij uitgeschakelde pipeline of OpenAI/upload-fout.
+ */
+export async function generateStudioHeroImagePublicUrl(ctx: {
+  businessName: string;
+  description: string;
+  designContract: DesignGenerationContract | null;
+  subfolderSlug?: string | null;
+}): Promise<string | null> {
+  if (!isAiHeroImagePostProcessEnabled()) return null;
+  const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
+  const b64 = await openAiCreateHeroPngBase64(prompt);
+  if (!b64) return null;
+  let png: Buffer;
+  try {
+    png = Buffer.from(b64, "base64");
+  } catch {
+    return null;
+  }
+  if (png.length < 500) return null;
+  return uploadPngToSiteAssets(png, ctx.subfolderSlug);
+}
+
+function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
+  const u = publicUrl.trim();
+  if (!u) return "";
+  return (
+    "\n\n=== SERVER: HERO-SFEERFOTO (AL KLAAR — ASSET-FIRST) ===\n\n" +
+    "Er is **nu al** één AI-sfeerbeeld geüpload. **Geen Unsplash/Pexels of andere stock-URL** voor dit hoofdbeeld — gebruik **exact** deze URL (letterlijk copy-paste, geen query-params wijzigen):\n\n" +
+    `\`${u}\`\n\n` +
+    "**In de landings-`hero`-sectie (`id: \"hero\"`):**\n" +
+    "- Buitenste wrapper **moet** `<section id=\"hero\" …>` zijn met `relative` in de `class` (stacking voor overlays).\n" +
+    "- Zet **minstens één** `<img … src=\"…\" …>` **of** een zichtbare `background-image` / Tailwind `bg-[url(...)]` die **exact** bovenstaande URL gebruikt — de hero mag **niet** een leeg wit/grijs vlak zijn.\n" +
+    "- Gradient/overlays (`bg-black/30`, `from-black/60`, …) zijn oké zolang het beeld zichtbaar blijft; **niet** een effen ondoorzichtige `bg-white` over de hele fotovlak zonder doorzichtigheid.\n\n" +
+    "Dit blok is leidend voor het grote herobeeld; andere secties volgen de normale stock-regels.\n"
+  );
+}
+
+/** Voegt het asset-first hero-blok toe net vóór de Claude HTML/JSON-stream (string of multimodal user content). */
+export function appendPrebakedHeroImageToUserContent(
+  userContent: string | ContentBlockParam[],
+  publicUrl: string,
+): string | ContentBlockParam[] {
+  const footer = buildPrebakedHeroImagePromptFooter(publicUrl);
+  if (!footer) return userContent;
+
+  if (typeof userContent === "string") {
+    return `${userContent}${footer}`;
+  }
+  if (userContent.length === 0) {
+    return [{ type: "text", text: footer.trim() }];
+  }
+  const last = userContent[userContent.length - 1];
+  if (last?.type === "text" && "text" in last && typeof (last as { text: string }).text === "string") {
+    const lt = last as { type: "text"; text: string };
+    return [...userContent.slice(0, -1), { type: "text", text: `${lt.text}${footer}` }];
+  }
+  return [...userContent, { type: "text", text: footer.trim() }];
+}
+
+/**
  * Start DALL-E **parallel** aan de grote Claude HTML-stream, zodra naam + briefing + (optioneel)
  * designcontract bekend zijn. `applyAiHeroImageToGeneratedPage` hergebruikt het resultaat en valt
  * terug op een verse OpenAI-call als prefetch `null` opleverde of overgeslagen was.
+ *
+ * Bij **asset-first** (`generateStudioHeroImagePublicUrl` vóór HTML) niet starten: geef
+ * `Promise.resolve(null)` door en zet `prebakedHeroPublicUrl` op de apply-context.
  */
 export function startOpenAiHeroImagePrefetch(input: OpenAiHeroPrefetchInput): Promise<string | null> {
   if (!isAiHeroImagePostProcessEnabled()) return Promise.resolve(null);
@@ -262,6 +341,11 @@ export type ApplyAiHeroImageContext = {
   subfolderSlug?: string | null;
   /** Parallel gestart vóór/e tijdens Claude — bij `null` na await: opnieuw OpenAI. */
   prefetchedHeroB64Promise?: Promise<string | null>;
+  /**
+   * Zelfde PNG als asset-first stap vóór HTML: injecteer zonder tweede DALL-E-call.
+   * Bij mislukte inject (geen `<section id="hero">`) geen fallback-OpenAI — asset staat al op CDN.
+   */
+  prebakedHeroPublicUrl?: string | null;
 };
 
 export async function applyAiHeroImageToGeneratedPage(
@@ -283,6 +367,21 @@ export async function applyAiHeroImageToGeneratedPage(
       : sec.html;
 
   if (!shouldAttemptAiHeroImageForHtml(heroHtmlForCheck)) return data;
+
+  const preUrl = ctx.prebakedHeroPublicUrl?.trim();
+  if (preUrl) {
+    const injectedEarly = injectAiHeroImageIntoHeroSectionHtml(heroHtmlForCheck, preUrl);
+    if (injectedEarly != null) {
+      const nextSections = [...data.sections];
+      nextSections[idx] = { ...sec, html: injectedEarly };
+      return { ...data, sections: nextSections };
+    }
+    console.warn(
+      "[ai-hero] prebaked URL present but hero HTML has no injectable <section id=\"hero\"> — skipping second OpenAI call (asset already on CDN):",
+      preUrl.slice(0, 120),
+    );
+    return data;
+  }
 
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
   let b64: string | null =
