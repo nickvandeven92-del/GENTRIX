@@ -50,10 +50,15 @@ import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import type { MessageDeltaUsage } from "@anthropic-ai/sdk/resources/messages/messages";
 import { marketingPageNavLabel } from "@/lib/ai/marketing-page-slugs";
 const USER_CONTEXT_MAX_CHARS = 48_000;
-const CONFIG_MAX_TOKENS = 12_000;
-const SECTION_MAX_TOKENS = 36_000;
-const MARKETING_MAX_TOKENS = 32_000;
-const CONTACT_MAX_TOKENS = 32_000;
+/**
+ * Output-plafonds per sub-call. Ooit ⩾12k/36k/32k — dat laat het model onnodig lang "doortypen" (hogere
+ * kosten, nadering van serverless-limiet). In chunks is ruwe JSON per stap kleiner; bij `max_tokens`-stop
+ * of parse-fout: stap opnieuw of plafond licht verhogen.
+ */
+const CONFIG_MAX_TOKENS = 1_500;
+const SECTION_MAX_TOKENS = 12_000;
+const MARKETING_MAX_TOKENS = 8_000;
+const CONTACT_MAX_TOKENS = 6_000;
 
 const configChunkSchema = z.object({ config: masterPromptPageConfigSchema });
 const landingBatchChunkSchema = z.object({
