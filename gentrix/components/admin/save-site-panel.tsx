@@ -8,10 +8,15 @@ import {
   type GeneratedTailwindPage,
 } from "@/lib/ai/tailwind-sections-schema";
 import { slugifyClientNameForSubfolder } from "@/lib/studio/client-name-for-slug";
+import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
+import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 import { isValidSubfolderSlug, slugify, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
-/** In de site-studio staat de klantnaam soms op een placeholdertekst; de slug moet uit de briefing komen. */
+/**
+ * Alleen klant-/bedrijfsnaam gebruiken voor slug — nooit de volledige briefing (voorkomt megaslugs).
+ * Zonder naam: kort afgeleid uit de briefing via dezelfde heuristiek als de generator.
+ */
 function textBasisForSubfolderSlug(
   generatorMode: boolean,
   name: string,
@@ -19,7 +24,12 @@ function textBasisForSubfolderSlug(
 ): string {
   const n = name.trim();
   const d = description.trim();
-  if (generatorMode && d) return n ? `${n}\n\n${d}` : d;
+  if (generatorMode) {
+    if (n) return n;
+    const fromBrief = deriveStudioBusinessNameFromBriefing(d);
+    if (fromBrief && !isStudioUndecidedBrandName(fromBrief)) return fromBrief;
+    return d;
+  }
   return n || d;
 }
 

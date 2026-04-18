@@ -27,16 +27,19 @@ export function ReactSiteSectionView({
   accentVar,
   resolveHref = (h) => h,
   fixedNavOverlapClass = "",
+  embedded = false,
 }: {
   section: ReactSiteSection;
   accentVar: string;
   resolveHref?: ResolveHref;
   /** Zie `classForFixedNavOverlap` — extra ruimte onder vaste nav-pill. */
   fixedNavOverlapClass?: string;
+  /** Studio/iframe: nav `fixed` klemt niet goed — doorgeven aan `CinematicNav`. */
+  embedded?: boolean;
 }) {
   switch (section.type) {
     case "nav_overlay":
-      return <CinematicNav section={section} resolveHref={resolveHref} />;
+      return <CinematicNav section={section} resolveHref={resolveHref} embedded={embedded} />;
     case "hero_cinematic":
       return <CinematicHero section={section} accentVar={accentVar} resolveHref={resolveHref} />;
     case "full_bleed":

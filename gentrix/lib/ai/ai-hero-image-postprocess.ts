@@ -110,7 +110,9 @@ export function buildOpenAiHeroPrompt(
   const parts: string[] = [
     "Photorealistic documentary-style photograph for a commercial website hero background.",
     "Shot like a real camera (35mm or full-frame DSLR), natural skin texture, realistic imperfections, not CGI or video-game render.",
-    "Avoid plastic airbrushed skin, oversharpening, uncanny symmetry, or illustration look.",
+    "Editorial reportage look: believable real-world environment, light dust or tool clutter OK, not a sterile CGI product render.",
+    "Avoid plastic airbrushed skin, wax-doll faces, oversharpening, perfectly symmetrical poses, extra fingers, or illustration look.",
+    "Hands and tools: anatomically plausible, slightly imperfect, candid moment — not a posed stock tableau.",
     "No text, no logos, no watermarks, no UI mockups.",
     "Natural light, shallow depth of field, subtle film grain optional, tasteful color grading.",
   ];
@@ -260,7 +262,9 @@ async function openAiCreateHeroPngBase64(prompt: string): Promise<string | null>
         n: 1,
         size: "1792x1024",
         response_format: "b64_json",
-        quality: "standard",
+        /** `hd` = scherpere details, minder “AI-plastic”; override met `STUDIO_AI_HERO_IMAGE_QUALITY=standard`. */
+        quality:
+          process.env.STUDIO_AI_HERO_IMAGE_QUALITY?.trim().toLowerCase() === "standard" ? "standard" : "hd",
       }),
     });
     const json = (await res.json()) as OpenAiImageGenResponse;

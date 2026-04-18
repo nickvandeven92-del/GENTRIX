@@ -110,6 +110,7 @@ export function ReactPublishedSiteView({
           accentVar={ACCENT_CSS_VAR}
           resolveHref={resolveHref}
           fixedNavOverlapClass={classForFixedNavOverlap(section.type, hasFixedNav)}
+          embedded={embedded}
         />
       ))}
     </div>

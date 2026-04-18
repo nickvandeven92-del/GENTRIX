@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { Menu, X } from "lucide-react";
 import type { ReactSiteSection } from "@/lib/site/react-site-schema";
@@ -113,14 +120,37 @@ function MobileNavDrawer({
   return createPortal(ui, document.body);
 }
 
-export function CinematicNav({ section, resolveHref }: { section: NavSection; resolveHref: ResolveHref }) {
+export function CinematicNav({
+  section,
+  resolveHref,
+  embedded = false,
+}: {
+  section: NavSection;
+  resolveHref: ResolveHref;
+  /** `true` in studio/iframe: `position:fixed` klemt t.o.v. getransformeerde parent — dan `sticky`. */
+  embedded?: boolean;
+}) {
   const { logoText, links } = section.props;
   const barStyle = section.props.barStyle ?? "floating";
   const [mobileOpen, setMobileOpen] = useState(false);
+  /** 0 = transparant glas boven hero, 1 = vaste donkere balk (scroll). */
+  const [navElevated, setNavElevated] = useState(0);
   const lgUp = useLgUp();
   const mobileMenuOpen = mobileOpen && !lgUp;
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  useEffect(() => {
+    if (barStyle !== "floating") return;
+    const max = 168;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setNavElevated(Math.min(1, y / max));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [barStyle]);
 
   // Close menu when viewport size changes (desktop ↔ mobile) or when navigating
   useEffect(() => {
@@ -244,15 +274,30 @@ export function CinematicNav({ section, resolveHref }: { section: NavSection; re
     );
   }
 
-  /* floating — glass pill */
+  /* floating — glass pill; scroll: glas → vaste donkere strook (referentie: ambachtelijke landingspagina’s). */
+  const floatingShellStyle: CSSProperties = {
+    ...fontSans,
+    borderColor: `rgba(255,255,255,${0.14 * (1 - navElevated) + 0.22 * navElevated})`,
+    backgroundColor: `rgba(9,9,11,${0.36 * (1 - navElevated) + 0.9 * navElevated})`,
+    boxShadow:
+      navElevated > 0.12
+        ? `0 18px 50px rgba(0,0,0,${0.32 + navElevated * 0.28})`
+        : `0 10px 36px rgba(0,0,0,0.2)`,
+  };
+
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-5 sm:pt-6">
+    <header
+      className={cn(
+        "z-50 flex w-full justify-center px-4 pt-5 sm:pt-6",
+        embedded ? "sticky top-0" : "pointer-events-none fixed inset-x-0 top-0",
+      )}
+    >
       <MotionNavShell
         className={cn(
-          "pointer-events-auto flex w-full max-w-5xl flex-col gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6",
-          "border-white/15 bg-black/40",
+          "pointer-events-auto flex w-full max-w-5xl flex-col gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6",
+          navElevated > 0.65 && "rounded-xl sm:rounded-2xl",
         )}
-        style={{ ...fontSans, borderColor: "rgba(255,255,255,0.14)" }}
+        style={floatingShellStyle}
       >
         <div className="flex w-full items-center justify-between gap-3 lg:contents">
           <span

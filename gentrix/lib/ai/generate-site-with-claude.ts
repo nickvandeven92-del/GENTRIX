@@ -1252,6 +1252,7 @@ function buildMinimalMarketingCopyContractMarkdown(): string {
 - **USP / feature-kaarten / stappen:** per item **titel + hoogstens één korte regel** (**≤ 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
 - **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina’s: **kern + witruimte** — geen drie identieke marketing-alinea’s achter elkaar.
 - **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van “professioneel klinkend door veel woorden”.
+- **Telefoon & openingstijden — niet spammen:** Zelfde \`tel:\`/\`wa.me\` en dezelfde volledige openingstijdenregel **niet** in hero, testimonials, split-sectie, CTA-band **én** footer tegelijk. **Maximaal één** compacte plek boven de vouw (nav-knop of dunne infostrip) **plus** de footer/contactkolom — of alleen footer als je twijfelt. Geen copy-paste van identieke urenzin in drie banden achter elkaar.
 
 ${buildStockImageryAgencyDefaultMarkdown()}`;
 }
@@ -1576,6 +1577,7 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
   return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
+- **Praktische info (tel / bellen / WhatsApp / uren):** **één** duidelijke bron op de pagina (footer of \`#contact\`) + optioneel **één** extra compacte CTA (zelfde nummer mag, maar **geen** vijfde herhaling van dezelfde urenzin in bodyteksten). Identieke openingstijden als proza in een split-sectie **en** in de footer = **fout** — laat één variant staan.
 - **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
 - **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** externe stock op marketing/landingspagina's; andere secties = typografie/gradient of **spaarzame klantfoto** (zie **Beeld (studio)** — géén volsite-raster).
 ${multiPageLine}`;

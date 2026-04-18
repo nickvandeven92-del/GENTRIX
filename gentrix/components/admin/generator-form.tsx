@@ -135,15 +135,23 @@ export function GeneratorForm({
   const [submittedPromptTurns, setSubmittedPromptTurns] = useState<{ id: string; text: string }[]>([]);
 
   const briefingForDerivation = briefingText.trim() || sentBriefingSnapshot?.trim() || "";
-  const businessName = useMemo(
-    () => deriveStudioBusinessNameFromBriefing(briefingForDerivation),
-    [briefingForDerivation],
-  );
+  /** Optioneel vak bij de opdracht: voorkomt lange URL-slugs en vult merknaam i.p.v. alleen uit briefing te halen. */
+  const [studioBedrijfsnaam, setStudioBedrijfsnaam] = useState(() => {
+    const n = initialClientName?.trim() ?? "";
+    if (!n) return "";
+    const derived = deriveStudioBusinessNameFromBriefing(n);
+    return isStudioUndecidedBrandName(derived) ? "" : n;
+  });
+  const resolvedBusinessName = useMemo(() => {
+    const explicit = studioBedrijfsnaam.trim();
+    if (explicit) return explicit;
+    return deriveStudioBusinessNameFromBriefing(briefingForDerivation);
+  }, [studioBedrijfsnaam, briefingForDerivation]);
   const previewClientLabel = useMemo(() => {
-    const b = businessName.trim();
+    const b = resolvedBusinessName.trim();
     if (isStudioUndecidedBrandName(b)) return "Concept";
     return b || "Website";
-  }, [businessName]);
+  }, [resolvedBusinessName]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawFallback, setRawFallback] = useState<string | null>(null);
@@ -635,8 +643,9 @@ export function GeneratorForm({
     try {
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
       const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
+      const nameForApi = studioBedrijfsnaam.trim() || deriveStudioBusinessNameFromBriefing(prompt);
       const body: Record<string, unknown> = {
-        businessName: deriveStudioBusinessNameFromBriefing(prompt),
+        businessName: nameForApi,
         description: prompt,
         ...(readyImages.length > 0
           ? { clientImages: readyImages.map((img) => ({ url: img.url, label: img.label || undefined })) }
@@ -971,13 +980,41 @@ export function GeneratorForm({
     const zen = variant === "zen";
     const opdrachtBlock = (
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 items-center gap-1.5 pb-1">
             <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
               Opdracht
             </label>
             <StudioThemeStylesHint />
           </div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-end justify-end gap-2">
+            <div className="w-full min-w-[10rem] max-w-sm sm:w-auto sm:flex-1">
+              <label
+                htmlFor="studio-bedrijfsnaam"
+                className="mb-0.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400"
+              >
+                Bedrijfsnaam
+              </label>
+              <input
+                id="studio-bedrijfsnaam"
+                type="text"
+                value={studioBedrijfsnaam}
+                onChange={(e) => setStudioBedrijfsnaam(e.target.value)}
+                disabled={descriptionLocked}
+                autoComplete="organization"
+                placeholder="bv. MoSham Barbershop"
+                className={cn(
+                  "w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400",
+                  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
+                  "dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500",
+                  descriptionLocked && fieldLockedClass,
+                )}
+              />
+              <p className="mt-0.5 text-[10px] leading-snug text-slate-500 dark:text-slate-500">
+                Vult merknaam voor de AI en de <span className="font-medium">URL-slug</span> bij opslaan (kort, geen hele
+                briefing).
+              </p>
+            </div>
           <button
             type="button"
             id="studio-klantfotos-trigger"
@@ -1006,6 +1043,7 @@ export function GeneratorForm({
               </span>
             ) : null}
           </button>
+          </div>
         </div>
         {descriptionLocked ? (
           <p className="mt-1 text-xs text-slate-500">
@@ -1432,7 +1470,10 @@ export function GeneratorForm({
                   <SaveSitePanel
                     page={generatedTailwind}
                     siteIrHints={detectedIndustryId ? { detectedIndustryId } : undefined}
-                    defaultName={displayStudioBrandNameForUi(businessName) || previewClientLabel}
+                    defaultName={
+                      studioBedrijfsnaam.trim() ||
+                      (isStudioUndecidedBrandName(resolvedBusinessName) ? "" : resolvedBusinessName)
+                    }
                     defaultDescription={briefingForDerivation}
                     defaultSubfolderSlug={slugFromUrl}
                     defaultPublishStatus="draft"
@@ -1584,9 +1625,7 @@ export function GeneratorForm({
                 <GenerationDetailsBody
                   feedback={pipelineFeedback}
                   fallbackBrief={{
-                    businessName: displayStudioBrandNameForUi(
-                      deriveStudioBusinessNameFromBriefing(briefingForDerivation),
-                    ),
+                    businessName: displayStudioBrandNameForUi(resolvedBusinessName),
                     description: briefingForDerivation,
                   }}
                   referenceStyleRequested={Boolean(extractFirstHttpUrl(briefingForDerivation))}
