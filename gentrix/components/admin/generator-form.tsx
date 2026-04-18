@@ -704,15 +704,6 @@ export function GeneratorForm({
             setDesignContractWarning(ev.contractWarning?.trim() || null);
           }
         }
-        if (ev.type === "self_review") {
-          appendGenerationActivity(
-            ev.ran
-              ? ev.refined
-                ? "Zelfreview toegepast."
-                : "Zelfreview afgerond (geen wijziging)."
-              : "Zelfreview overgeslagen.",
-          );
-        }
         if (ev.type === "token") {
           streamJsonBufferRef.current += ev.content;
           appendStreamLogChunk(ev.content);

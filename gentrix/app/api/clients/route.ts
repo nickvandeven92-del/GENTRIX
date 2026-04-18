@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   const supabaseForModuleFlags = createServiceRoleClient();
   const { data: existingClientRowForModules } = await supabaseForModuleFlags
     .from("clients")
-    .select("webshop_enabled, appointments_enabled")
+    .select("webshop_enabled, appointments_enabled, site_data_json")
     .eq("subfolder_slug", parsed.data.subfolder_slug)
     .maybeSingle();
   const priorWebshop = Boolean(
@@ -115,6 +115,24 @@ export async function POST(request: Request) {
   if (siteParsed.kind === "react") {
     jsonToStore = siteParsed.doc as unknown as Json;
   } else if (siteParsed.kind === "tailwind") {
+    const existingJson = (existingClientRowForModules as { site_data_json?: unknown } | null)?.site_data_json;
+    const existingSite = existingJson != null ? parseStoredSiteData(existingJson) : null;
+    const mergedContactSections =
+      siteParsed.contactSections != null && siteParsed.contactSections.length > 0
+        ? siteParsed.contactSections
+        : existingSite?.kind === "tailwind" &&
+            existingSite.contactSections != null &&
+            existingSite.contactSections.length > 0
+          ? existingSite.contactSections
+          : undefined;
+    const mergedMarketingPages =
+      siteParsed.marketingPages != null && Object.keys(siteParsed.marketingPages).length > 0
+        ? siteParsed.marketingPages
+        : existingSite?.kind === "tailwind" &&
+            existingSite.marketingPages != null &&
+            Object.keys(existingSite.marketingPages).length > 0
+          ? existingSite.marketingPages
+          : undefined;
     const twParsed = tailwindSectionsPayloadSchema.safeParse({
       format: "tailwind_sections",
       sections: siteParsed.sections,
@@ -123,6 +141,12 @@ export async function POST(request: Request) {
       ...(siteParsed.customCss != null && siteParsed.customCss !== "" ? { customCss: siteParsed.customCss } : {}),
       ...(siteParsed.customJs != null && siteParsed.customJs !== "" ? { customJs: siteParsed.customJs } : {}),
       ...(siteParsed.logoSet != null ? { logoSet: siteParsed.logoSet } : {}),
+      ...(mergedContactSections != null && mergedContactSections.length > 0
+        ? { contactSections: mergedContactSections }
+        : {}),
+      ...(mergedMarketingPages != null && Object.keys(mergedMarketingPages).length > 0
+        ? { marketingPages: mergedMarketingPages }
+        : {}),
     });
     if (!twParsed.success) {
       return NextResponse.json(

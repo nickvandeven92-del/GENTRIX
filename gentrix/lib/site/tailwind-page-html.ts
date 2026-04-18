@@ -1180,6 +1180,48 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
 })();
 </script>`;
 
+/**
+ * Veel gegenereerde hero's wrappen de primaire `<header class="sticky …">` in `overflow-hidden` (Tailwind).
+ * Dan is de scroll-container de hero i.p.v. de viewport — de balk scrollt mee i.p.v. te kleven.
+ * Alleen eerste sticky header in de eerste `section[data-section]`; zet tussenliggende overflow op `visible`.
+ */
+export const STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT = `<script>
+(function(){
+  function truncates(ax,ay){
+    return (ax!=="visible"&&ax!=="clip")||(ay!=="visible"&&ay!=="clip");
+  }
+  function fixOnce(){
+    try{
+      var root=document.querySelector("section[data-section]");
+      if(!root)return;
+      var hdr=root.querySelector("header[class*='sticky']");
+      if(!hdr)return;
+      var cur=hdr.parentElement;
+      while(cur&&cur!==document.body){
+        if(cur.matches&&cur.matches("section[data-section]"))break;
+        var st=window.getComputedStyle(cur);
+        if(truncates(st.overflowX,st.overflowY)){
+          cur.style.setProperty("overflow","visible","important");
+        }
+        cur=cur.parentElement;
+      }
+    }catch(_){}
+  }
+  function boot(){
+    fixOnce();
+    setTimeout(fixOnce,120);
+    setTimeout(fixOnce,600);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+  var rt;
+  window.addEventListener("resize",function(){
+    clearTimeout(rt);
+    rt=setTimeout(fixOnce,100);
+  },{passive:true});
+})();
+</script>`;
+
 export function buildLucideRuntimeScriptBlock(): string {
   return `<script src="${STUDIO_LUCIDE_UMD_SRC}"></script>
 <script>try{typeof lucide!=="undefined"&&lucide.createIcons();}catch(e){}</script>`;
@@ -2352,6 +2394,7 @@ ${buildStudioIframeNavResetOnDesktopViewportScript()}
 ${buildLucidePostAlpineRescanScript()}
 ${scrollRevealScript}${scrollBorderScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
+${STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT}
 ${contactSubpageScript}
 ${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
 ${bridge}

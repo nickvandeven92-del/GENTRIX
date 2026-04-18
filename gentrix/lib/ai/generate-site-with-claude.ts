@@ -3061,14 +3061,21 @@ export function createGenerateSiteReadableStream(
         }
         data = reviewed.data;
         send(controller, { type: "self_review", ran: reviewed.ran, refined: reviewed.usedRefined });
-        send(controller, {
-          type: "status",
-          message: reviewed.usedRefined
-            ? "Zelfreview toegepast — finale HTML bijgewerkt."
-            : reviewed.ran
-              ? "Zelfreview afgerond (geen wijziging of overgeslagen)."
-              : "Zelfreview overgeslagen (upgrade-modus of uitgeschakeld).",
-        });
+        const skipFinalSelfReviewStatus =
+          isSiteSelfReviewEnabled() &&
+          selfReviewBudgetExceeded &&
+          !reviewed.ran &&
+          !reviewed.usedRefined;
+        if (!skipFinalSelfReviewStatus) {
+          send(controller, {
+            type: "status",
+            message: reviewed.usedRefined
+              ? "Zelfreview toegepast — finale HTML bijgewerkt."
+              : reviewed.ran
+                ? "Zelfreview afgerond (geen wijziging of overgeslagen)."
+                : "Zelfreview overgeslagen (upgrade-modus of uitgeschakeld).",
+          });
+        }
 
         data = applyStockUrlSanitizeToGeneratedPage(data);
 

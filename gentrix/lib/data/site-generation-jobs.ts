@@ -535,13 +535,6 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       return;
     }
     if (ev.type === "self_review") {
-      writeProgress(
-        ev.ran
-          ? ev.refined
-            ? "Zelfreview toegepast — concept bijgewerkt."
-            : "Zelfreview afgerond (geen wijziging)."
-          : "Zelfreview overgeslagen.",
-      );
       return;
     }
   };

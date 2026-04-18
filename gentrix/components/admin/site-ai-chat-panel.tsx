@@ -122,6 +122,26 @@ export function SiteAiChatPanel({
     [uploadFile],
   );
 
+  const handleComposerPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (disabled || loading || uploading) return;
+      const items = e.clipboardData?.items;
+      if (!items?.length) return;
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it?.kind === "file") {
+          const f = it.getAsFile();
+          if (f && fileIsAccepted(f)) files.push(f);
+        }
+      }
+      if (files.length === 0) return;
+      e.preventDefault();
+      onDropFiles(files);
+    },
+    [disabled, loading, uploading, onDropFiles],
+  );
+
   async function send() {
     const text = input.trim();
     if (text.length < 1) {
@@ -241,8 +261,9 @@ export function SiteAiChatPanel({
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Site-assistent</h2>
             <p className="mt-1 text-[11px] leading-snug text-zinc-600 dark:text-zinc-400">
-              Praat met Claude over feedback en aanpassingen. Sleep logo of video naar het invoerveld om te uploaden.{" "}
-              <strong>Ongedaan</strong> / <strong>Stappen</strong> bovenaan om terug te gaan.
+              Praat met Claude over feedback en aanpassingen. Sleep bestanden naar het invoerveld of{" "}
+              <strong>plak</strong> een screenshot / logo / video (Ctrl+V). <strong>Ongedaan</strong> /{" "}
+              <strong>Stappen</strong> bovenaan om terug te gaan.
             </p>
           </div>
         </div>
@@ -260,7 +281,8 @@ export function SiteAiChatPanel({
             met foto, gradient of scroll/hover-animaties — de generator gebruikt geen vaste stock-video’s meer.
           </p>
           <p className="text-emerald-900/90 dark:text-emerald-100/90">
-            Logo of video: <strong>sleep het bestand naar het tekstvak</strong>; gebruik daarna die URL in je instructie.
+            Logo of video: <strong>sleep naar het tekstvak</strong> of <strong>plak vanaf het klembord</strong>; gebruik daarna
+            die URL in je instructie.
           </p>
         </div>
       </details>
@@ -338,7 +360,7 @@ export function SiteAiChatPanel({
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {r.role === "user" ? "Jij" : "Claude"}
             </span>
-            <div className="whitespace-pre-wrap break-words leading-relaxed">{r.content}</div>
+            <div className="select-text whitespace-pre-wrap break-words leading-relaxed">{r.content}</div>
           </div>
         ))}
         {loading && (
@@ -355,7 +377,7 @@ export function SiteAiChatPanel({
             </span>
             {streamingReply.trim().length > 0 ? (
               <div className="space-y-2">
-                <div className="whitespace-pre-wrap break-words leading-relaxed">{streamingReply}</div>
+                <div className="select-text whitespace-pre-wrap break-words leading-relaxed">{streamingReply}</div>
                 {streamingStatus ? (
                   <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">{streamingStatus}</p>
                 ) : null}
@@ -383,6 +405,10 @@ export function SiteAiChatPanel({
         </p>
       )}
 
+      <span id="site-ai-chat-composer-hint" className="sr-only">
+        Plak gewone tekst of een toegestane afbeelding/video. Verstuur met Enter, of Ctrl+Enter / Cmd+Enter. Nieuwe regel:
+        Shift+Enter.
+      </span>
       <div className="mt-auto p-3 pt-2">
         <div
           ref={composerRef}
@@ -421,17 +447,25 @@ export function SiteAiChatPanel({
         >
           <textarea
             ref={inputRef}
+            id="site-ai-chat-composer"
+            aria-describedby="site-ai-chat-composer-hint"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onPaste={handleComposerPaste}
             onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                if (!loading && !disabled && !uploading) void send();
+                return;
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (!loading && !disabled) void send();
+                if (!loading && !disabled && !uploading) void send();
               }
             }}
             rows={2}
             disabled={loading || disabled || uploading}
-            placeholder="Vraag of instructie… (sleep bestanden hierheen)"
+            placeholder="Vraag of instructie… (sleep of plak bestanden)"
             className={cn(
               "max-h-[min(200px,40dvh)] min-h-[44px] w-full resize-none rounded-2xl border-0 bg-transparent px-3 pb-11 pt-2.5 text-sm leading-relaxed",
               "text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0",
@@ -465,7 +499,9 @@ export function SiteAiChatPanel({
             </button>
           </div>
         </div>
-        <p className="mt-1.5 text-center text-[10px] text-zinc-500 dark:text-zinc-500">Shift+Enter voor nieuwe regel</p>
+        <p className="mt-1.5 text-center text-[10px] text-zinc-500 dark:text-zinc-500">
+          Enter verstuurt · Shift+Enter nieuwe regel · Ctrl+V / ⌘V ook voor plakken van afbeelding of video
+        </p>
       </div>
     </section>
   );

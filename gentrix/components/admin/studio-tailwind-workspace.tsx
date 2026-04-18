@@ -26,6 +26,10 @@ export type StudioTailwindWorkspaceProps = {
   initialCustomCss?: string;
   initialCustomJs?: string;
   initialLogoSet?: GeneratedLogoSet;
+  /** Multi-page: contact-subroute `/site/{slug}/contact` — meesturen bij opslaan zodat de API ze niet weglaat. */
+  initialContactSections?: TailwindSection[];
+  /** Multi-page: marketing-subroutes `/site/{slug}/…` — idem. */
+  initialMarketingPages?: Record<string, TailwindSection[]>;
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
   initialSiteIr?: SiteIrV1 | null;
@@ -104,6 +108,8 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
             initialCustomCss={props.initialCustomCss ?? ""}
             initialCustomJs={props.initialCustomJs ?? ""}
             initialLogoSet={props.initialLogoSet}
+            initialContactSections={props.initialContactSections}
+            initialMarketingPages={props.initialMarketingPages}
             appointmentsEnabled={props.appointmentsEnabled ?? true}
             webshopEnabled={props.webshopEnabled ?? true}
             initialSiteIr={props.initialSiteIr ?? null}

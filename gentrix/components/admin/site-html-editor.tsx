@@ -62,6 +62,9 @@ type SiteHtmlEditorProps = {
   initialCustomJs?: string;
   /** Bewaard bij opslaan (premium logo-pipeline). */
   initialLogoSet?: GeneratedLogoSet;
+  /** Multi-page uit snapshot — meesturen bij opslaan (anders verdwijnen subroutes uit de DB). */
+  initialContactSections?: TailwindSection[];
+  initialMarketingPages?: Record<string, TailwindSection[]>;
   /** Klantmodules: preview en site-chat houden rekening met live `/site`-gedrag. */
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
@@ -84,6 +87,8 @@ export function SiteHtmlEditor({
   initialCustomCss = "",
   initialCustomJs = "",
   initialLogoSet,
+  initialContactSections,
+  initialMarketingPages,
   appointmentsEnabled = true,
   webshopEnabled = true,
   initialSiteIr = null,
@@ -120,6 +125,23 @@ export function SiteHtmlEditor({
   const customCss = initialCustomCss;
   const customJs = initialCustomJs;
   const [pageType] = useState<SnapshotPageType>(initialPageType ?? "landing");
+  const [contactSections, setContactSections] = useState<TailwindSection[] | undefined>(() =>
+    initialContactSections != null && initialContactSections.length > 0 ? initialContactSections : undefined,
+  );
+  const [marketingPages, setMarketingPages] = useState<Record<string, TailwindSection[]> | undefined>(() => {
+    if (initialMarketingPages == null || Object.keys(initialMarketingPages).length === 0) return undefined;
+    return initialMarketingPages;
+  });
+  useEffect(() => {
+    setContactSections(
+      initialContactSections != null && initialContactSections.length > 0 ? initialContactSections : undefined,
+    );
+    setMarketingPages(
+      initialMarketingPages != null && Object.keys(initialMarketingPages).length > 0
+        ? initialMarketingPages
+        : undefined,
+    );
+  }, [initialContactSections, initialMarketingPages]);
   const snapshotSourceRef = useRef<"editor" | "ai_command">("editor");
   const lastSavedFingerprintRef = useRef("");
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -135,8 +157,10 @@ export function SiteHtmlEditor({
         customCss,
         customJs,
         ...(initialLogoSet != null ? { logoSet: initialLogoSet } : {}),
+        ...(contactSections != null && contactSections.length > 0 ? { contactSections } : {}),
+        ...(marketingPages != null && Object.keys(marketingPages).length > 0 ? { marketingPages } : {}),
       }) satisfies Record<string, unknown>,
-    [sections, config, customCss, customJs, initialLogoSet, pageType],
+    [sections, config, customCss, customJs, initialLogoSet, pageType, contactSections, marketingPages],
   );
 
   const persistFingerprint = useMemo(() => JSON.stringify({ p: payload, status }), [payload, status]);
