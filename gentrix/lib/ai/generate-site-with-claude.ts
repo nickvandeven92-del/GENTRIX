@@ -71,6 +71,8 @@ import {
   generatedPageMayUseAiHeroImage,
   briefingWantsAiGeneratedHeroImage,
   getAiHeroImagePostProcessSkipReason,
+  isAiHeroImagePostProcessEnabled,
+  startOpenAiHeroImagePrefetch,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
@@ -1234,6 +1236,7 @@ function buildStockImageryAgencyDefaultMarkdown(): string {
   - **Klant-uploads** (blok **KLANTFOTO'S**): als die URL's in de opdracht staan, **verplicht** prominent gebruiken met \`<img src="…">\` (**exact** dezelfde https-URL als in de lijst) + zinvolle \`alt\` — **niet** vervangen door externe stock of verzonnen URL's.
   - **Briefing-screenshots** + eventuele **vision**-tekst: gebruik voor **inhoud en toon**; geen volledige “browser”-schermafdruk als één giant \`<img>\` tenzij de briefing dat expliciet vraagt — zie blok **BRIEFING-REFERENTIEBEELDEN**.
   - **Geen externe stock-URL's** (\`images.unsplash.com\`, Pexels-embeds als stock-raster, …): die horen niet in de studio-output; gebruik **KLANTFOTO'S**, gradient, SVG of server-side **AI-hero** (zie contract). **\`gallery\`:** alleen als de briefing **expliciet** een fotogalerij wil — **geen** standaard collage “omdat het kan”.
+  - **Vermijd standaard “monogram-hero”:** geen **vaste** visuele formule “split + rechterkolom met **dubbele ring/cirkel + initialen** + adres in het rondje” als decoratieve mediavulling — dat is een herhaalbaar sjabloon. Zonder klantfoto: kies óf **full-bleed typografie** (één kolom, sterk beeld via type/gradient), óf een split waarbij de rechter **geen** ondoorzichtig effen vlak over de volle hoogte nodig heeft (zie **§VIEWPORT — server AI-hero**); **geen** tweede pseudo-foto uit pure SVG-decoratie.
   - **Geen** \`via.placeholder\`, \`example.com\`-foto's of verzonnen beeld-URL's.
   - **\`<video>\` / \`<iframe>\`:** alleen met **concrete** https-URL in de geschreven briefing; anders gradient + \`data-animation\` / AOS.`;
 }
@@ -1335,6 +1338,7 @@ function buildHeroViewportRulesMarkdown(preserve: boolean): string {
   return `
 - **VIEWPORT / HERO-HOOGTE (kritisch — voorkomt “smalle strook + wit gat” onder de fold):**
   - **\`<section id="hero">\` (buitenste tag):** het attribuut \`id="hero"\` hoort op **deze** \`<section>\`, niet op een inner \`<div>\` — anders kan de server geen AI-hero-beeld injecteren. Zet **altijd** een expliciete minimale hoogte op die sectie: \`min-h-[72vh] md:min-h-[80vh]\` (foto-/video-hero) of minstens \`min-h-[65vh] md:min-h-[72vh]\` (typografisch). **Zonder** deze \`min-h-*\` krimpt de hero tot één regel hoogte en vult het iframe-onderste deel met leeg wit — dat is een fout.
+  - **Server AI-hero (stacking):** de server kan automatisch een \`<img data-gentrix-ai-hero-img="1">\` als **eerste** child in \`#hero\` zetten (rechterhelft op desktop). Een **volledig ondoorzichtige** \`bg-*\` op een wrapper/grid-kolom die de hele rechterhelft bedekt, legt dat beeld **dood** — dan lijkt er “geen hero-foto”. Bij split: gebruik op de mediakant **transparantie/gradient** (\`bg-black/40\`, \`from-*\/80\`, …) boven het beeld, of zet het zware vlak alleen achter **tekst** (\`rounded-*\` kaart), **niet** als effen full-height kolomvulling.
   - **Volle viewport op de hero** is toegestaan met **dynamische eenheden**: \`min-h-[100dvh]\` of \`min-h-[min(100dvh,100svh)]\` mag **alleen** op \`#hero\`, niet op andere secties. Gebruik liever \`72vh/80vh\` als je twijfelt.
   - **Verbod (niet-hero secties):** gebruik **geen** \`min-h-screen\`, \`h-screen\`, \`min-h-[100vh]\`, \`h-[100vh]\` op \`#features\`, \`#about\`, shop, footer, enz. — dat maakt lege kolommen en rare scroll in previews. Daar: \`py-16 md:py-24\` + inhoud.
   - **Achtergrond-banden** (CTA/galerij met \`background-image\`, geen hero): max. \`min-h-[40vh] md:min-h-[50vh]\`, geen volledige viewport.
@@ -1754,7 +1758,7 @@ ${strictLanding && strictLandingSectionIdsMin ? buildStrictLandingPageComposerMa
 ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
 ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage, ultraCompactLanding: strictLandingSectionIdsMin?.length === 3 }) : ""}
-- **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
+- **Nav (one-pager):** **exact één** globale navigatie (\`#hero\` of eerste sectie: één \`<header>\`/\`<nav>\` met merk + **alle** interne links). **Verboden:** dezelfde menu-items **tweemaal** (bv. verticale linkkolom in de hero **én** horizontale topbar) — dat voelt als twee sites in één. Hamburger/overlay telt als **dezelfde** nav, geen tweede kopie. **Vorm vrij** (sticky, pill, fixed, …); nav moet bruikbaar blijven bij scroll. **Navbar vs split-hero:** zet \`<header>\`/\`<nav>\` **niet** in dezelfde \`grid\` / twee-koloms-split als de hero-inhoud (half licht / half donker) — gebruik een **volle-breedte** balk (\`w-full\`) met **één** duidelijke achtergrond boven de split, zodat de menubalk niet visueel “mee breekt” met de hero. **Mobiel:** \`x-data\` op \`<header>\` (of één parent van knop + sheet + \`x-show\`-iconen) — anders geen werkende toggle.
 - **Hero:** **kop + max. één korte regel** (zie COPY — MINDER IS MEER); **één primaire CTA** (en optioneel **één secundaire** met echte \`href\`) — tenzij de briefing expliciet tekst-only wil. **Verboden:** decoratief scroll-label zonder echte link/anker.
 - **Secties:** typisch \`py-16 md:py-24\`, \`max-w-7xl mx-auto px-4 sm:px-6\` — wijk af als de briefing of ontwerp dat vraagt.
 - **Klantfoto's / uploads:** zie blok **KLANTFOTO'S** en **Beeld (studio)** — bij meegestuurde URL's **wel** in de HTML (\`src\` exact gelijk).
@@ -1886,7 +1890,7 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 
 **Vrijheid:** ${strictLanding && strictLandingSectionIds ? `Binnen de **${strictLandingSectionIds.length}** vaste landings-secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij — **geen** wijziging van volgorde of \`id\`'s.` : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led — allemaal toegestaan)."}
 
-**Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie §3B"}) + contact` : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie §3B"}); **geen** \`#…\`-nav naar inhoud die op een subroute staat. ` : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
+**Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie §3B"}) + contact` : "one-pager"}):** **één** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie §3B"}); **geen** \`#…\`-nav naar inhoud die op een subroute staat. ` : ""}Op **één** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **één** vaste floating knop. **Vorm vrij** (sticky, pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Navbar vs split-hero:** plaats \`<header>\`/\`<nav>\` **niet** in dezelfde twee-koloms-split als de hero (half licht/half donker) — gebruik een **volle-breedte** balk met **één** achtergrond boven de hero-split. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of één wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen — anders blijven streepjes en × vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
 **Één site, één systeem:** kies **één** duidelijke typografie-hiërarchie (bijv. één sans-familie door de hele pagina, of **één** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is — dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`–\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
@@ -2323,6 +2327,8 @@ export type ExecuteGenerateSitePhase2Input = {
   description: string;
   promptOptions?: GenerateSitePromptOptions;
   streamHooks?: GenerateSiteStreamHooks;
+  /** OpenAI DALL-E parallel aan Claude (start na denklijn in stream en in `generateSiteWithClaude`). */
+  prefetchedHeroB64Promise?: Promise<string | null>;
 };
 
 export async function executeGenerateSitePhase2(
@@ -2336,6 +2342,7 @@ export async function executeGenerateSitePhase2(
     description,
     promptOptions,
     streamHooks,
+    prefetchedHeroB64Promise,
   } = input;
 
   let textBody = "";
@@ -2403,6 +2410,7 @@ export async function executeGenerateSitePhase2(
     description,
     designContract,
     subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+    prefetchedHeroB64Promise,
   });
 
   data = { ...data, sections: maybeEnhanceHero(data.sections, data.config, description) };
@@ -2491,6 +2499,16 @@ export async function generateSiteWithClaude(
     buildCompositionPlanPromptInjection(compositionPlanNs),
   );
 
+  const skipHeroPrefetch =
+    (promptOptions?.clientImages?.length ?? 0) > 0 &&
+    !briefingWantsAiGeneratedHeroImage(description);
+  const prefetchedHeroB64Promise = startOpenAiHeroImagePrefetch({
+    businessName,
+    description,
+    designContract,
+    skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
+  });
+
   return executeGenerateSitePhase2({
     prepared: p,
     userContentWithComposition,
@@ -2499,6 +2517,7 @@ export async function generateSiteWithClaude(
     description,
     promptOptions,
     streamHooks,
+    prefetchedHeroB64Promise,
   });
 }
 
@@ -2726,6 +2745,22 @@ export function createGenerateSiteReadableStream(
             : rationale.error?.slice(0, 400),
         );
 
+        const skipHeroPrefetch =
+          (promptOptions?.clientImages?.length ?? 0) > 0 &&
+          !briefingWantsAiGeneratedHeroImage(description);
+        const prefetchedHeroB64Promise = startOpenAiHeroImagePrefetch({
+          businessName,
+          description,
+          designContract,
+          skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
+        });
+        if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch) {
+          send(controller, {
+            type: "status",
+            message: "Hero-foto: OpenAI gestart (loopt parallel met compositie + pagina-HTML)…",
+          });
+        }
+
         const canonicalSectionIds = p.pipelineFeedback.interpreted.sections ?? [];
         let compositionPlan: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIds);
         let compositionSource: "model" | "fallback" = "fallback";
@@ -2929,7 +2964,10 @@ export function createGenerateSiteReadableStream(
         if (mayAiHero) {
           send(controller, {
             type: "status",
-            message: "Hero: AI-foto genereren (OpenAI) en opslaan…",
+            message:
+              isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch
+                ? "Hero: AI-foto uploaden en in de hero injecteren…"
+                : "Hero: AI-foto genereren (OpenAI) en opslaan…",
           });
         }
         const stopAiHeroKeepalive = mayAiHero ? startNdjsonKeepaliveForSilentWork(controller, send) : () => {};
@@ -2939,6 +2977,7 @@ export function createGenerateSiteReadableStream(
             description,
             designContract,
             subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+            prefetchedHeroB64Promise,
           });
         } finally {
           stopAiHeroKeepalive();

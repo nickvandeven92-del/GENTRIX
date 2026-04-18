@@ -128,6 +128,33 @@ export function buildOpenAiHeroPrompt(
   return p.length > 3800 ? p.slice(0, 3800) : p;
 }
 
+export type OpenAiHeroPrefetchInput = {
+  businessName: string;
+  description: string;
+  designContract: DesignGenerationContract | null;
+  /**
+   * `true` = geen prefetch: klant-uploads aanwezig en briefing vraagt niet expliciet om AI-hero —
+   * de hero krijgt dan meestal een klant-`<img>` en zou `shouldAttemptAiHeroImageForHtml` blokkeren.
+   */
+  skipPrefetchBecauseLikelyClientHero: boolean;
+};
+
+/**
+ * Start DALL-E **parallel** aan de grote Claude HTML-stream, zodra naam + briefing + (optioneel)
+ * designcontract bekend zijn. `applyAiHeroImageToGeneratedPage` hergebruikt het resultaat en valt
+ * terug op een verse OpenAI-call als prefetch `null` opleverde of overgeslagen was.
+ */
+export function startOpenAiHeroImagePrefetch(input: OpenAiHeroPrefetchInput): Promise<string | null> {
+  if (!isAiHeroImagePostProcessEnabled()) return Promise.resolve(null);
+  if (input.skipPrefetchBecauseLikelyClientHero) return Promise.resolve(null);
+  const prompt = buildOpenAiHeroPrompt(
+    input.businessName,
+    input.description,
+    input.designContract,
+  );
+  return openAiCreateHeroPngBase64(prompt);
+}
+
 type OpenAiImageGenResponse = {
   data?: { b64_json?: string; url?: string }[];
   error?: { message?: string };
@@ -206,7 +233,8 @@ async function uploadPngToSiteAssets(png: Buffer, subfolderSlug?: string | null)
  */
 export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUrl: string): string | null {
   const escUrl = publicImageUrl.replace(/"/g, "&quot;");
-  const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover md:left-1/2 md:right-0 md:w-1/2" loading="eager" fetchpriority="high" />`;
+  /** `z-0` (niet negatief): negatieve z-index verdween vaak achter sibling-kolommen met effen `bg-*`, waardoor de injectie “onzichtbaar” leek. */
+  const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover md:left-1/2 md:right-0 md:w-1/2" loading="eager" fetchpriority="high" />`;
 
   const out = html.replace(
     /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>/i,
@@ -232,6 +260,8 @@ export type ApplyAiHeroImageContext = {
   designContract: DesignGenerationContract | null;
   /** Optioneel: Supabase-pad onder geldige subfolder_slug. */
   subfolderSlug?: string | null;
+  /** Parallel gestart vóór/e tijdens Claude — bij `null` na await: opnieuw OpenAI. */
+  prefetchedHeroB64Promise?: Promise<string | null>;
 };
 
 export async function applyAiHeroImageToGeneratedPage(
@@ -255,7 +285,11 @@ export async function applyAiHeroImageToGeneratedPage(
   if (!shouldAttemptAiHeroImageForHtml(heroHtmlForCheck)) return data;
 
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
-  const b64 = await openAiCreateHeroPngBase64(prompt);
+  let b64: string | null =
+    ctx.prefetchedHeroB64Promise != null ? await ctx.prefetchedHeroB64Promise : null;
+  if (!b64) {
+    b64 = await openAiCreateHeroPngBase64(prompt);
+  }
   if (!b64) return data;
 
   let png: Buffer;

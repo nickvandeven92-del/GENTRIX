@@ -366,8 +366,26 @@ export function GeneratorForm({
   /** Voor “bezig s”-indicator in het feedbackpaneel (Lovable-achtige doorlooptijd). */
   const [runStartedAtMs, setRunStartedAtMs] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setPortalReady(true), []);
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [
+    generationActivity,
+    submittedPromptTurns,
+    loading,
+    streamPhase,
+    error,
+    generatedTailwind,
+    designRationaleLoading,
+    pipelineFeedback,
+    streamLog,
+    designRationale,
+  ]);
 
   const handleRightPaneModeChange = useCallback((mode: StudioRightPaneMode) => {
     setRightPaneMode(mode);
@@ -933,47 +951,261 @@ export function GeneratorForm({
         maxSidebarPx={560}
         minMainPx={480}
         sidebar={
-          <div className="flex min-h-0 flex-col gap-5 pr-1">
+          <div className="flex min-h-0 flex-1 flex-col gap-0 pr-1">
             {editorFocusBar}
-            <form
-              onSubmit={onSubmit}
-              className="sales-os-glass-panel space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"
+            <div
+              ref={chatScrollRef}
+              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-0.5 py-2"
+              role="log"
+              aria-label="Studio-gesprek: voortgang en opdrachten"
             >
-        {!hideFaqLauncher ? (
-          <div className="flex justify-end">
-            <GeneratorStudioFaqLauncher />
-          </div>
-        ) : null}
-        <p className="text-[11px] leading-snug text-slate-500">
-          Korte of lange briefing: de Denklijn vult aan op de server. Uitgebreide uitleg:{" "}
-          {hideFaqLauncher ? (
-            <>
-              zie <strong className="font-medium text-slate-600">FAQ generatie</strong> in de studio-balk.
-            </>
-          ) : (
-            <>
-              zie <strong className="font-medium text-slate-600">FAQ generatie</strong> (knop hierboven).
-            </>
-          )}
-        </p>
-
-        {submittedPromptTurns.length > 0 ? (
-          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Verzonden opdrachten
-            </p>
-            <div className="max-h-56 space-y-2 overflow-y-auto pr-0.5" role="log" aria-live="polite">
+              {!hideFaqLauncher ? (
+                <div className="flex w-full justify-start">
+                  <GeneratorStudioFaqLauncher />
+                </div>
+              ) : null}
+              <div className="flex w-full justify-start">
+                <p className="max-w-[min(100%,22rem)] text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                  Korte of lange briefing: de Denklijn vult aan op de server. Uitgebreide uitleg:{" "}
+                  {hideFaqLauncher ? (
+                    <>
+                      zie <strong className="font-medium text-slate-600 dark:text-slate-300">FAQ generatie</strong> in
+                      de studio-balk.
+                    </>
+                  ) : (
+                    <>
+                      zie <strong className="font-medium text-slate-600 dark:text-slate-300">FAQ generatie</strong>{" "}
+                      (knop hierboven).
+                    </>
+                  )}
+                </p>
+              </div>
               {submittedPromptTurns.map((turn) => (
-                <div key={turn.id} className="flex justify-end">
+                <div key={turn.id} className="flex w-full justify-end">
                   <div className="max-w-[min(100%,28rem)] whitespace-pre-wrap rounded-2xl rounded-br-md border border-indigo-100 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-zinc-100">
                     {turn.text}
                   </div>
                 </div>
               ))}
+              {loading ||
+              pipelineFeedback != null ||
+              generationActivity.length > 0 ||
+              generatedTailwind != null ? (
+                <div className="flex w-full justify-start">
+                  <GenerationFeedbackPanel
+                    surfaceVariant="conversation"
+                    feedback={pipelineFeedback}
+                    designRationale={designRationale}
+                    designRationaleLoading={designRationaleLoading}
+                    designRationaleSkipReason={designRationaleSkipReason}
+                    designContract={designContract}
+                    designContractWarning={designContractWarning}
+                    rightPaneMode={rightPaneMode}
+                    onRightPaneModeChange={handleRightPaneModeChange}
+                    activityLog={generationActivity}
+                    streamPhase={streamPhase}
+                    loading={loading}
+                    hasSiteOutput={generatedTailwind != null}
+                    runStartedAtMs={runStartedAtMs}
+                    followUpSuggestions={studioFollowUpSuggestions}
+                  />
+                </div>
+              ) : null}
+              {generationActivity.length > 0 ? (
+                <div className="flex w-full justify-start">
+                  <div className="max-h-72 w-full max-w-[min(100%,26rem)] space-y-2 overflow-y-auto rounded-2xl rounded-bl-md border border-zinc-200/90 bg-white px-3 py-2.5 shadow-sm dark:border-zinc-600 dark:bg-zinc-900/90">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Serverlog
+                      </p>
+                      <label className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] text-zinc-600 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          className="size-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600"
+                          checked={compactActivityLog}
+                          onChange={(e) => setCompactActivityLog(e.target.checked)}
+                        />
+                        Beknopt
+                      </label>
+                    </div>
+                    {generationActivity.length === 0 ? (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Wachten op eerste serverberichten…</p>
+                    ) : (
+                      <>
+                        <ol className="space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-700">
+                          {(compactActivityLog
+                            ? generationActivity
+                                .map((row) => ({
+                                  id: row.id,
+                                  text: briefGenerationActivityLabel(row.text),
+                                }))
+                                .filter((row) => row.text.length > 0)
+                            : generationActivity
+                          ).map((row) => (
+                            <li
+                              key={row.id}
+                              className="relative text-xs leading-snug text-zinc-700 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-300 dark:before:bg-indigo-500"
+                            >
+                              {row.text}
+                            </li>
+                          ))}
+                        </ol>
+                        {compactActivityLog && generationActivity.length > 0 ? (
+                          <details className="mt-2 rounded-md border border-zinc-200 bg-zinc-50/80 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900/50">
+                            <summary className="cursor-pointer text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
+                              Volledige serverregels ({generationActivity.length})
+                            </summary>
+                            <ol className="mt-2 max-h-36 space-y-1.5 overflow-y-auto border-t border-zinc-200/80 pt-2 dark:border-zinc-700">
+                              {generationActivity.map((row) => (
+                                <li
+                                  key={`full-${row.id}`}
+                                  className="text-[10px] leading-snug text-zinc-600 dark:text-zinc-400"
+                                >
+                                  {row.text}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+              {loading && (streamPhase != null || streamLog.length > 0) ? (
+                <div className="flex w-full justify-start">
+                  <div className="w-full max-w-[min(100%,26rem)] space-y-2 rounded-2xl rounded-bl-md border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-50">
+                    {streamPhase ? (
+                      <p>
+                        <span className="font-medium">Fase:</span> {streamPhase}
+                      </p>
+                    ) : null}
+                    {streamLog.length > 0 ? (
+                      <details>
+                        <summary className="cursor-pointer font-medium text-amber-900 dark:text-amber-100">
+                          Ruwe model-output (JSON-stream)
+                        </summary>
+                        <pre className="mt-2 max-h-40 overflow-auto rounded border border-amber-200/60 bg-white/90 p-2 font-mono text-[10px] text-amber-950 dark:border-amber-900/50 dark:bg-zinc-950 dark:text-zinc-100">
+                          {streamLog}
+                        </pre>
+                      </details>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {error ? (
+                <div className="flex w-full justify-start" role="alert">
+                  <div className="w-full max-w-[min(100%,26rem)] space-y-2 rounded-2xl rounded-bl-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-50">
+                    <div className="flex gap-2">
+                      <AlertCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
+                      <div>
+                        <p className="font-medium">Fout</p>
+                        <p className="mt-1 text-xs leading-relaxed">{error}</p>
+                      </div>
+                    </div>
+                    {rawFallback ? (
+                      <details>
+                        <summary className="cursor-pointer text-xs font-medium text-red-800 dark:text-red-200">
+                          Ruwe model-output
+                        </summary>
+                        <pre className="mt-2 max-h-40 overflow-auto rounded border border-red-100 bg-white p-2 text-xs text-slate-800 dark:border-red-900/30 dark:bg-zinc-950 dark:text-zinc-100">
+                          {rawFallback}
+                        </pre>
+                      </details>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {generatedTailwind ? (
+                <section className="w-full max-w-[min(100%,30rem)] space-y-4 border-t border-slate-200/80 pt-4 dark:border-zinc-700">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-zinc-100">Volgende stappen</h2>
+                  <p className="text-xs text-slate-600 dark:text-zinc-400">
+                    Preview staat rechts — zelfde{" "}
+                    <code className="rounded bg-slate-100 px-1 font-mono text-[11px] dark:bg-zinc-800">
+                      PublishedSiteView
+                    </code>{" "}
+                    als <code className="rounded bg-slate-100 px-1 font-mono text-[11px] dark:bg-zinc-800">/site/…</code>{" "}
+                    na opslaan. Thema:{" "}
+                    <span className="font-mono">{generatedTailwind.config.theme.primary}</span> ·{" "}
+                    <span className="font-mono">{generatedTailwind.config.theme.accent}</span> ·{" "}
+                    {generatedTailwind.sections.length} secties
+                  </p>
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+                    <p className="text-xs font-medium text-indigo-950 dark:text-indigo-100">Concept verfijnen</p>
+                    <p className="mt-1 text-[11px] leading-snug text-indigo-900/85 dark:text-indigo-200/90">
+                      Lichte tweede pass via de editor-API: zelfde sectie-
+                      <code className="font-mono text-[10px]">id</code>’s, alleen HTML-aanpassingen. Alleen de huidige
+                      landingspagina ({generatedTailwind.sections.length} secties).
+                    </p>
+                    {conceptRefineLoading ? (
+                      <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-indigo-900 dark:text-indigo-100">
+                        <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                        Bezig met verfijnen…
+                      </p>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={conceptRefineLoading || loading}
+                        onClick={() => void runConceptRefinement("strakker_zakelijk")}
+                        className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+                      >
+                        Strakker / zakelijk
+                      </button>
+                      <button
+                        type="button"
+                        disabled={conceptRefineLoading || loading}
+                        onClick={() => void runConceptRefinement("durfder_editorial")}
+                        className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+                      >
+                        Durfder / editorial
+                      </button>
+                      <button
+                        type="button"
+                        disabled={conceptRefineLoading || loading}
+                        onClick={() => void runConceptRefinement("meer_beweging")}
+                        className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+                      >
+                        Meer beweging
+                      </button>
+                    </div>
+                  </div>
+                  <DutchSpellcheckPanel
+                    sections={generatedTailwind.sections.map((s, i) => ({
+                      id: s.id ?? slugifyToSectionId(s.sectionName, i),
+                      html: s.html,
+                    }))}
+                  />
+                  <SaveSitePanel
+                    page={generatedTailwind}
+                    siteIrHints={detectedIndustryId ? { detectedIndustryId } : undefined}
+                    defaultName={displayStudioBrandNameForUi(businessName) || previewClientLabel}
+                    defaultDescription={briefingForDerivation}
+                    defaultSubfolderSlug={slugFromUrl}
+                    defaultPublishStatus="draft"
+                    generatorMode
+                    onSaved={onSiteSaved}
+                  />
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowJson((s) => !s)}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400"
+                    >
+                      <Code2 className="size-4" aria-hidden />
+                      {showJson ? "Verberg JSON" : "Toon volledige JSON"}
+                    </button>
+                    {showJson && (
+                      <pre className="mt-3 max-h-80 overflow-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-left text-xs text-slate-100 dark:border-zinc-700">
+                        {JSON.stringify(generatedTailwind, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                </section>
+              ) : null}
             </div>
-          </div>
-        ) : null}
-
+            <div className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+              <form onSubmit={onSubmit} className="space-y-3">
         <div>
           <div className="flex items-center gap-1.5">
             <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700">
@@ -1137,152 +1369,7 @@ export function GeneratorForm({
           )}
         </button>
       </form>
-
-      {loading ||
-      pipelineFeedback != null ||
-      generationActivity.length > 0 ||
-      generatedTailwind != null ? (
-        <GenerationFeedbackPanel
-          feedback={pipelineFeedback}
-          designRationale={designRationale}
-          designRationaleLoading={designRationaleLoading}
-          designRationaleSkipReason={designRationaleSkipReason}
-          designContract={designContract}
-          designContractWarning={designContractWarning}
-          rightPaneMode={rightPaneMode}
-          onRightPaneModeChange={handleRightPaneModeChange}
-          activityLog={generationActivity}
-          streamPhase={streamPhase}
-          loading={loading}
-          hasSiteOutput={generatedTailwind != null}
-          runStartedAtMs={runStartedAtMs}
-          followUpSuggestions={studioFollowUpSuggestions}
-        />
-      ) : null}
-
-      {loading && (streamPhase != null || streamLog.length > 0) ? (
-        <div className="space-y-4">
-          {streamPhase ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-              <span className="font-medium">Fase:</span> {streamPhase}
             </div>
-          ) : null}
-          {streamLog.length > 0 ? (
-            <details className="rounded-lg border border-slate-200 bg-slate-50">
-              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700">Ruwe model-output (JSON-stream)</summary>
-              <pre className="max-h-56 overflow-auto border-t border-slate-200 p-3 font-mono text-[11px] text-slate-800">
-                {streamLog}
-              </pre>
-            </details>
-          ) : null}
-        </div>
-      ) : null}
-
-      {error && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
-          <div className="flex gap-2">
-            <AlertCircle className="size-4 shrink-0 text-red-600" aria-hidden />
-            <div>
-              <p className="font-medium">Fout</p>
-              <p className="mt-1">{error}</p>
-            </div>
-          </div>
-          {rawFallback && (
-            <details className="mt-3">
-              <summary className="cursor-pointer text-xs font-medium text-red-800">Ruwe model-output</summary>
-              <pre className="mt-2 max-h-48 overflow-auto rounded border border-red-100 bg-white p-2 text-xs text-slate-800">
-                {rawFallback}
-              </pre>
-            </details>
-          )}
-        </div>
-      )}
-
-      {generatedTailwind ? (
-        <section className="space-y-4 border-t border-slate-200 pt-6">
-          <h2 className="text-sm font-semibold text-slate-900">Volgende stappen</h2>
-          <p className="text-xs text-slate-600">
-            Preview staat rechts — zelfde <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">PublishedSiteView</code>{" "}
-            als <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/site/…</code> na opslaan. Thema:{" "}
-            <span className="font-mono">{generatedTailwind.config.theme.primary}</span> ·{" "}
-            <span className="font-mono">{generatedTailwind.config.theme.accent}</span> ·{" "}
-            {generatedTailwind.sections.length} secties
-          </p>
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-            <p className="text-xs font-medium text-indigo-950 dark:text-indigo-100">Concept verfijnen</p>
-            <p className="mt-1 text-[11px] leading-snug text-indigo-900/85 dark:text-indigo-200/90">
-              Lichte tweede pass via de editor-API: zelfde sectie-<code className="font-mono text-[10px]">id</code>
-              ’s, alleen HTML-aanpassingen. Alleen de huidige landingspagina (
-              {generatedTailwind.sections.length} secties).
-            </p>
-            {conceptRefineLoading ? (
-              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-indigo-900 dark:text-indigo-100">
-                <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
-                Bezig met verfijnen…
-              </p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={conceptRefineLoading || loading}
-                onClick={() => void runConceptRefinement("strakker_zakelijk")}
-                className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
-              >
-                Strakker / zakelijk
-              </button>
-              <button
-                type="button"
-                disabled={conceptRefineLoading || loading}
-                onClick={() => void runConceptRefinement("durfder_editorial")}
-                className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
-              >
-                Durfder / editorial
-              </button>
-              <button
-                type="button"
-                disabled={conceptRefineLoading || loading}
-                onClick={() => void runConceptRefinement("meer_beweging")}
-                className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
-              >
-                Meer beweging
-              </button>
-            </div>
-          </div>
-          <DutchSpellcheckPanel
-            sections={generatedTailwind.sections.map((s, i) => ({
-              id: s.id ?? slugifyToSectionId(s.sectionName, i),
-              html: s.html,
-            }))}
-          />
-          <SaveSitePanel
-            page={generatedTailwind}
-            siteIrHints={
-              detectedIndustryId ? { detectedIndustryId } : undefined
-            }
-            defaultName={displayStudioBrandNameForUi(businessName) || previewClientLabel}
-            defaultDescription={briefingForDerivation}
-            defaultSubfolderSlug={slugFromUrl}
-            defaultPublishStatus="draft"
-            generatorMode
-            onSaved={onSiteSaved}
-          />
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setShowJson((s) => !s)}
-              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-indigo-600"
-            >
-              <Code2 className="size-4" aria-hidden />
-              {showJson ? "Verberg JSON" : "Toon volledige JSON"}
-            </button>
-            {showJson && (
-              <pre className="mt-3 max-h-80 overflow-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-left text-xs text-slate-100">
-                {JSON.stringify(generatedTailwind, null, 2)}
-              </pre>
-            )}
-          </div>
-        </section>
-      ) : null}
           </div>
         }
         main={
@@ -1441,10 +1528,9 @@ export function GeneratorForm({
                       Bij de <strong className="font-medium text-zinc-800 dark:text-zinc-200">eerste</strong> generatie is
                       dit bewust geen live canvas — de preview vult pas als de run{" "}
                       <strong className="font-medium text-zinc-800 dark:text-zinc-200">volledig</strong> klaar is (zoals
-                      o.a. Lovable). Hieronder wat de server onderweg deed.
+                      o.a. Lovable).
                       <span className="mt-2 block text-[11px] text-zinc-500 dark:text-zinc-500">
-                        Weinig nieuwe regels in het log is normaal tijdens Denklijn of het grote model — dat betekent
-                        niet dat de stream vastzit.
+                        Voortgang en serverlog staan in het <strong className="font-medium text-zinc-700 dark:text-zinc-300">gesprek links</strong>. Technische details: <strong className="font-medium text-zinc-700 dark:text-zinc-300">Details</strong> in de linker kolom.
                       </span>
                     </p>
                     {streamPhase ? (
@@ -1459,59 +1545,12 @@ export function GeneratorForm({
                       </p>
                     ) : null}
                   </div>
-                  <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                        Activiteiten
-                      </p>
-                      <label className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] text-zinc-600 dark:text-zinc-400">
-                        <input
-                          type="checkbox"
-                          className="size-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600"
-                          checked={compactActivityLog}
-                          onChange={(e) => setCompactActivityLog(e.target.checked)}
-                        />
-                        Beknopt
-                      </label>
-                    </div>
-                    {generationActivity.length === 0 ? (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Wachten op eerste serverberichten…</p>
-                    ) : (
-                      <>
-                        <ol className="space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-700">
-                          {(compactActivityLog
-                            ? generationActivity
-                                .map((row) => ({
-                                  id: row.id,
-                                  text: briefGenerationActivityLabel(row.text),
-                                }))
-                                .filter((row) => row.text.length > 0)
-                            : generationActivity
-                          ).map((row) => (
-                            <li
-                              key={row.id}
-                              className="relative text-xs leading-snug text-zinc-700 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-300 dark:before:bg-indigo-500"
-                            >
-                              {row.text}
-                            </li>
-                          ))}
-                        </ol>
-                        {compactActivityLog && generationActivity.length > 0 ? (
-                          <details className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50/80 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900/50">
-                            <summary className="cursor-pointer text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
-                              Volledige serverregels ({generationActivity.length})
-                            </summary>
-                            <ol className="mt-2 max-h-40 space-y-1.5 overflow-y-auto border-t border-zinc-200/80 pt-2 dark:border-zinc-700">
-                              {generationActivity.map((row) => (
-                                <li key={`full-${row.id}`} className="text-[10px] leading-snug text-zinc-600 dark:text-zinc-400">
-                                  {row.text}
-                                </li>
-                              ))}
-                            </ol>
-                          </details>
-                        ) : null}
-                      </>
-                    )}
+                  <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6">
+                    <p className="max-w-sm text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      Zie het <span className="font-medium text-zinc-700 dark:text-zinc-300">gesprek links</span> voor
+                      stap-voor-stap voortgang. Kies <span className="font-medium text-zinc-700 dark:text-zinc-300">Details</span>{" "}
+                      in die kolom voor het volledige logboek.
+                    </p>
                   </div>
                 </div>
               ) : generatorViewPayload ? (

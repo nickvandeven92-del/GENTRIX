@@ -7,6 +7,8 @@ import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-cla
 
 export type StudioRightPaneMode = "preview" | "details";
 
+export type GenerationFeedbackSurface = "panel" | "conversation";
+
 type GenerationFeedbackPanelProps = {
   feedback: GenerationPipelineFeedback | null;
   designRationale?: string | null;
@@ -27,6 +29,8 @@ type GenerationFeedbackPanelProps = {
   runStartedAtMs?: number | null;
   /** Snelle vervolgacties na een geslaagde run (Lovable-achtige chips). */
   followUpSuggestions?: { id: string; label: string; onClick: () => void }[];
+  /** `conversation` = linkse chatbel (WhatsApp/Lovable); `panel` = volle kaartbreedte. */
+  surfaceVariant?: GenerationFeedbackSurface;
 };
 
 function buildCardSubtitle(
@@ -68,6 +72,7 @@ export function GenerationFeedbackPanel({
   hasSiteOutput = false,
   runStartedAtMs = null,
   followUpSuggestions,
+  surfaceVariant = "conversation",
 }: GenerationFeedbackPanelProps) {
   const model = feedback?.model ?? "—";
   const [, setElapsedPulse] = useState(0);
@@ -128,8 +133,13 @@ export function GenerationFeedbackPanel({
     },
   ] as const;
 
+  const rootSurface =
+    surfaceVariant === "conversation"
+      ? "w-full max-w-[min(100%,26rem)] rounded-2xl rounded-bl-md border border-zinc-200/90 bg-zinc-50/95 shadow-sm dark:border-zinc-600 dark:bg-zinc-900/90"
+      : "rounded-xl border border-zinc-200 bg-zinc-50/90 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60";
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60">
+    <div className={rootSurface}>
       <div className="border-b border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700">
         <div className="flex items-start gap-2">
           <Activity className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
