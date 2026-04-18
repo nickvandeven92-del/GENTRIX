@@ -69,6 +69,7 @@ import {
 import {
   applyAiHeroImageToGeneratedPage,
   generatedPageMayUseAiHeroImage,
+  briefingWantsAiGeneratedHeroImage,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
@@ -1377,9 +1378,15 @@ function buildOperationalNavParts(
   return { section4Nav, section5IdsNote, requiredIdsLine };
 }
 
-function buildClientImagesPromptBlock(clientImages: ClientImage[]): string {
+function buildClientImagesPromptBlock(
+  clientImages: ClientImage[],
+  wantsGeneratedHeroImage = false,
+): string {
   if (clientImages.length === 0) return "";
   const list = clientImages.map((img, i) => `${i + 1}. ${img.url}${img.label ? ` — ${img.label}` : ""}`).join("\n");
+  const heroRule = wantsGeneratedHeroImage
+    ? `- **Hero (\`#hero\`) — AI-beeld gevraagd (verplicht):** de briefing vraagt expliciet om een **AI-gegenereerde** hero-afbeelding. Gebruik de klantfoto's **niet** in de hero-sectie — zet **geen** \`<img>\` of \`background-image\` van de lijst hierboven in \`#hero\`. Gebruik gradient + typografie in de hero; de server injecteert automatisch een AI-beeld. Gebruik de klantfoto's **wél** in andere secties (diensten, over ons, galerij, …).`
+    : `- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) — gebruik dan \`<img src="…">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (geen externe stock als vervanger).`;
   return `
 === KLANTFOTO'S (VERPLICHT IN DE SITE ALS ZE MEESTUUR) ===
 
@@ -1388,7 +1395,7 @@ De klant heeft **eigen foto's** aangeleverd — **echte** beelden, geen anonieme
 ${list}
 
 **Regels voor klantfoto's:**
-- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) — gebruik dan \`<img src="…">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (geen externe stock als vervanger).
+${heroRule}
 - **Spaarzaam:** **niet** elke kaart of kolom een eigen foto — dat wordt snel druk. Verdeel uploads **logisch**; elk bestand minstens **één keer** duidelijk zichtbaar is genoeg; liever **grote rust** dan een muur van gelijkvormige fototegels met dikke kaders.
 - **Ook in \`about\`, \`features\`, \`team\`, marketing-subpagina's:** alleen waar het de leesbaarheid dient. **\`gallery\`:** mag meerdere klantfoto's combineren; **geen** externe stock-URL's.
 - Gebruik \`<img src="..." alt="..." class="w-full h-auto object-cover …">\` of \`background-image\` + \`bg-cover bg-center\` met de **exacte** klant-URL.
@@ -1696,7 +1703,10 @@ function buildMinimalWebsiteGenerationUserPrompt(
   );
   const contentAuthorityBlock = buildContentAuthorityPolicyBlock();
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
-  const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
+  const clientImagesBlock = buildClientImagesPromptBlock(
+    clientImages,
+    briefingWantsAiGeneratedHeroImage(description),
+  );
   const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
   const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(
     briefingRefImages,
@@ -1812,7 +1822,10 @@ export function buildWebsiteGenerationUserPrompt(
   const industryHint = buildIndustryPromptHint(businessName, description);
 
   const clientImages = options?.clientImages?.filter((img) => img.url) ?? [];
-  const clientImagesBlock = buildClientImagesPromptBlock(clientImages);
+  const clientImagesBlock = buildClientImagesPromptBlock(
+    clientImages,
+    briefingWantsAiGeneratedHeroImage(description),
+  );
   const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
   const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(
     briefingRefImages,
@@ -2800,7 +2813,7 @@ export function createGenerateSiteReadableStream(
 
         data = applyStockUrlSanitizeToGeneratedPage(data);
 
-        const mayAiHero = generatedPageMayUseAiHeroImage(data);
+        const mayAiHero = generatedPageMayUseAiHeroImage(data, description);
         if (mayAiHero) {
           send(controller, {
             type: "status",

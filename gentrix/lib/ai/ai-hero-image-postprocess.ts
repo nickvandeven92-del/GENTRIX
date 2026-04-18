@@ -8,6 +8,38 @@ const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const PLACEHOLDER_GIF_PREFIX = "data:image/gif;base64,";
 const HERO_IMG_MARKER = 'data-gentrix-ai-hero-img="1"';
 
+// ─── Briefing-signaaldetectie ─────────────────────────────────────────────────
+
+/**
+ * Trefwoorden die aangeven dat de gebruiker expliciet een AI-gegenereerde
+ * hero-afbeelding wil. Wanneer dit waar is, worden klantfoto's uit de hero
+ * gestript zodat de DALL-E 3-injectie niet wordt geblokkeerd.
+ */
+const GENERATED_HERO_KEYWORDS = [
+  "hero afbeelding",
+  "hero-afbeelding",
+  "hero image",
+  "hero foto",
+  "ai hero",
+  "gegenereerde hero",
+  "genereer hero",
+  "hero genereer",
+  "hero generate",
+  "generate hero",
+] as const;
+
+export function briefingWantsAiGeneratedHeroImage(description: string): boolean {
+  const lower = description.toLowerCase();
+  return GENERATED_HERO_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// ─── Strip helper ─────────────────────────────────────────────────────────────
+
+/** Verwijdert alle `<img>` tags uit een HTML-fragment (voor geforceerde AI-hero). */
+function stripImgTagsFromHtml(html: string): string {
+  return html.replace(/<img\b[^>]*(?:\/>|>)/gi, "");
+}
+
 /** `STUDIO_AI_HERO_IMAGE=0` schakelt uit; anders aan wanneer OpenAI + Supabase storage beschikbaar zijn. */
 export function isAiHeroImagePostProcessEnabled(): boolean {
   if (process.env.STUDIO_AI_HERO_IMAGE === "0") return false;
@@ -198,7 +230,16 @@ export async function applyAiHeroImageToGeneratedPage(
   const idx = data.sections.findIndex((s, i) => isHeroLikeSection(s, i));
   if (idx < 0) return data;
   const sec = data.sections[idx];
-  if (!shouldAttemptAiHeroImageForHtml(sec.html)) return data;
+
+  // Wanneer de briefing expliciet een AI-hero vraagt én er al een klantfoto in de
+  // hero zit, verwijder die img-tags zodat de shouldAttempt-check niet blokkeert.
+  const wantsGenerated = briefingWantsAiGeneratedHeroImage(ctx.description);
+  const heroHtmlForCheck =
+    wantsGenerated && heroHtmlHasRealImage(sec.html)
+      ? stripImgTagsFromHtml(sec.html)
+      : sec.html;
+
+  if (!shouldAttemptAiHeroImageForHtml(heroHtmlForCheck)) return data;
 
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
   const b64 = await openAiCreateHeroPngBase64(prompt);
@@ -215,7 +256,9 @@ export async function applyAiHeroImageToGeneratedPage(
   const url = await uploadPngToSiteAssets(png, ctx.subfolderSlug);
   if (!url) return data;
 
-  const nextHtml = injectAiHeroImageIntoHeroSectionHtml(sec.html, url);
+  // Injecteer in de (eventueel gestripte) hero HTML zodat de AI-afbeelding
+  // niet achter een klantfoto verdwijnt.
+  const nextHtml = injectAiHeroImageIntoHeroSectionHtml(heroHtmlForCheck, url);
   if (nextHtml == null) {
     console.warn(
       "[ai-hero] Image generated and uploaded but hero HTML has no injectable <section id=\"hero\"> open tag — skipping inject (orphan asset):",
@@ -229,9 +272,17 @@ export async function applyAiHeroImageToGeneratedPage(
   return { ...data, sections: nextSections };
 }
 
-export function generatedPageMayUseAiHeroImage(data: GeneratedTailwindPage): boolean {
+export function generatedPageMayUseAiHeroImage(
+  data: GeneratedTailwindPage,
+  description = "",
+): boolean {
   if (!isAiHeroImagePostProcessEnabled()) return false;
   const idx = data.sections.findIndex((s, i) => isHeroLikeSection(s, i));
   if (idx < 0) return false;
-  return shouldAttemptAiHeroImageForHtml(data.sections[idx].html);
+  const html = data.sections[idx].html;
+  // Wanneer briefing een AI-hero vraagt, strippen we eerst de imgs — zelfde logica als applyAiHeroImageToGeneratedPage.
+  const wantsGenerated = briefingWantsAiGeneratedHeroImage(description);
+  const heroHtmlForCheck =
+    wantsGenerated && heroHtmlHasRealImage(html) ? stripImgTagsFromHtml(html) : html;
+  return shouldAttemptAiHeroImageForHtml(heroHtmlForCheck);
 }
