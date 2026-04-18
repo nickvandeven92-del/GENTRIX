@@ -16,6 +16,7 @@ import {
   Monitor,
   PanelLeft,
   PanelRight,
+  Plus,
   Send,
   X,
 } from "lucide-react";
@@ -355,6 +356,8 @@ export function GeneratorForm({
   const previewPendingUntilComplete = Boolean(loading && !generatedTailwind && !streamEndedWithoutComplete);
 
   const [clientImages, setClientImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
+  /** Klantfoto-upload Lovable-achtig: standaard ingeklapt achter +-knop. */
+  const [klantFotosOpen, setKlantFotosOpen] = useState(false);
   const [briefingImages, setBriefingImages] = useState<{ url: string; label: string; uploading?: boolean }[]>([]);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   /** Chat + preview over heel scherm (Lovable-achtig), zonder iframe te herladen. */
@@ -968,11 +971,41 @@ export function GeneratorForm({
     const zen = variant === "zen";
     const opdrachtBlock = (
       <div>
-        <div className="flex items-center gap-1.5">
-          <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-            Opdracht
-          </label>
-          <StudioThemeStylesHint />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <label htmlFor="studioBriefing" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+              Opdracht
+            </label>
+            <StudioThemeStylesHint />
+          </div>
+          <button
+            type="button"
+            id="studio-klantfotos-trigger"
+            aria-expanded={klantFotosOpen}
+            aria-controls="studio-klantfotos-panel"
+            disabled={descriptionLocked}
+            onClick={() => setKlantFotosOpen((o) => !o)}
+            title={klantFotosOpen ? "Klantfoto's verbergen" : "Klantfoto's toevoegen (max. 8)"}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors",
+              "border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
+              "dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800",
+              klantFotosOpen &&
+                "border-indigo-300 bg-indigo-50 text-indigo-900 dark:border-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-100",
+              descriptionLocked && "pointer-events-none opacity-50",
+            )}
+          >
+            <Plus
+              className={cn("size-4 transition-transform duration-200", klantFotosOpen && "rotate-45")}
+              aria-hidden
+            />
+            <span className="hidden sm:inline">Klantfoto&apos;s</span>
+            {clientImages.length > 0 ? (
+              <span className="min-w-[1.125rem] rounded-full bg-indigo-600/15 px-1.5 text-center text-[10px] font-semibold tabular-nums text-indigo-900 dark:bg-indigo-400/20 dark:text-indigo-100">
+                {clientImages.length}
+              </span>
+            ) : null}
+          </button>
         </div>
         {descriptionLocked ? (
           <p className="mt-1 text-xs text-slate-500">
@@ -981,9 +1014,87 @@ export function GeneratorForm({
           </p>
         ) : (
           <span id="studio-briefing-a11y-hint" className="sr-only">
-            Plak URL&apos;s, tekst en referentie-afbeeldingen; klantfoto&apos;s alleen bij het klantfoto-vak hierboven.
+            Plak URL&apos;s, tekst en referentie-afbeeldingen in het veld hieronder; klantfoto&apos;s voor in de site via
+            de knop Klantfoto&apos;s (plus) rechtsboven.
           </span>
         )}
+        {klantFotosOpen ? (
+          <div
+            id="studio-klantfotos-panel"
+            role="region"
+            aria-labelledby="studio-klantfotos-trigger"
+            className="mt-2 rounded-lg border border-slate-200 bg-slate-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/60"
+          >
+            <p className="mb-2 text-xs text-slate-600 dark:text-slate-400">
+              Alleen beelden voor <strong className="font-medium text-slate-700 dark:text-slate-300">in de site</strong>
+              <span className="text-slate-500"> (optioneel, max. 8). Referenties horen in het opdrachtveld.</span>
+            </p>
+            <div
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              className={cn(
+                "flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
+                !zen && "min-h-[56px] py-2",
+                zen && "min-h-[88px] justify-center border-slate-300/90 bg-white dark:border-zinc-600",
+                !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
+                descriptionLocked && "pointer-events-none opacity-60",
+              )}
+            >
+              {clientImages.map((img, i) => (
+                <div
+                  key={img.url || i}
+                  className={cn(
+                    "group relative shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-700",
+                    zen ? "size-20" : "size-16",
+                  )}
+                >
+                  {img.uploading ? (
+                    <div className="flex size-full items-center justify-center">
+                      <Loader2 className="size-4 animate-spin text-slate-400" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt={img.label} className="size-full object-cover" />
+                      <button
+                        type="button"
+                        disabled={descriptionLocked}
+                        onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {clientImages.length < 8 && (
+                <button
+                  type="button"
+                  disabled={descriptionLocked}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50",
+                    zen ? "size-20" : "size-16",
+                  )}
+                >
+                  <ImagePlus className="size-5" />
+                  <span className="text-[10px] font-medium">Upload</span>
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                disabled={descriptionLocked}
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
+            {imageUploadError ? <p className="mt-2 text-xs text-red-600">{imageUploadError}</p> : null}
+          </div>
+        ) : null}
         <div
           onDrop={handleBriefingAreaDrop}
           onDragOver={(ev) => {
@@ -1049,95 +1160,9 @@ export function GeneratorForm({
       </div>
     );
 
-    const klantFotosBlock = (
-      <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
-        </label>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Alleen beelden voor <strong className="font-medium text-slate-600 dark:text-slate-300">in de site</strong>; de
-          rest in het opdrachtveld hieronder.
-        </p>
-        <div
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className={cn(
-            "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
-            !zen && "min-h-[56px] py-2",
-            zen && "min-h-[96px] justify-center border-slate-300/90 bg-white dark:border-zinc-600",
-            !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
-            descriptionLocked && "pointer-events-none opacity-60",
-          )}
-        >
-          {clientImages.map((img, i) => (
-            <div
-              key={img.url || i}
-              className={cn(
-                "group relative shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-zinc-700",
-                zen ? "size-20" : "size-16",
-              )}
-            >
-              {img.uploading ? (
-                <div className="flex size-full items-center justify-center">
-                  <Loader2 className="size-4 animate-spin text-slate-400" />
-                </div>
-              ) : (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={img.label} className="size-full object-cover" />
-                  <button
-                    type="button"
-                    disabled={descriptionLocked}
-                    onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
-          {clientImages.length < 8 && (
-            <button
-              type="button"
-              disabled={descriptionLocked}
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50",
-                zen ? "size-20" : "size-16",
-              )}
-            >
-              <ImagePlus className="size-5" />
-              <span className="text-[10px] font-medium">Upload</span>
-            </button>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            multiple
-            disabled={descriptionLocked}
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-        </div>
-        {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
-      </div>
-    );
-
     return (
       <form onSubmit={onSubmit} className={cn("space-y-3", zen && "space-y-6")}>
-        {zen ? (
-          <>
-            {klantFotosBlock}
-            {opdrachtBlock}
-          </>
-        ) : (
-          <>
-            {klantFotosBlock}
-            {opdrachtBlock}
-          </>
-        )}
+        {opdrachtBlock}
         <button
           type="submit"
           disabled={loading}
@@ -1669,10 +1694,11 @@ export function GeneratorForm({
               Site-studio · eerste generatie
             </p>
             <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Alleen klantfoto&apos;s en je opdracht — rustig overzicht. Als je op{" "}
-              <strong className="font-medium text-zinc-700 dark:text-zinc-300">Genereer site</strong> drukt, opent het{" "}
-              <strong className="font-medium text-zinc-700 dark:text-zinc-300">split scherm</strong> met voortgang links en
-              preview rechts.
+              Je opdracht staat centraal; klantfoto&apos;s zijn optioneel via de{" "}
+              <strong className="font-medium text-zinc-700 dark:text-zinc-300">+-knop</strong> rechts naast Opdracht. Als
+              je op <strong className="font-medium text-zinc-700 dark:text-zinc-300">Genereer site</strong> drukt, opent
+              het <strong className="font-medium text-zinc-700 dark:text-zinc-300">split scherm</strong> met voortgang links
+              en preview rechts.
             </p>
           </div>
           <div className="w-full max-w-xl shrink-0 rounded-2xl border border-zinc-200/90 bg-white/95 p-6 shadow-md shadow-zinc-200/40 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/90 dark:shadow-black/40">

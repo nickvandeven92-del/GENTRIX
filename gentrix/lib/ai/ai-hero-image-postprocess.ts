@@ -307,13 +307,15 @@ async function uploadPngToSiteAssets(png: Buffer, subfolderSlug?: string | null)
 }
 
 /**
- * Voegt één full-bleed hero-beeld toe (desktop: rechts 50% i.v.m. split-layouts).
+ * Voegt één **full-bleed** hero-beeld toe (onder de overige inhoud, `z-0`).
+ * Geen desktop-halve-breedte meer: `md:w-1/2` + complexe AI-grids met ondoorzichtige zijkolommen
+ * liet het beeld alleen in een smalle strook zien (“drie kolommen”-bug in preview).
  * Retourneert `null` wanneer er geen passende `<section id="hero">` is.
  */
 export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUrl: string): string | null {
   const escUrl = publicImageUrl.replace(/"/g, "&quot;");
   /** `z-0` (niet negatief): negatieve z-index verdween vaak achter sibling-kolommen met effen `bg-*`, waardoor de injectie “onzichtbaar” leek. */
-  const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover md:left-1/2 md:right-0 md:w-1/2" loading="eager" fetchpriority="high" />`;
+  const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center" loading="eager" fetchpriority="high" />`;
 
   const out = html.replace(
     /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>/i,
