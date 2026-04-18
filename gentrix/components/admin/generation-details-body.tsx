@@ -20,6 +20,8 @@ export type GenerationDetailsBodyProps = {
   activityLog: { id: string; text: string }[];
   streamPhase?: string | null;
   loading?: boolean;
+  /** Ruwe NDJSON/token-buffer (alleen tijdens stream); volledige weergave in dit paneel i.p.v. extra scroll in de sidebar. */
+  rawStreamLog?: string | null;
   /** Beknopte milestone-regels i.p.v. volledige servertekst. */
   activityLogBrief?: boolean;
   onActivityLogBriefChange?: (brief: boolean) => void;
@@ -40,6 +42,7 @@ export function GenerationDetailsBody({
   activityLog,
   streamPhase,
   loading = false,
+  rawStreamLog = null,
   activityLogBrief = false,
   onActivityLogBriefChange,
 }: GenerationDetailsBodyProps) {
@@ -83,6 +86,16 @@ export function GenerationDetailsBody({
               Nu: {streamPhase}
             </p>
           ) : null}
+          {rawStreamLog?.trim() ? (
+            <details className="mt-3 rounded-md border border-slate-200 bg-white/90 dark:border-zinc-700 dark:bg-zinc-950/60">
+              <summary className="cursor-pointer select-none px-2 py-1.5 text-[10px] font-medium text-slate-700 dark:text-zinc-300">
+                Ruwe model-output (JSON-stream)
+              </summary>
+              <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words border-t border-slate-200/80 p-2 font-mono text-[10px] leading-snug text-slate-800 dark:border-zinc-700 dark:text-zinc-200">
+                {rawStreamLog}
+              </pre>
+            </details>
+          ) : null}
           {activityLog.length === 0 && !loading ? (
             <p className="mt-2 text-xs text-slate-600 dark:text-zinc-400">Nog geen stappen — start een generatie.</p>
           ) : (
@@ -107,7 +120,7 @@ export function GenerationDetailsBody({
                   <summary className="cursor-pointer text-[10px] font-medium text-slate-600 dark:text-zinc-400">
                     Volledige serverregels ({activityLog.length})
                   </summary>
-                  <ol className="mt-2 max-h-36 space-y-1.5 overflow-y-auto border-t border-slate-200/80 pt-2 dark:border-zinc-700">
+                  <ol className="mt-2 space-y-1.5 border-t border-slate-200/80 pt-2 dark:border-zinc-700">
                     {activityLog.map((row) => (
                       <li key={`full-${row.id}`} className="text-[10px] leading-snug text-slate-600 dark:text-zinc-400">
                         {row.text}

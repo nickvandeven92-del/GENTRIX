@@ -1239,6 +1239,7 @@ function buildStockImageryAgencyDefaultMarkdown(): string {
   - **Klant-uploads** (blok **KLANTFOTO'S**): als die URL's in de opdracht staan, **verplicht** prominent gebruiken met \`<img src="…">\` (**exact** dezelfde https-URL als in de lijst) + zinvolle \`alt\` — **niet** vervangen door externe stock of verzonnen URL's.
   - **Briefing-screenshots** + eventuele **vision**-tekst: gebruik voor **inhoud en toon**; geen volledige “browser”-schermafdruk als één giant \`<img>\` tenzij de briefing dat expliciet vraagt — zie blok **BRIEFING-REFERENTIEBEELDEN**.
   - **Geen externe stock-URL's** (\`images.unsplash.com\`, Pexels-embeds als stock-raster, …): die horen niet in de studio-output; gebruik **KLANTFOTO'S**, gradient, SVG of server-side **AI-hero** (zie contract). **\`gallery\`:** alleen als de briefing **expliciet** een fotogalerij wil — **geen** standaard collage “omdat het kan”.
+  - **Server AI-hero / kant-en-klare hero-foto-URL:** behandel als **documentairefotografie** — geen “AI-poster”-look door extreme \`mix-blend-mode\`, \`contrast-*\`, \`saturate-*\` of dubbele HDR-stacks op het beeld; overlays **alleen** licht genoeg voor leesbare typografie (vergelijkbaar met premium editorial sites).
   - **Vermijd standaard “monogram-hero”:** geen **vaste** visuele formule “split + rechterkolom met **dubbele ring/cirkel + initialen** + adres in het rondje” als decoratieve mediavulling — dat is een herhaalbaar sjabloon. Zonder klantfoto: kies óf **full-bleed typografie** (één kolom, sterk beeld via type/gradient), óf een split waarbij de rechter **geen** ondoorzichtig effen vlak over de volle hoogte nodig heeft (zie **§VIEWPORT — server AI-hero**); **geen** tweede pseudo-foto uit pure SVG-decoratie.
   - **Geen** \`via.placeholder\`, \`example.com\`-foto's of verzonnen beeld-URL's.
   - **\`<video>\` / \`<iframe>\`:** alleen met **concrete** https-URL in de geschreven briefing; anders gradient + \`data-animation\` / AOS.`;
@@ -2578,8 +2579,9 @@ export type GenerateSiteStreamNdjsonEvent =
  * NDJSON-bytes tijdens stilte (prepare, Denklijn, zelfreview, OpenAI-hero, …) én tijdens de grote
  * Claude-tokenstream. Proxies/CDN's hebben vaak een **idle** timeout (10–60s); kort interval +
  * **direct eerste ping** (`setInterval` vuurt anders pas na 1× interval) houdt de verbinding levend.
+ * 2,5s i.p.v. 4s: striktere loadbalancers (≈10s idle) en stiltes tijdens zware Claude-chunks.
  */
-const NDJSON_SILENT_WORK_KEEPALIVE_MS = 4_000;
+const NDJSON_SILENT_WORK_KEEPALIVE_MS = 2_500;
 
 /** JSON naar stdout; in Vercel/hosting op `gentrix.generate_site_stream` + `runId` filteren. */
 function emitGenerateSiteStreamTrace(

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Check, Circle, Sparkles } from "lucide-react";
+import { Activity, Check, ChevronRight, Circle, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
 
@@ -54,7 +54,7 @@ function buildCardSubtitle(
     const bits = [contract.paletteMode, contract.motionLevel].filter(Boolean).join(" · ");
     return bits ? `Contract: ${bits}` : "Designcontract ontvangen.";
   }
-  return "Volg de voortgang hieronder — Details opent het logboek rechts.";
+  return "Volg de voortgang — tik op › rechtsboven voor tijdlijn en logboek.";
 }
 
 export function GenerationFeedbackPanel({
@@ -136,7 +136,7 @@ export function GenerationFeedbackPanel({
   const conv = surfaceVariant === "conversation";
 
   const rootSurface = conv
-    ? "w-full max-w-[min(100%,26rem)] rounded-xl rounded-bl-md border border-indigo-200/80 bg-gradient-to-b from-white to-zinc-50/90 shadow-sm ring-1 ring-indigo-500/10 dark:border-indigo-900/40 dark:from-zinc-900 dark:to-zinc-950/90 dark:ring-indigo-400/10"
+    ? "w-full max-w-[min(100%,26rem)] rounded-xl rounded-bl-md border border-zinc-200/70 bg-zinc-50/90 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/70"
     : "rounded-xl border border-zinc-200 bg-zinc-50/90 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60";
 
   return (
@@ -144,10 +144,23 @@ export function GenerationFeedbackPanel({
       <div
         className={
           conv
-            ? "border-b border-indigo-100/90 px-2.5 py-2 dark:border-indigo-950/50"
-            : "border-b border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700"
+            ? "relative border-b border-zinc-200/60 px-2.5 py-2 pr-10 dark:border-zinc-700/70"
+            : "relative border-b border-zinc-200/90 px-3 py-2.5 pr-12 dark:border-zinc-700"
         }
       >
+        <button
+          type="button"
+          onClick={() => onRightPaneModeChange("details")}
+          title="Volledige tijdlijn en logboek rechts"
+          aria-label="Open details en logboek in het rechterpaneel"
+          className={
+            conv
+              ? "absolute right-1.5 top-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-200/70 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              : "absolute right-2 top-2 inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-200/70 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+          }
+        >
+          <ChevronRight className="size-4" aria-hidden />
+        </button>
         <div className="flex items-start gap-2">
           <Activity
             className={conv ? "mt-0.5 size-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" : "mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400"}
@@ -276,26 +289,21 @@ export function GenerationFeedbackPanel({
         </p>
       ) : null}
 
-      <div
-        className={
-          conv ? "flex gap-1.5 border-t border-zinc-200/90 px-2.5 py-2 dark:border-zinc-700" : "flex gap-2 border-t border-zinc-200/90 px-3 py-3 dark:border-zinc-700"
-        }
-      >
-        <button
-          type="button"
-          onClick={() => onRightPaneModeChange("details")}
-          className={cnPanelBtn(rightPaneMode === "details", false, conv)}
+      {rightPaneMode === "details" ? (
+        <div
+          className={
+            conv ? "border-t border-zinc-200/60 px-2.5 py-2 dark:border-zinc-700/70" : "border-t border-zinc-200/90 px-3 py-3 dark:border-zinc-700"
+          }
         >
-          Details
-        </button>
-        <button
-          type="button"
-          onClick={() => onRightPaneModeChange("preview")}
-          className={cnPanelBtn(rightPaneMode === "preview", true, conv)}
-        >
-          Preview
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => onRightPaneModeChange("preview")}
+            className={`${cnPanelBtn(true, true, conv)} w-full`}
+          >
+            Terug naar preview
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

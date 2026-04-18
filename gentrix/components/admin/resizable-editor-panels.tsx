@@ -197,7 +197,8 @@ export function ResizableEditorPanels({
     >
       <aside
         className={cn(
-          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:max-h-full lg:overflow-y-auto lg:pl-4 lg:pt-3 lg:pr-1",
+          /* Eén verticale scroll: binnen de sidebar-content (o.a. studio-chat), niet hier — voorkomt scrollbar-in-scrollbar. */
+          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:max-h-full lg:overflow-hidden lg:pl-4 lg:pt-3 lg:pr-1",
           showBoth && "lg:w-[var(--editor-sidebar-px)] lg:shrink-0",
           !showSidebar && "hidden",
           visiblePanels === "sidebar" && "lg:flex-1",

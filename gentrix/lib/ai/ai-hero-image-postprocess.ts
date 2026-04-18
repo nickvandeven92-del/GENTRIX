@@ -108,13 +108,14 @@ export function buildOpenAiHeroPrompt(
   contract: DesignGenerationContract | null,
 ): string {
   const parts: string[] = [
-    "Photorealistic documentary-style photograph for a commercial website hero background.",
-    "Shot like a real camera (35mm or full-frame DSLR), natural skin texture, realistic imperfections, not CGI or video-game render.",
-    "Editorial reportage look: believable real-world environment, light dust or tool clutter OK, not a sterile CGI product render.",
-    "Avoid plastic airbrushed skin, wax-doll faces, oversharpening, perfectly symmetrical poses, extra fingers, or illustration look.",
-    "Hands and tools: anatomically plausible, slightly imperfect, candid moment — not a posed stock tableau.",
+    "Photorealistic documentary photograph for a commercial website hero — must read as a real photo, not an illustration or 3D render.",
+    "Shot like a full-frame DSLR / mirrorless still (35–50mm lens feel), natural dynamic range: avoid crushed blacks, blown highlights, HDR halos, oversharpening, or hyper-saturated 'AI poster' color.",
+    "Believable workshop or service environment; soft window light or warm practicals; shallow depth of field with natural bokeh — like a premium editorial brand shoot (reference quality: high-end craft business photography).",
+    "Natural skin texture and hair detail, realistic imperfections, not plastic or wax-doll; candid mid-action moment, not a stiff stock pose.",
+    "Avoid illustration, vector, coloring-book, comic, game cinematic, or airbrushed glamour retouching.",
+    "Hands and tools: anatomically plausible, slightly imperfect — not perfectly symmetrical staging.",
     "No text, no logos, no watermarks, no UI mockups.",
-    "Natural light, shallow depth of field, subtle film grain optional, tasteful color grading.",
+    "Optional subtle film grain; restrained color grade — photographic, not stylized fantasy.",
   ];
   const bn = businessName.trim();
   if (bn) parts.push(`Business context (mood only, do not render the name as text): ${bn.slice(0, 120)}.`);
@@ -192,7 +193,8 @@ function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
     "**In de landings-`hero`-sectie (`id: \"hero\"`):**\n" +
     "- Buitenste wrapper **moet** `<section id=\"hero\" …>` zijn met `relative` in de `class` (stacking voor overlays).\n" +
     "- Zet **minstens één** `<img … src=\"…\" …>` **of** een zichtbare **background-image** (inline `style` of Tailwind arbitrary property) met **exact** bovenstaande HTTPS-URL in een geldige CSS-`url`-waarde — de hero mag **niet** een leeg wit/grijs vlak zijn.\n" +
-    "- Gradient/overlays (`bg-black/30`, `from-black/60`, …) zijn oké zolang het beeld zichtbaar blijft; **niet** een effen ondoorzichtige `bg-white` over de hele fotovlak zonder doorzichtigheid.\n\n" +
+    "- Leesbaarheid: **lichte** overlay mag (`bg-black/25` … `bg-black/45`, of vergelijkbare gradient) — **geen** extreme `mix-blend-mode`, `contrast-125`, `saturate-200`, dubbele filters of ondoorzichtige vlakken over het hele beeld; het moet **fotografisch** blijven ogen (geen “HDR-kleurplaat”).\n" +
+    "- Gradient/overlays zijn oké zolang het beeld zichtbaar blijft; **niet** een effen ondoorzichtige `bg-white` over de hele fotovlak zonder doorzichtigheid.\n\n" +
     "Dit blok is leidend voor het grote herobeeld; andere secties volgen de normale stock-regels.\n"
   );
 }
