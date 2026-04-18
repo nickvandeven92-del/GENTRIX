@@ -23,9 +23,4 @@ export const STUDIO_SITE_GENERATION = {
   /** Kleine JSON-planfase vóór HTML: copy-budget + CTA; sectie-id's blijven server-side vast. */
   compositionPlanEnabled: true,
   selfReviewEnabled: false,
-  /**
-   * Site-studio: sectie-voor-sectie generatie + merge + finale check (meerdere POST’s, geen NDJSON-stream).
-   * Vereist migratie `site_generation_chunk_sessions`. Zet op `false` om terug te vallen op één NDJSON-stream.
-   */
-  siteGenerationChunkedEnabled: true,
 } as const;

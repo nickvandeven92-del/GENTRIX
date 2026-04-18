@@ -14,8 +14,8 @@ import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-pro
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
-/** Langere runs: prepare + Denklijn + grote JSON-stream + post-stappen. Hobby: max 300s deploybaar; op Pro kun je 800. Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC`. */
-export const maxDuration = 300;
+/** Pro: 800s (Vercel fluid max). Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC` — op Hobby 300. */
+export const maxDuration = 800;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

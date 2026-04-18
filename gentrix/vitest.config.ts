@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts"],
+    /** Gescheurde / legacy imports; actieve app-tests zitten buiten `lib/ai/_archive/`. */
+    exclude: ["lib/ai/_archive/**"],
   },
   resolve: {
     alias: {

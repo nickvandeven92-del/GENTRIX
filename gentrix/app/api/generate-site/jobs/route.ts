@@ -10,10 +10,10 @@ import {
 } from "@/lib/data/site-generation-jobs";
 /**
  * `after()`-work deelt dit plafond met de POST-response.
- * **Vercel Hobby:** `maxDuration` mag hier max. **300** zijn — hoger faalt de deploy.
- * Op **Pro:** verhoog `SITE_GENERATION_JOB_MAX_DURATION_SEC` in `lib/config/site-generation-job.ts` (bijv. 800) en deze literal.
+ * **Hobby:** `maxDuration` max. **300** in deploy — anders 800 op **Pro** (sync met
+ * `SITE_GENERATION_JOB_MAX_DURATION_SEC` in `lib/config/site-generation-job.ts`).
  */
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

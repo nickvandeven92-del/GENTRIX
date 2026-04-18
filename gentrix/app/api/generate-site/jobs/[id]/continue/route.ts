@@ -6,7 +6,7 @@ import {
 } from "@/lib/data/site-generation-jobs";
 
 /** Zelfde plafond als fase 1: hoofdstream + zelfreview + hero krijgen een verse wall-clock. */
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 /**
  * Interne tweede invocatie voor gefaseerde `site_generation_jobs` (`SITE_GENERATION_PHASED_JOB=1`).

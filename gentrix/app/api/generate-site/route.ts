@@ -12,7 +12,7 @@ import { isValidSubfolderSlug } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 /** Keep in sync with `SITE_GENERATION_JOB_MAX_DURATION_SEC` in `@/lib/config/site-generation-job`. */
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

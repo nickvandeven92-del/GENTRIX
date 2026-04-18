@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "all": "npm run test && npm run build",
+    "all:strict": "npm run lint && npm run test && npm run build",
     "dev": "next dev --webpack --hostname localhost",
     "dev:lan": "next dev --webpack",
     "dev:turbo": "next dev --turbopack --hostname localhost",

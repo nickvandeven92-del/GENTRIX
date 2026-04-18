@@ -1,16 +1,18 @@
 /**
  * Time budget (seconds) for site-generation on Vercel serverless.
- * Route handlers must use a **numeric literal** `export const maxDuration = 300` (Next.js 16
- * static analysis); keep that literal in sync with this constant in:
+ * Route handlers must use a **numeric literal** met dezelfde waarde (Next.js 16 static analysis);
+ * houd in sync:
  * - `app/api/generate-site/jobs/route.ts`
  * - `app/api/generate-site/jobs/[id]/route.ts`
  * - `app/api/generate-site/stream/route.ts`
- * - `app/api/generate-site/jobs/[id]/continue/route.ts` (fase 2 gefaseerde jobs)
+ * - `app/api/generate-site/jobs/[id]/continue/route.ts` (fase 2)
  * - `app/api/generate-site/route.ts`
  *
- * Hobby: max 300. On Pro you may raise route `maxDuration` and this constant together.
+ * **800 s** = Vercel Pro/Enterprise (fluid) maximum; zet Vercel-project op Pro.
+ * **Hobby** omsluiting = max. **300 s** — `maxDuration` boven 300 laat de deploy dáár vaak fallen.
+ * Voor gratis tier: `SITE_GENERATION_JOB_MAX_DURATION_SEC` + alle route-literals tóch **300** houden.
  */
-export const SITE_GENERATION_JOB_MAX_DURATION_SEC = 300;
+export const SITE_GENERATION_JOB_MAX_DURATION_SEC = 800;
 
 export const SITE_GENERATION_JOB_MAX_DURATION_MS = SITE_GENERATION_JOB_MAX_DURATION_SEC * 1_000;
 

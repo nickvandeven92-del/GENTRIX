@@ -116,17 +116,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
   {
     label: "API: NDJSON-stream",
     path: "app/api/generate-site/stream/route.ts",
-    description: "POST → createGenerateSiteReadableStream; maxDuration 300s voor lange runs.",
-  },
-  {
-    label: "API: chunked studio (secties + merge)",
-    path: "app/api/generate-site/chunked/session/route.ts",
-    description: "POST → beginChunkedSiteGeneration + sessie in DB; client roept daarna advance per stap.",
-  },
-  {
-    label: "Chunked engine (merge + finalize)",
-    path: "lib/ai/generate-site-chunked.ts",
-    description: "Per-stuk Claude JSON (config, landing, marketing, contact) → merge → zelfde postprocess als monolith.",
+    description: "POST → createGenerateSiteReadableStream; maxDuration 800s (Pro) voor lange runs.",
   },
   {
     label: "Legacy code (niet in TS-build)",
