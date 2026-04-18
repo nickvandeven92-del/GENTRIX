@@ -1956,8 +1956,8 @@ export type BuildTailwindIframeSrcDocOptions = {
    */
   draftPublicPreviewToken?: string | null;
   /**
-   * Studio iframe-preview: `width=device-width` in een smal paneel triggert mobiele Tailwind-breakpoints.
-   * Zet dit aan om de layout te laten aansluiten op het **browservenster** (desktop vs mobiel), niet op de iframewidth.
+   * Studio iframe-preview: `true` = vaste `width=1280` viewport (expliciete desktop-knop in de editor).
+   * `false` = `width=device-width` zodat Tailwind-breakpoints de **iframebreedte** volgen (normale auto-preview).
    */
   previewMatchParentWindowBreakpoints?: boolean;
   /**

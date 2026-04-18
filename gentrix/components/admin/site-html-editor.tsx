@@ -709,7 +709,7 @@ export function SiteHtmlEditor({
                       <button
                         type="button"
                         onClick={() => setPreviewViewportMode("auto")}
-                        title="Automatisch: mobiel of desktop volgens je browservenster"
+                        title="Automatisch: layout volgt de breedte van het preview-paneel (sleepbalk)"
                         className={cn(
                           "inline-flex size-7 items-center justify-center rounded transition-colors",
                           previewViewportMode === "auto"
@@ -784,11 +784,12 @@ export function SiteHtmlEditor({
                 </div>
                 <p
                   className="mt-1 line-clamp-2 max-w-[56rem] text-[9px] leading-snug text-zinc-500 dark:text-zinc-400"
-                  title="Preview = werkversie. Openbare /site/… zonder token = gepubliceerde snapshot. Smalle kolom: horizontaal scrollen; preview 1280px voor lg:-nav."
+                  title="Preview = werkversie. Openbare /site/… zonder token = live snapshot. Automatische weergave schaalt mee met het preview-paneel; Desktop-knop toont vaste brede layout."
                 >
                   Preview = <strong className="font-medium">werkversie</strong>.{" "}
                   <code className="rounded bg-zinc-200/80 px-0.5 font-mono dark:bg-zinc-800/80">/site/…</code> zonder token ={" "}
-                  <strong className="font-medium">live</strong> snapshot. Smalle kolom: scroll horizontaal (1280px-preview).
+                  <strong className="font-medium">live</strong> snapshot. Automatisch: tablet/telefoon-layout bij smal paneel;
+                  Desktop-knop: vaste brede preview (1280px).
                 </p>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
