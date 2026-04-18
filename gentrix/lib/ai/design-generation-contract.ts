@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SITE_SIGNATURE_ARCHETYPE_LABELS, siteSignatureSchema } from "@/lib/ai/site-signature-schema";
+import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 
 /**
  * Visuele assen afgeleid van de **referentiesite** (HTML-excerpt) — leidend op compositie & UI-schil,
@@ -419,7 +420,8 @@ export function buildUnsplashThemeContextWithContract(
   contract: DesignGenerationContract | null | undefined,
   businessName?: string | null,
 ): string {
-  const bn = businessName?.trim();
+  const bnRaw = businessName?.trim();
+  const bn = bnRaw && !isStudioUndecidedBrandName(bnRaw) ? bnRaw : "";
   const desc = description.trim();
   const head = bn ? `${bn}. ${desc}` : desc;
   if (!contract) return head;

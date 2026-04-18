@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { Activity, Check, Circle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Activity, Check, Circle, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
 
@@ -23,6 +23,10 @@ type GenerationFeedbackPanelProps = {
   loading?: boolean;
   /** Site succesvol ontvangen. */
   hasSiteOutput?: boolean;
+  /** `Date.now()` bij start generatie — voor doorlooptijd-indicator. */
+  runStartedAtMs?: number | null;
+  /** Snelle vervolgacties na een geslaagde run (Lovable-achtige chips). */
+  followUpSuggestions?: { id: string; label: string; onClick: () => void }[];
 };
 
 function buildCardSubtitle(
@@ -62,8 +66,29 @@ export function GenerationFeedbackPanel({
   streamPhase = null,
   loading = false,
   hasSiteOutput = false,
+  runStartedAtMs = null,
+  followUpSuggestions,
 }: GenerationFeedbackPanelProps) {
   const model = feedback?.model ?? "—";
+  const [, setElapsedPulse] = useState(0);
+
+  useEffect(() => {
+    if (!loading || runStartedAtMs == null) return;
+    const id = window.setInterval(() => setElapsedPulse((n) => n + 1), 500);
+    return () => window.clearInterval(id);
+  }, [loading, runStartedAtMs]);
+
+  const elapsedSec =
+    loading && runStartedAtMs != null
+      ? Math.max(0, Math.floor((Date.now() - runStartedAtMs) / 1000))
+      : null;
+
+  const thinkingLabel =
+    designRationaleLoading && elapsedSec != null
+      ? `Denklijn… ${elapsedSec}s`
+      : loading && elapsedSec != null && !hasSiteOutput
+        ? `Bezig… ${elapsedSec}s`
+        : null;
 
   const summary = useMemo(
     () =>
@@ -116,6 +141,12 @@ export function GenerationFeedbackPanel({
               </span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{summary}</p>
+            {thinkingLabel ? (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
+                <Sparkles className="size-3.5 shrink-0 text-indigo-500" aria-hidden />
+                {thinkingLabel}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -140,12 +171,30 @@ export function GenerationFeedbackPanel({
       </ul>
 
       {loading && !hasSiteOutput ? (
-        <p className="mx-3 mb-2 text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
-          Zie je tussendoor sectienamen in het log? Dat is ruwe HTML uit de stream; het laatste vinkje komt pas als de
-          server ook **nabewerking** klaar heeft (o.a. stock-stap, validatie). Minuten zonder nieuwe regel kan gewoon
-          zijn: de zware stap draait op de server. Hoe verbinding en transport precies lopen, staat op de server — daar
-          hoef je als gebruiker normaal niets voor te tunen.
-        </p>
+        <details className="mx-3 mb-2 text-[10px] text-zinc-500 dark:text-zinc-500">
+          <summary className="cursor-pointer select-none text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+            Technische stream
+          </summary>
+          <p className="mt-1 leading-snug">
+            Het laatste vinkje volgt pas na nabewerking (o.a. stock). Lange stilte kan normaal zijn — de server werkt
+            door.
+          </p>
+        </details>
+      ) : null}
+
+      {followUpSuggestions && followUpSuggestions.length > 0 ? (
+        <div className="flex flex-wrap gap-2 border-t border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700">
+          {followUpSuggestions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={s.onClick}
+              className="rounded-full border border-indigo-200/90 bg-white px-3 py-1 text-[11px] font-medium text-indigo-950 shadow-sm transition-colors hover:bg-indigo-50 dark:border-indigo-800 dark:bg-zinc-900 dark:text-indigo-100 dark:hover:bg-indigo-950/80"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       ) : null}
 
       {designContractWarning ? (

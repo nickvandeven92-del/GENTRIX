@@ -73,6 +73,7 @@ import {
 } from "@/lib/ai/site-generation-industry-data";
 import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 import { SITE_GENERATION_JOB_MAX_DURATION_MS } from "@/lib/config/site-generation-job";
+import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 
 /**
  * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
@@ -134,10 +135,21 @@ export type GenerationPipelineFeedback = {
  * Zo matcht bv. alleen "Herenkapster De Snijder" als naam al op kappers-profielen.
  */
 export function combinedIndustryProbeText(businessName: string, description: string): string {
-  const n = businessName.trim();
+  const nRaw = businessName.trim();
+  const n = isStudioUndecidedBrandName(nRaw) ? "" : nRaw;
   const d = description.trim();
   if (n && d) return `${n}\n${d}`;
   return n || d;
+}
+
+/** Regel(s) voor `Bedrijfsnaam` in de user-prompt — inclusief “model verzint naam”-modus. */
+function buildStudioBrandNameUserPromptBlock(businessName: string): string {
+  if (isStudioUndecidedBrandName(businessName)) {
+    return `Bedrijfsnaam: **(door jou te bedenken — de gebruiker gaf geen vaste merknaam)**
+- Verzin **één korte, pakkende Nederlandse merk- of bedrijfsnaam** (meestal 1–3 woorden, max. ~40 tekens) die past bij de briefing en sector — **origineel**, uitspreekbaar, geen letterlijke kopie van een bekend merk en geen generieke \`.com\`-hype.
+- Gebruik die naam **consequent** in \`meta.title\`, het merklabel in de navigatie, de hero en overal waar een bedrijfsnaam logisch is.`;
+  }
+  return `Bedrijfsnaam: ${businessName}`;
 }
 
 /**
@@ -1425,7 +1437,11 @@ URL: ${snap.url}
 
 ${snap.excerpt}
 
-**Vertaal naar een eigen one-pager voor "${businessName}":**
+**Vertaal naar een eigen one-pager voor ${
+    isStudioUndecidedBrandName(businessName)
+      ? "het merk dat je **zelf** uit de briefing (hierboven) verzint — zie instructies bij Bedrijfsnaam"
+      : `"${businessName}"`
+  }:**
 - Pak kleurenfamilie, typografie (serif/sans, gewicht), ritme en globale opzet die bij bovenstaande snapshot passen.
 - Waar je menu/ankers gebruikt: zorg dat \`href="#…"\` logisch aansluit op de sectie-\`id\`'s op deze one-pager.
 
@@ -1683,7 +1699,7 @@ function buildMinimalWebsiteGenerationUserPrompt(
 
   return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + vaste subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
 
-Bedrijfsnaam: ${businessName}
+${buildStudioBrandNameUserPromptBlock(businessName)}
 Context / branche: ${description}
 ${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
 ${clientImagesBlock}${briefingRefBlock}${referenceSiteBlock}
@@ -1794,7 +1810,7 @@ export function buildWebsiteGenerationUserPrompt(
 
   return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Maak een **professionele, onderscheidende** site die past bij de briefing — **niet** anoniem-veilig; je hebt ruimte voor sterk ontwerp.
 
-Bedrijfsnaam: ${businessName}
+${buildStudioBrandNameUserPromptBlock(businessName)}
 Context / branche: ${description}
 ${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
 ${clientImagesBlock}${briefingRefBlock}${referenceSiteBlock}
@@ -2006,7 +2022,9 @@ async function prepareGenerateSiteClaudeCall(
     const extracted = await extractBriefingReferenceImagesWithVision({
       client,
       model: visionModel,
-      businessName: businessName.trim(),
+      businessName: isStudioUndecidedBrandName(businessName.trim())
+        ? "Nog niet vast — lees merk en context uit het briefingfragment."
+        : businessName.trim(),
       descriptionSnippet: description.trim().slice(0, 2000),
       images: briefingRefForVision,
     });
@@ -2017,7 +2035,9 @@ async function prepareGenerateSiteClaudeCall(
   const pipelineFeedback: GenerationPipelineFeedback = {
     model: generateModel,
     interpreted: {
-      businessName: businessName.trim(),
+      businessName: isStudioUndecidedBrandName(businessName.trim())
+        ? "(Model verzint merknaam)"
+        : businessName.trim(),
       description: description.trim().slice(0, 500),
       sections: sectionIds,
       detectedIndustry: detectedIndustry?.label,

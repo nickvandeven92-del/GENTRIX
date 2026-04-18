@@ -8,6 +8,7 @@ import {
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
+import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 
@@ -108,7 +109,11 @@ URL: ${snap.url}
 HTML-fragment (stijl- en structuurhint; geen lange teksten of merknamen letterlijk kopiëren in contract-strings):
 ${excerpt}
 
-**Opdracht:** Lees dit excerpt. Vul **referenceVisualAxes** (alle negen sleutels) met **concrete** waarden die het excerpt visueel vertalen (ritme, thema, paletintentie, typografie, hero-compositie, dichtheid, motion-stijl, randen, kaarten). Vul \`rationale_nl\` + overige contractvelden zodat briefing (inhoud/CTA) en referentie (visuele schil) **samenhangen** voor een eigen one-pager voor "${businessName}".`;
+**Opdracht:** Lees dit excerpt. Vul **referenceVisualAxes** (alle negen sleutels) met **concrete** waarden die het excerpt visueel vertalen (ritme, thema, paletintentie, typografie, hero-compositie, dichtheid, motion-stijl, randen, kaarten). Vul \`rationale_nl\` + overige contractvelden zodat briefing (inhoud/CTA) en referentie (visuele schil) **samenhangen** voor een eigen one-pager voor ${
+    isStudioUndecidedBrandName(businessName)
+      ? "het merk dat uit de volledige briefing volgt (gebruiker gaf geen vaste titel; zelfde modus als site-generatie)"
+      : `"${businessName}"`
+  }.`;
 }
 
 export async function generateDesignRationaleWithClaude(

@@ -54,6 +54,11 @@ import {
   type GenerateSiteStreamNdjsonEvent,
 } from "@/lib/api/generate-site-stream-events";
 import { cn } from "@/lib/utils";
+import {
+  displayStudioBrandNameForUi,
+  isStudioUndecidedBrandName,
+  STUDIO_UNDECIDED_BRAND_SENTINEL,
+} from "@/lib/studio/studio-brand-sentinel";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
 
@@ -66,7 +71,8 @@ const BRIEFING_REF_IMAGES_MAX = 6;
 /**
  * Werkveld `businessName` voor API / previews. **Geen vaste volgorde** in de briefing: de echte naam mag
  * overal in de vrije tekst staan (die gaat volledig mee als `description`). Optioneel expliciet maken met
- * `Bedrijfsnaam: …` (of varianten) ergens in de tekst; alleen een losse URL → hostnaam.
+ * `Bedrijfsnaam: …` (of varianten) ergens in de tekst; alleen een losse URL → hostnaam; anders sentinel
+ * `STUDIO_UNDECIDED_BRAND_SENTINEL` zodat het model een merknaam verzint.
  */
 function deriveStudioBusinessName(text: string): string {
   const trimmed = text.trim();
@@ -90,7 +96,7 @@ function deriveStudioBusinessName(text: string): string {
     if (v) return v.length <= 200 ? v : v.slice(0, 200);
   }
 
-  return "Opdracht";
+  return STUDIO_UNDECIDED_BRAND_SENTINEL;
 }
 
 function extractFirstHttpUrl(text: string): string | undefined {
@@ -144,6 +150,11 @@ export function GeneratorForm({
     return name || desc;
   });
   const businessName = useMemo(() => deriveStudioBusinessName(briefingText), [briefingText]);
+  const previewClientLabel = useMemo(() => {
+    const b = businessName.trim();
+    if (isStudioUndecidedBrandName(b)) return "Concept";
+    return b || "Website";
+  }, [businessName]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawFallback, setRawFallback] = useState<string | null>(null);
@@ -245,10 +256,10 @@ export function GeneratorForm({
           sectionIdsOrdered,
         }),
       },
-      businessName.trim() || "Website",
+      previewClientLabel,
       STUDIO_GENERATION_PACKAGE,
     );
-  }, [streamingSections, streamingConfig, businessName, detectedIndustryId]);
+  }, [streamingSections, streamingConfig, previewClientLabel, detectedIndustryId]);
 
   const completedGeneratorPreviewPayload = useMemo(() => {
     if (!generatedTailwind) return null;
@@ -276,10 +287,10 @@ export function GeneratorForm({
           ),
         }),
       },
-      businessName.trim() || "Website",
+      previewClientLabel,
       STUDIO_GENERATION_PACKAGE,
     );
-  }, [generatedTailwind, businessName, detectedIndustryId]);
+  }, [generatedTailwind, previewClientLabel, detectedIndustryId]);
 
   /**
    * Alleen volledige JSON in de iframe-preview (geen tussentijdse secties).
@@ -318,7 +329,7 @@ export function GeneratorForm({
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            documentTitle: p.clientName?.trim() || businessName.trim() || "Website",
+            documentTitle: p.clientName?.trim() || previewClientLabel,
             payload: payloadForCompile,
           }),
           signal: controller.signal,
@@ -339,7 +350,7 @@ export function GeneratorForm({
       cancelled = true;
       controller.abort();
     };
-  }, [activeStudioPreviewPayload, businessName]);
+  }, [activeStudioPreviewPayload, previewClientLabel]);
 
   const generatorViewPayload = useMemo((): PublishedSitePayload | null => {
     const base = activeStudioPreviewPayload;
@@ -363,6 +374,8 @@ export function GeneratorForm({
   /** Rechter paneel: live preview of uitgebreid logboek (Lovable-achtig). */
   const [rightPaneMode, setRightPaneMode] = useState<StudioRightPaneMode>("preview");
   const [portalReady, setPortalReady] = useState(false);
+  /** Voor “bezig s”-indicator in het feedbackpaneel (Lovable-achtige doorlooptijd). */
+  const [runStartedAtMs, setRunStartedAtMs] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setPortalReady(true), []);
@@ -575,6 +588,7 @@ export function GeneratorForm({
     setGenerationActivity([]);
     setRightPaneMode("preview");
     setLoading(true);
+    setRunStartedAtMs(Date.now());
     try {
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
       const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
@@ -782,8 +796,44 @@ export function GeneratorForm({
     } finally {
       setLoading(false);
       setDesignRationaleLoading(false);
+      setRunStartedAtMs(null);
     }
   }
+
+  const studioFollowUpSuggestions = useMemo(() => {
+    if (!generatedTailwind || loading || conceptRefineLoading) return undefined;
+    return [
+      {
+        id: "preview",
+        label: "Bekijk preview",
+        onClick: () => {
+          setRightPaneMode("preview");
+          setPanelLayout("split");
+        },
+      },
+      {
+        id: "strakker",
+        label: "Strakker / zakelijk",
+        onClick: () => {
+          void runConceptRefinement("strakker_zakelijk");
+        },
+      },
+      {
+        id: "durf",
+        label: "Durfder / editorial",
+        onClick: () => {
+          void runConceptRefinement("durfder_editorial");
+        },
+      },
+      {
+        id: "motion",
+        label: "Meer beweging",
+        onClick: () => {
+          void runConceptRefinement("meer_beweging");
+        },
+      },
+    ];
+  }, [generatedTailwind, loading, conceptRefineLoading, runConceptRefinement]);
 
   const fieldClass =
     "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20";
@@ -883,10 +933,7 @@ export function GeneratorForm({
           <label className="block text-sm font-medium text-slate-700">
             Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
           </label>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Alleen beelden die <strong className="font-medium text-slate-600">in de site</strong> mogen verschijnen. Referentie-URL en
-            referentie-screenshots horen in het tekstveld hieronder (plakken of slepen).
-          </p>
+          <p className="mt-0.5 text-xs text-slate-500">Alleen beelden voor <strong className="font-medium text-slate-600">in de site</strong>; de rest in het opdrachtveld.</p>
           <div
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
@@ -951,20 +998,13 @@ export function GeneratorForm({
           </div>
           {descriptionLocked ? (
             <p className="mt-1 text-xs text-slate-500">
-              Briefing is beveiligd zodra er een concept-site is of je net hebt gegenereerd. Gebruik de tab{" "}
-              <strong className="font-medium text-slate-700">Bewerken</strong> in site-studio (zelfde URL met slug) voor HTML-wijzigingen
-              via AI-chat.
+              Briefing is beveiligd zodra er een concept-site is. HTML-aanpassingen: tab{" "}
+              <strong className="font-medium text-slate-700">Bewerken</strong> (zelfde URL met slug).
             </p>
           ) : (
-            <p className="mt-1 text-xs text-slate-500">
-              Vrije tekst in elke volgorde. Plak een <strong className="font-medium text-slate-600">referentie-URL</strong> waar je wilt.{" "}
-              Optioneel ergens in de tekst: <strong className="font-medium text-slate-600">Bedrijfsnaam: …</strong> (of{" "}
-              <span className="font-medium text-slate-600">Merk: …</span>) als je die naam expliciet in opslag/preview wilt; anders leest het
-              model de naam uit je briefing.{" "}
-              <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl+V</kbd> of{" "}
-              <strong className="font-medium text-slate-600">sleep afbeeldingen</strong> op het veld voor referentie-screenshots (max.{" "}
-              {BRIEFING_REF_IMAGES_MAX}) — niet voor klantfoto&apos;s.
-            </p>
+            <span id="studio-briefing-a11y-hint" className="sr-only">
+              Plak URL&apos;s, tekst en referentie-afbeeldingen; klantfoto&apos;s alleen in het vak hierboven.
+            </span>
           )}
           <div
             onDrop={handleBriefingAreaDrop}
@@ -979,6 +1019,7 @@ export function GeneratorForm({
             <textarea
               id="studioBriefing"
               name="studioBriefing"
+              aria-describedby={descriptionLocked ? undefined : "studio-briefing-a11y-hint"}
               required={!descriptionLocked}
               maxLength={4000}
               rows={10}
@@ -1066,6 +1107,8 @@ export function GeneratorForm({
           streamPhase={streamPhase}
           loading={loading}
           hasSiteOutput={generatedTailwind != null}
+          runStartedAtMs={runStartedAtMs}
+          followUpSuggestions={studioFollowUpSuggestions}
         />
       ) : null}
 
@@ -1168,7 +1211,7 @@ export function GeneratorForm({
             siteIrHints={
               detectedIndustryId ? { detectedIndustryId } : undefined
             }
-            defaultName={businessName}
+            defaultName={displayStudioBrandNameForUi(businessName) || previewClientLabel}
             defaultDescription={briefingText.trim()}
             defaultSubfolderSlug={slugFromUrl}
             defaultPublishStatus="draft"
@@ -1316,7 +1359,7 @@ export function GeneratorForm({
                 <GenerationDetailsBody
                   feedback={pipelineFeedback}
                   fallbackBrief={{
-                    businessName: deriveStudioBusinessName(briefingText).trim(),
+                    businessName: displayStudioBrandNameForUi(deriveStudioBusinessName(briefingText)),
                     description: briefingText.trim(),
                   }}
                   referenceStyleRequested={Boolean(extractFirstHttpUrl(briefingText))}

@@ -8,6 +8,7 @@ export const clientImageSchema = z.object({
 export type ClientImage = z.infer<typeof clientImageSchema>;
 
 export const generateSiteRequestBodySchema = z.object({
+  /** Vaste naam, of `__STUDIO_BRAND_TBD__` = model verzint merknaam uit de briefing (Site-studio). */
   businessName: z.string().min(1, "Bedrijfsnaam is verplicht.").max(200),
   description: z.string().min(1, "Omschrijving is verplicht.").max(4000),
   /** Optioneel: koppel een generatie-run aan een bestaande klant (site_generation_runs). */
