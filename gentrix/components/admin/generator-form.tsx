@@ -916,73 +916,15 @@ export function GeneratorForm({
           )}
         </p>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
-          </label>
-          <p className="mt-0.5 text-xs text-slate-500">Alleen beelden voor <strong className="font-medium text-slate-600">in de site</strong>; de rest in het opdrachtveld.</p>
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            className={cn(
-              "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
-              !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
-              descriptionLocked && "pointer-events-none opacity-60",
-            )}
-          >
-            {clientImages.map((img, i) => (
-              <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                {img.uploading ? (
-                  <div className="flex size-full items-center justify-center">
-                    <Loader2 className="size-4 animate-spin text-slate-400" />
-                  </div>
-                ) : (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={img.label} className="size-full object-cover" />
-                    <button
-                      type="button"
-                      disabled={descriptionLocked}
-                      onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-            {clientImages.length < 8 && (
-              <button
-                type="button"
-                disabled={descriptionLocked}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ImagePlus className="size-5" />
-                <span className="text-[10px] font-medium">Upload</span>
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              multiple
-              disabled={descriptionLocked}
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-          </div>
-          {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
-        </div>
-
         {submittedPromptTurns.length > 0 ? (
-          <div className="space-y-2">
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Verzonden opdrachten</p>
+          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Verzonden opdrachten
+            </p>
             <div className="max-h-56 space-y-2 overflow-y-auto pr-0.5" role="log" aria-live="polite">
               {submittedPromptTurns.map((turn) => (
                 <div key={turn.id} className="flex justify-end">
-                  <div className="max-w-[min(100%,28rem)] whitespace-pre-wrap rounded-2xl rounded-br-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-indigo-900/50 dark:bg-indigo-950/60 dark:text-zinc-100">
+                  <div className="max-w-[min(100%,28rem)] whitespace-pre-wrap rounded-2xl rounded-br-md border border-indigo-100 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-zinc-100">
                     {turn.text}
                   </div>
                 </div>
@@ -1068,6 +1010,69 @@ export function GeneratorForm({
               </div>
             ) : null}
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700">
+            Klantfoto&apos;s <span className="font-normal text-slate-400">(optioneel, max. 8)</span>
+          </label>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Alleen beelden voor <strong className="font-medium text-slate-600">in de site</strong>; de rest in het
+            opdrachtveld hierboven.
+          </p>
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            className={cn(
+              "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
+              !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
+              descriptionLocked && "pointer-events-none opacity-60",
+            )}
+          >
+            {clientImages.map((img, i) => (
+              <div key={img.url || i} className="group relative size-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                {img.uploading ? (
+                  <div className="flex size-full items-center justify-center">
+                    <Loader2 className="size-4 animate-spin text-slate-400" />
+                  </div>
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.url} alt={img.label} className="size-full object-cover" />
+                    <button
+                      type="button"
+                      disabled={descriptionLocked}
+                      onClick={() => setClientImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {clientImages.length < 8 && (
+              <button
+                type="button"
+                disabled={descriptionLocked}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex size-16 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ImagePlus className="size-5" />
+                <span className="text-[10px] font-medium">Upload</span>
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              disabled={descriptionLocked}
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </div>
+          {imageUploadError ? <p className="mt-1 text-xs text-red-600">{imageUploadError}</p> : null}
         </div>
 
         <button

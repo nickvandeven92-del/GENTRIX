@@ -240,6 +240,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       const msgTrim = ev.message.trim();
       const forceProgress =
         msgTrim.includes("Denklijn") ||
+        msgTrim.includes("Compositieplan") ||
         msgTrim.includes("Pagina genereren") ||
         msgTrim.includes("Zelfreview") ||
         msgTrim.includes("Stock:") ||
@@ -256,6 +257,11 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
         progress_message: pm,
         pipeline_feedback_json: JSON.parse(JSON.stringify(ev.feedback)) as Json,
       });
+      return;
+    }
+    if (ev.type === "composition_plan") {
+      const src = ev.source === "model" ? "model" : "defaults";
+      writeProgress(`Compositieplan vastgelegd (${src}) — HTML volgt deze copy-budgetten.`);
       return;
     }
     if (ev.type === "design_rationale") {

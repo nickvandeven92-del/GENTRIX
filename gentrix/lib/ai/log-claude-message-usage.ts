@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 export type ClaudeUsageOperation =
   | "generate_site"
   | "generate_site_design_rationale"
+  | "generate_site_composition_plan"
   | "generate_site_self_review"
   | "edit_site"
   | "ai_site_command_snapshot"

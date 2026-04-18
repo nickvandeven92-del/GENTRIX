@@ -6,6 +6,14 @@ import {
   buildUnsplashThemeContextWithContract,
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
+import {
+  appendCompositionPlanToUserContent,
+  buildCompositionPlanPromptInjection,
+  buildFallbackCompositionPlan,
+  generateSiteCompositionPlanWithClaude,
+  mergeCompositionPlanWithCanonical,
+  type SiteCompositionPlan,
+} from "@/lib/ai/site-composition-plan";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import type { MessageDeltaUsage } from "@anthropic-ai/sdk/resources/messages/messages";
@@ -2363,6 +2371,32 @@ export async function generateSiteWithClaude(
     designContract = rationale.contract;
   }
 
+  const canonicalSectionIdsNs = p.pipelineFeedback.interpreted.sections ?? [];
+  let compositionPlanNs: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIdsNs);
+  if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
+    const contractSummaryNs =
+      rationale.ok && rationale.contract != null
+        ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
+        : null;
+    const compNs = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
+      businessName,
+      description,
+      canonicalSectionIds: canonicalSectionIdsNs,
+      strictLanding: p.strictLandingContract,
+      marketingMultiPage: p.useMarketingMultiPage,
+      marketingPageSlugs: p.marketingPageSlugs,
+      designContractSummary: contractSummaryNs,
+    });
+    compositionPlanNs = mergeCompositionPlanWithCanonical(
+      canonicalSectionIdsNs,
+      compNs.ok ? compNs.raw : null,
+    );
+  }
+  const userContentWithComposition = appendCompositionPlanToUserContent(
+    userContentForGeneration,
+    buildCompositionPlanPromptInjection(compositionPlanNs),
+  );
+
   let textBody = "";
   let usage: MessageDeltaUsage | null = null;
   let stop_reason: string | null = null;
@@ -2372,7 +2406,7 @@ export async function generateSiteWithClaude(
       model: p.generateModel,
       max_tokens: p.max_tokens,
       system: p.system,
-      userContent: userContentForGeneration,
+      userContent: userContentWithComposition,
     })) {
       if (ev.type === "delta") {
         textBody += ev.text;
@@ -2459,6 +2493,7 @@ export type GenerateSiteStreamNdjsonEvent =
       contractWarning?: string | null;
       skipReason?: string;
     }
+  | { type: "composition_plan"; plan: SiteCompositionPlan; source: "model" | "fallback" }
   | { type: "self_review"; ran: boolean; refined: boolean }
   | { type: "token"; content: string }
   | { type: "section_complete"; section: { id: string; html: string; sectionName?: string } }
@@ -2618,13 +2653,56 @@ export function createGenerateSiteReadableStream(
           });
         }
 
-        const userContentForGeneration =
+        const canonicalSectionIds = p.pipelineFeedback.interpreted.sections ?? [];
+        let compositionPlan: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIds);
+        let compositionSource: "model" | "fallback" = "fallback";
+
+        if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
+          send(controller, { type: "status", message: "Compositieplan (structuur + copy-budget)…" });
+          const stopCompositionKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
+          try {
+            const contractSummary =
+              rationale.ok && rationale.contract != null
+                ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
+                : null;
+            const compResult = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
+              businessName,
+              description,
+              canonicalSectionIds,
+              strictLanding: p.strictLandingContract,
+              marketingMultiPage: p.useMarketingMultiPage,
+              marketingPageSlugs: p.marketingPageSlugs,
+              designContractSummary: contractSummary,
+            });
+            if (compResult.ok) {
+              compositionPlan = mergeCompositionPlanWithCanonical(canonicalSectionIds, compResult.raw);
+              compositionSource = "model";
+            } else {
+              send(controller, {
+                type: "status",
+                message: `Compositieplan: ${compResult.error} — veilige defaults gebruikt.`,
+              });
+              compositionPlan = mergeCompositionPlanWithCanonical(canonicalSectionIds, null);
+              compositionSource = "fallback";
+            }
+          } finally {
+            stopCompositionKeepalive();
+          }
+        }
+
+        send(controller, { type: "composition_plan", plan: compositionPlan, source: compositionSource });
+
+        let userContentForGeneration =
           rationale.ok && rationale.contract != null
             ? appendDesignContractToUserContent(
                 p.userContent,
                 buildDesignContractPromptInjection(rationale.contract, p.referenceSiteSnapshot ?? null),
               )
             : p.userContent;
+        userContentForGeneration = appendCompositionPlanToUserContent(
+          userContentForGeneration,
+          buildCompositionPlanPromptInjection(compositionPlan),
+        );
 
         send(controller, { type: "status", message: "Pagina genereren (HTML/JSON)…" });
         let buffer = "";

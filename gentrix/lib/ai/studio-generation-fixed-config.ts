@@ -20,6 +20,8 @@ export const STUDIO_SITE_GENERATION = {
   /** Standaard geen minimale prompt; `minimalPrompt: true` in de API-request wint. */
   minimalPromptDefault: false,
   briefingVisionEnabled: true,
+  /** Kleine JSON-planfase vóór HTML: copy-budget + CTA; sectie-id's blijven server-side vast. */
+  compositionPlanEnabled: true,
   selfReviewEnabled: false,
   unsplashGalleryOnly: true,
   unsplashAllowHeroStock: false,
