@@ -62,6 +62,14 @@ import {
 
 type StudioPanelLayout = "split" | "editor" | "preview";
 
+/** Laatste server-`stream_trace` (lokaal in `onSubmit`; TS volgt closure-mutaties niet → bij uitlezen expliciet verbreden). */
+type SiteGenerationStreamTraceSnapshot = {
+  runId: string;
+  phase: string;
+  offsetMs: number;
+  detail?: string;
+};
+
 /** Max. ruwe JSON-log in tekens (token-stream); voorkomt geheugenproblemen in de browser. */
 const SITE_STREAM_LOG_MAX_CHARS = 400_000;
 
@@ -152,13 +160,6 @@ export function GeneratorForm({
 
   const streamJsonBufferRef = useRef("");
   const streamAbortRef = useRef<AbortController | null>(null);
-  /** Laatste server-`stream_trace` (grep `gentrix.generate_site_stream` + runId in logs). */
-  const streamTraceDiagRef = useRef<{
-    runId: string;
-    phase: string;
-    offsetMs: number;
-    detail?: string;
-  } | null>(null);
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
   /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
@@ -579,7 +580,6 @@ export function GeneratorForm({
     setDesignContract(null);
     setDesignContractWarning(null);
     setStreamEndedWithoutComplete(false);
-    streamTraceDiagRef.current = null;
     setGenerationActivity([]);
     setRightPaneMode("preview");
     setLoading(true);
@@ -666,6 +666,8 @@ export function GeneratorForm({
       let sawError = false;
       let pipelineSeen = false;
       let receivedAnySection = false;
+      /** Laatste `stream_trace` in deze run (mutatie in `handleNdjsonEvent` ziet TS-CFA niet). */
+      let lastStreamTrace: SiteGenerationStreamTraceSnapshot | null = null;
 
       const appendStreamLogChunk = (chunk: string) => {
         if (!chunk) return;
@@ -677,7 +679,7 @@ export function GeneratorForm({
 
       const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
         if (ev.type === "stream_trace") {
-          streamTraceDiagRef.current = {
+          lastStreamTrace = {
             runId: ev.runId,
             phase: ev.phase,
             offsetMs: ev.offsetMs,
@@ -784,7 +786,7 @@ export function GeneratorForm({
           setStreamEndedWithoutComplete(true);
           setStreamPhase("Stream gestopt vóór «klaar» — concept hieronder kan onvolledig zijn.");
           appendGenerationActivity("Geen complete-event; laatste tussentijdse secties worden getoond.");
-          const tr = streamTraceDiagRef.current;
+          const tr = lastStreamTrace as SiteGenerationStreamTraceSnapshot | null;
           if (tr?.runId) {
             const detailSuffix =
               tr.detail != null && tr.detail.length > 0
