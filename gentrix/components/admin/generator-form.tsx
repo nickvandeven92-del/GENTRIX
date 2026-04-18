@@ -31,6 +31,7 @@ import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
+import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 import { postProcessTailwindSectionsForStreamingPreview } from "@/lib/ai/generate-site-postprocess";
 import {
   slugifyToSectionId,
@@ -598,11 +599,123 @@ export function GeneratorForm({
         body.reference_style_url = refFromBriefing;
       }
 
-      appendGenerationActivity("Generatie via NDJSON-stream naar deze pagina (geen job-poll).");
-      setDesignRationaleLoading(false);
-
       const ac = new AbortController();
       streamAbortRef.current = ac;
+
+      if (STUDIO_SITE_GENERATION.siteGenerationChunkedEnabled) {
+        appendGenerationActivity(
+          "Chunked generatie: prepare + secties + merge (sequentieel, geen stream) — elke stap een eigen server-request.",
+        );
+        setDesignRationaleLoading(true);
+
+        const startRes = await fetch("/api/generate-site/chunked/session", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(body),
+          signal: ac.signal,
+        });
+
+        let startErr = `Chunked start mislukt (${startRes.status}).`;
+        try {
+          const sj = (await startRes.json()) as { ok?: boolean; error?: string; sessionId?: string };
+          if (!startRes.ok || !sj.ok) {
+            if (typeof sj.error === "string" && sj.error.trim()) startErr = sj.error.trim();
+            setError(startErr);
+            return;
+          }
+          const sessionId = sj.sessionId;
+          if (!sessionId) {
+            setError("Geen sessie-id van de server.");
+            return;
+          }
+
+          const feedback = (sj as { feedback?: GenerationPipelineFeedback }).feedback;
+          if (feedback) setPipelineFeedback(feedback);
+
+          const denk = (sj as { denklijn_text?: string | null }).denklijn_text;
+          const denkSkip = (sj as { denklijn_skip_reason?: string | null }).denklijn_skip_reason;
+          if (denk?.trim()) {
+            setDesignRationale(denk.trim());
+            setDesignRationaleSkipReason(null);
+          } else if (denkSkip?.trim()) {
+            setDesignRationale(null);
+            setDesignRationaleSkipReason(denkSkip.trim());
+          } else {
+            setDesignRationale(null);
+            setDesignRationaleSkipReason(null);
+          }
+          setDesignRationaleLoading(false);
+
+          const dcj = (sj as { design_contract_json?: unknown }).design_contract_json;
+          const dcw = (sj as { design_contract_warning?: string | null }).design_contract_warning;
+          if (dcj != null && typeof dcj === "object" && !Array.isArray(dcj)) {
+            setDesignContract(dcj as DesignGenerationContract);
+            setDesignContractWarning(dcw?.trim() || null);
+          } else {
+            setDesignContract(null);
+            setDesignContractWarning(dcw?.trim() || null);
+          }
+
+          setStreamPhase("Prepare afgerond — secties worden stuk voor stuk gebouwd…");
+
+          while (true) {
+            const advRes = await fetch(`/api/generate-site/chunked/session/${sessionId}/advance`, {
+              method: "POST",
+              credentials: "include",
+              headers: { Accept: "application/json" },
+              signal: ac.signal,
+            });
+            const adv = (await advRes.json()) as {
+              ok?: boolean;
+              complete?: boolean;
+              error?: string;
+              message?: string;
+              streamingPreview?: { sections: TailwindSection[]; config: MasterPromptPageConfig | null };
+              data?: GeneratedTailwindPage;
+            };
+            if (!advRes.ok || !adv.ok) {
+              const em =
+                typeof adv.error === "string" && adv.error.trim()
+                  ? adv.error.trim()
+                  : `Chunked stap mislukt (${advRes.status}).`;
+              setError(em);
+              return;
+            }
+            if (adv.complete && adv.data) {
+              setGeneratedTailwind(adv.data);
+              setStudioPreviewReadyFlash(true);
+              setStreamEndedWithoutComplete(false);
+              setStreamPhase("Generatie voltooid");
+              setStreamingSections(adv.data.sections);
+              setStreamingConfig(adv.data.config);
+              appendGenerationActivity("Klaar — chunked generatie afgerond (merge + controle op de server).");
+              return;
+            }
+            const msg = adv.message?.trim();
+            if (msg) {
+              setStreamPhase(msg);
+              appendGenerationActivity(msg);
+            }
+            if (adv.streamingPreview) {
+              setStreamingSections(adv.streamingPreview.sections);
+              setStreamingConfig(adv.streamingPreview.config);
+            }
+          }
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          if (e instanceof Error && e.name === "AbortError") return;
+          if (!startRes.ok) {
+            setError(startErr);
+            return;
+          }
+          setError("Netwerkfout tijdens chunked generatie.");
+          return;
+        }
+      }
+
+      appendGenerationActivity("Generatie via NDJSON-stream naar deze pagina (geen job-poll).");
+      setDesignRationaleLoading(false);
 
       const res = await fetch("/api/generate-site/stream", {
         method: "POST",
@@ -808,6 +921,7 @@ export function GeneratorForm({
       if (e instanceof Error && e.name === "AbortError") return;
       setError("Netwerkfout of server niet bereikbaar.");
     } finally {
+      streamAbortRef.current = null;
       setLoading(false);
       setDesignRationaleLoading(false);
       setRunStartedAtMs(null);
