@@ -17,7 +17,6 @@ type ContactSitePageProps = {
   searchParams: Promise<{ token?: string; flyer?: string }>;
 };
 
-export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params, searchParams }: ContactSitePageProps): Promise<Metadata> {

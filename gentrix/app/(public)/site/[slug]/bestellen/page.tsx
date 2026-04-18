@@ -11,7 +11,6 @@ type PageProps = {
   searchParams: Promise<{ token?: string; flyer?: string }>;
 };
 
-export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {

@@ -8,9 +8,8 @@ import {
 import { generateSiteRequestBodySchema } from "@/lib/api/generate-site-request-schema";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
-import { SITE_GENERATION_JOB_MAX_DURATION_SEC } from "@/lib/config/site-generation-job";
-
-export const maxDuration = SITE_GENERATION_JOB_MAX_DURATION_SEC;
+/** Keep in sync with `SITE_GENERATION_JOB_MAX_DURATION_SEC` in `@/lib/config/site-generation-job`. */
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

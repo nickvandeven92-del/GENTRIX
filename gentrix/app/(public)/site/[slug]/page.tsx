@@ -11,9 +11,6 @@ type SitePageProps = {
   searchParams: Promise<{ token?: string; flyer?: string }>;
 };
 
-/** Vercel hobby: standaard ~10s; bij zware HTML-build iets ruimer (Pro/hogere limiet). */
-export const maxDuration = 60;
-
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params, searchParams }: SitePageProps): Promise<Metadata> {

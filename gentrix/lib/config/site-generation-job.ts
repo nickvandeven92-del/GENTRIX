@@ -1,6 +1,7 @@
 /**
  * Time budget (seconds) for site-generation on Vercel serverless.
- * Keep in sync with `export const maxDuration` on:
+ * Route handlers must use a **numeric literal** `export const maxDuration = 300` (Next.js 16
+ * static analysis); keep that literal in sync with this constant in:
  * - `app/api/generate-site/jobs/route.ts`
  * - `app/api/generate-site/jobs/[id]/route.ts`
  * - `app/api/generate-site/stream/route.ts`

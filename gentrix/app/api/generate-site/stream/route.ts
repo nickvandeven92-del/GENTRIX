@@ -12,10 +12,8 @@ import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
 import { isValidSubfolderSlug } from "@/lib/slug";
-import { SITE_GENERATION_JOB_MAX_DURATION_SEC } from "@/lib/config/site-generation-job";
-
-/** Langere runs: prepare + Denklijn + grote JSON-stream + Unsplash. Hobby: max 300s deploybaar; op Pro kun je 800. */
-export const maxDuration = SITE_GENERATION_JOB_MAX_DURATION_SEC;
+/** Langere runs: prepare + Denklijn + grote JSON-stream + Unsplash. Hobby: max 300s deploybaar; op Pro kun je 800. Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC`. */
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();

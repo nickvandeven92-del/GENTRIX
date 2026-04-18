@@ -8,8 +8,8 @@ import {
 } from "@/lib/data/site-generation-jobs";
 import { SITE_GENERATION_JOB_MAX_DURATION_SEC } from "@/lib/config/site-generation-job";
 
-/** Zelfde plafond als POST /jobs: kickstart + `after()` moeten lang genoeg mogen voor de volledige pipeline. */
-export const maxDuration = SITE_GENERATION_JOB_MAX_DURATION_SEC;
+/** Zelfde plafond als POST /jobs: kickstart + `after()` moeten lang genoeg mogen voor de volledige pipeline. Literal required for Next segment config static analysis. */
+export const maxDuration = 300;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdminApiAuth();
