@@ -19,7 +19,8 @@ describe("strip-unsplash-urls", () => {
 
   it("replaceOverflowUnsplashRanges vervangt door placeholder", () => {
     const u = "https://images.unsplash.com/photo-999?w=1";
-    const html = `bg-[url('${u}')]`;
+    // Avoid a Tailwind-like arbitrary bg-url token in this file (v4 content scan → bad compiled CSS).
+    const html = `${String.fromCharCode(98, 103)}-[url('${u}')]`;
     const idx = html.indexOf(u);
     const out = replaceOverflowUnsplashRanges(html, [{ start: idx, end: idx + u.length }]);
     expect(out).not.toContain("images.unsplash.com");
