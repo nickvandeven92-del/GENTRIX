@@ -5,7 +5,14 @@ import { HelpCircle, X } from "lucide-react";
 import { GeneratorStudioFaqContent } from "@/components/admin/generator-studio-faq-content";
 
 /** Compacte knop + modal met volledige FAQ (Site-studio generatie). */
-export function GeneratorStudioFaqLauncher({ className }: { className?: string }) {
+export function GeneratorStudioFaqLauncher({
+  className,
+  iconOnly = false,
+}: {
+  className?: string;
+  /** Alleen pictogram (compacte toolbar). */
+  iconOnly?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -22,13 +29,17 @@ export function GeneratorStudioFaqLauncher({ className }: { className?: string }
       <button
         type="button"
         onClick={() => setOpen(true)}
+        title="FAQ generatie"
+        aria-label="FAQ generatie"
         className={
           className ??
-          "inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          (iconOnly
+            ? "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            : "inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50")
         }
       >
         <HelpCircle className="size-3.5 shrink-0" aria-hidden />
-        FAQ generatie
+        {iconOnly ? <span className="sr-only">FAQ generatie</span> : "FAQ generatie"}
       </button>
       {open ? (
         <div

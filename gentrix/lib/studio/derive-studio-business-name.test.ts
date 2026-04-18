@@ -25,6 +25,32 @@ describe("deriveStudioBusinessNameFromBriefing", () => {
     ).toBe("Acme Labs");
   });
 
+  it("NL: website maken voor …", () => {
+    expect(
+      deriveStudioBusinessNameFromBriefing(
+        "Maak een website maken voor MoSham met donkere stijl en veel foto's.",
+      ),
+    ).toBe("MoSham");
+  });
+
+  it("NL: voor \"…\" met aanhalingstekens", () => {
+    expect(deriveStudioBusinessNameFromBriefing('Genereer een site voor "Vaste Naam" in Utrecht.')).toBe(
+      "Vaste Naam",
+    );
+  });
+
+  it("NL: het bedrijf heet …", () => {
+    expect(deriveStudioBusinessNameFromBriefing("Kort: het bedrijf heet Café Noord. Stijl: warm.")).toBe(
+      "Café Noord",
+    );
+  });
+
+  it("NL: merknaam is …", () => {
+    expect(deriveStudioBusinessNameFromBriefing("De merknaam is MoSham; ze willen een one-pager.")).toBe(
+      "MoSham",
+    );
+  });
+
   it("alleen URL → hostname", () => {
     expect(deriveStudioBusinessNameFromBriefing("https://www.example.com/pad")).toBe("example.com");
   });

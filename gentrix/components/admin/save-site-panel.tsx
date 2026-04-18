@@ -11,6 +11,18 @@ import { slugifyClientNameForSubfolder } from "@/lib/studio/client-name-for-slug
 import { isValidSubfolderSlug, slugify, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
+/** In de site-studio staat de klantnaam soms op een placeholdertekst; de slug moet uit de briefing komen. */
+function textBasisForSubfolderSlug(
+  generatorMode: boolean,
+  name: string,
+  description: string,
+): string {
+  const n = name.trim();
+  const d = description.trim();
+  if (generatorMode && d) return n ? `${n}\n\n${d}` : d;
+  return n || d;
+}
+
 type SaveSitePanelProps = {
   /** Gegenereerde Tailwind-pagina (wordt naar `tailwind_sections` genormaliseerd). */
   page: GeneratedTailwindPage;
@@ -47,7 +59,8 @@ export function SaveSitePanel({
   function initialSlug(): string {
     const fromUrl = defaultSubfolderSlug?.trim();
     if (fromUrl) return fromUrl;
-    const fromName = slugifyClientNameForSubfolder(defaultName);
+    const basis = textBasisForSubfolderSlug(generatorMode, defaultName, defaultDescription);
+    const fromName = slugifyClientNameForSubfolder(basis);
     return fromName.length >= 2 ? fromName : "";
   }
 
@@ -74,7 +87,8 @@ export function SaveSitePanel({
     if (fromUrl) setSubfolderSlug(fromUrl);
   }, [defaultSubfolderSlug]);
 
-  const resolvedSlug = subfolderSlug.trim() || slugifyClientNameForSubfolder(name);
+  const slugDeriveBasis = textBasisForSubfolderSlug(generatorMode, name, description);
+  const resolvedSlug = subfolderSlug.trim() || slugifyClientNameForSubfolder(slugDeriveBasis);
   const slugOk = isValidSubfolderSlug(resolvedSlug);
 
   async function save() {

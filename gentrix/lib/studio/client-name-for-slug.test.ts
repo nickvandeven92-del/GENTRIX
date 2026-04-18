@@ -22,4 +22,12 @@ describe("slugifyClientNameForSubfolder", () => {
       ),
     ).toBe("mosham");
   });
+
+  it("studio-placeholdernaam + echte briefing → slug uit briefing", () => {
+    expect(
+      slugifyClientNameForSubfolder(
+        "— model kiest merknaam\n\nMaak een website maken voor MoSham met strakke typografie.",
+      ),
+    ).toBe("mosham");
+  });
 });

@@ -50,6 +50,7 @@ export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps)
   }, []);
 
   const isOpsHome = pathname === "/admin/ops" || pathname === "/admin/ops/";
+  const compactStudio = (pathname ?? "").startsWith("/admin/ops/studio");
 
   return (
     <header
@@ -60,7 +61,8 @@ export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps)
     >
       <div
         className={cn(
-          "mx-auto flex h-14 min-w-0 w-full items-center gap-2 sm:gap-4",
+          "mx-auto flex min-h-0 w-full items-center gap-2 sm:gap-4",
+          compactStudio ? "h-11 py-0" : "h-14",
           SALES_OS_MAIN_MAX_CLASS,
         )}
       >
@@ -78,8 +80,19 @@ export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps)
           <div className="min-w-0 flex-1" aria-hidden />
         ) : (
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-50 md:text-base">{title}</h1>
-            <p className="hidden truncate text-[11px] text-neutral-500 dark:text-zinc-400 sm:block md:text-xs">{subtitle}</p>
+            <h1
+              className={cn(
+                "truncate font-semibold text-neutral-900 dark:text-zinc-50",
+                compactStudio ? "text-xs md:text-sm" : "text-sm md:text-base",
+              )}
+            >
+              {title}
+            </h1>
+            {compactStudio ? null : (
+              <p className="hidden truncate text-[11px] text-neutral-500 dark:text-zinc-400 sm:block md:text-xs">
+                {subtitle}
+              </p>
+            )}
           </div>
         )}
 
@@ -87,7 +100,10 @@ export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps)
           <button
             type="button"
             onClick={onOpenSearch}
-            className="sales-os-topbar-search flex w-full items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-left text-xs text-neutral-500 hover:border-neutral-300 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:border-zinc-500"
+            className={cn(
+              "sales-os-topbar-search flex w-full items-center gap-2 rounded-lg border border-neutral-200 bg-white text-left text-xs text-neutral-500 hover:border-neutral-300 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:border-zinc-500",
+              compactStudio ? "px-2.5 py-1.5" : "px-3 py-2",
+            )}
           >
             <Search className="size-3.5 shrink-0 opacity-60" />
             <span className="truncate">Zoek klanten, deals, websites, domeinen…</span>
@@ -102,7 +118,10 @@ export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps)
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
-            className="sales-os-glass-primary-btn inline-flex items-center gap-1.5 rounded-md border border-transparent bg-neutral-950 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800 dark:border-transparent dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+            className={cn(
+              "sales-os-glass-primary-btn inline-flex items-center gap-1.5 rounded-md border border-transparent bg-neutral-950 text-xs font-medium text-white hover:bg-neutral-800 dark:border-transparent dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
+              compactStudio ? "px-2 py-1.5" : "px-3 py-2",
+            )}
           >
             Snelle acties
             <ChevronDown className={cn("size-3.5 opacity-80 transition-transform", menuOpen && "rotate-180")} />

@@ -8,11 +8,13 @@ import {
   ExternalLink,
   Eye,
   History,
+  Layers,
   Loader2,
   Maximize2,
   Minimize2,
   Monitor,
   PanelTop,
+  QrCode,
   Redo2,
   RefreshCw,
   Rocket,
@@ -43,6 +45,9 @@ import { cn } from "@/lib/utils";
 
 /** Debounce na laatste wijziging (undo/AI/…) voordat concept naar Supabase gaat — vergelijkbaar met Lovable. */
 const AUTOSAVE_DEBOUNCE_MS = 2500;
+
+const studioIconBtn =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-40 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900";
 
 type SiteHtmlEditorProps = {
   subfolderSlug: string;
@@ -385,164 +390,164 @@ export function SiteHtmlEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-900">
-      <div className="shrink-0 space-y-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 md:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={`/admin/clients/${encodeURIComponent(subfolderSlug)}`}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
-            aria-label="Editor verlaten, terug naar klantdossier"
-          >
-            <ArrowLeft className="size-4 shrink-0" aria-hidden />
-            Terug naar dossier
-          </Link>
-          <Link
-            href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/flyer`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            Flyer & QR
-          </Link>
-          <span className="hidden text-zinc-300 sm:inline dark:text-zinc-700" aria-hidden>
-            |
-          </span>
-          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">HTML-editor</h1>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            {clientLabel ? (
-              <>
-                <span className="font-medium text-zinc-800 dark:text-zinc-200">{clientLabel}</span>
-                <span className="text-zinc-400 dark:text-zinc-500" aria-hidden>
-                  ·
-                </span>
-                <code
-                  className="rounded bg-zinc-200 px-1.5 py-0.5 font-mono text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                  title="URL-slug (ongewijzigd in pad)"
-                >
-                  {subfolderSlug}
-                </code>
-              </>
-            ) : (
-              <>
-                <span className="font-medium text-zinc-800 dark:text-zinc-200">{slugPretty}</span>
-                <code
-                  className="rounded bg-zinc-200 px-1.5 py-0.5 font-mono text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                  title="URL-slug"
-                >
-                  {subfolderSlug}
-                </code>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={!canUndo}
-            onClick={undo}
-            title="Vorige versie"
-            className="inline-flex items-center gap-1 rounded-lg border border-zinc-300 px-2.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            <Undo2 className="size-4" aria-hidden />
-            Ongedaan
-          </button>
-          <button
-            type="button"
-            disabled={!canRedo}
-            onClick={redo}
-            title="Opnieuw"
-            className="inline-flex items-center gap-1 rounded-lg border border-zinc-300 px-2.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            <Redo2 className="size-4" aria-hidden />
-            Opnieuw
-          </button>
-          <button
-            type="button"
-            onClick={() => setStepsOpen((o) => !o)}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm font-medium",
-              stepsOpen
-                ? "border-blue-800 bg-blue-50 text-blue-950 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-100"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900",
-            )}
-          >
-            <History className="size-4" aria-hidden />
-            Stappen ({hist.entries.length})
-          </button>
-          <label className="flex max-w-xs flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-            <span>
-              Klantstatus{" "}
-              <span className="font-normal text-zinc-400 dark:text-zinc-500">
-                (commercieel: /site/… alleen bij Actief)
+      <div className="shrink-0 space-y-2 border-b border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-900 md:px-3">
+        <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Link
+              href={`/admin/clients/${encodeURIComponent(subfolderSlug)}`}
+              className={cn(studioIconBtn)}
+              aria-label="Terug naar klantdossier"
+              title="Terug naar klantdossier"
+            >
+              <ArrowLeft className="size-4 shrink-0" aria-hidden />
+            </Link>
+            <Link
+              href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/flyer`}
+              className={cn(studioIconBtn)}
+              aria-label="Flyer & QR"
+              title="Flyer & QR"
+            >
+              <QrCode className="size-4 shrink-0" aria-hidden />
+            </Link>
+            <span className="hidden h-4 w-px shrink-0 bg-zinc-200 sm:block dark:bg-zinc-700" aria-hidden />
+            <div className="min-w-0 flex-1 truncate text-xs font-medium leading-tight text-zinc-800 dark:text-zinc-200">
+              <span className="font-normal text-zinc-500 dark:text-zinc-400">HTML-editor</span>
+              <span className="text-zinc-400 dark:text-zinc-500" aria-hidden>
+                {" "}
+                ·{" "}
               </span>
-            </span>
+              {clientLabel ? (
+                <>
+                  <span>{clientLabel}</span>
+                  <code
+                    className="ml-1.5 rounded bg-zinc-100 px-1 font-mono text-[10px] font-normal text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                    title="URL-slug"
+                  >
+                    {subfolderSlug}
+                  </code>
+                </>
+              ) : (
+                <>
+                  <span>{slugPretty}</span>
+                  <code
+                    className="ml-1.5 rounded bg-zinc-100 px-1 font-mono text-[10px] font-normal text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                    title="URL-slug"
+                  >
+                    {subfolderSlug}
+                  </code>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            <button
+              type="button"
+              disabled={!canUndo}
+              onClick={undo}
+              title="Ongedaan (vorige versie)"
+              aria-label="Ongedaan"
+              className={cn(studioIconBtn)}
+            >
+              <Undo2 className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              disabled={!canRedo}
+              onClick={redo}
+              title="Opnieuw"
+              aria-label="Opnieuw"
+              className={cn(studioIconBtn)}
+            >
+              <Redo2 className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => setStepsOpen((o) => !o)}
+              title={stepsOpen ? "Stappenlijst sluiten" : "Stappen (geschiedenis)"}
+              aria-label={`Stappen, ${hist.entries.length} versies`}
+              aria-pressed={stepsOpen}
+              className={cn(
+                "relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-zinc-600 shadow-sm hover:bg-zinc-50 disabled:opacity-40 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                stepsOpen
+                  ? "border-blue-700 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/40"
+                  : "border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-950",
+              )}
+            >
+              <History className="size-4" aria-hidden />
+              <span className="absolute -right-1 -top-1 flex min-w-[1rem] justify-center rounded-full bg-zinc-500 px-0.5 text-[9px] font-semibold leading-4 text-white dark:bg-zinc-600">
+                {hist.entries.length}
+              </span>
+            </button>
             <select
               value={status}
+              title="Klantstatus — publieke /site/… alleen bij Actief"
+              aria-label="Klantstatus"
               onChange={(e) => {
                 setStatus(e.target.value as typeof status);
                 setSaveMsg(null);
                 setPostSaveDraftView(null);
               }}
-              className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+              className="h-8 max-w-[8.75rem] shrink-0 rounded-lg border border-zinc-300 bg-white px-2 text-xs font-medium text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
             >
               <option value="draft">Concept</option>
               <option value="active">Actief</option>
               <option value="paused">Gepauzeerd</option>
               <option value="archived">Archief</option>
             </select>
-          </label>
-          <Link
-            href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/preview`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            <Eye className="size-4" aria-hidden />
-            Concept-preview
-          </Link>
-          <Link
-            href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/snapshots`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            Snapshots
-          </Link>
-          <button
-            type="button"
-            onClick={() => setPreviewKey((k) => k + 1)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            <RefreshCw className="size-4" aria-hidden />
-            Preview verversen
-          </button>
-          <button
-            type="button"
-            disabled={saving || autoSaving || publishing}
-            onClick={() => void save()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-sm font-medium text-white hover:bg-blue-950 disabled:opacity-60 dark:bg-blue-800 dark:hover:bg-blue-900"
-          >
-            {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
-            Concept opslaan
-          </button>
-          <button
-            type="button"
-            disabled={saving || autoSaving || publishing}
-            onClick={() => void publishLive()}
-            title="Zet de huidige concept-snapshot live op /site/… (zelfde als klantportaal)"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-700 bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60 dark:border-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-          >
-            {publishing ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Rocket className="size-4" aria-hidden />
-            )}
-            Live zetten
-          </button>
+            <Link
+              href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/preview`}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(studioIconBtn)}
+              aria-label="Concept-preview"
+              title="Concept-preview"
+            >
+              <Eye className="size-4" aria-hidden />
+            </Link>
+            <Link
+              href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/snapshots`}
+              className={cn(studioIconBtn)}
+              aria-label="Snapshots"
+              title="Snapshots"
+            >
+              <Layers className="size-4" aria-hidden />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setPreviewKey((k) => k + 1)}
+              title="Preview verversen"
+              aria-label="Preview verversen"
+              className={cn(studioIconBtn)}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              disabled={saving || autoSaving || publishing}
+              onClick={() => void save()}
+              title={`Concept opslaan. Auto-save na ${AUTOSAVE_DEBOUNCE_MS / 1000} s stilte; snapshots tonen label Auto-save.`}
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-blue-900 px-2.5 text-xs font-medium text-white hover:bg-blue-950 disabled:opacity-60 dark:bg-blue-800 dark:hover:bg-blue-900"
+            >
+              {saving ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Save className="size-3.5" aria-hidden />}
+              Opslaan
+            </button>
+            <button
+              type="button"
+              disabled={saving || autoSaving || publishing}
+              onClick={() => void publishLive()}
+              title="Live zetten — publiceert naar /site/… (zelfde als klantportaal)"
+              aria-label="Live zetten"
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-emerald-700 bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60 dark:border-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+            >
+              {publishing ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Rocket className="size-3.5" aria-hidden />
+              )}
+              Live
+            </button>
+          </div>
         </div>
-        <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
-          Wijzigingen worden na {AUTOSAVE_DEBOUNCE_MS / 1000} s stilte automatisch als concept opgeslagen (zoals Lovable).
-          Handmatig opslaan blijft mogelijk; snapshots tonen label <span className="font-mono">Auto-save</span>.{" "}
-          <strong className="font-medium text-zinc-600 dark:text-zinc-300">Live zetten</strong> publiceert het concept
-          naar de publieke site (los van concept opslaan).
-        </p>
-      </div>
 
       {stepsOpen && (
         <ol className="flex flex-wrap gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/60">
@@ -692,12 +697,12 @@ export function SiteHtmlEditor({
                 previewFullscreen && "lg:min-h-0",
               )}
             >
-              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Live preview</span>
+              <div className="sticky top-0 z-[1] shrink-0 border-b border-zinc-200 bg-zinc-100 px-2 py-1 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Live preview</span>
                     <div
-                      className="inline-flex rounded-lg border border-zinc-300 bg-zinc-50 p-0.5 dark:border-zinc-600 dark:bg-zinc-900/80"
+                      className="inline-flex rounded-md border border-zinc-300 bg-zinc-50 p-0.5 dark:border-zinc-600 dark:bg-zinc-900/80"
                       role="group"
                       aria-label="Weergave preview"
                     >
@@ -706,7 +711,7 @@ export function SiteHtmlEditor({
                         onClick={() => setPreviewViewportMode("auto")}
                         title="Automatisch: mobiel of desktop volgens je browservenster"
                         className={cn(
-                          "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+                          "inline-flex size-7 items-center justify-center rounded transition-colors",
                           previewViewportMode === "auto"
                             ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
                             : "text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
@@ -720,7 +725,7 @@ export function SiteHtmlEditor({
                         onClick={() => setPreviewViewportMode("mobile")}
                         title="Mobiele weergave (smalle viewport)"
                         className={cn(
-                          "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+                          "inline-flex size-7 items-center justify-center rounded transition-colors",
                           previewViewportMode === "mobile"
                             ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
                             : "text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
@@ -734,7 +739,7 @@ export function SiteHtmlEditor({
                         onClick={() => setPreviewViewportMode("desktop")}
                         title="Desktopweergave (brede layout in preview)"
                         className={cn(
-                          "inline-flex size-8 items-center justify-center rounded-md transition-colors",
+                          "inline-flex size-7 items-center justify-center rounded transition-colors",
                           previewViewportMode === "desktop"
                             ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
                             : "text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
@@ -745,7 +750,7 @@ export function SiteHtmlEditor({
                       </button>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-0.5">
                     <button
                       type="button"
                       onClick={openSitePreviewInNewTab}
@@ -755,7 +760,7 @@ export function SiteHtmlEditor({
                           ? "Open de site in een nieuw tabblad (/site/…)"
                           : "Ongeldige slug — kan /site niet openen"
                       }
-                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="inline-flex size-7 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     >
                       <ExternalLink className="size-4 shrink-0" aria-hidden />
                       <span className="sr-only">Open preview in nieuw tabblad</span>
@@ -764,7 +769,7 @@ export function SiteHtmlEditor({
                       type="button"
                       onClick={() => setPreviewFullscreen((v) => !v)}
                       title={previewFullscreen ? "Volledig scherm sluiten (Esc)" : "Volledig scherm"}
-                      className="inline-flex size-8 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="inline-flex size-7 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-200/90 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     >
                       {previewFullscreen ? (
                         <Minimize2 className="size-4 shrink-0" aria-hidden />
@@ -777,12 +782,13 @@ export function SiteHtmlEditor({
                     </button>
                   </div>
                 </div>
-                <p className="mt-1.5 max-w-[56rem] text-[10px] leading-snug text-zinc-500 dark:text-zinc-400">
-                  Preview toont je <strong>werkversie</strong>. Openbare{" "}
-                  <code className="rounded bg-zinc-200/80 px-1 font-mono text-[9px] dark:bg-zinc-800/80">/site/…</code> zonder
-                  token = <strong>gepubliceerde</strong> snapshot (niet automatisch het laatste concept). Desktop: bij een smalle
-                  kolom <strong>horizontaal scrollen</strong> — de preview is 1280px breed zodat{" "}
-                  <code className="font-mono text-[9px]">lg:</code>-nav klopt.
+                <p
+                  className="mt-1 line-clamp-2 max-w-[56rem] text-[9px] leading-snug text-zinc-500 dark:text-zinc-400"
+                  title="Preview = werkversie. Openbare /site/… zonder token = gepubliceerde snapshot. Smalle kolom: horizontaal scrollen; preview 1280px voor lg:-nav."
+                >
+                  Preview = <strong className="font-medium">werkversie</strong>.{" "}
+                  <code className="rounded bg-zinc-200/80 px-0.5 font-mono dark:bg-zinc-800/80">/site/…</code> zonder token ={" "}
+                  <strong className="font-medium">live</strong> snapshot. Smalle kolom: scroll horizontaal (1280px-preview).
                 </p>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">

@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, Sparkles } from "lucide-react";
+import { FolderOpen, Pencil, Sparkles } from "lucide-react";
 import { GeneratorForm } from "@/components/admin/generator-form";
 import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
 import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
@@ -48,41 +48,47 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-800">
-        <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-900/80">
+      <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-zinc-200 px-2 dark:border-zinc-800">
+        <div className="inline-flex h-7 items-center rounded-md border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-900/80">
           <button
             type="button"
             onClick={() => setTab("edit")}
+            title="Bewerken — HTML-editor en AI-chat"
+            aria-label="Bewerken — HTML-editor en AI-chat"
+            aria-pressed={tab === "edit"}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              "inline-flex size-7 items-center justify-center rounded transition-colors",
               tab === "edit"
                 ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
+                : "text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
             )}
           >
             <Pencil className="size-3.5 shrink-0" aria-hidden />
-            Bewerken
           </button>
           <button
             type="button"
             onClick={() => setTab("generate")}
+            title="Nieuwe generatie uit briefing"
+            aria-label="Nieuwe generatie uit briefing"
+            aria-pressed={tab === "generate"}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              "inline-flex size-7 items-center justify-center rounded transition-colors",
               tab === "generate"
                 ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
+                : "text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
             )}
           >
             <Sparkles className="size-3.5 shrink-0" aria-hidden />
-            Nieuwe generatie
           </button>
         </div>
-        <GeneratorStudioFaqLauncher className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800" />
+        <GeneratorStudioFaqLauncher iconOnly />
         <Link
           href={`/admin/clients/${encodeURIComponent(props.subfolderSlug)}`}
-          className="ml-auto text-xs font-medium text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
+          title="Klantdossier openen"
+          aria-label="Klantdossier openen"
+          className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
         >
-          Klantdossier →
+          <FolderOpen className="size-3.5" aria-hidden />
         </Link>
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
