@@ -63,22 +63,34 @@ const SITE_STREAM_LOG_MAX_CHARS = 400_000;
 /** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
 
-/** Eerste regel = vaak bedrijfsnaam; alleen-URL → hostnaam als titel. */
+/**
+ * Werkveld `businessName` voor API / previews. **Geen vaste volgorde** in de briefing: de echte naam mag
+ * overal in de vrije tekst staan (die gaat volledig mee als `description`). Optioneel expliciet maken met
+ * `Bedrijfsnaam: …` (of varianten) ergens in de tekst; alleen een losse URL → hostnaam.
+ */
 function deriveStudioBusinessName(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return "";
-  const firstLine = (trimmed.split(/\r?\n/)[0] ?? "").trim();
-  if (!firstLine) return "";
-  if (/^https?:\/\//i.test(firstLine)) {
+
+  if (/^https?:\/\/\S+$/i.test(trimmed)) {
     try {
-      const host = new URL(firstLine).hostname.replace(/^www\./i, "");
+      const host = new URL(trimmed).hostname.replace(/^www\./i, "");
       if (!host) return "Website";
       return host.length <= 200 ? host : host.slice(0, 200);
     } catch {
       return "Website";
     }
   }
-  return firstLine.length <= 200 ? firstLine : firstLine.slice(0, 200);
+
+  const labelMatch = trimmed.match(
+    /(?:^|\n)\s*(?:bedrijfsnaam|bedrijf|handelsnaam|naam\s+van\s+het\s+bedrijf|merk|klant|company\s+name|company)\s*[:：]\s*([^\n]+)/i,
+  );
+  if (labelMatch?.[1]) {
+    const v = labelMatch[1].trim().replace(/^['"\s]+|['"\s]+$/g, "");
+    if (v) return v.length <= 200 ? v : v.slice(0, 200);
+  }
+
+  return "Opdracht";
 }
 
 function extractFirstHttpUrl(text: string): string | undefined {
@@ -531,17 +543,9 @@ export function GeneratorForm({
 
   useEffect(() => {
     if (!slugFromUrl) return;
+    if (existingDraftLocked) return;
     const name = initialClientName?.trim() ?? "";
     const desc = (initialClientDescription ?? "").trim();
-    if (existingDraftLocked) {
-      if (!name) return;
-      setBriefingText((prev) => {
-        const lines = prev.split(/\r?\n/);
-        const tail = lines.slice(1).join("\n");
-        return tail.trim() ? `${name}\n${tail}` : name;
-      });
-      return;
-    }
     setBriefingText(name && desc ? `${name}\n\n${desc}` : name || desc);
   }, [slugFromUrl, initialClientName, initialClientDescription, existingDraftLocked]);
 
@@ -953,8 +957,10 @@ export function GeneratorForm({
             </p>
           ) : (
             <p className="mt-1 text-xs text-slate-500">
-              Eerste regel: meestal je <strong className="font-medium text-slate-600">bedrijfsnaam</strong>. Daarna vrije tekst; plak een{" "}
-              <strong className="font-medium text-slate-600">referentie-URL</strong> waar dan ook in de tekst.{" "}
+              Vrije tekst in elke volgorde. Plak een <strong className="font-medium text-slate-600">referentie-URL</strong> waar je wilt.{" "}
+              Optioneel ergens in de tekst: <strong className="font-medium text-slate-600">Bedrijfsnaam: …</strong> (of{" "}
+              <span className="font-medium text-slate-600">Merk: …</span>) als je die naam expliciet in opslag/preview wilt; anders leest het
+              model de naam uit je briefing.{" "}
               <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl+V</kbd> of{" "}
               <strong className="font-medium text-slate-600">sleep afbeeldingen</strong> op het veld voor referentie-screenshots (max.{" "}
               {BRIEFING_REF_IMAGES_MAX}) — niet voor klantfoto&apos;s.
@@ -987,7 +993,7 @@ export function GeneratorForm({
                 "block min-h-[200px] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
                 descriptionLocked && fieldLockedClass,
               )}
-              placeholder="Ask GENTRIX…"
+              placeholder="Ask GENTRIX..."
             />
             {briefingImages.length > 0 ? (
               <div className="flex flex-wrap gap-2 border-t border-slate-100 px-2 py-2 dark:border-zinc-800">
