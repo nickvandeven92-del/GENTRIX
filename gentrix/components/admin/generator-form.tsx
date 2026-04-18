@@ -1202,7 +1202,7 @@ export function GeneratorForm({
         defaultSidebarPx={332}
         minSidebarPx={248}
         maxSidebarPx={420}
-        minMainPx={480}
+        minMainPx={400}
         sidebar={
           <div className="flex min-h-0 flex-1 flex-col gap-0 pr-1">
             {editorFocusBar}
@@ -1688,19 +1688,7 @@ export function GeneratorForm({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {showZenFirstRunComposer ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center overflow-auto bg-gradient-to-b from-zinc-50 via-white to-zinc-50/90 px-4 py-10 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950">
-          <div className="w-full max-w-xl space-y-3 pb-8 text-center">
-            <p className="text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-100">
-              Site-studio · eerste generatie
-            </p>
-            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Je opdracht staat centraal; klantfoto&apos;s zijn optioneel via de{" "}
-              <strong className="font-medium text-zinc-700 dark:text-zinc-300">+-knop</strong> rechts naast Opdracht. Als
-              je op <strong className="font-medium text-zinc-700 dark:text-zinc-300">Genereer site</strong> drukt, opent
-              het <strong className="font-medium text-zinc-700 dark:text-zinc-300">split scherm</strong> met voortgang links
-              en preview rechts.
-            </p>
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col items-center overflow-auto bg-gradient-to-b from-zinc-50 via-white to-zinc-50/90 px-4 py-6 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950">
           <div className="w-full max-w-xl shrink-0 rounded-2xl border border-zinc-200/90 bg-white/95 p-6 shadow-md shadow-zinc-200/40 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/90 dark:shadow-black/40">
             {renderBriefingForm("zen")}
           </div>

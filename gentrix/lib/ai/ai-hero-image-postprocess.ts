@@ -108,9 +108,11 @@ export function buildOpenAiHeroPrompt(
   contract: DesignGenerationContract | null,
 ): string {
   const parts: string[] = [
-    "High-end editorial photograph for a commercial website hero background.",
+    "Photorealistic documentary-style photograph for a commercial website hero background.",
+    "Shot like a real camera (35mm or full-frame DSLR), natural skin texture, realistic imperfections, not CGI or video-game render.",
+    "Avoid plastic airbrushed skin, oversharpening, uncanny symmetry, or illustration look.",
     "No text, no logos, no watermarks, no UI mockups.",
-    "Natural light, shallow depth of field, tasteful color grading.",
+    "Natural light, shallow depth of field, subtle film grain optional, tasteful color grading.",
   ];
   const bn = businessName.trim();
   if (bn) parts.push(`Business context (mood only, do not render the name as text): ${bn.slice(0, 120)}.`);

@@ -12,8 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const DEFAULT_STORAGE_KEY = "gentrix-site-editor-sidebar-px";
-/** Ruimte voor de sleepbalk (Tailwind `w-2`). */
-const SPLITTER_PX = 8;
+/** Ruimte voor de sleepbalk (`lg:w-3` ≈ 12px). */
+const SPLITTER_PX = 12;
 
 type ResizableEditorPanelsProps = {
   sidebar: ReactNode;
@@ -47,8 +47,12 @@ function boundsForHost(
   if (!enforceMinMain || !Number.isFinite(hostWidth) || hostWidth <= 0) {
     return { min: minSidebarPx, max: maxSidebarPx };
   }
-  const room = hostWidth - SPLITTER_PX - minMainPx;
-  const maxS = Math.min(maxSidebarPx, Math.max(0, room));
+  const inner = hostWidth - SPLITTER_PX;
+  let maxSidebar = Math.min(maxSidebarPx, Math.max(0, inner - minMainPx));
+  if (maxSidebar < minSidebarPx && inner > minSidebarPx) {
+    maxSidebar = Math.min(maxSidebarPx, inner - minSidebarPx);
+  }
+  const maxS = Math.min(maxSidebarPx, Math.max(0, maxSidebar));
   const effMin = Math.min(minSidebarPx, maxS);
   const minS = maxS < 1 ? 0 : effMin;
   const maxClamped = Math.max(minS, maxS);
@@ -215,7 +219,7 @@ export function ResizableEditorPanels({
         aria-valuemax={Math.round(effMaxSidebar)}
         tabIndex={0}
         className={cn(
-          "hidden shrink-0 cursor-col-resize self-stretch select-none lg:w-2 lg:items-center lg:justify-center",
+          "relative z-20 hidden shrink-0 touch-none cursor-col-resize self-stretch select-none lg:w-3 lg:items-center lg:justify-center",
           "rounded-full bg-transparent hover:bg-zinc-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800",
           "dark:hover:bg-zinc-700/60",
           showBoth ? "lg:flex" : "lg:hidden",

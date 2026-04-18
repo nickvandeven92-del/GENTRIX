@@ -658,7 +658,7 @@ export function SiteHtmlEditor({
         defaultSidebarPx={400}
         minSidebarPx={280}
         maxSidebarPx={560}
-        minMainPx={520}
+        minMainPx={440}
         sidebar={
           <>
             <SiteAiChatPanel

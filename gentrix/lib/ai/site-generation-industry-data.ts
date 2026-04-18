@@ -39,7 +39,7 @@ export const INDUSTRY_PROFILES: IndustryProfile[] = [
     vibe: "warm",
     promptHint: `**BRANCHE-INSPIRATIE: BARBERSHOP / HERENKAPPER**
 Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk aan de sfeer van een premium herenkapperszaak: vakmanschap, traditie, masculiene elegantie.
-- **Hero-idee:** krachtige **typografie + gradient/textuur** of **klantfoto**-URL uit de opdracht — **geen** anonieme externe stock in de hero; kop in **elegant serif**, kort (paar woorden), **geen** lange paragraaf in de hero — uitleg pas onder de vouw. Vermijd "billboard" all-caps extrabold sans + twee grote knoppen (voelt goedkoop). **Geen** achtergrond-\`<video>\` tenzij de briefing **expliciet** om bewegende achtergrond / video / loop vraagt; optionele stock-foto's alleen in \`gallery\`.
+- **Hero-idee:** krachtige **typografie + gradient/textuur** of **klantfoto**-URL uit de opdracht — **geen** anonieme externe stock in de hero; kop in **elegant serif**, kort (paar woorden), **geen** lange paragraaf in de hero — uitleg pas onder de vouw. **Liever full-bleed** (foto/gradient over de **volle breedte** + leesbare tekst op donkere/scrim-overlay) dan een standaard **twee-koloms 50/50 split** — die split oogt snel als generiek template. Vermijd "billboard" all-caps extrabold sans + twee grote knoppen (voelt goedkoop). **Geen** achtergrond-\`<video>\` tenzij de briefing **expliciet** om bewegende achtergrond / video / loop vraagt; optionele stock-foto's alleen in \`gallery\`.
 - **Diensten-idee:** een elegante verticale prijslijst (\`divide-y\`) werkt hier vaak beter dan kaarten — het voelt als een menukaart. Maar een creatief grid kan ook werken als het past.
 - **Content:** focus op herenknippen, baardverzorging, hot towel shave, traditioneel scheren. Doelgroep is mannelijk. Gebruik woorden als "heren", "gentleman", "vakmanschap".
 - **Typische elementen:** werkplaats-galerij, WhatsApp-booking, openingstijden. **Geen** verplichte "merken-rij" — alleen als de briefing expliciet merken/partners/producten noemt (dan wordt sectie \`brands\` via keywords toegevoegd).
@@ -56,7 +56,7 @@ Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk a
     vibe: "luxury",
     promptHint: `**BRANCHE-INSPIRATIE: KAPSALON / HAARSALON (UNISEX)**
 Dit is een kapsalon die zowel dames als heren bedient. Focus op haarverzorging, styling, kleurbehandelingen en persoonlijke aandacht voor iedereen.
-- **Hero-idee:** stijlvol salon-interieur of close-up haar; **minimale copy** in de hero (korte kop + optioneel één regel), serif-kop, veel negatieve ruimte — luxe voelt rustig, niet druk.
+- **Hero-idee:** stijlvol salon-interieur of close-up haar; **minimale copy** in de hero (korte kop + optioneel één regel), serif-kop, veel negatieve ruimte — luxe voelt rustig, niet druk. **Voorkeur full-bleed** met overlay i.p.v. vaste **50/50 foto|tekst**-split tenzij de briefing expliciet split wil.
 - **Diensten-idee:** een elegante prijslijst per categorie, gescheiden in **Dames** en **Heren** (of apart: Knippen, Kleuren, Behandelingen). Prijzen in euro's. Menukaart-gevoel.
 - **Content:** breed scala — knippen dames & heren, kleuren, highlights/balayage, keratine, föhnen/stylen, baardtrimmen. Toon dat iedereen welkom is.
 - **Team & merken:** standaard **geen** aparte \`team\`/\`brands\`-secties — verwerk in \`about\`/\`features\` of voeg toe via briefing (keywords).
