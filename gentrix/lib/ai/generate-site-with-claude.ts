@@ -1332,7 +1332,7 @@ function buildHeroViewportRulesMarkdown(preserve: boolean): string {
   if (preserve) return "";
   return `
 - **VIEWPORT / HERO-HOOGTE (kritisch — voorkomt “smalle strook + wit gat” onder de fold):**
-  - **\`<section id="hero">\` (buitenste tag):** zet **altijd** een expliciete minimale hoogte op die sectie: \`min-h-[72vh] md:min-h-[80vh]\` (foto-/video-hero) of minstens \`min-h-[65vh] md:min-h-[72vh]\` (typografisch). **Zonder** deze \`min-h-*\` krimpt de hero tot één regel hoogte en vult het iframe-onderste deel met leeg wit — dat is een fout.
+  - **\`<section id="hero">\` (buitenste tag):** het attribuut \`id="hero"\` hoort op **deze** \`<section>\`, niet op een inner \`<div>\` — anders kan de server geen AI-hero-beeld injecteren. Zet **altijd** een expliciete minimale hoogte op die sectie: \`min-h-[72vh] md:min-h-[80vh]\` (foto-/video-hero) of minstens \`min-h-[65vh] md:min-h-[72vh]\` (typografisch). **Zonder** deze \`min-h-*\` krimpt de hero tot één regel hoogte en vult het iframe-onderste deel met leeg wit — dat is een fout.
   - **Volle viewport op de hero** is toegestaan met **dynamische eenheden**: \`min-h-[100dvh]\` of \`min-h-[min(100dvh,100svh)]\` mag **alleen** op \`#hero\`, niet op andere secties. Gebruik liever \`72vh/80vh\` als je twijfelt.
   - **Verbod (niet-hero secties):** gebruik **geen** \`min-h-screen\`, \`h-screen\`, \`min-h-[100vh]\`, \`h-[100vh]\` op \`#features\`, \`#about\`, shop, footer, enz. — dat maakt lege kolommen en rare scroll in previews. Daar: \`py-16 md:py-24\` + inhoud.
   - **Achtergrond-banden** (CTA/galerij met \`background-image\`, geen hero): max. \`min-h-[40vh] md:min-h-[50vh]\`, geen volledige viewport.

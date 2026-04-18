@@ -39,8 +39,17 @@ function heroHtmlHasRealImage(html: string): boolean {
   return false;
 }
 
+/**
+ * Alleen `id="hero"` / `id='hero'` op de **buitenste `<section>`** is injecteerbaar.
+ * Buiten die match: geen OpenAI-call — anders betaal je wel en faalt `injectAiHeroImageIntoHeroSectionHtml`
+ * (bijv. `id="hero"` alleen op een inner `<div>`).
+ */
+export function heroSectionOpenTagHasInjectableHeroId(heroHtml: string): boolean {
+  return /<section[^>]*\bid\s*=\s*["']hero["'][^>]*>/i.test(heroHtml);
+}
+
 export function shouldAttemptAiHeroImageForHtml(heroHtml: string): boolean {
-  if (!heroHtml.includes('id="hero"') && !heroHtml.includes("id='hero'")) return false;
+  if (!heroSectionOpenTagHasInjectableHeroId(heroHtml)) return false;
   if (heroHtml.includes(HERO_IMG_MARKER)) return false;
   if (heroHtmlHasVideo(heroHtml)) return false;
   if (heroHtmlHasRealImage(heroHtml)) return false;
@@ -155,7 +164,7 @@ export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUr
   const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover md:left-1/2 md:right-0 md:w-1/2" loading="eager" fetchpriority="high" />`;
 
   const out = html.replace(
-    /<section(\s[^>]*?\bid=["']hero["'][^>]*?)>/i,
+    /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>/i,
     (_full, attrs: string) => {
       let nextAttrs = String(attrs);
       if (/\bclass=["']/i.test(nextAttrs)) {
@@ -207,7 +216,13 @@ export async function applyAiHeroImageToGeneratedPage(
   if (!url) return data;
 
   const nextHtml = injectAiHeroImageIntoHeroSectionHtml(sec.html, url);
-  if (nextHtml == null) return data;
+  if (nextHtml == null) {
+    console.warn(
+      "[ai-hero] Image generated and uploaded but hero HTML has no injectable <section id=\"hero\"> open tag — skipping inject (orphan asset):",
+      url,
+    );
+    return data;
+  }
 
   const nextSections = [...data.sections];
   nextSections[idx] = { ...sec, html: nextHtml };
