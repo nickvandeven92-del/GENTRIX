@@ -66,6 +66,48 @@ body {
   background: rgba(82, 82, 82, 0.45);
 }
 
+/* Site-studio: verticale chat-sidebar — dunne thumb, meer scrollruimte zichtbaar dan systeem-default */
+.studio-sidebar-scroll-y {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.35) rgba(24, 24, 27, 0.06);
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-sidebar-scroll-y::-webkit-scrollbar {
+  width: 6px;
+}
+
+.studio-sidebar-scroll-y::-webkit-scrollbar-track {
+  margin: 6px 0;
+  background: transparent;
+  border-radius: 9999px;
+}
+
+.studio-sidebar-scroll-y::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.45), rgba(79, 70, 229, 0.38));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.studio-sidebar-scroll-y::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(79, 70, 229, 0.65), rgba(67, 56, 202, 0.55));
+}
+
+@media (prefers-color-scheme: dark) {
+  .studio-sidebar-scroll-y {
+    scrollbar-color: rgba(129, 140, 248, 0.45) rgba(39, 39, 42, 0.5);
+  }
+
+  .studio-sidebar-scroll-y::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(129, 140, 248, 0.5), rgba(99, 102, 241, 0.38));
+    border-color: rgba(0, 0, 0, 0.2);
+  }
+
+  .studio-sidebar-scroll-y::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(165, 180, 252, 0.55), rgba(129, 140, 248, 0.48));
+  }
+}
+
 /*
  * Geen horizontale scroll op het hele werkvlak: brede tabellen (o.a. /admin/clients) scrollen in hun eigen
  * `overflow-x-auto`-wrapper met `.sales-os-scroll-x`. Dubbele scroll-lagen verborgen de rechterkolom visueel.

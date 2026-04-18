@@ -40,6 +40,7 @@ import {
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
   STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS,
+  STUDIO_FIXED_NAV_HERO_INSET_CSS,
 } from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
@@ -128,6 +129,24 @@ export const STUDIO_SITE_CREDIT_URL =
 export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;left:0;right:0;bottom:max(0.65rem, env(safe-area-inset-bottom, 0px));width:max-content;max-width:min(calc(100vw - 1.25rem), 22rem);margin:0 auto;z-index:28;box-sizing:border-box;padding:0.35rem 0.75rem;text-align:center;font-family:ui-sans-serif, system-ui, sans-serif;font-size:11px;line-height:1.2;font-weight:500;letter-spacing:0.02em;color:rgba(248,250,252,0.92);pointer-events:none;white-space:nowrap;border-radius:9999px;background:rgba(15,23,42,0.9);box-shadow:0 1px 2px rgba(0,0,0,0.35);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}[data-studio-site-credit] a{color:inherit;text-decoration:underline;text-decoration-color:rgba(248,250,252,0.35);text-underline-offset:2px;pointer-events:auto;font-weight:600;letter-spacing:0.05em;outline-offset:3px}@media (hover:hover){[data-studio-site-credit] a:hover{color:#fff;text-decoration-color:rgba(255,255,255,0.55)}}`;
 
 export const STUDIO_SITE_CREDIT_BODY_HTML = `<div data-studio-site-credit translate="no">By <a href="${STUDIO_SITE_CREDIT_URL}" target="_blank" rel="noopener noreferrer" aria-label="GENTRIX — meer informatie">GENTRIX</a></div>`;
+
+/**
+ * `scroll-padding` op `html` helpt alleen bij hash-scroll; `fixed` nav laat inhoud visueel onder de balk starten.
+ * Zet `data-gentrix-studio-auto-nav="1"` op `<html>` wanneer `buildStudioAutoMobileNavHeaderHtml` is toegevoegd —
+ * dan geldt alleen de eerste regel (anders telt `:has(> header.fixed)` dubbel op verborgen AI-headers).
+ */
+export const STUDIO_FIXED_NAV_HERO_INSET_CSS = `html[data-gentrix-studio-iframe="1"][data-gentrix-studio-auto-nav="1"] body > section[data-section]:first-of-type {
+  padding-top: 5.5rem;
+}
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section#hero:has(> header[class*="fixed"]),
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) #hero:has(> header[class*="fixed"]) {
+  padding-top: 5.5rem;
+}
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + #hero,
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + section#hero {
+  padding-top: 5.5rem;
+}
+`;
 
 /**
  * Veel templates: vaste primary nav `fixed … z-50`, mobiel menu-backdrop `fixed inset-0 z-40`.
@@ -2277,7 +2296,7 @@ export function buildTailwindIframeSrcDoc(
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   let out = `<!DOCTYPE html>
-<html lang="nl"${iframeShellAttr}${studioMobileAttr}${staticScrollBorderAttr}>
+<html lang="nl"${iframeShellAttr}${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}${studioMobileAttr}${staticScrollBorderAttr}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
@@ -2303,6 +2322,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
+    ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}

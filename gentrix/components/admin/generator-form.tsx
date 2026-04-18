@@ -981,8 +981,7 @@ export function GeneratorForm({
           </p>
         ) : (
           <span id="studio-briefing-a11y-hint" className="sr-only">
-            Plak URL&apos;s, tekst en referentie-afbeeldingen; klantfoto&apos;s alleen bij het klantfoto-vak{" "}
-            {zen ? "hierboven" : "hieronder"}.
+            Plak URL&apos;s, tekst en referentie-afbeeldingen; klantfoto&apos;s alleen bij het klantfoto-vak hierboven.
           </span>
         )}
         <div
@@ -1002,7 +1001,7 @@ export function GeneratorForm({
             aria-describedby={descriptionLocked ? undefined : "studio-briefing-a11y-hint"}
             required={!descriptionLocked}
             maxLength={4000}
-            rows={zen ? 8 : 10}
+            rows={zen ? 8 : 5}
             value={briefingText}
             onChange={(e) => {
               if (descriptionLocked) return;
@@ -1011,8 +1010,8 @@ export function GeneratorForm({
             onPaste={handleDescriptionPaste}
             readOnly={descriptionLocked}
             className={cn(
-              "block w-full resize-y border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
-              zen ? "min-h-[220px]" : "min-h-[200px]",
+              "block w-full border-0 bg-transparent px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
+              zen ? "min-h-[220px] resize-y" : "max-h-[min(36vh,220px)] min-h-[104px] resize-y overflow-y-auto",
               descriptionLocked && fieldLockedClass,
             )}
             placeholder={submittedPromptTurns.length > 0 ? "Volgende opdracht…" : "Ask GENTRIX…"}
@@ -1057,13 +1056,14 @@ export function GeneratorForm({
         </label>
         <p className="mt-0.5 text-xs text-slate-500">
           Alleen beelden voor <strong className="font-medium text-slate-600 dark:text-slate-300">in de site</strong>; de
-          rest in het opdrachtveld {zen ? "hieronder" : "hierboven"}.
+          rest in het opdrachtveld hieronder.
         </p>
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           className={cn(
             "mt-2 flex min-h-[72px] flex-wrap items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-white/80 p-3 dark:border-slate-600 dark:bg-zinc-900/40",
+            !zen && "min-h-[56px] py-2",
             zen && "min-h-[96px] justify-center border-slate-300/90 bg-white dark:border-zinc-600",
             !descriptionLocked && clientImages.length < 8 && "hover:border-indigo-300",
             descriptionLocked && "pointer-events-none opacity-60",
@@ -1134,8 +1134,8 @@ export function GeneratorForm({
           </>
         ) : (
           <>
-            {opdrachtBlock}
             {klantFotosBlock}
+            {opdrachtBlock}
           </>
         )}
         <button
@@ -1183,7 +1183,7 @@ export function GeneratorForm({
             {editorFocusBar}
             <div
               ref={chatScrollRef}
-              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-0.5 py-2"
+              className="studio-sidebar-scroll-y min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-0.5 py-2"
               role="log"
               aria-label="Studio-gesprek: voortgang en opdrachten"
             >

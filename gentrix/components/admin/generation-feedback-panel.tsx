@@ -133,27 +133,57 @@ export function GenerationFeedbackPanel({
     },
   ] as const;
 
-  const rootSurface =
-    surfaceVariant === "conversation"
-      ? "w-full max-w-[min(100%,26rem)] rounded-2xl rounded-bl-md border border-zinc-200/90 bg-zinc-50/95 shadow-sm dark:border-zinc-600 dark:bg-zinc-900/90"
-      : "rounded-xl border border-zinc-200 bg-zinc-50/90 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60";
+  const conv = surfaceVariant === "conversation";
+
+  const rootSurface = conv
+    ? "w-full max-w-[min(100%,26rem)] rounded-xl rounded-bl-md border border-indigo-200/80 bg-gradient-to-b from-white to-zinc-50/90 shadow-sm ring-1 ring-indigo-500/10 dark:border-indigo-900/40 dark:from-zinc-900 dark:to-zinc-950/90 dark:ring-indigo-400/10"
+    : "rounded-xl border border-zinc-200 bg-zinc-50/90 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60";
 
   return (
     <div className={rootSurface}>
-      <div className="border-b border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700">
+      <div
+        className={
+          conv
+            ? "border-b border-indigo-100/90 px-2.5 py-2 dark:border-indigo-950/50"
+            : "border-b border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700"
+        }
+      >
         <div className="flex items-start gap-2">
-          <Activity className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
+          <Activity
+            className={conv ? "mt-0.5 size-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" : "mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400"}
+            aria-hidden
+          />
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Site genereren</span>
-              <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-normal text-zinc-600 shadow-sm dark:bg-zinc-800 dark:text-zinc-300">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={
+                  conv ? "text-[13px] font-semibold text-zinc-900 dark:text-zinc-50" : "text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+                }
+              >
+                Site genereren
+              </span>
+              <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-normal text-zinc-600 shadow-sm dark:bg-zinc-800 dark:text-zinc-300">
                 {model}
               </span>
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{summary}</p>
+            <p
+              className={
+                conv
+                  ? "mt-0.5 line-clamp-2 text-[11px] leading-snug text-zinc-600 dark:text-zinc-400"
+                  : "mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400"
+              }
+            >
+              {summary}
+            </p>
             {thinkingLabel ? (
-              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
-                <Sparkles className="size-3.5 shrink-0 text-indigo-500" aria-hidden />
+              <p
+                className={
+                  conv
+                    ? "mt-1 flex items-center gap-1 text-[10px] font-medium text-indigo-700 dark:text-indigo-300"
+                    : "mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300"
+                }
+              >
+                <Sparkles className={conv ? "size-3 shrink-0 text-indigo-500" : "size-3.5 shrink-0 text-indigo-500"} aria-hidden />
                 {thinkingLabel}
               </p>
             ) : null}
@@ -161,27 +191,50 @@ export function GenerationFeedbackPanel({
         </div>
       </div>
 
-      <ul className="space-y-2 px-3 py-3">
+      <ul
+        className={
+          conv
+            ? "flex flex-wrap gap-x-3 gap-y-1 px-2.5 py-2"
+            : "space-y-2 px-3 py-3"
+        }
+      >
         {checklist.map((item) => (
-          <li key={item.id} className="flex items-start gap-2 text-xs text-zinc-800 dark:text-zinc-200">
-            <span className="mt-0.5 shrink-0" aria-hidden>
+          <li
+            key={item.id}
+            className={
+              conv
+                ? "flex items-center gap-1.5 text-[10px] leading-tight text-zinc-800 dark:text-zinc-200"
+                : "flex items-start gap-2 text-xs text-zinc-800 dark:text-zinc-200"
+            }
+          >
+            <span className={conv ? "shrink-0" : "mt-0.5 shrink-0"} aria-hidden>
               {item.id === "denklijn" && designRationaleLoading ? (
-                <Circle className="size-4 animate-pulse text-indigo-400" />
+                <Circle className={conv ? "size-3 animate-pulse text-indigo-400" : "size-4 animate-pulse text-indigo-400"} />
               ) : item.done ? (
-                <Check className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <Check className={conv ? "size-3 text-emerald-600 dark:text-emerald-400" : "size-4 text-emerald-600 dark:text-emerald-400"} />
               ) : (
-                <Circle className="size-4 text-zinc-300 dark:text-zinc-600" />
+                <Circle className={conv ? "size-3 text-zinc-300 dark:text-zinc-600" : "size-4 text-zinc-300 dark:text-zinc-600"} />
               )}
             </span>
             <span className={item.done ? "text-zinc-800 dark:text-zinc-100" : "text-zinc-500 dark:text-zinc-400"}>
-              {item.label}
+              {conv
+                ? item.id === "pipeline"
+                  ? "Briefing"
+                  : item.id === "denklijn"
+                    ? "Denklijn"
+                    : "Site"
+                : item.label}
             </span>
           </li>
         ))}
       </ul>
 
       {loading && !hasSiteOutput ? (
-        <details className="mx-3 mb-2 text-[10px] text-zinc-500 dark:text-zinc-500">
+        <details
+          className={
+            conv ? "mx-2.5 mb-1.5 text-[9px] text-zinc-500 dark:text-zinc-500" : "mx-3 mb-2 text-[10px] text-zinc-500 dark:text-zinc-500"
+          }
+        >
           <summary className="cursor-pointer select-none text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
             Technische stream
           </summary>
@@ -193,13 +246,23 @@ export function GenerationFeedbackPanel({
       ) : null}
 
       {followUpSuggestions && followUpSuggestions.length > 0 ? (
-        <div className="flex flex-wrap gap-2 border-t border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700">
+        <div
+          className={
+            conv
+              ? "flex flex-wrap gap-1.5 border-t border-zinc-200/90 px-2.5 py-2 dark:border-zinc-700"
+              : "flex flex-wrap gap-2 border-t border-zinc-200/90 px-3 py-2.5 dark:border-zinc-700"
+          }
+        >
           {followUpSuggestions.map((s) => (
             <button
               key={s.id}
               type="button"
               onClick={s.onClick}
-              className="rounded-full border border-indigo-200/90 bg-white px-3 py-1 text-[11px] font-medium text-indigo-950 shadow-sm transition-colors hover:bg-indigo-50 dark:border-indigo-800 dark:bg-zinc-900 dark:text-indigo-100 dark:hover:bg-indigo-950/80"
+              className={
+                conv
+                  ? "rounded-full border border-indigo-200/90 bg-white px-2 py-0.5 text-[10px] font-medium text-indigo-950 shadow-sm transition-colors hover:bg-indigo-50 dark:border-indigo-800 dark:bg-zinc-900 dark:text-indigo-100 dark:hover:bg-indigo-950/80"
+                  : "rounded-full border border-indigo-200/90 bg-white px-3 py-1 text-[11px] font-medium text-indigo-950 shadow-sm transition-colors hover:bg-indigo-50 dark:border-indigo-800 dark:bg-zinc-900 dark:text-indigo-100 dark:hover:bg-indigo-950/80"
+              }
             >
               {s.label}
             </button>
@@ -213,18 +276,22 @@ export function GenerationFeedbackPanel({
         </p>
       ) : null}
 
-      <div className="flex gap-2 border-t border-zinc-200/90 px-3 py-3 dark:border-zinc-700">
+      <div
+        className={
+          conv ? "flex gap-1.5 border-t border-zinc-200/90 px-2.5 py-2 dark:border-zinc-700" : "flex gap-2 border-t border-zinc-200/90 px-3 py-3 dark:border-zinc-700"
+        }
+      >
         <button
           type="button"
           onClick={() => onRightPaneModeChange("details")}
-          className={cnPanelBtn(rightPaneMode === "details")}
+          className={cnPanelBtn(rightPaneMode === "details", false, conv)}
         >
           Details
         </button>
         <button
           type="button"
           onClick={() => onRightPaneModeChange("preview")}
-          className={cnPanelBtn(rightPaneMode === "preview", true)}
+          className={cnPanelBtn(rightPaneMode === "preview", true, conv)}
         >
           Preview
         </button>
@@ -233,9 +300,11 @@ export function GenerationFeedbackPanel({
   );
 }
 
-function cnPanelBtn(active: boolean, primary?: boolean) {
+function cnPanelBtn(active: boolean, primary?: boolean, compact?: boolean) {
+  const pad = compact ? "px-2 py-1.5 text-[11px]" : "px-3 py-2 text-xs";
   return [
-    "flex-1 rounded-lg px-3 py-2 text-center text-xs font-semibold transition-colors",
+    "flex-1 rounded-lg text-center font-semibold transition-colors",
+    pad,
     primary
       ? active
         ? "bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 dark:bg-indigo-600 dark:hover:bg-indigo-500"

@@ -25,6 +25,7 @@ import {
   STUDIO_SCROLL_BORDER_SCRIPT,
   STUDIO_SITE_CREDIT_BODY_HTML,
   STUDIO_SITE_CREDIT_CSS,
+  STUDIO_FIXED_NAV_HERO_INSET_CSS,
   getStudioAosHtmlFragments,
   getStudioGsapHtmlFragments,
 } from "@/lib/site/tailwind-page-html";
@@ -163,7 +164,7 @@ export function buildStandaloneExportHtmlDocument(
   const gsap = getStudioGsapHtmlFragments(false);
 
   return `<!DOCTYPE html>
-<html lang="nl" data-gentrix-studio-iframe="1">
+<html lang="nl" data-gentrix-studio-iframe="1"${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -173,6 +174,7 @@ export function buildStandaloneExportHtmlDocument(
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}
+    html { scroll-padding-top: 5.5rem; }
     body { font-family: ${fontStack}; }
     ${rootCssBlock}
     ${STUDIO_DATA_ANIMATION_CSS}
@@ -186,6 +188,7 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
+    ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n    ` : ""}
   </style>
   ${userCssBlock}${aos.headLink}</head>
