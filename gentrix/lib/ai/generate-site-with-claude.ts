@@ -2205,7 +2205,9 @@ function finalizeGenerateSiteFromClaudeText(
   if (!parsedResult.ok) {
     const truncated =
       stop_reason === "max_tokens"
-        ? " Het antwoord werd afgekapt (model outputlimiet). Probeer een kortere briefing of minder secties in één run."
+        ? options.useMarketingMultiPage
+          ? " Het antwoord werd afgekapt (model outputlimiet). Een site met meerdere marketingpagina’s levert één zeer grote JSON; kortere briefing of compactere copy helpt als dit opnieuw gebeurt."
+          : " Het antwoord werd afgekapt (model outputlimiet). Probeer een kortere briefing of minder secties in één run."
         : "";
     return {
       ok: false,

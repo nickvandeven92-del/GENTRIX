@@ -9,8 +9,14 @@
 export const STUDIO_SITE_GENERATION = {
   generateModel: "claude-sonnet-4-6",
   supportModel: "claude-haiku-4-5-20251001",
-  /** Claude `max_tokens` voor de hoofd-stream. */
-  maxOutputTokens: 20_480,
+  /**
+   * Claude `max_tokens` voor de hoofd-stream.
+   *
+   * Multipage (`marketingPages` + landing + `contactSections`) levert één groot JSON-object met veel
+   * Tailwind-HTML; ~20k tokens was in de praktijk te weinig → `max_tokens`-stop halverwege → gebroken JSON.
+   * Nieuwere Sonnet-modellen ondersteunen veel hogere output; streaming omzeilt de non-stream SDK-timeout.
+   */
+  maxOutputTokens: 64_000,
   /** Standaard geen minimale prompt; `minimalPrompt: true` in de API-request wint. */
   minimalPromptDefault: false,
   briefingVisionEnabled: true,
