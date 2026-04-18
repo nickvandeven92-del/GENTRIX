@@ -1182,8 +1182,9 @@ export function GeneratorForm({
         visiblePanels={visiblePanelsProp}
         defaultSidebarPx={332}
         minSidebarPx={248}
-        maxSidebarPx={420}
-        minMainPx={400}
+        maxSidebarPx={4800}
+        minMainPx={0}
+        splitterTitle="Sleep naar rechts: smallere preview (tablet → mobiel); helemaal rechts verbergt de preview. Sleep naar links voor meer ruimte."
         sidebar={
           <div className="flex min-h-0 flex-1 flex-col gap-0 pr-1">
             {editorFocusBar}

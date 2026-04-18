@@ -33,6 +33,8 @@ type ResizableEditorPanelsProps = {
    * De sidebar wordt begrensd zodat dit paneel niet smaller wordt (geen horizontale scrollbar).
    */
   minMainPx?: number;
+  /** Tooltip op de sleepbalk (default: generieke uitleg met minimale previewbreedte). */
+  splitterTitle?: string;
   className?: string;
 };
 
@@ -68,6 +70,7 @@ export function ResizableEditorPanels({
   minSidebarPx = 260,
   maxSidebarPx = 640,
   minMainPx = 768,
+  splitterTitle,
   className,
 }: ResizableEditorPanelsProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -246,7 +249,10 @@ export function ResizableEditorPanels({
             persist(next);
           }
         }}
-        title="Sleep om chat- en instelpaneel breder of smaller te maken (preview houdt minimale breedte)"
+        title={
+          splitterTitle ??
+          "Sleep om chat- en instelpaneel breder of smaller te maken (preview houdt minimale breedte)"
+        }
       >
         <span
           className="block h-full min-h-[min(480px,calc(100dvh-12rem))] w-px rounded-full bg-zinc-300 dark:bg-zinc-600"
