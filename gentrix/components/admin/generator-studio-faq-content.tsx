@@ -13,14 +13,15 @@ export function GeneratorStudioFaqContent() {
             details aan. Tip: vraagteken bij Omschrijving voor stijltermen.
           </li>
           <li>
-            Optioneel: <strong>klantfoto&apos;s</strong> en een <strong>referentiesite</strong> voor sfeer/layout.
+            Optioneel: <strong>referentiebeelden</strong> (plakken in het opdrachtveld) en een <strong>referentiesite</strong>{" "}
+            voor sfeer/layout.
           </li>
           <li>
             Met een klant-URL (<code className="rounded bg-slate-200 px-1 font-mono text-[11px]">slug</code>) klopt
             opslaan bij die klant.
           </li>
           <li>
-            Klik <strong>Genereer site</strong>; status loopt binnen via een NDJSON-stream. De preview rechts vult pas als
+            Verstuur de opdracht (pijl omhoog of Ctrl+Enter); status loopt binnen via een NDJSON-stream. De preview rechts vult pas als
             de run klaar is — bij de eerste generatie geen live canvas tussendoor (vergelijkbaar met o.a. Lovable); bij een
             afgebroken stream kunnen laatste tussentijdse secties wél zichtbaar zijn.
           </li>
@@ -32,6 +33,16 @@ export function GeneratorStudioFaqContent() {
           Volledige marketing-site: homepage (<code className="font-mono text-[11px]">/site/…</code>) met subpagina&apos;s
           + contact. Tokens zoals <code className="font-mono text-[11px]">__STUDIO_SITE_BASE__</code> worden door het
           platform vervangen.
+        </p>
+      </section>
+      <section>
+        <h3 className="text-sm font-semibold text-slate-900">Hero-beeld &amp; foto&apos;s</h3>
+        <p className="mt-2 text-xs text-slate-600">
+          Net als andere AI-sitebouwers kan GENTRIX een <strong>hero-sfeerbeeld</strong> laten maken door een aparte
+          beeld-API (nu <strong>OpenAI DALL·E 3</strong>), daarna gehost op <strong>Supabase</strong> — niet door willekeurige
+          stock-URL&apos;s in de HTML te zetten. Andere tools gebruiken vergelijkbare pipelines (bijv. eigen image-modellen
+          of Runware); het verschil in &ldquo;echtheid&rdquo; zit vooral in model, prompt en hoeveel de layout het beeld
+          nog filtert/overlayt.
         </p>
       </section>
       <section>

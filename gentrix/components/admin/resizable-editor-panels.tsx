@@ -53,8 +53,8 @@ function boundsForHost(
     maxSidebar = Math.min(maxSidebarPx, inner - minSidebarPx);
   }
   const maxS = Math.min(maxSidebarPx, Math.max(0, maxSidebar));
-  const effMin = Math.min(minSidebarPx, maxS);
-  const minS = maxS < 1 ? 0 : effMin;
+  /** Geen aparte “maxS < 1 ⇒ min 0”-tak: die gaf een harde knik t.o.v. net-boven-0. */
+  const minS = Math.min(minSidebarPx, maxS);
   const maxClamped = Math.max(minS, maxS);
   return { min: minS, max: maxClamped };
 }
@@ -72,6 +72,8 @@ export function ResizableEditorPanels({
 }: ResizableEditorPanelsProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const storageHydrated = useRef(false);
+  /** Voorkomt dat hostWidth-reclamp tijdens slepen de breedte “verliest” t.o.v. pointermove (verspringen). */
+  const splitterDragActiveRef = useRef(false);
   const [hostWidth, setHostWidth] = useState(0);
   const [splitLayout, setSplitLayout] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarPx);
@@ -107,8 +109,9 @@ export function ResizableEditorPanels({
   );
 
   useEffect(() => {
-    if (hostWidth <= 0) return;
+    if (hostWidth <= 0 || splitterDragActiveRef.current) return;
     queueMicrotask(() => {
+      if (splitterDragActiveRef.current) return;
       setSidebarWidth((w) => (w === clamp(w) ? w : clamp(w)));
     });
   }, [hostWidth, clamp]);
@@ -152,6 +155,7 @@ export function ResizableEditorPanels({
       e.preventDefault();
       const el = e.currentTarget;
       el.setPointerCapture(e.pointerId);
+      splitterDragActiveRef.current = true;
       const startX = e.clientX;
       const startW = sidebarWidth;
       const hw = hostRef.current?.getBoundingClientRect().width ?? hostWidth;
@@ -170,6 +174,7 @@ export function ResizableEditorPanels({
         const next = clamp(startW + (ev.clientX - startX), hwUp);
         setSidebarWidth(next);
         persist(next);
+        splitterDragActiveRef.current = false;
         document.body.style.removeProperty("cursor");
         document.body.style.removeProperty("user-select");
       };
