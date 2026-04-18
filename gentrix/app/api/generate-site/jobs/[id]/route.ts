@@ -49,6 +49,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         denklijn_skip_reason: job.denklijn_skip_reason ?? null,
         design_contract_json: job.design_contract_json ?? null,
         design_contract_warning: job.design_contract_warning ?? null,
+        generation_split_phase: job.generation_split_phase ?? "single",
         created_at: job.created_at,
         updated_at: job.updated_at,
         started_at: job.started_at,

@@ -59,6 +59,7 @@ import {
   displayStudioBrandNameForUi,
   isStudioUndecidedBrandName,
 } from "@/lib/studio/studio-brand-sentinel";
+import { briefGenerationActivityLabel } from "@/lib/studio/brief-generation-activity-label";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
 
@@ -164,6 +165,8 @@ export function GeneratorForm({
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
   /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
   const [generationActivity, setGenerationActivity] = useState<{ id: string; text: string }[]>([]);
+  /** Beknopte milestone-weergave in het activiteitenpaneel (Lovable-achtig); ruwe tekst blijft bewaard. */
+  const [compactActivityLog, setCompactActivityLog] = useState(true);
   const appendGenerationActivity = useCallback((text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -1418,6 +1421,8 @@ export function GeneratorForm({
                   activityLog={generationActivity}
                   streamPhase={streamPhase}
                   loading={loading}
+                  activityLogBrief={compactActivityLog}
+                  onActivityLogBriefChange={setCompactActivityLog}
                 />
               ) : (
               ((loading && !activeStudioPreviewPayload) ||
@@ -1455,22 +1460,57 @@ export function GeneratorForm({
                     ) : null}
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                      Activiteiten
-                    </p>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Activiteiten
+                      </p>
+                      <label className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] text-zinc-600 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          className="size-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600"
+                          checked={compactActivityLog}
+                          onChange={(e) => setCompactActivityLog(e.target.checked)}
+                        />
+                        Beknopt
+                      </label>
+                    </div>
                     {generationActivity.length === 0 ? (
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">Wachten op eerste serverberichten…</p>
                     ) : (
-                      <ol className="space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-700">
-                        {generationActivity.map((row) => (
-                          <li
-                            key={row.id}
-                            className="relative text-xs leading-snug text-zinc-700 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-300 dark:before:bg-indigo-500"
-                          >
-                            {row.text}
-                          </li>
-                        ))}
-                      </ol>
+                      <>
+                        <ol className="space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-700">
+                          {(compactActivityLog
+                            ? generationActivity
+                                .map((row) => ({
+                                  id: row.id,
+                                  text: briefGenerationActivityLabel(row.text),
+                                }))
+                                .filter((row) => row.text.length > 0)
+                            : generationActivity
+                          ).map((row) => (
+                            <li
+                              key={row.id}
+                              className="relative text-xs leading-snug text-zinc-700 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-300 dark:before:bg-indigo-500"
+                            >
+                              {row.text}
+                            </li>
+                          ))}
+                        </ol>
+                        {compactActivityLog && generationActivity.length > 0 ? (
+                          <details className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50/80 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900/50">
+                            <summary className="cursor-pointer text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
+                              Volledige serverregels ({generationActivity.length})
+                            </summary>
+                            <ol className="mt-2 max-h-40 space-y-1.5 overflow-y-auto border-t border-zinc-200/80 pt-2 dark:border-zinc-700">
+                              {generationActivity.map((row) => (
+                                <li key={`full-${row.id}`} className="text-[10px] leading-snug text-zinc-600 dark:text-zinc-400">
+                                  {row.text}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                        ) : null}
+                      </>
                     )}
                   </div>
                 </div>

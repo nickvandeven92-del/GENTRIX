@@ -1934,7 +1934,7 @@ export type GenerateSiteStreamHooks = {
   onTextDelta?: (chunk: string) => void;
 };
 
-type PreparedGenerateSiteClaudeCall = {
+export type PreparedGenerateSiteClaudeCall = {
   client: Anthropic;
   /** Model voor de site-generatie zelf (streaming, groot output). */
   generateModel: string;
@@ -1957,7 +1957,7 @@ type PreparedGenerateSiteClaudeCall = {
 
 type PrepareGenerateSiteResult = PreparedGenerateSiteClaudeCall | { ok: false; error: string };
 
-async function prepareGenerateSiteClaudeCall(
+export async function prepareGenerateSiteClaudeCall(
   businessName: string,
   description: string,
   recentClientNames: string[],
@@ -2311,64 +2311,32 @@ function finalizeGenerateSiteFromClaudeText(
   return { ok: true, data: mapped };
 }
 
-export async function generateSiteWithClaude(
-  businessName: string,
-  description: string,
-  recentClientNames: string[] = [],
-  promptOptions?: GenerateSitePromptOptions,
-  streamHooks?: GenerateSiteStreamHooks,
+/**
+ * Hoofd-Claude-stream + parse + zelfreview + hero + validatie — dezelfde keten als na compositie
+ * in `createGenerateSiteReadableStream`, voor hergebruik na een checkpoint (tweede serverless-invocatie).
+ */
+export type ExecuteGenerateSitePhase2Input = {
+  prepared: PreparedGenerateSiteClaudeCall;
+  userContentWithComposition: string | ContentBlockParam[];
+  designContract: DesignGenerationContract | null;
+  businessName: string;
+  description: string;
+  promptOptions?: GenerateSitePromptOptions;
+  streamHooks?: GenerateSiteStreamHooks;
+};
+
+export async function executeGenerateSitePhase2(
+  input: ExecuteGenerateSitePhase2Input,
 ): Promise<GenerateSiteResult> {
-  const prepared = await prepareGenerateSiteClaudeCall(businessName, description, recentClientNames, promptOptions);
-
-  if ("ok" in prepared && prepared.ok === false) {
-    return { ok: false, error: prepared.error };
-  }
-
-  const p = prepared as PreparedGenerateSiteClaudeCall;
-
-  const rationale = await generateDesignRationaleWithClaude(p.client, p.supportModel, {
+  const {
+    prepared: p,
+    userContentWithComposition,
+    designContract,
     businessName,
     description,
-    feedback: p.pipelineFeedback,
-    referenceSiteSnapshot: p.referenceSiteSnapshot,
-  });
-  let designContract: DesignGenerationContract | null = null;
-  const userContentForGeneration =
-    rationale.ok && rationale.contract != null
-      ? appendDesignContractToUserContent(
-          p.userContent,
-          buildDesignContractPromptInjection(rationale.contract, p.referenceSiteSnapshot ?? null),
-        )
-      : p.userContent;
-  if (rationale.ok && rationale.contract != null) {
-    designContract = rationale.contract;
-  }
-
-  const canonicalSectionIdsNs = p.pipelineFeedback.interpreted.sections ?? [];
-  let compositionPlanNs: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIdsNs);
-  if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
-    const contractSummaryNs =
-      rationale.ok && rationale.contract != null
-        ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
-        : null;
-    const compNs = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
-      businessName,
-      description,
-      canonicalSectionIds: canonicalSectionIdsNs,
-      strictLanding: p.strictLandingContract,
-      marketingMultiPage: p.useMarketingMultiPage,
-      marketingPageSlugs: p.marketingPageSlugs,
-      designContractSummary: contractSummaryNs,
-    });
-    compositionPlanNs = mergeCompositionPlanWithCanonical(
-      canonicalSectionIdsNs,
-      compNs.ok ? compNs.raw : null,
-    );
-  }
-  const userContentWithComposition = appendCompositionPlanToUserContent(
-    userContentForGeneration,
-    buildCompositionPlanPromptInjection(compositionPlanNs),
-  );
+    promptOptions,
+    streamHooks,
+  } = input;
 
   let textBody = "";
   let usage: MessageDeltaUsage | null = null;
@@ -2462,6 +2430,76 @@ export async function generateSiteWithClaude(
   }
 
   return { ok: true, data };
+}
+
+export async function generateSiteWithClaude(
+  businessName: string,
+  description: string,
+  recentClientNames: string[] = [],
+  promptOptions?: GenerateSitePromptOptions,
+  streamHooks?: GenerateSiteStreamHooks,
+): Promise<GenerateSiteResult> {
+  const prepared = await prepareGenerateSiteClaudeCall(businessName, description, recentClientNames, promptOptions);
+
+  if ("ok" in prepared && prepared.ok === false) {
+    return { ok: false, error: prepared.error };
+  }
+
+  const p = prepared as PreparedGenerateSiteClaudeCall;
+
+  const rationale = await generateDesignRationaleWithClaude(p.client, p.supportModel, {
+    businessName,
+    description,
+    feedback: p.pipelineFeedback,
+    referenceSiteSnapshot: p.referenceSiteSnapshot,
+  });
+  let designContract: DesignGenerationContract | null = null;
+  const userContentForGeneration =
+    rationale.ok && rationale.contract != null
+      ? appendDesignContractToUserContent(
+          p.userContent,
+          buildDesignContractPromptInjection(rationale.contract, p.referenceSiteSnapshot ?? null),
+        )
+      : p.userContent;
+  if (rationale.ok && rationale.contract != null) {
+    designContract = rationale.contract;
+  }
+
+  const canonicalSectionIdsNs = p.pipelineFeedback.interpreted.sections ?? [];
+  let compositionPlanNs: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIdsNs);
+  if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
+    const contractSummaryNs =
+      rationale.ok && rationale.contract != null
+        ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
+        : null;
+    const compNs = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
+      businessName,
+      description,
+      canonicalSectionIds: canonicalSectionIdsNs,
+      strictLanding: p.strictLandingContract,
+      marketingMultiPage: p.useMarketingMultiPage,
+      marketingPageSlugs: p.marketingPageSlugs,
+      designContractSummary: contractSummaryNs,
+    });
+    compositionPlanNs = mergeCompositionPlanWithCanonical(
+      canonicalSectionIdsNs,
+      compNs.ok ? compNs.raw : null,
+    );
+  }
+  const userContentWithComposition = appendCompositionPlanToUserContent(
+    userContentForGeneration,
+    buildCompositionPlanPromptInjection(compositionPlanNs),
+  );
+
+  return executeGenerateSitePhase2({
+    prepared: p,
+    userContentWithComposition,
+    designContract,
+    businessName,
+    description,
+    promptOptions,
+    streamHooks,
+  });
 }
 
 export type GenerateSiteStreamNdjsonEvent =

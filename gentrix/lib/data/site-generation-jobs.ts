@@ -2,6 +2,11 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { consumeGenerateSiteReadableStream } from "@/lib/ai/consume-generate-site-readable-stream";
 import {
+  buildSiteGenerationCheckpointPhase1,
+  executeSiteGenerationFromCheckpoint,
+  parseSiteGenerationJobCheckpoint,
+} from "@/lib/ai/site-generation-phased-job";
+import {
   createGenerateSiteReadableStream,
   type GenerateSitePromptOptions,
   type GenerateSiteStreamNdjsonEvent,
@@ -41,6 +46,9 @@ export type SiteGenerationJobRow = {
   denklijn_skip_reason?: string | null;
   design_contract_json?: Json | null;
   design_contract_warning?: string | null;
+  generation_checkpoint?: Json | null;
+  /** `single` | `awaiting_continue` | `running_continue` — gefaseerde job (checkpoint + tweede invocatie). */
+  generation_split_phase?: string | null;
 };
 
 export type CreateSiteGenerationJobInput = {
@@ -111,6 +119,8 @@ async function updateJob(
     denklijn_skip_reason: string | null;
     design_contract_json: Json | null;
     design_contract_warning: string | null;
+    generation_checkpoint: Json | null;
+    generation_split_phase: string | null;
   }>,
 ): Promise<boolean> {
   const supabase = createServiceRoleClient();
@@ -134,9 +144,183 @@ export async function markSiteGenerationJobFailed(jobId: string, message: string
     status: "failed",
     error_message: message.slice(0, 4_000),
     completed_at: new Date().toISOString(),
+    generation_checkpoint: null,
+    generation_split_phase: "single",
   });
   if (!ok) {
     console.error("[site_generation_jobs] markSiteGenerationJobFailed: update mislukte", jobId);
+  }
+}
+
+function isPhasedSiteGenerationJobsEnabled(): boolean {
+  return process.env.SITE_GENERATION_PHASED_JOB === "1";
+}
+
+async function runJobOnSuccessSideEffects(
+  businessName: string,
+  description: string,
+  slugForStorage: string | undefined,
+  req: { generation_preset_ids?: string[]; layout_archetypes?: string[] },
+  data: GeneratedTailwindPage,
+): Promise<void> {
+  await tryAppendClaudeActivityJournal({
+    source: "generate_site",
+    factsMarkdown: buildJournalFactsGenerateSite({
+      businessName,
+      description,
+      generationPackage: STUDIO_GENERATION_PACKAGE,
+      preserveLayoutUpgrade: false,
+      sectionNames: data.sections.map((s) => s.sectionName ?? s.id),
+      configSummaryLine: `Tailwind theme: primary ${data.config.theme.primary}, accent ${data.config.theme.accent}`,
+      outputFormat: "tailwind_sections",
+    }),
+  });
+  if (slugForStorage && isValidSubfolderSlug(slugForStorage)) {
+    await tryLogSiteGenerationRun({
+      subfolderSlug: slugForStorage,
+      operation: "full_generate_job",
+      promptExcerpt: `${businessName}\n${description}`,
+      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+      status: "success",
+      outcome: "unknown",
+      presetIds: req.generation_preset_ids ?? null,
+      layoutArchetypes: req.layout_archetypes ?? null,
+      commandChain: ["full_generate_job", "tailwind_sections"],
+    });
+  }
+}
+
+async function claimAwaitingContinueSiteGenerationJob(jobId: string): Promise<SiteGenerationJobRow | null> {
+  const supabase = createServiceRoleClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("site_generation_jobs")
+    .update({
+      generation_split_phase: "running_continue",
+      progress_message: "Pagina genereren (HTML/JSON) — tweede server-ronde…",
+      updated_at: now,
+    })
+    .eq("id", jobId)
+    .eq("generation_split_phase", "awaiting_continue")
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    console.warn("[site_generation_jobs claim_continue]", jobId, error.message);
+    return null;
+  }
+  if (!data) return null;
+  return data as SiteGenerationJobRow;
+}
+
+/**
+ * Tweede fase: laadt checkpoint uit DB, claimt `awaiting_continue`, draait hoofdstream + post (zelfde logica als monolith).
+ * Aanroep: interne `POST …/jobs/{id}/continue` of fallback in-process vanuit fase 1.
+ */
+export async function runSiteGenerationJobContinuePhase2(jobId: string): Promise<void> {
+  const claimed = await claimAwaitingContinueSiteGenerationJob(jobId);
+  if (!claimed) {
+    const j = await getSiteGenerationJobById(jobId);
+    if (j?.status === "succeeded") return;
+    if (j?.generation_split_phase === "running_continue") {
+      console.warn("[site_generation_jobs continue] Geen claim (niet in awaiting_continue); skip.", jobId);
+    }
+    return;
+  }
+
+  const checkpoint = parseSiteGenerationJobCheckpoint(claimed.generation_checkpoint);
+  if (!checkpoint) {
+    await markSiteGenerationJobFailed(jobId, "Checkpoint ontbreekt of is ongeldig (schema).");
+    return;
+  }
+
+  const req = claimed.request_json as {
+    subfolder_slug?: string;
+    generation_preset_ids?: string[];
+    layout_archetypes?: string[];
+  };
+  const slugForStorage = req.subfolder_slug?.trim();
+
+  let result: Awaited<ReturnType<typeof executeSiteGenerationFromCheckpoint>>;
+  try {
+    result = await executeSiteGenerationFromCheckpoint(checkpoint);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await markSiteGenerationJobFailed(jobId, msg);
+    return;
+  }
+
+  if (!result.ok) {
+    await markSiteGenerationJobFailed(jobId, result.error);
+    return;
+  }
+
+  await runJobOnSuccessSideEffects(
+    checkpoint.businessName,
+    checkpoint.description,
+    slugForStorage && isValidSubfolderSlug(slugForStorage) ? slugForStorage : undefined,
+    req,
+    result.data,
+  );
+
+  const saved = await updateJob(jobId, {
+    status: "succeeded",
+    result_json: result.data,
+    progress_message: "Generatie voltooid",
+    completed_at: new Date().toISOString(),
+    generation_checkpoint: null,
+    generation_split_phase: "single",
+  });
+  if (!saved) {
+    await markSiteGenerationJobFailed(
+      jobId,
+      "Generatie geslaagd maar opslaan in de database mislukte (vaak: JSON te groot voor `result_json`, of DB-timeout). Verklein de briefing/secties of verhoog database-limiet.",
+    );
+  }
+}
+
+async function triggerPhasedSiteJobContinue(jobId: string): Promise<void> {
+  const secret = process.env.INTERNAL_SITE_GEN_JOB_CONTINUE_SECRET?.trim();
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  if (!secret || !base) {
+    console.warn(
+      "[site_generation_jobs] Gefaseerde job: geen INTERNAL_SITE_GEN_JOB_CONTINUE_SECRET en/of publieke basis-URL — fase2 start in-process (zelfde invocation; tijdslimiet niet gereset).",
+    );
+    try {
+      await runSiteGenerationJobContinuePhase2(jobId);
+    } catch (e) {
+      console.error("[site_generation_jobs] fase2 inline", jobId, e);
+      await markSiteGenerationJobFailed(jobId, e instanceof Error ? e.message : String(e));
+    }
+    return;
+  }
+
+  const url = `${base.replace(/\/$/, "")}/api/generate-site/jobs/${jobId}/continue`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secret}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.error("[site_generation_jobs] continue HTTP", res.status, t.slice(0, 500));
+      try {
+        await runSiteGenerationJobContinuePhase2(jobId);
+      } catch (e) {
+        console.error("[site_generation_jobs] fase2 na HTTP-fout", jobId, e);
+        await markSiteGenerationJobFailed(jobId, e instanceof Error ? e.message : String(e));
+      }
+    }
+  } catch (e) {
+    console.error("[site_generation_jobs] continue fetch", jobId, e);
+    try {
+      await runSiteGenerationJobContinuePhase2(jobId);
+    } catch (e2) {
+      console.error("[site_generation_jobs] fase2 na netwerkfout", jobId, e2);
+      await markSiteGenerationJobFailed(jobId, e2 instanceof Error ? e2.message : String(e2));
+    }
   }
 }
 
@@ -188,6 +372,63 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   };
   const hasPromptOpts = Object.keys(promptOpts).length > 0;
 
+  if (isPhasedSiteGenerationJobsEnabled()) {
+    const phase1 = await buildSiteGenerationCheckpointPhase1({
+      businessName,
+      description,
+      recentClientNames: recentNames,
+      promptOptions: hasPromptOpts ? promptOpts : undefined,
+    });
+    if (!phase1.ok) {
+      await markSiteGenerationJobFailed(jobId, phase1.error);
+      return;
+    }
+    const ck = JSON.parse(JSON.stringify(phase1.checkpoint)) as Json;
+    const persisted = await updateJob(jobId, {
+      pipeline_feedback_json: phase1.meta.pipeline_feedback_json as Json,
+      denklijn_text: phase1.meta.denklijn_text,
+      denklijn_skip_reason: phase1.meta.denklijn_skip_reason,
+      design_contract_json: phase1.meta.design_contract_json as Json | null,
+      design_contract_warning: phase1.meta.design_contract_warning,
+      generation_checkpoint: ck,
+      generation_split_phase: "awaiting_continue",
+      progress_message:
+        "Checkpoint na compositie — HTML/JSON in tweede server-ronde (nieuwe tijdslimiet)…",
+    });
+    if (!persisted) {
+      console.warn("[site_generation_jobs] Checkpoint niet opgeslagen — voltooien in-process.");
+      const result = await executeSiteGenerationFromCheckpoint(phase1.checkpoint);
+      if (!result.ok) {
+        await markSiteGenerationJobFailed(jobId, result.error);
+        return;
+      }
+      await runJobOnSuccessSideEffects(
+        businessName,
+        description,
+        slugForStorage && isValidSubfolderSlug(slugForStorage) ? slugForStorage : undefined,
+        req,
+        result.data,
+      );
+      const okSave = await updateJob(jobId, {
+        status: "succeeded",
+        result_json: result.data,
+        progress_message: "Generatie voltooid",
+        completed_at: new Date().toISOString(),
+        generation_checkpoint: null,
+        generation_split_phase: "single",
+      });
+      if (!okSave) {
+        await markSiteGenerationJobFailed(
+          jobId,
+          "Generatie geslaagd maar opslaan in de database mislukte (vaak: JSON te groot voor `result_json`, of DB-timeout). Verklein de briefing/secties of verhoog database-limiet.",
+        );
+      }
+      return;
+    }
+    await triggerPhasedSiteJobContinue(jobId);
+    return;
+  }
+
   const stream = createGenerateSiteReadableStream(
     businessName,
     description,
@@ -195,31 +436,13 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     hasPromptOpts ? promptOpts : undefined,
     {
       onSuccess: async (data) => {
-        await tryAppendClaudeActivityJournal({
-          source: "generate_site",
-          factsMarkdown: buildJournalFactsGenerateSite({
-            businessName,
-            description,
-            generationPackage: STUDIO_GENERATION_PACKAGE,
-            preserveLayoutUpgrade: false,
-            sectionNames: data.sections.map((s) => s.sectionName ?? s.id),
-            configSummaryLine: `Tailwind theme: primary ${data.config.theme.primary}, accent ${data.config.theme.accent}`,
-            outputFormat: "tailwind_sections",
-          }),
-        });
-        if (slugForStorage && isValidSubfolderSlug(slugForStorage)) {
-          await tryLogSiteGenerationRun({
-            subfolderSlug: slugForStorage,
-            operation: "full_generate_job",
-            promptExcerpt: `${businessName}\n${description}`,
-            model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
-            status: "success",
-            outcome: "unknown",
-            presetIds: req.generation_preset_ids ?? null,
-            layoutArchetypes: req.layout_archetypes ?? null,
-            commandChain: ["full_generate_job", "tailwind_sections"],
-          });
-        }
+        await runJobOnSuccessSideEffects(
+          businessName,
+          description,
+          slugForStorage && isValidSubfolderSlug(slugForStorage) ? slugForStorage : undefined,
+          req,
+          data,
+        );
       },
     },
   );

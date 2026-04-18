@@ -5,6 +5,7 @@
  * - `app/api/generate-site/jobs/route.ts`
  * - `app/api/generate-site/jobs/[id]/route.ts`
  * - `app/api/generate-site/stream/route.ts`
+ * - `app/api/generate-site/jobs/[id]/continue/route.ts` (fase 2 gefaseerde jobs)
  * - `app/api/generate-site/route.ts`
  *
  * Hobby: max 300. On Pro you may raise route `maxDuration` and this constant together.

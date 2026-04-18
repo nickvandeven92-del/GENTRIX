@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { promisify } from "node:util";
 import { randomUUID } from "crypto";
 import fs from "node:fs/promises";
@@ -13,6 +14,17 @@ const TW_INPUT = `@import "tailwindcss";
 @source "./index.html";
 `;
 
+/** Resolveert de Tailwind v4 CLI-entry; `createRequire` helpt de Next output-tracer + Vercel runtime. */
+function resolveTailwindCliMjs(projectRoot: string): string {
+  try {
+    const req = createRequire(path.join(projectRoot, "package.json"));
+    const pkgJson = req.resolve("@tailwindcss/cli/package.json") as string;
+    return path.join(path.dirname(pkgJson), "dist", "index.mjs");
+  } catch {
+    return path.join(projectRoot, "node_modules", "@tailwindcss", "cli", "dist", "index.mjs");
+  }
+}
+
 /** CLI-build tegen bestaande `index.html` (zoals na image-bundling in ZIP-export). */
 export async function buildTailwindCompiledCssFromIndexHtml(projectRoot: string, indexHtml: string): Promise<string> {
   const workDir = path.join(projectRoot, ".tmp", `tailwind-compile-${randomUUID()}`);
@@ -22,7 +34,8 @@ export async function buildTailwindCompiledCssFromIndexHtml(projectRoot: string,
     await fs.writeFile(path.join(workDir, "index.html"), indexHtml, "utf8");
     await fs.writeFile(path.join(workDir, "tw-input.css"), TW_INPUT, "utf8");
 
-    const cliJs = path.join(projectRoot, "node_modules", "@tailwindcss", "cli", "dist", "index.mjs");
+    const cliJs = resolveTailwindCliMjs(projectRoot);
+    await fs.access(cliJs);
     await execFileAsync(process.execPath, [cliJs, "build", "-i", "tw-input.css", "-o", "styles.css", "-m"], {
       cwd: workDir,
       env: { ...process.env },

@@ -4,6 +4,7 @@ import { Brain, Clock, Loader2, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
+import { briefGenerationActivityLabel } from "@/lib/studio/brief-generation-activity-label";
 
 export type GenerationDetailsBodyProps = {
   feedback: GenerationPipelineFeedback | null;
@@ -19,6 +20,9 @@ export type GenerationDetailsBodyProps = {
   activityLog: { id: string; text: string }[];
   streamPhase?: string | null;
   loading?: boolean;
+  /** Beknopte milestone-regels i.p.v. volledige servertekst. */
+  activityLogBrief?: boolean;
+  onActivityLogBriefChange?: (brief: boolean) => void;
 };
 
 /**
@@ -36,6 +40,8 @@ export function GenerationDetailsBody({
   activityLog,
   streamPhase,
   loading = false,
+  activityLogBrief = false,
+  onActivityLogBriefChange,
 }: GenerationDetailsBodyProps) {
   const interpreted = feedback?.interpreted;
 
@@ -49,10 +55,23 @@ export function GenerationDetailsBody({
 
       <div className="space-y-4">
         <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
-          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-zinc-300">
-            <Clock className="size-3.5 shrink-0" aria-hidden />
-            Tijdlijn
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-zinc-300">
+              <Clock className="size-3.5 shrink-0" aria-hidden />
+              Tijdlijn
+            </h3>
+            {onActivityLogBriefChange ? (
+              <label className="flex cursor-pointer select-none items-center gap-1.5 text-[10px] text-slate-600 dark:text-zinc-400">
+                <input
+                  type="checkbox"
+                  className="size-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600"
+                  checked={activityLogBrief}
+                  onChange={(e) => onActivityLogBriefChange(e.target.checked)}
+                />
+                Beknopt
+              </label>
+            ) : null}
+          </div>
           {loading && activityLog.length === 0 ? (
             <div className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-400">
               <Loader2 className="size-3.5 animate-spin shrink-0" aria-hidden />
@@ -67,16 +86,37 @@ export function GenerationDetailsBody({
           {activityLog.length === 0 && !loading ? (
             <p className="mt-2 text-xs text-slate-600 dark:text-zinc-400">Nog geen stappen — start een generatie.</p>
           ) : (
-            <ol className="mt-2 space-y-2 border-l border-slate-200 pl-3 dark:border-zinc-600">
-              {activityLog.map((row) => (
-                <li
-                  key={row.id}
-                  className="relative text-xs leading-snug text-slate-800 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-200 dark:before:bg-indigo-500"
-                >
-                  {row.text}
-                </li>
-              ))}
-            </ol>
+            <>
+              <ol className="mt-2 space-y-2 border-l border-slate-200 pl-3 dark:border-zinc-600">
+                {(activityLogBrief
+                  ? activityLog
+                      .map((row) => ({ id: row.id, text: briefGenerationActivityLabel(row.text) }))
+                      .filter((row) => row.text.length > 0)
+                  : activityLog
+                ).map((row) => (
+                  <li
+                    key={row.id}
+                    className="relative text-xs leading-snug text-slate-800 before:absolute before:-left-3 before:top-1.5 before:size-1.5 before:rounded-full before:bg-indigo-400 before:content-[''] dark:text-zinc-200 dark:before:bg-indigo-500"
+                  >
+                    {row.text}
+                  </li>
+                ))}
+              </ol>
+              {activityLogBrief && activityLog.length > 0 ? (
+                <details className="mt-2 rounded-md border border-slate-200 bg-white/80 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900/40">
+                  <summary className="cursor-pointer text-[10px] font-medium text-slate-600 dark:text-zinc-400">
+                    Volledige serverregels ({activityLog.length})
+                  </summary>
+                  <ol className="mt-2 max-h-36 space-y-1.5 overflow-y-auto border-t border-slate-200/80 pt-2 dark:border-zinc-700">
+                    {activityLog.map((row) => (
+                      <li key={`full-${row.id}`} className="text-[10px] leading-snug text-slate-600 dark:text-zinc-400">
+                        {row.text}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
+            </>
           )}
         </section>
 
