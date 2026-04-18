@@ -40,7 +40,6 @@ import {
   STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
   STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS,
-  STUDIO_FIXED_NAV_HERO_INSET_CSS,
 } from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
