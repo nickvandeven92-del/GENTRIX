@@ -6,15 +6,24 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
+const GEMINI_GENERATE_CONTENT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const PLACEHOLDER_GIF_PREFIX = "data:image/gif;base64,";
 const HERO_IMG_MARKER = 'data-gentrix-ai-hero-img="1"';
+
+export type StudioHeroImageRasterMime = "image/png" | "image/jpeg" | "image/webp";
+
+/** Parallel hero-fetch vóór/e tijdens Claude; bevat base64 + MIME zodat Google Gemini (JPEG/WEBP) en OpenAI (PNG) hetzelfde pad delen. */
+export type StudioHeroImageRasterPrefetch = {
+  base64: string;
+  mime: StudioHeroImageRasterMime;
+};
 
 // ─── Briefing-signaaldetectie ─────────────────────────────────────────────────
 
 /**
  * Trefwoorden die aangeven dat de gebruiker expliciet een AI-gegenereerde
  * hero-afbeelding wil. Wanneer dit waar is, worden klantfoto's uit de hero
- * gestript zodat de DALL-E 3-injectie niet wordt geblokkeerd.
+ * gestript zodat de server-side hero-injectie niet wordt geblokkeerd.
  */
 const GENERATED_HERO_KEYWORDS = [
   "hero afbeelding",
@@ -45,20 +54,37 @@ function stripImgTagsFromHtml(html: string): string {
  * Mensleesbare reden waarom de AI-hero-pipeline uit staat (`null` = aan).
  * Gebruikt o.a. statusregels in de site-generatiestroom.
  */
+function getGoogleAiStudioApiKey(): string | undefined {
+  const k =
+    process.env.GOOGLE_AI_STUDIO_API?.trim() ||
+    process.env.GEMINI_API_KEY?.trim() ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+  return k || undefined;
+}
+
+function hasAnyHeroImageUpstreamKey(): boolean {
+  return Boolean(getGoogleAiStudioApiKey() || process.env.OPENAI_API_KEY?.trim());
+}
+
+/** Gebruikt in UI/diagnostiek: is er minstens één upstream image-key gezet (Google of OpenAI)? */
+export function isStudioHeroImageProviderKeyPresent(): boolean {
+  return hasAnyHeroImageUpstreamKey();
+}
+
 export function getAiHeroImagePostProcessSkipReason(): string | null {
   if (process.env.STUDIO_AI_HERO_IMAGE === "0") {
     return "uitgeschakeld met STUDIO_AI_HERO_IMAGE=0.";
   }
-  if (!process.env.OPENAI_API_KEY?.trim()) {
-    return "OPENAI_API_KEY ontbreekt.";
+  if (!hasAnyHeroImageUpstreamKey()) {
+    return "Geen beeld-API-key: zet GOOGLE_AI_STUDIO_API (of GEMINI_API_KEY), of als fallback OPENAI_API_KEY.";
   }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    return "NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn nodig om de PNG naar de bucket «site-assets» te uploaden.";
+    return "NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn nodig om de afbeelding naar de bucket «site-assets» te uploaden.";
   }
   return null;
 }
 
-/** `STUDIO_AI_HERO_IMAGE=0` schakelt uit; anders aan wanneer OpenAI + Supabase storage beschikbaar zijn. */
+/** `STUDIO_AI_HERO_IMAGE=0` schakelt uit; anders aan wanneer Google AI Studio (voorkeur) of OpenAI + Supabase storage beschikbaar zijn. */
 export function isAiHeroImagePostProcessEnabled(): boolean {
   return getAiHeroImagePostProcessSkipReason() === null;
 }
@@ -87,7 +113,7 @@ function heroHtmlHasRealImage(html: string): boolean {
 
 /**
  * Alleen `id="hero"` / `id='hero'` op de **buitenste `<section>`** is injecteerbaar.
- * Buiten die match: geen OpenAI-call — anders betaal je wel en faalt `injectAiHeroImageIntoHeroSectionHtml`
+ * Buiten die match: geen upstream hero-call — anders betaal je wel en faalt `injectAiHeroImageIntoHeroSectionHtml`
  * (bijv. `id="hero"` alleen op een inner `<div>`).
  */
 export function heroSectionOpenTagHasInjectableHeroId(heroHtml: string): boolean {
@@ -159,9 +185,148 @@ export function shouldRunStudioHeroImagePipeline(
   return !skipPrefetchBecauseLikelyClientHero;
 }
 
+type GeminiGenerateContentResponse = {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string; inlineData?: { mimeType?: string; data?: string } }> };
+    finishReason?: string;
+  }>;
+  promptFeedback?: { blockReason?: string };
+  error?: { message?: string; code?: number; status?: string };
+};
+
+function studioHeroImageProviderMode(): "auto" | "google" | "openai" {
+  const m = process.env.STUDIO_AI_HERO_IMAGE_PROVIDER?.trim().toLowerCase();
+  if (m === "google" || m === "gemini") return "google";
+  if (m === "openai" || m === "dalle" || m === "dall-e") return "openai";
+  return "auto";
+}
+
+async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroImageRasterPrefetch | null> {
+  const apiKey = getGoogleAiStudioApiKey();
+  if (!apiKey) return null;
+  const model =
+    process.env.STUDIO_AI_HERO_GEMINI_MODEL?.trim() ||
+    /** Default: Gemini 2.5 Flash Image (“Nano Banana”); override in Vercel voor nieuwere previews. */
+    "gemini-2.5-flash-image";
+  const url = `${GEMINI_GENERATE_CONTENT_BASE}/${encodeURIComponent(model)}:generateContent`;
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 120_000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ["IMAGE"],
+          imageConfig: { aspectRatio: "16:9" },
+        },
+      }),
+    });
+    const json = (await res.json()) as GeminiGenerateContentResponse;
+    if (!res.ok) {
+      console.warn("[ai-hero] Gemini generateContent error:", res.status, json?.error ?? json);
+      return null;
+    }
+    if (json.promptFeedback?.blockReason) {
+      console.warn("[ai-hero] Gemini promptFeedback block:", json.promptFeedback.blockReason);
+      return null;
+    }
+    const parts = json.candidates?.[0]?.content?.parts ?? [];
+    for (const p of parts) {
+      const mimeRaw = p.inlineData?.mimeType?.toLowerCase().trim();
+      const data = p.inlineData?.data;
+      if (!data || !mimeRaw) continue;
+      if (mimeRaw === "image/png" || mimeRaw === "image/jpeg" || mimeRaw === "image/webp") {
+        return { base64: data, mime: mimeRaw };
+      }
+    }
+    console.warn("[ai-hero] Gemini response had no image inlineData in parts.");
+    return null;
+  } catch (e) {
+    console.warn("[ai-hero] Gemini request failed:", e instanceof Error ? e.message : e);
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+type OpenAiImageGenResponse = {
+  data?: { b64_json?: string; url?: string }[];
+  error?: { message?: string };
+};
+
+async function openAiCreateHeroPngBase64(prompt: string): Promise<string | null> {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) return null;
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 55_000);
+  try {
+    const res = await fetch(OPENAI_IMAGE_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size: "1792x1024",
+        response_format: "b64_json",
+        quality:
+          process.env.STUDIO_AI_HERO_IMAGE_QUALITY?.trim().toLowerCase() === "standard" ? "standard" : "hd",
+      }),
+    });
+    const json = (await res.json()) as OpenAiImageGenResponse;
+    if (!res.ok) {
+      console.warn("[ai-hero] OpenAI images error:", res.status, json?.error?.message ?? json);
+      return null;
+    }
+    const b64 = json.data?.[0]?.b64_json;
+    if (b64) return b64;
+    console.warn("[ai-hero] OpenAI response without b64_json");
+    return null;
+  } catch (e) {
+    console.warn("[ai-hero] OpenAI request failed:", e instanceof Error ? e.message : e);
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function openAiCreateHeroRaster(prompt: string): Promise<StudioHeroImageRasterPrefetch | null> {
+  const b64 = await openAiCreateHeroPngBase64(prompt);
+  return b64 ? { base64: b64, mime: "image/png" } : null;
+}
+
 /**
- * DALL-E + upload **vóór** de grote HTML/JSON-run (Lovable-achtig: asset eerst, daarna compositie).
- * Retourneert `null` bij uitgeschakelde pipeline of OpenAI/upload-fout.
+ * Google AI Studio (Gemini image / “Nano Banana”) heeft voorrang; daarna optioneel OpenAI DALL·E 3.
+ * `STUDIO_AI_HERO_IMAGE_PROVIDER=google|openai` forceert één backend; default `auto`.
+ */
+export async function createHeroImageRasterB64(prompt: string): Promise<StudioHeroImageRasterPrefetch | null> {
+  const mode = studioHeroImageProviderMode();
+  if (mode === "openai") {
+    return openAiCreateHeroRaster(prompt);
+  }
+  if (mode === "google") {
+    return googleGeminiCreateHeroRaster(prompt);
+  }
+  if (getGoogleAiStudioApiKey()) {
+    const g = await googleGeminiCreateHeroRaster(prompt);
+    if (g) return g;
+  }
+  return openAiCreateHeroRaster(prompt);
+}
+
+/**
+ * Hero-raster + upload **vóór** de grote HTML/JSON-run (asset-first).
+ * Retourneert `null` bij uitgeschakelde pipeline of upstream/upload-fout.
  */
 export async function generateStudioHeroImagePublicUrl(ctx: {
   businessName: string;
@@ -171,16 +336,16 @@ export async function generateStudioHeroImagePublicUrl(ctx: {
 }): Promise<string | null> {
   if (!isAiHeroImagePostProcessEnabled()) return null;
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
-  const b64 = await openAiCreateHeroPngBase64(prompt);
-  if (!b64) return null;
-  let png: Buffer;
+  const raster = await createHeroImageRasterB64(prompt);
+  if (!raster) return null;
+  let bytes: Buffer;
   try {
-    png = Buffer.from(b64, "base64");
+    bytes = Buffer.from(raster.base64, "base64");
   } catch {
     return null;
   }
-  if (png.length < 500) return null;
-  return uploadPngToSiteAssets(png, ctx.subfolderSlug);
+  if (bytes.length < 500) return null;
+  return uploadRasterToSiteAssets(bytes, raster.mime, ctx.subfolderSlug);
 }
 
 function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
@@ -222,14 +387,16 @@ export function appendPrebakedHeroImageToUserContent(
 }
 
 /**
- * Start DALL-E **parallel** aan de grote Claude HTML-stream, zodra naam + briefing + (optioneel)
- * designcontract bekend zijn. `applyAiHeroImageToGeneratedPage` hergebruikt het resultaat en valt
- * terug op een verse OpenAI-call als prefetch `null` opleverde of overgeslagen was.
+ * Start hero-beeldgeneratie **parallel** aan de grote Claude HTML-stream (Google AI Studio / Gemini
+ * image eerst, daarna optioneel OpenAI). `applyAiHeroImageToGeneratedPage` hergebruikt het resultaat
+ * en valt terug op `createHeroImageRasterB64` als prefetch `null` opleverde of overgeslagen was.
  *
  * Bij **asset-first** (`generateStudioHeroImagePublicUrl` vóór HTML) niet starten: geef
  * `Promise.resolve(null)` door en zet `prebakedHeroPublicUrl` op de apply-context.
  */
-export function startOpenAiHeroImagePrefetch(input: OpenAiHeroPrefetchInput): Promise<string | null> {
+export function startOpenAiHeroImagePrefetch(
+  input: OpenAiHeroPrefetchInput,
+): Promise<StudioHeroImageRasterPrefetch | null> {
   if (!isAiHeroImagePostProcessEnabled()) return Promise.resolve(null);
   if (input.skipPrefetchBecauseLikelyClientHero) return Promise.resolve(null);
   const prompt = buildOpenAiHeroPrompt(
@@ -237,53 +404,7 @@ export function startOpenAiHeroImagePrefetch(input: OpenAiHeroPrefetchInput): Pr
     input.description,
     input.designContract,
   );
-  return openAiCreateHeroPngBase64(prompt);
-}
-
-type OpenAiImageGenResponse = {
-  data?: { b64_json?: string; url?: string }[];
-  error?: { message?: string };
-};
-
-async function openAiCreateHeroPngBase64(prompt: string): Promise<string | null> {
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (!key) return null;
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 55_000);
-  try {
-    const res = await fetch(OPENAI_IMAGE_URL, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt,
-        n: 1,
-        size: "1792x1024",
-        response_format: "b64_json",
-        /** `hd` = scherpere details, minder “AI-plastic”; override met `STUDIO_AI_HERO_IMAGE_QUALITY=standard`. */
-        quality:
-          process.env.STUDIO_AI_HERO_IMAGE_QUALITY?.trim().toLowerCase() === "standard" ? "standard" : "hd",
-      }),
-    });
-    const json = (await res.json()) as OpenAiImageGenResponse;
-    if (!res.ok) {
-      console.warn("[ai-hero] OpenAI images error:", res.status, json?.error?.message ?? json);
-      return null;
-    }
-    const b64 = json.data?.[0]?.b64_json;
-    if (b64) return b64;
-    console.warn("[ai-hero] OpenAI response without b64_json");
-    return null;
-  } catch (e) {
-    console.warn("[ai-hero] OpenAI request failed:", e instanceof Error ? e.message : e);
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
+  return createHeroImageRasterB64(prompt);
 }
 
 function storageFolderForGeneration(subfolderSlug?: string | null): string {
@@ -292,14 +413,25 @@ function storageFolderForGeneration(subfolderSlug?: string | null): string {
   return "concept";
 }
 
-async function uploadPngToSiteAssets(png: Buffer, subfolderSlug?: string | null): Promise<string | null> {
+function fileExtForHeroMime(mime: StudioHeroImageRasterMime): string {
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/webp") return "webp";
+  return "png";
+}
+
+async function uploadRasterToSiteAssets(
+  bytes: Buffer,
+  mime: StudioHeroImageRasterMime,
+  subfolderSlug?: string | null,
+): Promise<string | null> {
   try {
     const supabase = createServiceRoleClient();
     const folder = storageFolderForGeneration(subfolderSlug);
     const id = randomBytes(8).toString("hex");
-    const path = `${folder}/ai-hero/${Date.now()}-${id}.png`;
-    const { error } = await supabase.storage.from("site-assets").upload(path, png, {
-      contentType: "image/png",
+    const ext = fileExtForHeroMime(mime);
+    const path = `${folder}/ai-hero/${Date.now()}-${id}.${ext}`;
+    const { error } = await supabase.storage.from("site-assets").upload(path, bytes, {
+      contentType: mime,
       upsert: false,
     });
     if (error) {
@@ -349,11 +481,11 @@ export type ApplyAiHeroImageContext = {
   designContract: DesignGenerationContract | null;
   /** Optioneel: Supabase-pad onder geldige subfolder_slug. */
   subfolderSlug?: string | null;
-  /** Parallel gestart vóór/e tijdens Claude — bij `null` na await: opnieuw OpenAI. */
-  prefetchedHeroB64Promise?: Promise<string | null>;
+  /** Parallel gestart vóór/e tijdens Claude — bij `null` na await: opnieuw `createHeroImageRasterB64`. */
+  prefetchedHeroB64Promise?: Promise<StudioHeroImageRasterPrefetch | null>;
   /**
-   * Zelfde PNG als asset-first stap vóór HTML: injecteer zonder tweede DALL-E-call.
-   * Bij mislukte inject (geen `<section id="hero">`) geen fallback-OpenAI — asset staat al op CDN.
+   * Zelfde raster als asset-first stap vóór HTML: injecteer zonder tweede upstream-call.
+   * Bij mislukte inject (geen `<section id="hero">`) geen tweede generatie — asset staat al op CDN.
    */
   prebakedHeroPublicUrl?: string | null;
 };
@@ -387,29 +519,29 @@ export async function applyAiHeroImageToGeneratedPage(
       return { ...data, sections: nextSections };
     }
     console.warn(
-      "[ai-hero] prebaked URL present but hero HTML has no injectable <section id=\"hero\"> — skipping second OpenAI call (asset already on CDN):",
+      "[ai-hero] prebaked URL present but hero HTML has no injectable <section id=\"hero\"> — skipping second hero API call (asset already on CDN):",
       preUrl.slice(0, 120),
     );
     return data;
   }
 
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
-  let b64: string | null =
+  let prefetch: StudioHeroImageRasterPrefetch | null =
     ctx.prefetchedHeroB64Promise != null ? await ctx.prefetchedHeroB64Promise : null;
-  if (!b64) {
-    b64 = await openAiCreateHeroPngBase64(prompt);
+  if (!prefetch) {
+    prefetch = await createHeroImageRasterB64(prompt);
   }
-  if (!b64) return data;
+  if (!prefetch) return data;
 
-  let png: Buffer;
+  let bytes: Buffer;
   try {
-    png = Buffer.from(b64, "base64");
+    bytes = Buffer.from(prefetch.base64, "base64");
   } catch {
     return data;
   }
-  if (png.length < 500) return data;
+  if (bytes.length < 500) return data;
 
-  const url = await uploadPngToSiteAssets(png, ctx.subfolderSlug);
+  const url = await uploadRasterToSiteAssets(bytes, prefetch.mime, ctx.subfolderSlug);
   if (!url) return data;
 
   // Injecteer in de (eventueel gestripte) hero HTML zodat de AI-afbeelding

@@ -384,7 +384,7 @@ export function buildDesignContractPromptInjection(
             "",
           ]),
     "=== BEELDEN (sector + studio-regels) ===",
-    "- **Geen** externe stock-URL's (`images.unsplash.com`, …) in de HTML — gebruik **klant-uploads**, gradient/SVG, of **`<video>`** met echte briefing-URL. **(Studio)** met OpenAI+opslag aan kan de server **ná** generatie één unieke AI-fotografie in `#hero` injecteren; houd `<section id=\"hero\"` dus **`relative overflow-hidden`** zodat een achtergrondlaag netjes onder de inhoud blijft.",
+    "- **Geen** externe stock-URL's (`images.unsplash.com`, …) in de HTML — gebruik **klant-uploads**, gradient/SVG, of **`<video>`** met echte briefing-URL. **(Studio)** met Google AI Studio (Gemini image) of OpenAI + opslag aan kan de server **ná** generatie één unieke AI-fotografie in `#hero` injecteren; houd `<section id=\"hero\"` dus **`relative overflow-hidden`** zodat een achtergrondlaag netjes onder de inhoud blijft.",
     "- **Hero:** vertaal `heroVisualSubject` naar compositie/kleur/motion **zonder** anonieme stock-foto's; geen stock-video zonder URL in de briefing.",
     "",
     "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Geen externe stock-URL's; klant-`<img>`-URL's moeten bij de briefing passen. (3) `config` + `hero` + één feature-blok mogen `referenceVisualAxes` en `paletteMode` niet tegenspreken.",

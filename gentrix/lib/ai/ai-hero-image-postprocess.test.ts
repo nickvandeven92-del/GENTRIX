@@ -31,7 +31,7 @@ describe("ai-hero-image-postprocess", () => {
     expect(shouldAttemptAiHeroImageForHtml(html)).toBe(true);
   });
 
-  it("id=hero alleen op inner div: niet injecteerbaar en geen OpenAI-poging", () => {
+  it("id=hero alleen op inner div: niet injecteerbaar en geen upstream hero-poging", () => {
     const html = `<section class="min-h-screen"><div id="hero" class="grid">copy</div></section>`;
     expect(heroSectionOpenTagHasInjectableHeroId(html)).toBe(false);
     expect(injectAiHeroImageIntoHeroSectionHtml(html, "https://example.com/x.png")).toBeNull();

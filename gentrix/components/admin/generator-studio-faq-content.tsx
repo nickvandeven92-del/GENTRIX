@@ -39,7 +39,8 @@ export function GeneratorStudioFaqContent() {
         <h3 className="text-sm font-semibold text-slate-900">Hero-beeld &amp; foto&apos;s</h3>
         <p className="mt-2 text-xs text-slate-600">
           Net als andere AI-sitebouwers kan GENTRIX een <strong>hero-sfeerbeeld</strong> laten maken door een aparte
-          beeld-API (nu <strong>OpenAI DALL·E 3</strong>), daarna gehost op <strong>Supabase</strong> — niet door willekeurige
+          beeld-API (nu <strong>Google AI Studio / Gemini image</strong>, met optionele fallback naar OpenAI DALL·E 3), daarna gehost op{" "}
+          <strong>Supabase</strong> — niet door willekeurige
           stock-URL&apos;s in de HTML te zetten. Andere tools gebruiken vergelijkbare pipelines (bijv. eigen image-modellen
           of Runware); het verschil in &ldquo;echtheid&rdquo; zit vooral in model, prompt en hoeveel de layout het beeld
           nog filtert/overlayt.

@@ -74,8 +74,10 @@ import {
   generateStudioHeroImagePublicUrl,
   getAiHeroImagePostProcessSkipReason,
   isAiHeroImagePostProcessEnabled,
+  isStudioHeroImageProviderKeyPresent,
   shouldRunStudioHeroImagePipeline,
   startOpenAiHeroImagePrefetch,
+  type StudioHeroImageRasterPrefetch,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
@@ -2338,9 +2340,9 @@ export type ExecuteGenerateSitePhase2Input = {
   description: string;
   promptOptions?: GenerateSitePromptOptions;
   streamHooks?: GenerateSiteStreamHooks;
-  /** OpenAI DALL-E parallel aan Claude (start na denklijn in stream en in `generateSiteWithClaude`). */
-  prefetchedHeroB64Promise?: Promise<string | null>;
-  /** Zelfde asset als vóór HTML (asset-first); apply gebruikt dit i.p.t. tweede DALL-E. */
+  /** Parallel hero-raster (Google Gemini image of OpenAI); zie `startOpenAiHeroImagePrefetch`. */
+  prefetchedHeroB64Promise?: Promise<StudioHeroImageRasterPrefetch | null>;
+  /** Zelfde asset als vóór HTML (asset-first); apply gebruikt dit i.p.t. tweede upstream-call. */
   prebakedHeroPublicUrl?: string | null;
 };
 
@@ -2516,7 +2518,7 @@ export async function generateSiteWithClaude(
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;
   let prebakedHeroPublicUrl: string | null = null;
-  let prefetchedHeroB64Promise: Promise<string | null>;
+  let prefetchedHeroB64Promise: Promise<StudioHeroImageRasterPrefetch | null>;
 
   if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
     prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
@@ -2580,7 +2582,7 @@ export type GenerateSiteStreamNdjsonEvent =
   | { type: "error"; message: string; rawText?: string };
 
 /**
- * NDJSON-bytes tijdens stilte (prepare, Denklijn, zelfreview, OpenAI-hero, …) én tijdens de grote
+ * NDJSON-bytes tijdens stilte (prepare, Denklijn, zelfreview, AI-hero-prefetch, …) én tijdens de grote
  * Claude-tokenstream. Proxies/CDN's hebben vaak een **idle** timeout (10–60s); kort interval +
  * **direct eerste ping** (`setInterval` vuurt anders pas na 1× interval) houdt de verbinding levend.
  * 2,5s i.p.v. 4s: striktere loadbalancers (≈10s idle) en stiltes tijdens zware Claude-chunks.
@@ -2837,7 +2839,7 @@ export function createGenerateSiteReadableStream(
 
         const clientImgCount = promptOptions?.clientImages?.length ?? 0;
         let prebakedHeroPublicUrl: string | null = null;
-        let prefetchedHeroB64Promise: Promise<string | null>;
+        let prefetchedHeroB64Promise: Promise<StudioHeroImageRasterPrefetch | null>;
 
         if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
           send(controller, {
@@ -2868,7 +2870,7 @@ export function createGenerateSiteReadableStream(
           } else if (isAiHeroImagePostProcessEnabled()) {
             send(controller, {
               type: "status",
-              message: "Hero-sfeerbeeld kon niet vooraf worden gemaakt — fallback na HTML (OpenAI).",
+              message: "Hero-sfeerbeeld kon niet vooraf worden gemaakt — fallback na HTML (Google/OpenAI).",
             });
           }
         }
@@ -2887,7 +2889,7 @@ export function createGenerateSiteReadableStream(
         if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch && !prebakedHeroPublicUrl) {
           send(controller, {
             type: "status",
-            message: "Hero-foto: OpenAI gestart (loopt parallel met pagina-HTML)…",
+            message: "Hero-foto: upstream gestart (loopt parallel met pagina-HTML)…",
           });
         }
 
@@ -3030,8 +3032,7 @@ export function createGenerateSiteReadableStream(
         const mayAiHero = generatedPageMayUseAiHeroImage(data, description);
         const aiHeroSkipReason = getAiHeroImagePostProcessSkipReason();
         if (!mayAiHero && aiHeroSkipReason) {
-          const notify =
-            Boolean(process.env.OPENAI_API_KEY?.trim()) || process.env.STUDIO_AI_HERO_IMAGE === "0";
+          const notify = isStudioHeroImageProviderKeyPresent() || process.env.STUDIO_AI_HERO_IMAGE === "0";
           if (notify) {
             send(controller, {
               type: "status",
@@ -3046,7 +3047,7 @@ export function createGenerateSiteReadableStream(
               ? "Hero: vooraf gegenereerde foto controleren / in `#hero` plaatsen…"
               : isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch
                 ? "Hero: AI-foto uploaden en in de hero injecteren…"
-                : "Hero: AI-foto genereren (OpenAI) en opslaan…",
+                : "Hero: AI-foto genereren (Google/OpenAI) en opslaan…",
           });
         }
         const stopAiHeroKeepalive = mayAiHero ? startNdjsonKeepaliveForSilentWork(controller, send) : () => {};
@@ -3068,7 +3069,7 @@ export function createGenerateSiteReadableStream(
             type: "status",
             message: injected
               ? "Hero: AI-foto toegevoegd."
-              : "Hero: geen AI-foto — zie hostinglogs op `[ai-hero]` (OpenAI Images of upload naar bucket «site-assets»).",
+              : "Hero: geen AI-foto — zie hostinglogs op `[ai-hero]` (Gemini/OpenAI of upload naar bucket «site-assets»).",
           });
         }
 

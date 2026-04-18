@@ -16,7 +16,7 @@ export function briefGenerationActivityLabel(message: string): string {
   if (m.startsWith("Zelfreview afgerond")) return "Zelfreview: klaar.";
   if (m.startsWith("Zelfreview overgeslagen")) return "Zelfreview: overgeslagen.";
   if (m.startsWith("Hero AI-foto: niet actief")) return "Hero-AI: uit (config).";
-  if (m.startsWith("Hero: AI-foto genereren")) return "Hero-foto (OpenAI)…";
+  if (m.startsWith("Hero: AI-foto genereren")) return "Hero-foto (AI upstream)…";
   if (m.startsWith("Hero: AI-foto toegevoegd")) return "Hero-foto toegevoegd.";
   if (m.startsWith("Hero: geen AI-foto")) return "Geen hero-foto (zie serverlogs).";
   if (m.startsWith("Generatie voltooid") || m.startsWith("Klaar — stream afgerond")) return "Klaar.";

@@ -3,7 +3,7 @@
  *
  * Geheimen en infrastructuur blijven via omgeving o.a.:
  * - `ANTHROPIC_API_KEY`
- * - optioneel `OPENAI_API_KEY` + Supabase (AI-hero, zie `.env.example`)
+ * - optioneel `GOOGLE_AI_STUDIO_API` (of `GEMINI_API_KEY`) + Supabase voor AI-hero; fallback `OPENAI_API_KEY` (zie `.env.example`)
  * - database / Supabase
  */
 export const STUDIO_SITE_GENERATION = {

@@ -45,7 +45,7 @@ export type SiteGenerationJobCheckpointV1 = {
   designContract: DesignGenerationContract | null;
   /** Alleen velden die na de stream nog nodig zijn (upgrade, subfolder, …). */
   promptOptionsTail?: Pick<GenerateSitePromptOptions, "preserveLayoutUpgrade" | "siteStorageSubfolderSlug">;
-  /** Zelfde PNG als monolithische asset-first stap; fase 2 injecteert zonder nieuwe DALL-E. */
+  /** Zelfde raster als monolithische asset-first stap; fase 2 injecteert zonder nieuwe upstream hero-call. */
   prebakedHeroPublicUrl?: string | null;
 };
 
