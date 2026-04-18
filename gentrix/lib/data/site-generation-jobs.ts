@@ -176,7 +176,11 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   const clientImages = req.clientImages ?? [];
   const briefingReferenceImages = req.briefingReferenceImages ?? [];
   const referenceStyleUrl = req.reference_style_url?.trim();
+  const slugForStorage = req.subfolder_slug?.trim();
   const promptOpts: GenerateSitePromptOptions = {
+    ...(slugForStorage && isValidSubfolderSlug(slugForStorage)
+      ? { siteStorageSubfolderSlug: slugForStorage }
+      : {}),
     ...(clientImages.length > 0 ? { clientImages } : {}),
     ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
@@ -203,10 +207,9 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
             outputFormat: "tailwind_sections",
           }),
         });
-        const slug = req.subfolder_slug?.trim();
-        if (slug && isValidSubfolderSlug(slug)) {
+        if (slugForStorage && isValidSubfolderSlug(slugForStorage)) {
           await tryLogSiteGenerationRun({
-            subfolderSlug: slug,
+            subfolderSlug: slugForStorage,
             operation: "full_generate_job",
             promptExcerpt: `${businessName}\n${description}`,
             model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
@@ -243,8 +246,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
         msgTrim.includes("Compositieplan") ||
         msgTrim.includes("Pagina genereren") ||
         msgTrim.includes("Zelfreview") ||
-        msgTrim.includes("Stock:") ||
-        msgTrim.includes("Stock ") ||
+        msgTrim.includes("Hero:") ||
         msgTrim.includes("Generatie voltooid");
       if (!forceProgress && now - lastStreamStatusThrottleAt < 2_500) return;
       lastStreamStatusThrottleAt = now;

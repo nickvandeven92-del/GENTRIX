@@ -11,7 +11,7 @@ type SiteRemoteImageProps = {
   priority?: boolean;
 };
 
-/** Afbeeldingen van Unsplash / Supabase storage — domeinen in next.config.ts */
+/** Externe afbeeldingen (o.a. Supabase storage) — domeinen in next.config.ts */
 export function SiteRemoteImage({
   src,
   alt,

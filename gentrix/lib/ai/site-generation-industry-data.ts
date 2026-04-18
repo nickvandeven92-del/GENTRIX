@@ -39,7 +39,7 @@ export const INDUSTRY_PROFILES: IndustryProfile[] = [
     vibe: "warm",
     promptHint: `**BRANCHE-INSPIRATIE: BARBERSHOP / HERENKAPPER**
 Dit is een **herenkapper of barbershop** — specifiek gericht op mannen. Denk aan de sfeer van een premium herenkapperszaak: vakmanschap, traditie, masculiene elegantie.
-- **Hero-idee:** krachtige **typografie + gradient/textuur** of **klantfoto**-URL uit de opdracht — **geen** anonieme Unsplash in de hero (standaard studio); kop in **elegant serif**, kort (paar woorden), **geen** lange paragraaf in de hero — uitleg pas onder de vouw. Vermijd "billboard" all-caps extrabold sans + twee grote knoppen (voelt goedkoop). **Geen** achtergrond-\`<video>\` tenzij de briefing **expliciet** om bewegende achtergrond / video / loop vraagt; optionele stock-foto's alleen in \`gallery\`.
+- **Hero-idee:** krachtige **typografie + gradient/textuur** of **klantfoto**-URL uit de opdracht — **geen** anonieme externe stock in de hero; kop in **elegant serif**, kort (paar woorden), **geen** lange paragraaf in de hero — uitleg pas onder de vouw. Vermijd "billboard" all-caps extrabold sans + twee grote knoppen (voelt goedkoop). **Geen** achtergrond-\`<video>\` tenzij de briefing **expliciet** om bewegende achtergrond / video / loop vraagt; optionele stock-foto's alleen in \`gallery\`.
 - **Diensten-idee:** een elegante verticale prijslijst (\`divide-y\`) werkt hier vaak beter dan kaarten — het voelt als een menukaart. Maar een creatief grid kan ook werken als het past.
 - **Content:** focus op herenknippen, baardverzorging, hot towel shave, traditioneel scheren. Doelgroep is mannelijk. Gebruik woorden als "heren", "gentleman", "vakmanschap".
 - **Typische elementen:** werkplaats-galerij, WhatsApp-booking, openingstijden. **Geen** verplichte "merken-rij" — alleen als de briefing expliciet merken/partners/producten noemt (dan wordt sectie \`brands\` via keywords toegevoegd).
@@ -77,7 +77,7 @@ Dit is een kapsalon specifiek voor vrouwen. De sfeer is vrouwelijk, verfijnd en 
 - **Diensten-idee:** elegante prijslijst per categorie: Knippen & Stylen, Kleurbehandelingen (highlights, balayage, ombré, volledige kleuring), Behandelingen (keratine, haarmaskers, hoofdhuidbehandeling), Specials (bruidsstyling, extensions, opsteekkapsels). Menukaart-gevoel met subtiele categoriekoppen.
 - **Content:** vrouwelijke doelgroep. Diensten als balayage, highlights, ombré, extensions, bruidsstyling, keratine-behandelingen, föhnen & stylen, krullenknip. Gebruik woorden als "verwennerij", "transformatie", "jouw moment", "stralen".
 - **Team:** stylisten (vrouwelijke termen: "onze stylistes") met specialisaties en portretfoto's.
-- **Beeld:** **geen** stock in de hero (typografie/gradient of klantfoto); Unsplash-placeholders **alleen** in **\`gallery\`** als die sectie er is. **Met \`gallery\`:** zoektermen zoals "woman hair salon", "hair coloring", "balayage hair", "bridal hairstyle".
+- **Beeld:** **geen** stock in de hero (typografie/gradient of klantfoto); **Geen** externe stock-URL's; **met \`gallery\`:** alleen **klant-**foto-URL's uit de briefing.
 - **Typische elementen:** uitgebreid behandelingenmenu, voor/na galerij (kleurresultaten), team stylistes, merkpartners (Kérastase, L'Oréal Professionnel, Olaplex, Davines), reviews van klanten, online booking-CTA, openingstijden.
 - **Studio-compact:** geen \`steps\` op de homepage; FAQ via \`marketingPages["faq"]\` (max. 4 landings-secties).`,
   },
@@ -350,7 +350,7 @@ Energie, prestatie en passie voor sport. De website moet activeren en motiveren.
     vibe: "warm",
     promptHint: `**BRANCHE-INSPIRATIE: HENGELSPORT / VISWINKEL (specialist)**
 Rust, water, vakmanschap en serieuze uitrusting — **niet** dezelfde vibe als een fitness-sportwinkel of generieke SaaS-landing.
-- **Hero-idee:** full-bleed **water / ochtendnevel / boot / vislijn** als **gradient + typografie** of klantfoto — **geen** Unsplash in hero; kop in **elegant serif** + korte subkop. **Stock-foto's** in een aparte \`gallery\` met passende zoektermen (fishing rod lake, fly fishing, …). Donker+diep **of** licht+editorial — kies één lijn en volg die.
+- **Hero-idee:** full-bleed **water / ochtendnevel / boot / vislijn** als **gradient + typografie** of klantfoto — **geen** externe stock in hero; kop in **elegant serif** + korte subkop. **Eventuele galerij:** alleen klant-URL's. Donker+diep **of** licht+editorial — kies één lijn en volg die.
 - **Compositie:** wissel **split** (foto + copy), **editoriale** banden, horizontale USP-rij met \`studio-border-reveal--h\` onder koppen — **niet** overal dezelfde drie ronde kaarten met hetzelfde icoon-patroon.
 - **Shop/nav:** \`shop\`-sectie komt server-side; zet webshop-placeholder in nav/footer. Categorie-denkrichting: hengels, molens, kunstaas, lijn, kleding, accessoires — alleen als het de briefing volgt.
 - **Geen marketing-fotogalerij:** product- en sfeerbeelden horen in de **webshop**; op de marketingpagina max. **één** sterk beeld (hero **of** één split bij about/features), geen collage-raster “om te vullen”.
@@ -623,7 +623,7 @@ Expertise, resultaat en partnerschap. De website moet autoriteit uitstralen zond
     vibe: "modern",
     promptHint: `**BRANCHE-INSPIRATIE: MARKETING- / WEBBUREAU / MULTIMEDIA**
 Creativiteit, resultaat en digitale expertise. De website is het visitekaartje — het MOET indruk maken.
-- **Hero-idee (VERPLICHT visuele diepte):** **geen** kale zwarte of grijze vlakken. Voorkeur: **gelaagde gradient + textuur/typografie** (abstract digitaal, bokeh-sfeer, stad bij nacht — als **CSS**); **geen** Unsplash in \`#hero\` (standaard). **Of** een echte \`<video>\`-achtergrond **alleen** als de briefing een **concrete https-MP4/WebM-URL** bevat (eigen upload); **geen** stock-video zonder URL. **Subtiele variant** (rustig, niet druk): mag — zolang er **gelaagde gradient + textuur/decor** is (geen effen \`bg-black\`). Eventuele **stock-rasters** alleen in \`id: "gallery"\`.
+- **Hero-idee (VERPLICHT visuele diepte):** **geen** kale zwarte of grijze vlakken. Voorkeur: **gelaagde gradient + textuur/typografie** (abstract digitaal, bokeh-sfeer, stad bij nacht — als **CSS**); **geen** externe stock in \`#hero\`. **Of** een echte \`<video>\`-achtergrond **alleen** als de briefing een **concrete https-MP4/WebM-URL** bevat (eigen upload); **geen** stock-video zonder URL. **Subtiele variant** (rustig, niet druk): mag — zolang er **gelaagde gradient + textuur/decor** is (geen effen \`bg-black\`). Eventuele **stock-rasters** alleen in \`id: "gallery"\`.
 - **Diensten-idee:** card-grid: webdesign, SEO, social media, branding, campagnes, content. Visueel en modern.
 - **Content:** portfolio is koning — toon resultaten, niet alleen diensten. Cases met voor/na of cijfers.
 - **Typische elementen:** portfolio/cases, diensten, werkproces, team, klant-logo's, contact/offerte-CTA.`,

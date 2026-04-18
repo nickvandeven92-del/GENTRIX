@@ -38,7 +38,7 @@ export const referenceVisualAxesSchema = z.object({
 
 export type ReferenceVisualAxes = z.infer<typeof referenceVisualAxesSchema>;
 
-/** Één string voor prompts/Unsplash; model levert soms een lijst — samenvoegen i.p.v. contract te breken. */
+/** Één string voor prompts; model levert soms een lijst — samenvoegen i.p.v. contract te breken. */
 function normalizeHeroImageSearchHints(val: unknown): string | undefined {
   if (val == null) return undefined;
   if (Array.isArray(val)) {
@@ -384,10 +384,10 @@ export function buildDesignContractPromptInjection(
             "",
           ]),
     "=== BEELDEN (sector + studio-regels) ===",
-    "- **Geen** `images.unsplash.com` **buiten** sectie-`id: \"gallery\"` (beperkt raster; elders worden stock-URL's geneutraliseerd). **Hero:** typografie + gradient/textuur, **klant-upload**, of **`<video>`** met echte briefing-URL — **geen** anonieme stock in `#hero` tenzij de vaste studio-config `unsplashAllowHeroStock` aanzet.",
-    "- **Hero:** vertaal `heroVisualSubject` naar compositie/kleur/motion **zonder** stock-foto's (tenzij studio hero-stock aanzet); geen stock-video zonder URL in de briefing.",
+    "- **Geen** externe stock-URL's (`images.unsplash.com`, …) in de HTML — gebruik **klant-uploads**, gradient/SVG, of **`<video>`** met echte briefing-URL. **(Studio)** met OpenAI+opslag aan kan de server **ná** generatie één unieke AI-fotografie in `#hero` injecteren; houd `<section id=\"hero\"` dus **`relative overflow-hidden`** zodat een achtergrondlaag netjes onder de inhoud blijft.",
+    "- **Hero:** vertaal `heroVisualSubject` naar compositie/kleur/motion **zonder** anonieme stock-foto's; geen stock-video zonder URL in de briefing.",
     "",
-    "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Geen `images.unsplash.com` buiten `gallery` (tenzij studio hero-stock aan heeft); klant-`<img>`-URL's moeten bij de briefing passen. (3) `config` + `hero` + één feature-blok mogen `referenceVisualAxes` en `paletteMode` niet tegenspreken.",
+    "**ZELFCONTROLE vóór je JSON sluit:** (1) Imaginaire scroll: voelt elke sectie nog als **dezelfde branche** als de briefing? (2) Geen externe stock-URL's; klant-`<img>`-URL's moeten bij de briefing passen. (3) `config` + `hero` + één feature-blok mogen `referenceVisualAxes` en `paletteMode` niet tegenspreken.",
     "",
     `- **Hero-visueel:** ${contract.heroVisualSubject}`,
     ...(contract.heroImageSearchHints
@@ -414,30 +414,3 @@ export function buildDesignContractPromptInjection(
   return lines.join("\n");
 }
 
-/** Rijkere context voor Unsplash-query-mix (`themeContext`). */
-export function buildUnsplashThemeContextWithContract(
-  description: string,
-  contract: DesignGenerationContract | null | undefined,
-  businessName?: string | null,
-): string {
-  const bnRaw = businessName?.trim();
-  const bn = bnRaw && !isStudioUndecidedBrandName(bnRaw) ? bnRaw : "";
-  const desc = description.trim();
-  const head = bn ? `${bn}. ${desc}` : desc;
-  if (!contract) return head;
-  const axes = contract.referenceVisualAxes;
-  const extra = [
-    contract.heroVisualSubject,
-    contract.heroImageSearchHints,
-    axes?.paletteIntent,
-    axes?.heroComposition,
-    contract.siteSignature
-      ? `Signature ${contract.siteSignature.archetype}: ${contract.siteSignature.commitment_nl}`
-      : "",
-    ...contract.imageryMustReflect,
-  ]
-    .filter((s) => typeof s === "string" && s.trim().length > 0)
-    .join(" · ");
-  if (!extra.trim()) return head;
-  return `${head}\n\n[Designcontract — visuele kern voor afbeeldingen: ${extra}]`;
-}

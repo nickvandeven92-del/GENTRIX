@@ -21,7 +21,7 @@ export const sectionSchema = z.discriminatedUnion("type", [
     badge: z.string().optional(),
     headline: z.string(),
     subheadline: z.string().optional(),
-    /** Volbreed achtergrondbeeld (https URL, bv. Unsplash) */
+    /** Volbreed achtergrondbeeld (https URL, bv. klant-upload) */
     backgroundImageUrl: z.string().optional(),
     /** Optioneel beeld naast tekst op desktop */
     sideImageUrl: z.string().optional(),

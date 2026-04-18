@@ -14,7 +14,7 @@ import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-pro
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
-/** Langere runs: prepare + Denklijn + grote JSON-stream + Unsplash. Hobby: max 300s deploybaar; op Pro kun je 800. Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC`. */
+/** Langere runs: prepare + Denklijn + grote JSON-stream + post-stappen. Hobby: max 300s deploybaar; op Pro kun je 800. Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC`. */
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
@@ -56,7 +56,9 @@ export async function POST(request: Request) {
   const briefingReferenceImages = parsed.data.briefingReferenceImages ?? [];
   const referenceStyleUrl = parsed.data.reference_style_url;
 
+  const slug = parsed.data.subfolder_slug?.trim();
   const promptOpts: GenerateSitePromptOptions = {
+    ...(slug && isValidSubfolderSlug(slug) ? { siteStorageSubfolderSlug: slug } : {}),
     ...(clientImages.length > 0 ? { clientImages } : {}),
     ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
@@ -83,7 +85,6 @@ export async function POST(request: Request) {
             outputFormat: "tailwind_sections",
           }),
         });
-        const slug = parsed.data.subfolder_slug?.trim();
         if (slug && isValidSubfolderSlug(slug)) {
           const excerpt = `${businessName}\n${description}`;
           await tryLogSiteGenerationRun({

@@ -3,7 +3,7 @@
  *
  * Geheimen en infrastructuur blijven via omgeving o.a.:
  * - `ANTHROPIC_API_KEY`
- * - `UNSPLASH_ACCESS_KEY` (optioneel)
+ * - optioneel `OPENAI_API_KEY` + Supabase (AI-hero, zie `.env.example`)
  * - database / Supabase
  */
 export const STUDIO_SITE_GENERATION = {
@@ -23,9 +23,4 @@ export const STUDIO_SITE_GENERATION = {
   /** Kleine JSON-planfase vóór HTML: copy-budget + CTA; sectie-id's blijven server-side vast. */
   compositionPlanEnabled: true,
   selfReviewEnabled: false,
-  unsplashGalleryOnly: true,
-  unsplashAllowHeroStock: false,
-  unsplashMaxImagesPerSection: 4,
-  /** 0 = geen cap over alle secties van één pagina. */
-  unsplashMaxImagesPerPage: 0,
 } as const;

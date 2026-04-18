@@ -15,7 +15,7 @@ import {
 import {
   cleanupStrippedStockMarkup,
   stripAllUnsplashPhotoUrlsInHtml,
-} from "@/lib/ai/unsplash-image-replace";
+} from "@/lib/ai/strip-unsplash-urls";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -1319,7 +1319,7 @@ function mapSectionsImageFree(sections: TailwindSection[]): TailwindSection[] {
   return sections.map((s) => ({ ...s, html: studioImageFreeSingleHtml(s.html) }));
 }
 
-/** Na generatie: verwijdert alle raster-/embed-media en resterende Unsplash-URL's (deterministisch, geen API). */
+/** Na generatie: verwijdert alle raster-/embed-media en resterende `images.unsplash.com`-URL's (deterministisch). */
 export function applyStudioImageFreeHtmlPass(page: GeneratedTailwindPage): GeneratedTailwindPage {
   return {
     ...page,

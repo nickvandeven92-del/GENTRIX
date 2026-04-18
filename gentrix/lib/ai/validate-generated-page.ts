@@ -100,7 +100,6 @@ export function validateGeneratedPageHtml(html: string, plan: HomepagePlan): Gen
     const hasCinematicLayer =
       /background-image\s*:\s*url\s*\(/i.test(heroHtml) ||
       /<video\b/i.test(heroHtml) ||
-      /images\.unsplash\.com/i.test(heroHtml) ||
       /<img\b[^>]*\bsrc=["'][^"']+["']/i.test(heroHtml);
     const hasSubtleDepth =
       /\bbg-gradient-to-/i.test(heroHtml) ||

@@ -75,7 +75,7 @@ function MobileNavDrawer({
       ? "border-l border-zinc-200 bg-white text-zinc-900"
       : variant === "bar_dark"
         ? "border-l border-white/10 bg-zinc-950 text-white"
-        : "border-l border-white/15 bg-zinc-950/98 text-white backdrop-blur-md";
+        : "border-l border-white/15 bg-zinc-950 text-white backdrop-blur-md";
 
   const closeBtnClass =
     variant === "bar_light"

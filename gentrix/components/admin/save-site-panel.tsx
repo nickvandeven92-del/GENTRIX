@@ -7,6 +7,7 @@ import {
   generatedTailwindPageToSectionsPayload,
   type GeneratedTailwindPage,
 } from "@/lib/ai/tailwind-sections-schema";
+import { slugifyClientNameForSubfolder } from "@/lib/studio/client-name-for-slug";
 import { isValidSubfolderSlug, slugify, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export function SaveSitePanel({
   function initialSlug(): string {
     const fromUrl = defaultSubfolderSlug?.trim();
     if (fromUrl) return fromUrl;
-    const fromName = slugify(defaultName);
+    const fromName = slugifyClientNameForSubfolder(defaultName);
     return fromName.length >= 2 ? fromName : "";
   }
 
@@ -73,7 +74,7 @@ export function SaveSitePanel({
     if (fromUrl) setSubfolderSlug(fromUrl);
   }, [defaultSubfolderSlug]);
 
-  const resolvedSlug = subfolderSlug.trim() || slugify(name);
+  const resolvedSlug = subfolderSlug.trim() || slugifyClientNameForSubfolder(name);
   const slugOk = isValidSubfolderSlug(resolvedSlug);
 
   async function save() {

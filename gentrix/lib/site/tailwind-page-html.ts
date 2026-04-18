@@ -350,23 +350,25 @@ export const STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 1024px
 
 /**
  * Alleen **mobiele** HTML-editor-preview (`data-gentrix-studio-mobile` + iframe): vaak halftransparante
- * `nav` / kolom over de hero — leesbaarheid + duidelijke “sheet” zonder live `/site` te wijzigen.
- */
-/**
- * Alleen **mobiele** HTML-editor-preview (`data-gentrix-studio-mobile` + iframe): vaak halftransparante
- * `nav` / kolom over de hero — leesbaarheid + duidelijke “sheet” zonder live `/site` te wijzigen.
+ * `nav` / sheet over de hero — hier **volledig dekkend** (geen hero-titel erdoorheen), alleen in deze preview.
  */
 export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 1023px) {
   html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header nav,
   html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header [role="navigation"] {
-    background-color: rgb(15 23 42 / 0.94) !important;
+    background-color: rgb(15 23 42) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header #gentrix-site-mobile-sheet,
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header #site-mobile-sheet {
+    background: rgb(15 23 42) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
   html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header > div[class*="fixed"].flex-col,
   html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header > div[class*="absolute"].flex-col,
   html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header > div[class*="inset-0"].flex {
-    background-color: rgb(15 23 42 / 0.94) !important;
+    background-color: rgb(15 23 42) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }

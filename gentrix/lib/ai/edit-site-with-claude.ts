@@ -64,7 +64,7 @@ ${getAlpineInteractivityPromptBlock()}
 
 === TECHNISCHE REGELS ===
 - Geldige HTML in elk \`html\`-veld: geen \`<script>\` of \`<style>\` in het fragment, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links; Alpine-attributen (\`x-*\`, \`@\`, \`:\`) wel volgens het blok hierboven.
-- Afbeeldingen: alleen **https** (bijv. images.unsplash.com).
+- Afbeeldingen: alleen **https** (eigen of klant-URL's; geen generieke stock-services tenzij de briefing dat expliciet noemt).
 - Behoud **ankers en \`id\`’s** die naar andere secties linken (\`#features\`, \`#pricing\`, …) tenzij de gebruiker vraagt ze te wijzigen; houd ze dan consistent.
 - **Geen dubbele navbar:** maximaal **één** globale \`<header>\`/\`<nav>\` met de hoofdlinks; verwijder een tweede identieke menulijst als de gebruiker dat impliciet wil (rommel / dubbel).
 - Behoud **data-animation**, **data-aos** (AOS) en **data-lucide** waar zinvol; je mag ze toevoegen of aanpassen. **Niet** \`data-aos\` en \`data-animation\` op hetzelfde element. **GSAP:** shell laadt \`gsap\` + plugins; **geen** nieuwe \`<script>\` in sectie-HTML — alleen markup/selectors; gebruikers-GSAP hoort in **Eigen JS**. **Marquee/ticker (verboden):** verwijder \`studio-marquee\`, \`studio-marquee-track\` en \`<marquee>\`; toon logo's/trust **stilstaand** (grid of vaste rij). **Laser:** niet **nieuw** toevoegen tenzij de gebruiker **expliciet** om neon/cyber/scan vraagt; bestaande \`studio-laser-*\` mag je laten of verwijderen als het niet bij de opdracht past.

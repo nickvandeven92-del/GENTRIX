@@ -13,7 +13,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Site-generatie (user-bericht, stream, finalisatie)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:
-      "prepareGenerateSiteClaudeCall: kennis, referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; generateSiteCompositionPlanWithClaude (copy-budget); stream; finalizeGenerateSiteFromClaudeText; self-review + Unsplash; createGenerateSiteReadableStream voor NDJSON.",
+      "prepareGenerateSiteClaudeCall: kennis, referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; generateSiteCompositionPlanWithClaude (copy-budget); stream; finalizeGenerateSiteFromClaudeText; self-review + strip oude stock-URL's + optionele AI-hero; createGenerateSiteReadableStream voor NDJSON.",
   },
   {
     label: "System prompts (volledig vs minimal)",
@@ -92,10 +92,10 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
       "applySelfReviewToGeneratedPage — aan/uit vast in `studio-generation-fixed-config` (`selfReviewEnabled`).",
   },
   {
-    label: "Unsplash-vervanging",
-    path: "lib/ai/unsplash-image-replace.ts",
+    label: "Stock-URL strip (legacy model-output)",
+    path: "lib/ai/strip-unsplash-urls.ts",
     description:
-      "replaceUnsplashImagesInSections: gallery-only en hero-caps vast in `studio-generation-fixed-config`; per call overschrijfbaar via relevance-options.",
+      "stripUnsplashUrlsFromGeneratedTailwindPage — verwijdert resterende images.unsplash.com-URL's; geen externe stock-API.",
   },
   {
     label: "NDJSON stream consumer (jobs)",

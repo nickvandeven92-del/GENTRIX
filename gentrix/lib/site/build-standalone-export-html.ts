@@ -218,7 +218,7 @@ Inhoud
 ------
 - index.html — publieke homepage (marketing). Portaal-blokken uit Studio zitten hier niet in.
 - styles.css — gegenereerde Tailwind-utilities op basis van jouw pagina (geen Tailwind-CDN nodig).
-- images/ — externe plaatjes (Unsplash e.d.) zijn meegenomen waar dat lukte; anders blijft de externe link staan.
+- images/ — externe plaatjes zijn meegenomen waar dat lukte; anders blijft de externe link staan.
 - INTEGRATIE-backend-en-AB.txt — korte gids: Supabase/Firebase, formulieren, A/B-testtools (geen volledige app in deze ZIP).
 
 Uploaden
