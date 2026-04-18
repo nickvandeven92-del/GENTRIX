@@ -187,7 +187,7 @@ function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
     `\`${u}\`\n\n` +
     "**In de landings-`hero`-sectie (`id: \"hero\"`):**\n" +
     "- Buitenste wrapper **moet** `<section id=\"hero\" …>` zijn met `relative` in de `class` (stacking voor overlays).\n" +
-    "- Zet **minstens één** `<img … src=\"…\" …>` **of** een zichtbare `background-image` / Tailwind `bg-[url(...)]` die **exact** bovenstaande URL gebruikt — de hero mag **niet** een leeg wit/grijs vlak zijn.\n" +
+    "- Zet **minstens één** `<img … src=\"…\" …>` **of** een zichtbare **background-image** (inline `style` of Tailwind arbitrary property) met **exact** bovenstaande HTTPS-URL in een geldige CSS-`url`-waarde — de hero mag **niet** een leeg wit/grijs vlak zijn.\n" +
     "- Gradient/overlays (`bg-black/30`, `from-black/60`, …) zijn oké zolang het beeld zichtbaar blijft; **niet** een effen ondoorzichtige `bg-white` over de hele fotovlak zonder doorzichtigheid.\n\n" +
     "Dit blok is leidend voor het grote herobeeld; andere secties volgen de normale stock-regels.\n"
   );
