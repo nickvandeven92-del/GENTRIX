@@ -2911,7 +2911,7 @@ export function createGenerateSiteReadableStream(
             type: "status",
             message: injected
               ? "Hero: AI-foto toegevoegd."
-              : "Hero: AI-foto niet toegevoegd (geen key, policy of layout) — gradient blijft.",
+              : "Hero: geen AI-foto — zie hostinglogs op `[ai-hero]` (OpenAI Images of upload naar bucket «site-assets»).",
           });
         }
 
