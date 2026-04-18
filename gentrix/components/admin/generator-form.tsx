@@ -54,10 +54,10 @@ import {
   type GenerateSiteStreamNdjsonEvent,
 } from "@/lib/api/generate-site-stream-events";
 import { cn } from "@/lib/utils";
+import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import {
   displayStudioBrandNameForUi,
   isStudioUndecidedBrandName,
-  STUDIO_UNDECIDED_BRAND_SENTINEL,
 } from "@/lib/studio/studio-brand-sentinel";
 
 type StudioPanelLayout = "split" | "editor" | "preview";
@@ -67,37 +67,6 @@ const SITE_STREAM_LOG_MAX_CHARS = 400_000;
 
 /** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
-
-/**
- * Werkveld `businessName` voor API / previews. **Geen vaste volgorde** in de briefing: de echte naam mag
- * overal in de vrije tekst staan (die gaat volledig mee als `description`). Optioneel expliciet maken met
- * `Bedrijfsnaam: …` (of varianten) ergens in de tekst; alleen een losse URL → hostnaam; anders sentinel
- * `STUDIO_UNDECIDED_BRAND_SENTINEL` zodat het model een merknaam verzint.
- */
-function deriveStudioBusinessName(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) return "";
-
-  if (/^https?:\/\/\S+$/i.test(trimmed)) {
-    try {
-      const host = new URL(trimmed).hostname.replace(/^www\./i, "");
-      if (!host) return "Website";
-      return host.length <= 200 ? host : host.slice(0, 200);
-    } catch {
-      return "Website";
-    }
-  }
-
-  const labelMatch = trimmed.match(
-    /(?:^|\n)\s*(?:bedrijfsnaam|bedrijf|handelsnaam|naam\s+van\s+het\s+bedrijf|merk|klant|company\s+name|company)\s*[:：]\s*([^\n]+)/i,
-  );
-  if (labelMatch?.[1]) {
-    const v = labelMatch[1].trim().replace(/^['"\s]+|['"\s]+$/g, "");
-    if (v) return v.length <= 200 ? v : v.slice(0, 200);
-  }
-
-  return STUDIO_UNDECIDED_BRAND_SENTINEL;
-}
 
 function extractFirstHttpUrl(text: string): string | undefined {
   const m = text.match(/https?:\/\/[^\s<>"')]+/i);
@@ -149,7 +118,7 @@ export function GeneratorForm({
     if (name && desc) return `${name}\n\n${desc}`;
     return name || desc;
   });
-  const businessName = useMemo(() => deriveStudioBusinessName(briefingText), [briefingText]);
+  const businessName = useMemo(() => deriveStudioBusinessNameFromBriefing(briefingText), [briefingText]);
   const previewClientLabel = useMemo(() => {
     const b = businessName.trim();
     if (isStudioUndecidedBrandName(b)) return "Concept";
@@ -371,7 +340,7 @@ export function GeneratorForm({
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
   /** `split` = twee kolommen; `editor` / `preview` = één paneel op volle breedte (binnen de studio-shell). */
   const [panelLayout, setPanelLayout] = useState<StudioPanelLayout>("split");
-  /** Rechter paneel: live preview of uitgebreid logboek (Lovable-achtig). */
+  /** Rechter paneel: preview (na eerste run) of uitgebreid logboek. */
   const [rightPaneMode, setRightPaneMode] = useState<StudioRightPaneMode>("preview");
   const [portalReady, setPortalReady] = useState(false);
   /** Voor “bezig s”-indicator in het feedbackpaneel (Lovable-achtige doorlooptijd). */
@@ -593,7 +562,7 @@ export function GeneratorForm({
       const readyImages = clientImages.filter((img) => img.url && !img.uploading);
       const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
       const body: Record<string, unknown> = {
-        businessName: deriveStudioBusinessName(briefingText),
+        businessName: deriveStudioBusinessNameFromBriefing(briefingText),
         description: briefingText.trim(),
         ...(readyImages.length > 0
           ? { clientImages: readyImages.map((img) => ({ url: img.url, label: img.label || undefined })) }
@@ -1280,7 +1249,7 @@ export function GeneratorForm({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                     <Monitor className="size-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                    <span>Live preview</span>
+                    <span>Preview</span>
                     {previewPendingUntilComplete ? (
                       <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-100">
                         na voltooiing
@@ -1293,7 +1262,7 @@ export function GeneratorForm({
                     ) : null}
                     {generatedTailwind ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-100">
-                        definitief
+                        live
                       </span>
                     ) : null}
                     {streamEndedWithoutComplete ? (
@@ -1359,7 +1328,7 @@ export function GeneratorForm({
                 <GenerationDetailsBody
                   feedback={pipelineFeedback}
                   fallbackBrief={{
-                    businessName: displayStudioBrandNameForUi(deriveStudioBusinessName(briefingText)),
+                    businessName: displayStudioBrandNameForUi(deriveStudioBusinessNameFromBriefing(briefingText)),
                     description: briefingText.trim(),
                   }}
                   referenceStyleRequested={Boolean(extractFirstHttpUrl(briefingText))}
@@ -1386,8 +1355,10 @@ export function GeneratorForm({
                       {loading ? "Bezig met genereren…" : "Generatie gestopt"}
                     </p>
                     <p className="text-center text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      De preview verschijnt hier pas als de run <strong className="font-medium text-zinc-800 dark:text-zinc-200">volledig</strong> klaar is.
-                      Hieronder wat de server onderweg deed.
+                      Bij de <strong className="font-medium text-zinc-800 dark:text-zinc-200">eerste</strong> generatie is
+                      dit bewust geen live canvas — de preview vult pas als de run{" "}
+                      <strong className="font-medium text-zinc-800 dark:text-zinc-200">volledig</strong> klaar is (zoals
+                      o.a. Lovable). Hieronder wat de server onderweg deed.
                       <span className="mt-2 block text-[11px] text-zinc-500 dark:text-zinc-500">
                         Weinig nieuwe regels in het log is normaal tijdens Denklijn of het grote model — dat betekent
                         niet dat de stream vastzit.
@@ -1439,9 +1410,10 @@ export function GeneratorForm({
                   <Monitor className="size-10 text-zinc-300 dark:text-zinc-600" aria-hidden />
                   <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Nog geen preview</p>
                   <p className="max-w-sm text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                    Vul links de briefing in en klik op <strong className="text-zinc-800 dark:text-zinc-200">Genereer</strong>.
-                    Hier komt dezelfde weergave als op de openbare site (<code className="font-mono text-[11px]">/site/…</code>
-                    ), inclusief studio-tokens die naar echte paden worden omgezet zodra er een slug is.
+                    Vul links de opdracht in en klik op <strong className="text-zinc-800 dark:text-zinc-200">Genereer</strong>.
+                    De eerste build vult dit paneel <strong className="text-zinc-800 dark:text-zinc-200">pas na afloop</strong>{" "}
+                    (geen tussentijds canvas — vergelijkbaar met o.a. Lovable). Daarna: iteratief bewerken met directe
+                    preview via tab <strong className="text-zinc-800 dark:text-zinc-200">Bewerken</strong> op dezelfde klant-slug.
                   </p>
                 </div>
               ))}

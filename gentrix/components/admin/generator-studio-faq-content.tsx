@@ -20,8 +20,9 @@ export function GeneratorStudioFaqContent() {
             opslaan bij die klant.
           </li>
           <li>
-            Klik <strong>Genereer site</strong>; status en secties lopen binnen via een NDJSON-stream; de preview rechts
-            volgt zodra de run klaar is (of bij een afgebroken stream: laatste tussentijdse secties).
+            Klik <strong>Genereer site</strong>; status loopt binnen via een NDJSON-stream. De preview rechts vult pas als
+            de run klaar is — bij de eerste generatie geen live canvas tussendoor (vergelijkbaar met o.a. Lovable); bij een
+            afgebroken stream kunnen laatste tussentijdse secties wél zichtbaar zijn.
           </li>
           <li>
             Sla op via het paneel onderaan. Na concept: briefing vast — verdere edits via tab <strong>Bewerken</strong>.

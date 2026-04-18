@@ -1260,7 +1260,7 @@ function buildMarketingMultiPageOperationalTail(
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Meerdere echte pagina’s in één JSON:**
   - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort). **Geen** dubbele “tweede hero” met dezelfde CTA’s als de eerste; **geen** marketing-fotogalerij-raster voor producten die in de webshop horen.
-  - \`marketingPages\` = **verplicht** exact deze keys (geen extra’s, geen missers), elk **minstens twee** HTML-secties met **eigen** \`id\`'s binnen die pagina: ${slugList}. **Geen** tweede homepage: typisch **2–4** secties (kop/hero voor die route + **één** duidelijke inhoudsband + evt. korte afsluiter) — dezelfde globale nav als op de landing, maar **unieke** copy per key.
+  - \`marketingPages\` = **verplicht** exact deze keys (geen extra’s, geen missers), elk **minstens twee** HTML-secties met **eigen** \`id\`'s binnen die pagina: ${slugList}. **Elke** key in die lijst moet in \`marketingPages\` voorkomen — **ontbrekende** keys (bijv. \`faq\`) maken de JSON **ongeldig** en breken de generatie. **Geen** tweede homepage: typisch **2–4** secties (kop/hero voor die route + **één** duidelijke inhoudsband + evt. korte afsluiter) — dezelfde globale nav als op de landing, maar **unieke** copy per key.
   - \`contactSections\` = **alleen de contact-subpagina** (route Contact): minstens één **werkend** <form> (naam/e-mail/bericht). **Niet** op de homepage (\`sections\`).
 - **Per marketing-key (inhoud):**
 ${slugHints}
@@ -1308,6 +1308,8 @@ ${marketingJsonExample}
 }
 
 Minimaal deze landings-sectie-\`id\`'s (eigen volgorde mag): ${requiredIdsLine}. **Geen** \`contact\`-sectie met formulier buiten \`contactSections\`. Je mag \`name\` per sectie toevoegen (optioneel).${section5IdsNote}
+
+**Laatste controle — \`marketingPages\`:** tel de top-level keys in jouw JSON en vergelijk met **exact**: ${slugList}. **Alle** moeten aanwezig zijn; **geen** weglating.
 
 JSON moet geldig zijn.`;
 }

@@ -12,6 +12,8 @@ import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
 import { isValidSubfolderSlug } from "@/lib/slug";
+import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
+import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 /** Langere runs: prepare + Denklijn + grote JSON-stream + Unsplash. Hobby: max 300s deploybaar; op Pro kun je 800. Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC`. */
 export const maxDuration = 300;
 
@@ -44,8 +46,12 @@ export async function POST(request: Request) {
   }
 
   const recentNames = await getRecentClientNamesForPrompt(3);
-  const businessName = parsed.data.businessName;
   const description = parsed.data.description;
+  let businessName = parsed.data.businessName;
+  if (isStudioUndecidedBrandName(businessName)) {
+    const inferred = deriveStudioBusinessNameFromBriefing(description);
+    if (!isStudioUndecidedBrandName(inferred)) businessName = inferred;
+  }
   const clientImages = parsed.data.clientImages ?? [];
   const briefingReferenceImages = parsed.data.briefingReferenceImages ?? [];
   const referenceStyleUrl = parsed.data.reference_style_url;

@@ -15,6 +15,8 @@ import {
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { isValidSubfolderSlug } from "@/lib/slug";
+import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
+import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 
 /** JSON-serializable values for `json`/`jsonb` columns. */
 type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -155,8 +157,12 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     layout_archetypes?: string[];
   };
 
-  const businessName = String(req.businessName ?? "").trim();
+  let businessName = String(req.businessName ?? "").trim();
   const description = String(req.description ?? "").trim();
+  if (isStudioUndecidedBrandName(businessName)) {
+    const inferred = deriveStudioBusinessNameFromBriefing(description);
+    if (!isStudioUndecidedBrandName(inferred)) businessName = inferred;
+  }
   if (!businessName || !description) {
     void updateJob(jobId, {
       status: "failed",

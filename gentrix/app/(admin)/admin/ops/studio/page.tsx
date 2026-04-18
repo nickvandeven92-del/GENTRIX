@@ -77,10 +77,13 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
               <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-zinc-400">
                 Genereer landingspagina&apos;s als <strong className="font-medium text-neutral-800 dark:text-zinc-200">tailwind_sections</strong>{" "}
                 (HTML-secties met Tailwind): <strong className="font-medium text-neutral-800 dark:text-zinc-200">links</strong>{" "}
-                briefing en knoppen, <strong className="font-medium text-neutral-800 dark:text-zinc-200">rechts</strong> een
-                live preview (zelfde weergave als <code className="rounded bg-neutral-100 px-1 font-mono text-xs dark:bg-white/10">/site/…</code>
-                ; op breed scherm sleep je de rand tussen de panelen). Vul bedrijfsnaam en briefing in; kies een unieke
-                URL-slug bij opslaan. De publieke homepage (
+                opdracht en knoppen, <strong className="font-medium text-neutral-800 dark:text-zinc-200">rechts</strong> een
+                preview die bij de <strong className="font-medium text-neutral-800 dark:text-zinc-200">eerste</strong> run{" "}
+                <strong className="font-medium text-neutral-800 dark:text-zinc-200">pas na afloop</strong> vult (zoals o.a.
+                Lovable — geen live canvas tussendoor). Daarna kun je via tab <strong className="font-medium text-neutral-800 dark:text-zinc-200">Bewerken</strong>{" "}
+                iteratief aanpassen met directe preview. Zelfde weergave als{" "}
+                <code className="rounded bg-neutral-100 px-1 font-mono text-xs dark:bg-white/10">/site/…</code>. Op breed
+                scherm sleep je de rand tussen de panelen. Kies een unieke URL-slug bij opslaan. De publieke homepage (
                 <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800 dark:bg-white/10 dark:text-zinc-200">/</code>)
                 is de vaste bureau-landingspagina; slug{" "}
                 <code className="rounded bg-neutral-100 px-1 font-mono text-xs text-neutral-800 dark:bg-white/10 dark:text-zinc-200">home</code>{" "}
