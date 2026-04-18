@@ -40,13 +40,26 @@ function stripImgTagsFromHtml(html: string): string {
   return html.replace(/<img\b[^>]*(?:\/>|>)/gi, "");
 }
 
+/**
+ * Mensleesbare reden waarom de AI-hero-pipeline uit staat (`null` = aan).
+ * Gebruikt o.a. statusregels in de site-generatiestroom.
+ */
+export function getAiHeroImagePostProcessSkipReason(): string | null {
+  if (process.env.STUDIO_AI_HERO_IMAGE === "0") {
+    return "uitgeschakeld met STUDIO_AI_HERO_IMAGE=0.";
+  }
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    return "OPENAI_API_KEY ontbreekt.";
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    return "NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn nodig om de PNG naar de bucket «site-assets» te uploaden.";
+  }
+  return null;
+}
+
 /** `STUDIO_AI_HERO_IMAGE=0` schakelt uit; anders aan wanneer OpenAI + Supabase storage beschikbaar zijn. */
 export function isAiHeroImagePostProcessEnabled(): boolean {
-  if (process.env.STUDIO_AI_HERO_IMAGE === "0") return false;
-  if (!process.env.OPENAI_API_KEY?.trim()) return false;
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) return false;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return false;
-  return true;
+  return getAiHeroImagePostProcessSkipReason() === null;
 }
 
 function isHeroLikeSection(sec: TailwindSection, _index: number): boolean {

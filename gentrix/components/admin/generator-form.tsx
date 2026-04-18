@@ -152,6 +152,13 @@ export function GeneratorForm({
 
   const streamJsonBufferRef = useRef("");
   const streamAbortRef = useRef<AbortController | null>(null);
+  /** Laatste server-`stream_trace` (grep `gentrix.generate_site_stream` + runId in logs). */
+  const streamTraceDiagRef = useRef<{
+    runId: string;
+    phase: string;
+    offsetMs: number;
+    detail?: string;
+  } | null>(null);
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
   /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
@@ -572,6 +579,7 @@ export function GeneratorForm({
     setDesignContract(null);
     setDesignContractWarning(null);
     setStreamEndedWithoutComplete(false);
+    streamTraceDiagRef.current = null;
     setGenerationActivity([]);
     setRightPaneMode("preview");
     setLoading(true);
@@ -668,6 +676,14 @@ export function GeneratorForm({
       };
 
       const handleNdjsonEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
+        if (ev.type === "stream_trace") {
+          streamTraceDiagRef.current = {
+            runId: ev.runId,
+            phase: ev.phase,
+            offsetMs: ev.offsetMs,
+            ...(ev.detail ? { detail: ev.detail } : {}),
+          };
+        }
         if (ev.type === "status") {
           const m = ev.message.trim();
           if (m) {
@@ -768,6 +784,26 @@ export function GeneratorForm({
           setStreamEndedWithoutComplete(true);
           setStreamPhase("Stream gestopt vóór «klaar» — concept hieronder kan onvolledig zijn.");
           appendGenerationActivity("Geen complete-event; laatste tussentijdse secties worden getoond.");
+          const tr = streamTraceDiagRef.current;
+          if (tr?.runId) {
+            const detailSuffix =
+              tr.detail != null && tr.detail.length > 0
+                ? ` — ${tr.detail.length > 140 ? `${tr.detail.slice(0, 140)}…` : tr.detail}`
+                : "";
+            console.warn("[gentrix studio stream incomplete]", tr);
+            appendGenerationActivity(
+              `Diagnose (serverlogs): run ${tr.runId} — laatste fase «${tr.phase}» @ ${tr.offsetMs}ms${detailSuffix}. Zoek \`gentrix.generate_site_stream\` met dit id in Vercel/hosting.`,
+            );
+          } else {
+            console.warn("[gentrix studio stream incomplete]", {
+              noStreamTrace: true,
+              pipelineSeen,
+              receivedAnySection,
+            });
+            appendGenerationActivity(
+              "Diagnose: geen stream-trace ontvangen — verbinding viel zeer vroeg af (netwerk/proxy/tab) of response werd afgebroken vóór de eerste trace.",
+            );
+          }
         } else {
           setError(
             pipelineSeen

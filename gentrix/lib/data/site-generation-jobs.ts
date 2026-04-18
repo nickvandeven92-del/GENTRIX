@@ -239,6 +239,9 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
 
   const onEvent = (ev: GenerateSiteStreamNdjsonEvent) => {
     const now = Date.now();
+    if (ev.type === "stream_trace") {
+      return;
+    }
     if (ev.type === "status") {
       const msgTrim = ev.message.trim();
       const forceProgress =

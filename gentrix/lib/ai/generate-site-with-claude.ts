@@ -70,6 +70,7 @@ import {
   applyAiHeroImageToGeneratedPage,
   generatedPageMayUseAiHeroImage,
   briefingWantsAiGeneratedHeroImage,
+  getAiHeroImagePostProcessSkipReason,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
@@ -2466,6 +2467,8 @@ export async function generateSiteWithClaude(
 export type GenerateSiteStreamNdjsonEvent =
   | { type: "status"; message: string }
   | { type: "keepalive" }
+  /** Diagnostiek: grep hostinglogs op `gentrix.generate_site_stream` + `runId`. */
+  | { type: "stream_trace"; runId: string; phase: string; offsetMs: number; detail?: string }
   | { type: "generation_meta"; feedback: GenerationPipelineFeedback }
   | {
       type: "design_rationale";
@@ -2483,11 +2486,47 @@ export type GenerateSiteStreamNdjsonEvent =
   | { type: "error"; message: string; rawText?: string };
 
 /**
- * Tijdens stille server-stappen (o.a. zelfreview) bytes blijven sturen zodat proxies/CDN's geen idle-timeout geven.
- * Kort interval + **direct eerste ping**: `setInterval` vuurt anders pas na 1× interval — bij 10s was de eerste
- * stilte vaak langer dan veel loadbalancers (5–60s) tolereren, vooral net ná de token-stream.
+ * NDJSON-bytes tijdens stilte (prepare, Denklijn, zelfreview, OpenAI-hero, …) én tijdens de grote
+ * Claude-tokenstream. Proxies/CDN's hebben vaak een **idle** timeout (10–60s); kort interval +
+ * **direct eerste ping** (`setInterval` vuurt anders pas na 1× interval) houdt de verbinding levend.
  */
 const NDJSON_SILENT_WORK_KEEPALIVE_MS = 4_000;
+
+/** JSON naar stdout; in Vercel/hosting op `gentrix.generate_site_stream` + `runId` filteren. */
+function emitGenerateSiteStreamTrace(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  send: (c: ReadableStreamDefaultController<Uint8Array>, e: GenerateSiteStreamNdjsonEvent) => void,
+  runId: string,
+  streamStartedAtMs: number,
+  phase: string,
+  detail?: string,
+): void {
+  const offsetMs = Date.now() - streamStartedAtMs;
+  const d = detail?.trim().slice(0, 500);
+  const payload = {
+    tag: "gentrix.generate_site_stream",
+    runId,
+    phase,
+    offsetMs,
+    ...(d ? { detail: d } : {}),
+  };
+  try {
+    console.info(JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+  try {
+    send(controller, {
+      type: "stream_trace",
+      runId,
+      phase,
+      offsetMs,
+      ...(d ? { detail: d } : {}),
+    });
+  } catch {
+    /* stream gesloten of enqueue geweigerd */
+  }
+}
 
 /** Houd gelijk met `SITE_GENERATION_JOB_MAX_DURATION_MS` (`lib/config/site-generation-job.ts`). */
 const GENERATE_SITE_STREAM_MAX_DURATION_MS = SITE_GENERATION_JOB_MAX_DURATION_MS;
@@ -2562,7 +2601,11 @@ export function createGenerateSiteReadableStream(
   return new ReadableStream({
     async start(controller) {
       const streamWallClockStartMs = Date.now();
+      const runId = randomUUID();
+      const trace = (phase: string, detail?: string) =>
+        emitGenerateSiteStreamTrace(controller, send, runId, streamWallClockStartMs, phase, detail);
       try {
+        trace("stream_started");
         const hasRefStyleUrl = Boolean(promptOptions?.referenceStyleUrl?.trim());
         send(controller, {
           type: "status",
@@ -2584,8 +2627,10 @@ export function createGenerateSiteReadableStream(
         } finally {
           stopPrepareKeepalive();
         }
+        trace("prepare_done");
 
         if ("ok" in prepared && prepared.ok === false) {
+          trace("prepare_failed", prepared.error);
           send(controller, { type: "error", message: prepared.error });
           controller.close();
           return;
@@ -2593,6 +2638,7 @@ export function createGenerateSiteReadableStream(
 
         const p = prepared as PreparedGenerateSiteClaudeCall;
         send(controller, { type: "generation_meta", feedback: p.pipelineFeedback });
+        trace("generation_meta_sent");
 
         send(controller, { type: "status", message: "Denklijn uitschrijven (interpretatie → woorden)…" });
         const stopRationaleKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
@@ -2633,6 +2679,14 @@ export function createGenerateSiteReadableStream(
             skipReason: rationale.error,
           });
         }
+        trace(
+          "rationale_done",
+          rationale.ok
+            ? rationale.contract != null
+              ? "contract_ok"
+              : "contract_null"
+            : rationale.error?.slice(0, 400),
+        );
 
         const canonicalSectionIds = p.pipelineFeedback.interpreted.sections ?? [];
         let compositionPlan: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIds);
@@ -2672,6 +2726,7 @@ export function createGenerateSiteReadableStream(
         }
 
         send(controller, { type: "composition_plan", plan: compositionPlan, source: compositionSource });
+        trace("composition_done", `source=${compositionSource}`);
 
         let userContentForGeneration =
           rationale.ok && rationale.contract != null
@@ -2686,14 +2741,15 @@ export function createGenerateSiteReadableStream(
         );
 
         send(controller, { type: "status", message: "Pagina genereren (HTML/JSON)…" });
+        trace("main_stream_start", `model=${p.generateModel}`);
         let buffer = "";
         const sentSectionIds = new Set<string>();
         let extractTick = 0;
         let usage: MessageDeltaUsage | null = null;
         let stop_reason: string | null = null;
 
-        /** Tijdens de grootste model-stream soms tientallen seconden tussen deltas; proxies/CDN's knippen dan de NDJSON-verbinding. Extra pings naast `token`-events. */
-        const CLAUDE_MAIN_STREAM_KEEPALIVE_MS = 12_000;
+        /** Zelfde frequentie als stille keepalive: 12s was te lang voor striktere LBs (≈10s idle). */
+        const CLAUDE_MAIN_STREAM_KEEPALIVE_MS = NDJSON_SILENT_WORK_KEEPALIVE_MS;
         const stopMainStreamKeepalive = (() => {
           const tick = () => {
             try {
@@ -2731,6 +2787,10 @@ export function createGenerateSiteReadableStream(
         } finally {
           stopMainStreamKeepalive();
         }
+        trace(
+          "main_stream_done",
+          `stop_reason=${stop_reason ?? "null"} bufferChars=${buffer.length} sectionsSeen=${sentSectionIds.size}`,
+        );
 
         const stopUsageKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
         try {
@@ -2745,6 +2805,7 @@ export function createGenerateSiteReadableStream(
         } finally {
           stopUsageKeepalive();
         }
+        trace("usage_logged");
 
         const result = finalizeGenerateSiteFromClaudeText(buffer, stop_reason, {
           useMarketingMultiPage: p.useMarketingMultiPage,
@@ -2752,6 +2813,7 @@ export function createGenerateSiteReadableStream(
           marketingPageSlugs: p.marketingPageSlugs,
         });
         if (!result.ok) {
+          trace("parse_failed", result.error.slice(0, 500));
           send(controller, {
             type: "error",
             message: result.error,
@@ -2760,6 +2822,7 @@ export function createGenerateSiteReadableStream(
           controller.close();
           return;
         }
+        trace("parse_ok", `sections=${result.data.sections.length}`);
 
         let data = withContentClaimDiagnostics(result.data);
 
@@ -2814,6 +2877,17 @@ export function createGenerateSiteReadableStream(
         data = applyStockUrlSanitizeToGeneratedPage(data);
 
         const mayAiHero = generatedPageMayUseAiHeroImage(data, description);
+        const aiHeroSkipReason = getAiHeroImagePostProcessSkipReason();
+        if (!mayAiHero && aiHeroSkipReason) {
+          const notify =
+            Boolean(process.env.OPENAI_API_KEY?.trim()) || process.env.STUDIO_AI_HERO_IMAGE === "0";
+          if (notify) {
+            send(controller, {
+              type: "status",
+              message: `Hero AI-foto: niet actief — ${aiHeroSkipReason}`,
+            });
+          }
+        }
         if (mayAiHero) {
           send(controller, {
             type: "status",
@@ -2861,6 +2935,7 @@ export function createGenerateSiteReadableStream(
         if (p.strictLandingContract) {
           const strictErrs = validateStrictLandingPageContract(data.sections);
           if (strictErrs.length > 0) {
+            trace("strict_landing_failed", strictErrs.join(" ").slice(0, 400));
             send(controller, {
               type: "error",
               message: `Strikte landingspagina: ${strictErrs.join(" ")}`,
@@ -2869,6 +2944,7 @@ export function createGenerateSiteReadableStream(
             return;
           }
         }
+        trace("post_validate_ok");
 
         /**
          * Journal + usage-log = extra Claude + DB; zonder begrenzing kon dit de stream **na** zware post-stappen
@@ -2885,6 +2961,7 @@ export function createGenerateSiteReadableStream(
               new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), ON_SUCCESS_STREAM_BUDGET_MS)),
             ]);
             if (raced === "timeout") {
+              trace("on_success_journal_timeout", `${ON_SUCCESS_STREAM_BUDGET_MS}ms`);
               console.warn(
                 `[generate-site-stream] onSuccess time budget (${ON_SUCCESS_STREAM_BUDGET_MS}ms) exceeded — sending complete; journal/logging continues in background.`,
               );
@@ -2894,15 +2971,25 @@ export function createGenerateSiteReadableStream(
             }
           }
         } catch (journalErr) {
+          trace(
+            "on_success_journal_error",
+            journalErr instanceof Error ? journalErr.message.slice(0, 400) : String(journalErr).slice(0, 400),
+          );
           console.error("[generate-site-stream] onSuccess (journal/log) mislukt; generatie wordt alsnog afgerond:", journalErr);
         } finally {
           stopPostProcessKeepalive();
         }
+        trace("sending_complete");
 
         send(controller, { type: "complete", outputFormat: "tailwind_sections", data });
         send(controller, { type: "status", message: "Generatie voltooid" });
+        trace("stream_closed_ok");
         controller.close();
       } catch (error) {
+        trace(
+          "uncaught_error",
+          error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 500) : String(error).slice(0, 500),
+        );
         send(controller, {
           type: "error",
           message: error instanceof Error ? error.message : "Onbekende fout",
