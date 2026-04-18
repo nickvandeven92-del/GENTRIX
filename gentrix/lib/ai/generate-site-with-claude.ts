@@ -897,6 +897,31 @@ export function detectExplicitColors(description: string): string[] {
   return found;
 }
 
+/**
+ * Briefing vraagt **lichte** oppervlakken (wit/off-white/…): geen automatische “premium = zwart + goud”.
+ * Eén woord als **wit** / **white** volstaat — geen vaste combinatie wit+grijs+zwart nodig.
+ * Negatieve formuleringen (“geen wit”) sluiten dit uit.
+ */
+export function briefingDemandsLightSurfacesPriority(description: string): boolean {
+  const n = description.toLowerCase();
+  if (/\b(geen|niet)\s+(een\s+)?(wit|witte|white|heldere\s+achtergrond)\b/i.test(n)) return false;
+  if (/\bwit\s*\/\s*grijs\s*(\/\s*|\s+en\s+)zwart\b/.test(n)) return true;
+  if (/\bwhite\s*\/\s*grey\s*(\/\s*|\s+and\s+)black\b/.test(n)) return true;
+  if (/\b(wit|witte|white|off-?white|ivoor|crème|creme|veel\s+wit|heldere\s+achtergrond)\b/.test(n)) return true;
+  if (/\b(light\s+mode|airy)\b/i.test(n)) return true;
+  return false;
+}
+
+export function buildBriefingLightSurfacesMandateMarkdown(description: string): string {
+  const n = description.toLowerCase();
+  const allowGold = /\b(goud|gold|brons|bronze)\b/.test(n);
+  return `=== PRIORITEIT THEMA (briefing: licht / wit) ===
+- **Hoofdcanvas:** overwegend **licht** — \`bg-white\`, \`bg-stone-50\`, \`bg-neutral-100\`, lichte sectie-afwisseling. **Verboden** om “premium” te interpreteren als **volledig zwarte pagina + gouden knoppen**, tenzij de briefing expliciet **donker** of **goud** noemt.
+- **Tekst & randen:** koppen/body **donker** (\`text-neutral-900\`, \`text-stone-900\`); secundair **grijs** (\`text-neutral-600\`). Randen: \`border-neutral-200\` / \`border-stone-200\`.
+- **Accent in \`config.theme\`:** ${allowGold ? "alleen als de briefing **goud/brons** noemt — anders **neutraal** (slate/zinc/neutral)." : "**neutraal** (bijv. \`#171717\`, \`#334155\`, slate/zinc) — **geen** goud-, amber- of champagne-default als domijn-accent."}
+- **Hero:** full-bleed foto mag, maar houd **onder de vouw** en de rest van de site duidelijk **licht**; geen permanente “alles zwart”-look.`;
+}
+
 function fnv1aHash(input: string): number {
   let h = 2166136261;
   for (let i = 0; i < input.length; i++) {
@@ -945,10 +970,15 @@ function buildVarianceBlock(
   const layoutIdx = (h >> 7) % LAYOUT_ARCHETYPE_MANDATES.length;
   const explicitColors = detectExplicitColors(description);
   const hasExplicitColors = explicitColors.length > 0;
-  const accentLine = hasExplicitColors
-    ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** — gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
-    : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
+  const lightSurfaces = briefingDemandsLightSurfacesPriority(description);
+  const accentLine =
+    hasExplicitColors && !lightSurfaces
+      ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** — gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
+      : lightSurfaces
+        ? `- **Kleur:** de briefing vraagt **licht/wit** (of expliciet wit-grijs-zwart) — volg \`=== PRIORITEIT THEMA\` hieronder; **geen** standaard “premium = zwart + goud” tenzij de briefing ook expliciet goud/donker vraagt.`
+        : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
   const layoutLine = `- ${LAYOUT_ARCHETYPE_MANDATES[layoutIdx]} (${layoutIdx + 1}/${LAYOUT_ARCHETYPE_MANDATES.length})`;
+  const lightSurfacesMandate = lightSurfaces ? `\n\n${buildBriefingLightSurfacesMandateMarkdown(description)}` : "";
 
   return `=== 0A. COMPOSITIE (deze run) ===
 Kies **één** duidelijke lijn door de pagina (bijv. editorial type, asymmetrische splits, of een duidelijk licht/donker ritme) en houd die **consequent** vast. Herhaal niet in elke sectie hetzelfde 3-koloms kaarten-grid tenzij de briefing of branche dat echt vraagt.
@@ -956,6 +986,7 @@ Kies **één** duidelijke lijn door de pagina (bijv. editorial type, asymmetrisc
 ${layoutLine}
 
 ${accentLine}
+${lightSurfacesMandate}
 
 **Prioriteit:** sterke briefing > deze zinnetjes.
 **Niet "veilig":** de accent-suggestie is bedoeld om **herkenbare** merkkleur te forceren — **niet** om visueel timide te zijn.`;
@@ -1533,6 +1564,8 @@ Alleen voor **landings-\`sections\`** in deze JSON — subpagina's staan in \`ma
 
 **Nav-ankers:** alleen \`#hero\`, \`#features\`, \`#footer\` — **geen** \`#over-ons\`.
 
+**Scroll-lengte (binnen sectie-html):** Ook al zijn het maar **3** \`sections\`-rijen — plak **niet** meerdere “halve pagina’s” in één \`html\` (lang review-raster + aparte prijs-USP + tweede hero-achtige band + uitgebreide dienstenmatrix). **Max. één zwaar inhoudsblok** naast kop/USP in \`features\`; reviews **max. 3–4 compacte kaarten** of verwijs naar een subpagina. Geen opeenstapeling van \`min-h-\[80vh\]\` / \`py-24\`+\`py-24\` subbanden — dat maakt **één eindeloze scroll** ondanks weinig sectie-id’s.
+
 **Herhaling-check (concept):** elke sectie unieke rol; twee blokken met dezelfde boodschap → het zwakkere schrappen.
 `;
   }
@@ -1561,6 +1594,8 @@ ${tailList}
 
 **Nav-ankers:** alleen ${navAnchors} — **geen** \`#over-ons\`; link naar FAQ via \`__STUDIO_SITE_BASE__/faq\` wanneer \`marketingPages\` een \`faq\`-key heeft.
 
+**Scroll-lengte (binnen sectie-html):** Max. **4** sectie-\`id\`'s betekent **niet** dat elke \`html\` een minisite mag zijn. **Verboden:** binnen één \`id\` meerdere fullscreen-achtige banden achter elkaar (groot review-grid + aparte diensten-encyclopedie + extra trust-strip + tweede CTA-theater). Houd elke sectie **bondig** (typisch \`py-12\`–\`py-20\`, geen keten van \`py-24\`+\`min-h-screen\` subblokken). Uitgebreide verhalen, lange testimonial-muren en FAQ-happen → \`marketingPages\` (bv. \`over-ons\`, \`faq\`) of max. **korte** teaser + link op de landing.
+
 **Herhaling-check (concept):** elke sectie unieke rol; twee blokken met dezelfde boodschap → het zwakkere schrappen.
 `;
 }
@@ -1579,6 +1614,7 @@ function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean)
     : "";
   return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt — wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
+- **Zelfde visuele regels als “ONTWERP-RITME & TRUST”:** één reviews-sectie op de landing; review-/USP-grids **zonder** dubbele borders op grid-naden; geen gestapelde decor-lijnen + dubbele kaders rond dezelfde inhoud.
 - **CTA-schaarsheid:** naast de nav: **één** primaire knoppenrij in de hero + **hoogstens één** extra conversieband vóór de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
 - **Praktische info (tel / bellen / WhatsApp / uren):** **één** duidelijke bron op de pagina (footer of \`#contact\`) + optioneel **één** extra compacte CTA (zelfde nummer mag, maar **geen** vijfde herhaling van dezelfde urenzin in bodyteksten). Identieke openingstijden als proza in een split-sectie **en** in de footer = **fout** — laat één variant staan.
 - **Tekstvolume:** geen “lappen tekst” om secties vol te maken — volg **COPY — MINDER IS MEER** (hero en USP-kaarten extreem kort).
@@ -1612,6 +1648,9 @@ function buildLandingOutputQualityGuardsMarkdown(input: {
 - **Hoogstens één zware “signature” boven de vouw op de landing:** als de \`hero\` al full-bleed split (tekst | groot beeld) of gelijkwaardig zwaar visueel blok is, mag **geen** volgende landingssectie opnieuw dezelfde dramatische full-viewport split als **tweede pseudo-hero**. Kies daarna band, grid, kaarten of editorial — **andere rol, ander ritme**.
 - **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Gebruik **gradient/textuur** of typografie-led; **klantfoto** alleen als die in de opdracht zit en het rustig oogt — **geen** externe stock-foto's; geen tweede “stock-theater” naast de hero, en **geen** opeenstapeling van decoratieve fotokaarten om secties “vol” te maken.
 - **Merken / “wij werken met”:** alleen waar de briefing partners, leveranciers, merken, retail-assortiment of expliciet logo-trust noemt. **Geen** decoratieve fictieve merken; **geen** redundante trust-laag die hetzelfde doet als je bewijsblok.
+- **Geen dubbele sectie-rollen (reviews / social proof):** op de **landing** maximaal **één** sectie waar primair klantquotes in een raster of metselwerk staan (typisch \`id: "testimonials"\` of één duidelijk alternatief). **Verboden:** een tweede aparte sectie met dezelfde kopintentie (“wat klanten zeggen”, “reviews”, “ervaringen”) + opnieuw een quote-grid; geen grote review-raster in \`features\` **en** daarna weer een volle \`testimonials\`. Kies **één** plek; elders hoogstens één korte quote of een link naar \`#testimonials\`.
+- **Kaart-grids (reviews, USP’s) — randen zonder dubbele naden:** zet **niet** op elke kaart in een **grid** een volledige \`border\` rondom (dat geeft **dubbele** lijnen tussen buren en ziet er rommelig uit bij ongelijke kaarthoogtes). Gebruik **één** patroon: ouder met \`divide-x divide-y divide-*\`, óf per cel alleen \`border-r border-b\` met \`last:border-r-0\` / \`last:border-b-0\` aan de buitenrand, óf \`gap-*\` + lichte schaduw zonder dubbele tussenschotten, óf **één** rand/\`ring-1\` rond het **hele** grid.
+- **Decor-lijnen en kaders:** stapelt geen meerdere dezelfde accent-lijnen (kicker-rail + underline + sectiescheiding + kaartrand) die hetzelfde goud/hairline-motief **herhalen** in één blok. **Geen** zware buitenrand op een kolom **plus** een tweede identieke kader rond dezelfde inhoud (“kader in kader”).
 ${strictLine}${multiPageLine}`;
 }
 
@@ -1736,6 +1775,10 @@ function buildMinimalWebsiteGenerationUserPrompt(
   const psychColorLeadMin = preserve
     ? `In **upgrade-modus met bron-JSON:** kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. `
     : "";
+  const lightSurfacesMin =
+    !preserve && briefingDemandsLightSurfacesPriority(description)
+      ? `\n\n${buildBriefingLightSurfacesMandateMarkdown(description)}\n`
+      : "";
 
   return `Je genereert **één** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + vaste subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**één** one-pager (`sections`)"}. Volg de **briefing**; kies zelf compositie en visuele stijl. **Geen** aparte branche-, designtaal- of variatieblokken in deze opdracht — alleen wat hieronder staat.
 
@@ -1760,7 +1803,7 @@ ${section1}=== KERN (technisch) ===
 
 === 2. THEMA / KLEUR ===
 
-${psychColorLeadMin}Vul \`config.theme\` passend bij de briefing. Laat het palet in de HTML zichtbaar terugkomen. ${preserve ? "" : "Oranje alleen als het inhoudelijk past."}
+${psychColorLeadMin}${lightSurfacesMin}Vul \`config.theme\` passend bij de briefing. Laat het palet in de HTML zichtbaar terugkomen. ${preserve ? "" : "Oranje alleen als het inhoudelijk past."}
 
 === 3. PAGINA → HTML (Tailwind) ===
 ${strictLanding && strictLandingSectionIdsMin ? buildStrictLandingPageComposerMarkdown(strictLandingSectionIdsMin) : ""}

@@ -1,6 +1,6 @@
 /**
- * Sectie-gewijze site-generatie: meerdere Claude-calls met kleinere output, server-side merge,
- * daarna dezelfde finalisatie (postprocess, zelfreview, hero) als de monolithische stream.
+ * Chunked site-generatie: config + **landingspagina in één batch** + marketing-subpagina’s per call,
+ * server-side merge, daarna dezelfde finalisatie als de monolithische stream.
  *
  * Geen job-poll: de client roept sequentieel `…/advance` aan tot `complete`.
  */
@@ -35,6 +35,8 @@ import {
 } from "@/lib/ai/site-generation-phased-job";
 import type { GenerateSitePromptOptions } from "@/lib/ai/generate-site-with-claude";
 import {
+  briefingDemandsLightSurfacesPriority,
+  buildBriefingLightSurfacesMandateMarkdown,
   withContentClaimDiagnostics,
   type GenerationPipelineFeedback,
 } from "@/lib/ai/generate-site-with-claude";
@@ -46,6 +48,7 @@ import { validateStrictLandingPageContract } from "@/lib/ai/validate-strict-land
 import { stripUnsplashUrlsFromGeneratedTailwindPage } from "@/lib/ai/strip-unsplash-urls";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import type { MessageDeltaUsage } from "@anthropic-ai/sdk/resources/messages/messages";
+import { marketingPageNavLabel } from "@/lib/ai/marketing-page-slugs";
 const USER_CONTEXT_MAX_CHARS = 48_000;
 const CONFIG_MAX_TOKENS = 12_000;
 const SECTION_MAX_TOKENS = 36_000;
@@ -53,8 +56,8 @@ const MARKETING_MAX_TOKENS = 32_000;
 const CONTACT_MAX_TOKENS = 32_000;
 
 const configChunkSchema = z.object({ config: masterPromptPageConfigSchema });
-const oneSectionChunkSchema = z.object({
-  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(1),
+const landingBatchChunkSchema = z.object({
+  sections: z.array(claudeTailwindSectionRowSchema).min(1).max(8),
 });
 const marketingSectionsChunkSchema = z.object({
   sections: z.array(claudeTailwindSectionRowSchema).min(1).max(6),
@@ -240,6 +243,10 @@ export async function advanceChunkedSiteGenerationSession(sessionPayload: ChunkS
   const system = p.system ?? "";
   const ctx = sliceUserContext(checkpoint);
   const { businessName, description, designContract, promptOptions } = phase2Input;
+  const lightPaletteChunk =
+    briefingDemandsLightSurfacesPriority(description)
+      ? `\n\n${buildBriefingLightSurfacesMandateMarkdown(description)}`
+      : "";
 
   const next: ChunkSessionPayloadV1 = { ...sessionPayload };
 
@@ -251,7 +258,7 @@ Lever **uitsluitend** geldige JSON met precies één top-level key: \`config\`, 
 Geen markdown-fences. Geen \`sections\`.
 
 === CONTEXT (ingekort mogelijk) ===
-${ctx}`;
+${ctx}${lightPaletteChunk}`;
 
     const { text, stop_reason, usage } = await collectClaudeText(client, {
       model,
@@ -278,33 +285,24 @@ ${ctx}`;
     };
   };
 
-  const navHints = (): string => {
-    if (next.sections.length === 0) return "(nog geen eerdere secties)";
-    return next.sections
-      .map((s) => `- id \`${s.id}\`: ${s.html.replace(/\s+/g, " ").slice(0, 320)}…`)
-      .join("\n");
-  };
-
-  const runLandingOne = async (index: number): Promise<AdvanceChunkedSessionResult> => {
+  /** Eén Claude-call voor alle landingssecties: minder round-trips dan per-sectie. */
+  const runLandingAll = async (): Promise<AdvanceChunkedSessionResult> => {
     if (!next.config) return { ok: false, error: "Intern: config ontbreekt." };
-    const sectionId = next.landingIds[index];
-    if (!sectionId) return { ok: false, error: "Intern: onbekende sectie-index." };
+    const ids = next.landingIds;
+    if (ids.length === 0) return { ok: false, error: "Intern: geen landingssectie-id’s." };
 
+    const idsLine = ids.map((id) => `"${id}"`).join(", ");
     const userText = `Je bent de studio site-generator.
 
 === TAAK ===
 Lever **uitsluitend** JSON van de vorm:
-{"sections":[{"id":"${sectionId}","name":"…","html":"…"}]}
-Met **precies één** object in \`sections\`. Het veld \`id\` moet exact "${sectionId}" zijn (na normalisatie mag het model hetzelfde id gebruiken).
-Gebruik het **zelfde** visuele/thema-palet als deze \`config.theme\`:
+{"sections":[ … ]}
+Met **exact ${ids.length}** object(en) in \`sections\`, in **deze volgorde** met **exact** deze \`id\`'s (na normalisatie hetzelfde id gebruiken): ${idsLine}.
+Elk object: \`id\`, \`name\`, \`html\`. Gebruik het **zelfde** visuele/thema-palet als deze \`config.theme\`:
 ${JSON.stringify(next.config.theme).slice(0, 1200)}
 
-=== NAV / CONTEXT ===
-Eerdere landingssecties (nav-consistentie, hergebruik link-stijl):
-${navHints()}
-
 === MASTER-CONTEXT (ingekort) ===
-${ctx}`;
+${ctx}${lightPaletteChunk}`;
 
     const { text, stop_reason, usage } = await collectClaudeText(client, {
       model,
@@ -313,35 +311,29 @@ ${ctx}`;
       userText,
     });
     await logUsage(model, usage);
-    const value = parseChunkJson(text, stop_reason, `landingssectie ${sectionId}`);
-    const parsed = oneSectionChunkSchema.safeParse(value);
+    const value = parseChunkJson(text, stop_reason, "landingspagina (batch)");
+    const parsed = landingBatchChunkSchema.safeParse(value);
     if (!parsed.success) {
-      return { ok: false, error: `Sectie ${sectionId}: ${parsed.error.message}` };
+      return { ok: false, error: `Landingspagina: ${parsed.error.message}` };
     }
-    const row = parsed.data.sections[0];
-    const rid = row.id?.trim() ?? "";
-    if (rid.toLowerCase() !== sectionId.trim().toLowerCase()) {
+    const rows = parsed.data.sections;
+    if (rows.length !== ids.length) {
       return {
         ok: false,
-        error: `Sectie-id mismatch: verwacht "${sectionId}", model gaf "${row.id ?? "(leeg)"}".`,
+        error: `Landingspagina: verwacht ${ids.length} sectie(s), model gaf ${rows.length}.`,
       };
     }
-    const mapped = rowsToTailwind([row], next.sections.length);
-    next.sections.push(mapped[0]);
-
-    const lastLanding = index >= next.landingIds.length - 1;
-    if (!lastLanding) {
-      next.step = { phase: "landing", index: index + 1 };
-      return {
-        ok: true,
-        complete: false,
-        message: `Landingssectie “${sectionId}” klaar.`,
-        phase: "landing",
-        landingIndex: index + 1,
-        landingTotal: next.landingIds.length,
-        streamingPreview: { sections: next.sections, config: next.config },
-      };
+    for (let i = 0; i < ids.length; i++) {
+      const want = ids[i]!.trim().toLowerCase();
+      const got = rows[i]?.id?.trim().toLowerCase() ?? "";
+      if (got !== want) {
+        return {
+          ok: false,
+          error: `Landingspagina: id op index ${i} moet "${ids[i]}" zijn, model gaf "${rows[i]?.id ?? "(leeg)"}".`,
+        };
+      }
     }
+    next.sections = rowsToTailwind(rows, 0);
 
     if (next.useMarketingMultiPage && next.marketingSlugs.length > 0) {
       next.step = { phase: "marketing", index: 0 };
@@ -382,20 +374,37 @@ ${ctx}`;
     const slug = next.marketingSlugs[slugIndex];
     if (!slug) return { ok: false, error: "Intern: onbekende marketing-index." };
 
+    const pageTitle = marketingPageNavLabel(slug);
+    const otherSlugs = next.marketingSlugs.filter((s) => s !== slug);
+    const crossLinks = [
+      `- Start / home: href="__STUDIO_SITE_BASE__" (of \`/\` binnen de site-shell)`,
+      ...otherSlugs.map(
+        (s) =>
+          `- ${marketingPageNavLabel(s)}: href="__STUDIO_SITE_BASE__/${s}"`,
+      ),
+      `- Contact: href="__STUDIO_CONTACT_PATH__"`,
+    ].join("\n");
+
     const userText = `Je bent de studio site-generator (multipage).
 
-=== TAAK ===
+=== TAAK — SUBPAGINA "${slug}" (${pageTitle}) ===
+Je bouwt **alleen** inhoud voor **deze ene route**: \`__STUDIO_SITE_BASE__/${slug}\` (${pageTitle}).
 Lever **uitsluitend** JSON:
 {"sections":[ … ]}
-waar \`sections\` een **array** is met 1–4 sectie-objecten voor de marketing-subroute \`__STUDIO_SITE_BASE__/${slug}\`.
-Elk object: \`id\`, \`name\`, \`html\`. Gebruik tokens \`__STUDIO_SITE_BASE__\`, \`__STUDIO_CONTACT_PATH__\` in navigatie.
-Herhaal dezelfde merk- en typografie-stijl als de landingspagina.
+waar \`sections\` een **array** is met **1–4** sectie-objecten. Elk object: \`id\`, \`name\`, \`html\`.
 
-=== LANDINGS-NAV (fragment) ===
-${next.sections.map((s) => s.html.replace(/\s+/g, " ").slice(0, 500)).join("\n---\n")}
+**VERBOD (kwaliteit):** Herhaal **niet** de landingspagina als tweede homepage. Plak **geen** volledige hero-/stats-/features-/footer-blokken van de homepage opnieuw als “deze pagina”. De homepage staat al in \`sections\` op de server — deze JSON is **alleen** voor "${slug}" met **eigen** copy en opbouw (FAQ-vragen op /faq, team/verhaal op /over-ons, enz.).
 
-=== CONTEXT ===
-${ctx}`;
+**WEL:** Zelfde merk-**thema** en typografie als hieronder (\`config.theme\`). Eén duidelijke **site-nav** (zelfde links als op de homepage) mag — maar de **hoofdinhoud** moet uniek zijn voor ${pageTitle}.
+
+=== THEMA (consistentie) ===
+${JSON.stringify(next.config.theme).slice(0, 1200)}
+
+=== CROSS-PAGINA-LINKS (alleen href’s — geen homepage-HTML kopiëren) ===
+${crossLinks}
+
+=== CONTEXT (briefing, ingekort) ===
+${ctx}${lightPaletteChunk}`;
 
     const { text, stop_reason, usage } = await collectClaudeText(client, {
       model,
@@ -458,7 +467,7 @@ Minstens één sectie met een **werkend** contactformulier (velden + submit). Ge
 Zelfde \`config.theme\` als landingspagina.
 
 === CONTEXT ===
-${ctx}`;
+${ctx}${lightPaletteChunk}`;
 
     const { text, stop_reason, usage } = await collectClaudeText(client, {
       model,
@@ -652,7 +661,7 @@ ${ctx}`;
       result = await runConfig();
       break;
     case "landing":
-      result = await runLandingOne(next.step.index);
+      result = await runLandingAll();
       break;
     case "marketing":
       result = await runMarketingOne(next.step.index);

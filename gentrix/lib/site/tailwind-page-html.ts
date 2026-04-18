@@ -301,14 +301,18 @@ export const STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS = `@media (max-width: 1023px) {
  * Alpine `x-show` zet inline `display`, waardoor Tailwind responsive `*-hidden` op hetzelfde element verliest:
  * mobiele sheet/drawer blijft zichtbaar op desktop terwijl `lg:hidden` / `xl:hidden` bedoeld is om die te verbergen.
  * Alleen binnen `<header>` — voorkomt dat het mobiele menu op breed scherm “open” blijft staan.
+ *
+ * **Niet** op `html[data-gentrix-studio-mobile="1"]`: daar is het iframe 768–1023px breed (smal venster / drie kolommen)
+ * en verbergt `STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS` al de desktop-nav — als we hier `.md:hidden` forceren,
+ * verdwijnt ook de hamburger (`md:hidden`) en lijkt de navbar weg.
  */
 export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 640px) {
-  html[data-gentrix-studio-iframe="1"] .sm\\:hidden {
+  html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-mobile="1"]) .sm\\:hidden {
     display: none !important;
   }
 }
 @media (min-width: 768px) {
-  html[data-gentrix-studio-iframe="1"] .md\\:hidden {
+  html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-mobile="1"]) .md\\:hidden {
     display: none !important;
   }
 }

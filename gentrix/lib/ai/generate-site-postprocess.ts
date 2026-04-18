@@ -1023,6 +1023,118 @@ function filterGeneratorStudioProductSections(
   return sections.filter((row) => !shouldStripGeneratorTickerOrIntermediateCtaSectionId(row.id));
 }
 
+/** Maximaal zoveel klikbare `tel:` / `wa.me`-ankers per genormaliseerd nummer (rest → `<span>`, zelfde volgorde). */
+const MAX_CLICKABLE_CONTACT_ANCHORS_PER_CANON = 2;
+
+const TEL_OR_WA_ANCHOR_RE = /<a\b[^>]*\bhref\s*=\s*(["'])(tel:[^"']*|https?:\/\/wa\.me\/[^"']+)\1[^>]*>[\s\S]*?<\/a>/gi;
+
+/**
+ * Stabiele sleutel voor dedupe: `tel:` + alleen cijfers, of `wa:` + cijfers uit pad.
+ * Andere href's blijven buiten scope.
+ */
+function canonicalTelOrWaMeHrefKey(hrefRaw: string): string | null {
+  const raw = hrefRaw.trim();
+  if (/^tel:/i.test(raw)) {
+    const digits = raw.slice(raw.indexOf(":") + 1).replace(/\D/g, "");
+    return digits.length >= 8 ? `tel:${digits}` : null;
+  }
+  const m = raw.match(/^https?:\/\/wa\.me\/(\d{6,})/i);
+  return m ? `wa:${m[1]}` : null;
+}
+
+type TelWaAnchorHit = { sectionIndex: number; start: number; end: number; full: string; key: string };
+
+function collectTelWaAnchorHitsInSection(html: string, sectionIndex: number): TelWaAnchorHit[] {
+  const hits: TelWaAnchorHit[] = [];
+  const re = new RegExp(TEL_OR_WA_ANCHOR_RE.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const href = m[2];
+    const key = canonicalTelOrWaMeHrefKey(href);
+    if (!key) continue;
+    hits.push({
+      sectionIndex,
+      start: m.index,
+      end: m.index + m[0].length,
+      full: m[0],
+      key,
+    });
+  }
+  return hits;
+}
+
+/** `<a …href=tel|wa…>` → `<span …>` (geen href/target/rel), zodat dubbele CTA's niet vijf keer klikbaar blijven. */
+function demoteTelOrWaAnchorToSpan(fullAnchor: string): string {
+  return fullAnchor
+    .replace(/^<a\b/i, "<span")
+    .replace(/\s+href\s*=\s*(["'])(?:tel:[^"']*|https?:\/\/wa\.me[^"']*)\1/gi, "")
+    .replace(/\s+target\s*=\s*(["'])[^"']*\1/gi, "")
+    .replace(/\s+rel\s*=\s*(["'])[^"']*\1/gi, "")
+    .replace(/<\/a\s*>/gi, "</span>");
+}
+
+/**
+ * Verwijdert overtollige **klikbare** herhalingen van hetzelfde `tel:`- of `wa.me`-nummer over secties heen.
+ * Houdt de **eerste** en **laatste** link (documentvolgorde: sectie-array, daarna match-volgorde in HTML);
+ * tussenliggende worden naar `<span>` gezet. Geen LLM nodig — deterministisch.
+ */
+export function dedupeExcessTelAndWhatsAppAnchorsAcrossSections(
+  sections: ClaudeTailwindPageOutput["sections"],
+): ClaudeTailwindPageOutput["sections"] {
+  if (sections.length === 0) return sections;
+
+  const orderedHits: TelWaAnchorHit[] = [];
+  for (let i = 0; i < sections.length; i++) {
+    orderedHits.push(...collectTelWaAnchorHitsInSection(sections[i].html, i));
+  }
+  if (orderedHits.length === 0) return sections;
+
+  const byKey = new Map<string, TelWaAnchorHit[]>();
+  for (const h of orderedHits) {
+    const list = byKey.get(h.key);
+    if (list) list.push(h);
+    else byKey.set(h.key, [h]);
+  }
+
+  const demoteKeys = new Set<string>();
+  for (const [key, list] of byKey) {
+    if (list.length > MAX_CLICKABLE_CONTACT_ANCHORS_PER_CANON) demoteKeys.add(key);
+  }
+  if (demoteKeys.size === 0) return sections;
+
+  const demoteHitIdentity = new Set<string>();
+  for (const key of demoteKeys) {
+    const list = byKey.get(key)!;
+    const n = list.length;
+    for (let i = 0; i < n; i++) {
+      if (i === 0 || i === n - 1) continue;
+      const h = list[i];
+      demoteHitIdentity.add(`${h.sectionIndex}:${h.start}:${h.end}`);
+    }
+  }
+
+  const opsBySection = new Map<number, Array<{ start: number; end: number; replacement: string }>>();
+  for (const h of orderedHits) {
+    if (!demoteHitIdentity.has(`${h.sectionIndex}:${h.start}:${h.end}`)) continue;
+    const op = { start: h.start, end: h.end, replacement: demoteTelOrWaAnchorToSpan(h.full) };
+    const arr = opsBySection.get(h.sectionIndex);
+    if (arr) arr.push(op);
+    else opsBySection.set(h.sectionIndex, [op]);
+  }
+
+  return sections.map((row, sectionIndex) => {
+    const ops = opsBySection.get(sectionIndex);
+    if (!ops?.length) return row;
+    let html = row.html;
+    const sorted = [...ops].sort((a, b) => b.start - a.start);
+    for (const op of sorted) {
+      if (op.start < 0 || op.end > html.length || op.start > op.end) continue;
+      html = html.slice(0, op.start) + op.replacement + html.slice(op.end);
+    }
+    return { ...row, html };
+  });
+}
+
 export function postProcessClaudeTailwindPage(
   page: ClaudeTailwindPageOutput,
   options?: PostProcessClaudeTailwindPageOptions,
@@ -1052,7 +1164,9 @@ export function postProcessClaudeTailwindPage(
     return { ...row, html: html3 };
   });
 
-  return { ...page, sections: sectionsLinked };
+  const sectionsDeduped = dedupeExcessTelAndWhatsAppAnchorsAcrossSections(sectionsLinked);
+
+  return { ...page, sections: sectionsDeduped };
 }
 
 const STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG: MasterPromptPageConfig = {
