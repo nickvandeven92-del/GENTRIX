@@ -76,11 +76,11 @@ export function extractJsonObjectString(text: string): string {
   const balanced = sliceBalancedJsonObject(trimmed, start);
   if (balanced) return balanced;
 
-  // Legacy fallback: alleen bruikbaar als er geen `}` in stringwaarden voorkomt vóór het echte einde
-  const end = trimmed.lastIndexOf("}");
-  if (start !== -1 && end > start) {
-    return trimmed.slice(start, end + 1);
-  }
+  /**
+   * Geen `lastIndexOf("}")`-slice: bij site-JSON staan talloze `}` in HTML-strings; dat leverde
+   * syntactisch onzinfragmenten + misleidende parse-fouten op terwijl de stream wél lang was.
+   */
+  if (start !== -1) return trimmed.slice(start);
   return trimmed;
 }
 

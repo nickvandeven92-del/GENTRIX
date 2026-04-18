@@ -1875,7 +1875,7 @@ ${packageBlock}${existingBlock}
 
 === 0. KERN (technisch + kwaliteit) ===
 
-1. Output = **één geldig JSON** volgens §5 — geen andere vorm.
+1. Output = **één geldig JSON** volgens §5 — geen andere vorm. **Geen** markdown-fence (\`\`\` of \`\`\`json): begin direct met \`{\` en sluit af met \`}\` — parsers en streaming verwachten ruwe JSON.
 2. **Balans:** duidelijke hiërarchie en leesbaarheid; \`60-30-10\` is optionele richting, geen wiskunde.
 3. **Mobiel + navigatie:** werkende responsive layout en **precies één** globale navigatie boven de vouw (\`<header>\`/\`<nav>\` — zie §3). **Geen dubbele navbar** met dubbele linksets. Sticky balk, pill of fixed: allemaal oké; ${marketingMultiPage ? "subpagina-links via __STUDIO_SITE_BASE__ (zie §3B); " : ""}landings-\`id\`'s consistent met \`href="#…"\` **alleen binnen dezelfde pagina**; link “Contact” naar \`__STUDIO_CONTACT_PATH__\` ${marketingMultiPage ? "(verplicht token)" : ""}.
 4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? ` + **verplicht** \`marketingPages\` (exact deze keys: ${mpKeysLine || "zie §3B"}) + \`contactSections\` (alleen contact-subroute met formulier)` : ""}.
@@ -2201,9 +2201,13 @@ function finalizeGenerateSiteFromClaudeText(
           ? " Het antwoord werd afgekapt (model outputlimiet). Een site met meerdere marketingpagina’s levert één zeer grote JSON; kortere briefing of compactere copy helpt als dit opnieuw gebeurt."
           : " Het antwoord werd afgekapt (model outputlimiet). Probeer een kortere briefing of minder secties in één run."
         : "";
+    const multipageHint =
+      !truncated && options.useMarketingMultiPage
+        ? " Multipage = één enorm JSON-object (alle subpagina’s + HTML). Bij herhaling: opnieuw proberen, of briefing compacter (minder animatie/secties per pagina) — de promptlengte zegt weinig over de outputgrootte."
+        : "";
     return {
       ok: false,
-      error: `Antwoord is geen geldige JSON.${truncated}`,
+      error: `Antwoord is geen geldige JSON.${truncated}${multipageHint}`,
       rawText: textBody,
     };
   }
