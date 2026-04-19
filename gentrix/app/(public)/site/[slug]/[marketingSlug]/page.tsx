@@ -4,6 +4,7 @@ import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experien
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
+import { resolveMarketingPageKeyForUrlSegment } from "@/lib/site/marketing-path-aliases";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type MarketingSitePageProps = {
@@ -31,11 +32,12 @@ export async function generateMetadata({ params, searchParams }: MarketingSitePa
       ? ({ robots: { index: false, follow: false } } as const)
       : ({} as const);
     const pages = bundle.payload.marketingPages;
-    if (!pages?.[seg]) {
+    const resolvedSeg = resolveMarketingPageKeyForUrlSegment(seg, pages ?? null);
+    if (!resolvedSeg || !pages?.[resolvedSeg]) {
       return { title: "Pagina" };
     }
     const displayName = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
-    const title = `${displayName} · ${formatSlugForDisplay(seg)}`;
+    const title = `${displayName} · ${formatSlugForDisplay(resolvedSeg)}`;
     const base = { title, description: `${displayName} — ${formatSlugForDisplay(seg)}`, ...conceptRobots };
     const fav = bundle.payload.logoSet?.variants.favicon?.trim() ?? "";
     if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
@@ -77,8 +79,14 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
   }
 
   const pages = bundle.payload.marketingPages;
-  if (!pages?.[seg]?.length) {
+  const resolvedSeg = resolveMarketingPageKeyForUrlSegment(seg, pages ?? null);
+  if (!resolvedSeg || !pages?.[resolvedSeg]?.length) {
     redirect(`/site/${encodeURIComponent(slug)}${tq}`);
+  }
+  if (resolvedSeg !== seg) {
+    redirect(
+      `/site/${encodeURIComponent(slug)}/${encodeURIComponent(resolvedSeg)}${tq}`,
+    );
   }
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
@@ -101,7 +109,7 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
         publishedSlug={slug}
         appointmentsEnabled={bundle.appointmentsEnabled}
         webshopEnabled={bundle.webshopEnabled}
-        marketingSubpageKey={seg}
+        marketingSubpageKey={resolvedSeg}
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
       />
     </>

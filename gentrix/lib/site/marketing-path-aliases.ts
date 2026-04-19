@@ -71,3 +71,37 @@ export function buildMarketingSlugSegmentResolutionMap(
 
   return out;
 }
+
+/** Sleutels in `marketingPages` die daadwerkelijk secties hebben. */
+export function marketingPageKeysWithContent(
+  pages: Record<string, unknown> | null | undefined,
+): string[] {
+  if (!pages) return [];
+  return Object.keys(pages).filter((k) => {
+    const v = pages[k];
+    return Array.isArray(v) && v.length > 0;
+  });
+}
+
+/**
+ * URL-padsegment (decoded) → exacte sleutel in `marketingPages`.
+ * Zelfde aliassen als iframe-nav; anders faalt de server-route met redirect naar landing.
+ */
+export function resolveMarketingPageKeyForUrlSegment(
+  urlSegment: string,
+  pages: Record<string, unknown> | null | undefined,
+): string | null {
+  const keys = marketingPageKeysWithContent(pages);
+  if (!keys.length) return null;
+  const t = urlSegment.trim();
+  if (!t) return null;
+  for (const key of keys) {
+    if (key === t) return key;
+  }
+  const mseg = buildMarketingSlugSegmentResolutionMap(keys);
+  const n = normalizeSegment(t);
+  if (!n) return null;
+  const hit = mseg[n];
+  if (hit && keys.includes(hit)) return hit;
+  return null;
+}

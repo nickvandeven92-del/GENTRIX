@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildMarketingSlugSegmentResolutionMap } from "@/lib/site/marketing-path-aliases";
+import {
+  buildMarketingSlugSegmentResolutionMap,
+  resolveMarketingPageKeyForUrlSegment,
+} from "@/lib/site/marketing-path-aliases";
 
 describe("buildMarketingSlugSegmentResolutionMap", () => {
   it("mapt veelgebruikte URL-segmenten naar canonieke marketing-keys", () => {
@@ -21,5 +24,23 @@ describe("buildMarketingSlugSegmentResolutionMap", () => {
     const m = buildMarketingSlugSegmentResolutionMap(["prijzen"]);
     expect(m["wat-wij-doen"]).toBeUndefined();
     expect(m["prijzen"]).toBe("prijzen");
+  });
+});
+
+describe("resolveMarketingPageKeyForUrlSegment", () => {
+  it("lost URL-segmenten op naar canonieke marketingPages-sleutel", () => {
+    const pages = {
+      "over-ons": [{ html: "" }],
+      diensten: [{ html: "" }],
+    };
+    expect(resolveMarketingPageKeyForUrlSegment("overons", pages)).toBe("over-ons");
+    expect(resolveMarketingPageKeyForUrlSegment("about", pages)).toBe("over-ons");
+    expect(resolveMarketingPageKeyForUrlSegment("over-ons", pages)).toBe("over-ons");
+    expect(resolveMarketingPageKeyForUrlSegment("wat-wij-doen", pages)).toBe("diensten");
+  });
+
+  it("retourneert null bij ontbrekende of lege pagina", () => {
+    expect(resolveMarketingPageKeyForUrlSegment("faq", { faq: [] })).toBeNull();
+    expect(resolveMarketingPageKeyForUrlSegment("onbekend", { "over-ons": [{ html: "" }] })).toBeNull();
   });
 });
