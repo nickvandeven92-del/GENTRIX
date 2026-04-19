@@ -22,9 +22,9 @@ export function SiteNav({ site }: { site: GeneratedSite }) {
   const [open, setOpen] = useState(false);
   const nav = site.navigation ?? defaultNav(site);
 
-  // Close menu when viewport size changes (md breakpoint at 768px)
+  // Sluit menu bij resize; zelfde breakpoint als lg: (tablet krijgt hamburger tot 1024px)
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    const mq = window.matchMedia("(min-width: 1024px)");
     const handleChange = () => {
       setOpen(false);
     };
@@ -80,7 +80,7 @@ export function SiteNav({ site }: { site: GeneratedSite }) {
           )}
         </a>
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Hoofdmenu">
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Hoofdmenu">
           {nav.links.map((link) => (
             <a
               key={link.label + link.href}
@@ -102,18 +102,18 @@ export function SiteNav({ site }: { site: GeneratedSite }) {
 
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-lg md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--site-fg)] transition hover:bg-[var(--site-fg)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 lg:hidden"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-label={open ? "Menu sluiten" : "Menu openen"}
         >
-          {open ? <X className="size-6" /> : <Menu className="size-6" />}
+          {open ? <X className="size-6" strokeWidth={2} /> : <Menu className="size-6" strokeWidth={2} />}
         </button>
       </div>
 
       <div
         className={cn(
-          "border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] px-4 py-4 md:hidden",
+          "border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] px-4 py-4 lg:hidden",
           open ? "block" : "hidden",
         )}
       >

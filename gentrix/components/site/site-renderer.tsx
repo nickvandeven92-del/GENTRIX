@@ -43,10 +43,7 @@ export function SiteRenderer({ data, className }: SiteRendererProps) {
   return (
     <div className={className} style={cssVars}>
       <div className="min-h-full bg-[var(--site-bg)] text-[var(--site-fg)] antialiased selection:bg-[var(--site-primary)]/25">
-        {/* SiteNav on mobile only — generated Tailwind sites have their own navbar for desktop */}
-        <div className="md:hidden">
-          <SiteNav site={data} />
-        </div>
+        <SiteNav site={data} />
         <main>
           {sections.map((section) => (
             <SectionBlock key={section.id} section={section} />
