@@ -100,6 +100,15 @@ describe("ai-hero-image-postprocess", () => {
     expect(out).toContain("data-gentrix-ai-hero-img=");
   });
 
+  it("data-section=hero op section: injecteerbaar als id=hero", () => {
+    const html = `<section data-section="hero" class="relative min-h-screen"><p>x</p></section>`;
+    expect(heroSectionOpenTagHasInjectableHeroId(html)).toBe(true);
+    expect(shouldAttemptAiHeroImageForHtml(html)).toBe(true);
+    const out = injectAiHeroImageIntoHeroSectionHtml(html, "https://example.com/d.png");
+    expect(out).not.toBeNull();
+    expect(out).toContain("data-gentrix-ai-hero-img=");
+  });
+
   it("appendPrebakedHeroImageToUserContent plakt URL-blok achter string user content", () => {
     const out = appendPrebakedHeroImageToUserContent("BEGIN", "https://cdn.example.com/hero.png") as string;
     expect(out.startsWith("BEGIN")).toBe(true);

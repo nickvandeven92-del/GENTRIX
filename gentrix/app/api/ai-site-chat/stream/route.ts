@@ -79,12 +79,11 @@ export async function POST(request: Request) {
           });
         }
       },
-      heroPostProcess: bn
-        ? {
-            businessName: bn,
-            subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
-          }
-        : undefined,
+      /** Altijd meesturen: `mergeSiteChatSectionsWithOptionalAiHero` start alleen bij hero-gerichte user-tekst; default merk voor Gemini/OpenAI-prompt. */
+      heroPostProcess: {
+        businessName: bn?.trim() || "Studio",
+        subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
+      },
     },
   );
 

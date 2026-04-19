@@ -163,9 +163,17 @@ export function isAiHeroImagePostProcessEnabled(): boolean {
   return getAiHeroImagePostProcessSkipReason() === null;
 }
 
-function isHeroLikeSection(sec: TailwindSection, _index: number): boolean {
+/**
+ * Wire-sectie voor AI-hero: JSON-`id` is niet altijd `hero` (bv. `section-0`); `sectionName` kan "Hero" zijn
+ * of de HTML bevat `<section id="hero">` op de eerste sectie.
+ */
+function isHeroLikeSection(sec: TailwindSection, index: number): boolean {
   const id = String(sec.id ?? "").toLowerCase();
-  return id === "hero" || id.startsWith("hero");
+  if (id === "hero" || id.startsWith("hero")) return true;
+  const name = sec.sectionName.trim().toLowerCase();
+  if (name === "hero" || name.startsWith("hero")) return true;
+  if (index === 0 && heroSectionOpenTagHasInjectableHeroId(sec.html)) return true;
+  return false;
 }
 
 function heroHtmlHasVideo(html: string): boolean {
@@ -186,12 +194,11 @@ function heroHtmlHasRealImage(html: string): boolean {
 }
 
 /**
- * Alleen `id="hero"` / `id='hero'` op de **buitenste `<section>`** is injecteerbaar.
- * Buiten die match: geen upstream hero-call — anders betaal je wel en faalt `injectAiHeroImageIntoHeroSectionHtml`
- * (bijv. `id="hero"` alleen op een inner `<div>`).
+ * De **buitenste** hero-`<section>` moet `id="hero"` of `data-section="hero"` (hoofdletters via `/i`) hebben.
+ * Zonder match: geen upstream hero-call / geen inject.
  */
 export function heroSectionOpenTagHasInjectableHeroId(heroHtml: string): boolean {
-  return /<section[^>]*\bid\s*=\s*["']hero["'][^>]*>/i.test(heroHtml);
+  return /<section[^>]*\b(?:id|data-section)\s*=\s*["']hero["'][^>]*>/i.test(heroHtml);
 }
 
 export function shouldAttemptAiHeroImageForHtml(heroHtml: string): boolean {
@@ -560,7 +567,7 @@ function mutateFirstDivOpeningStripGradient(divOpen: string): string {
  */
 function tryInjectAiHeroIntoSplitGridFirstColumn(html: string, imgTag: string): string | null {
   const out = html.replace(
-    /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>(\s*)(<div)(\s[^>]*>)/i,
+    /<section(\s[^>]*?\b(?:id|data-section)\s*=\s*["']hero["'][^>]*?)>(\s*)(<div)(\s[^>]*>)/i,
     (full, secAttrs: string, ws: string, divLt: string, divRest: string) => {
       if (!/\b(?:(?:md|lg):)?grid-cols-2\b/i.test(secAttrs)) return full;
       const newDivOpen = mutateFirstDivOpeningStripGradient(`${divLt}${divRest}`);
@@ -585,7 +592,7 @@ export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUr
   if (splitFirst != null) return splitFirst;
 
   const out = html.replace(
-    /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>/i,
+    /<section(\s[^>]*?\b(?:id|data-section)\s*=\s*["']hero["'][^>]*?)>/i,
     (_full, attrs: string) => {
       let nextAttrs = String(attrs);
       if (/\bclass=["']/i.test(nextAttrs)) {

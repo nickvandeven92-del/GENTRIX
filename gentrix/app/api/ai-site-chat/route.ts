@@ -55,12 +55,10 @@ export async function POST(request: Request) {
         appointmentsEnabled: parsed.data.appointmentsEnabled,
         webshopEnabled: parsed.data.webshopEnabled,
       },
-      bn
-        ? {
-            businessName: bn,
-            subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
-          }
-        : undefined,
+      {
+        businessName: bn?.trim() || "Studio",
+        subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
+      },
     );
     if (!result.ok) {
       return NextResponse.json(
