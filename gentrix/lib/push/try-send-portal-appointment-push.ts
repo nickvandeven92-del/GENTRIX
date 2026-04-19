@@ -74,7 +74,7 @@ export async function trySendPortalAppointmentPushNotifications(params: {
 
   const slug = (clientRow as { subfolder_slug?: string } | null)?.subfolder_slug?.trim();
   const base = getPublicAppUrl().replace(/\/$/, "");
-  const openUrl = slug ? `${base}/portal/${encodeURIComponent(slug)}/afspraken` : `${base}/home`;
+  const openUrl = slug ? `${base}/portal/${encodeURIComponent(slug)}/boekingen?tab=afspraken` : `${base}/home`;
 
   const when = formatWhenNl(params.startsAt, params.endsAt);
   const booker = params.bookerName?.trim();

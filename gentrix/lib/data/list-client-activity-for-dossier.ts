@@ -194,7 +194,7 @@ export async function listClientActivityForDossier(
     .limit(40);
 
   if (!apptErr && appts?.length) {
-    const apptPortalHref = slug ? `/portal/${encodeURIComponent(slug)}/afspraken` : undefined;
+    const apptPortalHref = slug ? `/portal/${encodeURIComponent(slug)}/boekingen?tab=afspraken` : undefined;
     for (const a of appts as ApptRow[]) {
       const start = new Date(a.starts_at);
       const when = Number.isNaN(start.getTime()) ? a.starts_at : start.toLocaleString("nl-NL", { dateStyle: "short", timeStyle: "short" });

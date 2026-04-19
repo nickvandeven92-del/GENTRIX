@@ -50,8 +50,8 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
   const knownIdsRef = useRef<Set<string>>(new Set());
   const [notice, setNotice] = useState<ApptBrief[] | null>(null);
 
-  const onAfsprakenPage =
-    typeof pathname === "string" && pathname.includes("/portal/") && pathname.endsWith("/afspraken");
+  const onBookingsHub =
+    typeof pathname === "string" && pathname.includes("/portal/") && pathname.includes("/boekingen");
 
   const poll = useCallback(async () => {
     if (!appointmentsEnabled) return;
@@ -86,7 +86,7 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
         knownIdsRef.current.add(a.id);
       }
 
-      if (onAfsprakenPage) return;
+      if (onBookingsHub) return;
 
       const mapped: ApptBrief[] = fresh.map((a) => ({
         id: a.id,
@@ -105,7 +105,7 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
     } catch {
       /* ignore */
     }
-  }, [appointmentsEnabled, base, onAfsprakenPage]);
+  }, [appointmentsEnabled, base, onBookingsHub]);
 
   useEffect(() => {
     seededRef.current = false;
@@ -175,11 +175,11 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
             Sluiten
           </button>
           <Link
-            href={`/portal/${enc}/afspraken`}
+            href={`/portal/${enc}/boekingen?tab=afspraken`}
             onClick={() => setNotice(null)}
             className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
           >
-            Naar afspraken
+            Naar boekingen
           </Link>
         </div>
       </div>

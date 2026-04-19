@@ -213,7 +213,7 @@ export async function getPortalDashboardSnapshot(
           id: nextAppt.id,
           title: nextAppt.title?.trim() || "Afspraak",
           whenLabel: formatAppointmentWhen(nextAppt.starts_at, nextAppt.ends_at),
-          href: `${base}/afspraken`,
+          href: `${base}/boekingen?tab=afspraken`,
         }
       : null;
 

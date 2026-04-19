@@ -33,7 +33,7 @@ export function PortalDashboard({
   const links: { href: string; label: string; icon: typeof FileText; nativeSite?: boolean }[] = [
     { href: base, label: "Dashboard", icon: LayoutDashboard },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),
-    ...(appointmentsEnabled ? [{ href: `${base}/afspraken`, label: "Afspraken", icon: Calendar }] : []),
+    ...(appointmentsEnabled ? [{ href: `${base}/boekingen`, label: "Boekingen", icon: Calendar }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account", icon: CreditCard }] : []),
     { href: sitePublicHref, label: "Publieke site", icon: ExternalLink, nativeSite: true },
   ];
@@ -103,7 +103,7 @@ export function PortalDashboard({
               </p>
             ) : null}
             <Link
-              href={`${base}/afspraken#online-boekagenda`}
+              href={`${base}/boekingen?tab=afspraken#online-boekagenda`}
               className="mt-2 inline-block text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
             >
               Werkdagen &amp; planning →

@@ -25,14 +25,7 @@ export function PortalNav({
     { href: base, label: "Dashboard" },
     { href: `${base}/website`, label: "Website" },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen" }] : []),
-    ...(appointmentsEnabled
-      ? [
-          { href: `${base}/afspraken`, label: "Afspraken" },
-          { href: `${base}/behandelingen`, label: "Behandelingen" },
-          { href: `${base}/medewerkers`, label: "Medewerkers" },
-          { href: `${base}/planning`, label: "Planning" },
-        ]
-      : []),
+    ...(appointmentsEnabled ? [{ href: `${base}/boekingen`, label: "Boekingen" }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account" }] : []),
   ];
 
