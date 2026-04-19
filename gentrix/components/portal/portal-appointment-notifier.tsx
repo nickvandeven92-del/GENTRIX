@@ -39,7 +39,7 @@ const POLL_MS = 30_000;
 
 /**
  * Toont een pop-up wanneer er een nieuwe afspraak bijkomt (o.a. via /boek/…)
- * terwijl het portaal open staat.
+ * terwijl het portaal of de agenda-hub open staat.
  */
 export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) {
   const pathname = usePathname();
@@ -51,7 +51,9 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
   const [notice, setNotice] = useState<ApptBrief[] | null>(null);
 
   const onBookingsHub =
-    typeof pathname === "string" && pathname.includes("/portal/") && pathname.includes("/boekingen");
+    typeof pathname === "string" &&
+    (pathname.includes("/agenda/") ||
+      (pathname.includes("/portal/") && pathname.includes("/boekingen")));
 
   const poll = useCallback(async () => {
     if (!appointmentsEnabled) return;
@@ -175,11 +177,11 @@ export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) 
             Sluiten
           </button>
           <Link
-            href={`/portal/${enc}/boekingen?tab=afspraken`}
+            href={`/agenda/${enc}?tab=afspraken`}
             onClick={() => setNotice(null)}
             className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
           >
-            Naar boekingen
+            Naar agenda
           </Link>
         </div>
       </div>

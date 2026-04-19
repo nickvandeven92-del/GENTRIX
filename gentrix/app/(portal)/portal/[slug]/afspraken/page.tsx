@@ -6,5 +6,5 @@ type Props = { params: Promise<{ slug: string }> };
 export default async function PortalAppointmentsRedirectPage({ params }: Props) {
   const { slug } = await params;
   const enc = encodeURIComponent(decodeURIComponent(slug));
-  redirect(`/portal/${enc}/boekingen?tab=afspraken`);
+  redirect(`/agenda/${enc}?tab=afspraken`);
 }

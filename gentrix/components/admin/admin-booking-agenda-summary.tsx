@@ -62,7 +62,7 @@ export async function AdminBookingAgendaSummary({ clientId, subfolderSlug, booki
       <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
         Portaal (klant):{" "}
         <Link
-          href={`/portal/${enc}/boekingen?tab=afspraken#online-boekagenda`}
+          href={`/agenda/${enc}?tab=afspraken`}
           className="font-medium text-violet-800 underline underline-offset-2 dark:text-violet-300"
         >
           Afspraken → Online boekagenda

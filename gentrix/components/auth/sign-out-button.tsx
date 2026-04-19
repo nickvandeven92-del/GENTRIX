@@ -9,15 +9,19 @@ type SignOutButtonProps = {
   /** `header`: compact voor topbar. */
   variant?: "sidebar" | "header";
   className?: string;
+  /** Na login opnieuw naar deze route (bijv. `/agenda/mosham`). */
+  redirectNext?: string;
 };
 
-export function SignOutButton({ variant = "sidebar", className }: SignOutButtonProps) {
+export function SignOutButton({ variant = "sidebar", className, redirectNext }: SignOutButtonProps) {
   const router = useRouter();
 
   async function signOut() {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    const next = redirectNext?.trim();
+    const login = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
+    router.push(login);
     router.refresh();
   }
 

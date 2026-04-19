@@ -25,7 +25,7 @@ export function PortalNav({
     { href: base, label: "Dashboard" },
     { href: `${base}/website`, label: "Website" },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen" }] : []),
-    ...(appointmentsEnabled ? [{ href: `${base}/boekingen`, label: "Boekingen" }] : []),
+    ...(appointmentsEnabled ? [{ href: `/agenda/${enc}`, label: "Agenda" }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account" }] : []),
   ];
 

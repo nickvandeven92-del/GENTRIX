@@ -20,6 +20,7 @@ export function maybeRewritePortalHost(request: NextRequest): NextResponse | nul
   if (pathname === "/login" || pathname.startsWith("/login/")) return null;
   if (pathname === "/p" || pathname.startsWith("/p/")) return null;
   if (pathname.startsWith("/site/") || pathname === "/site") return null;
+  if (pathname.startsWith("/agenda/") || pathname === "/agenda") return null;
   if (pathname.startsWith("/boek/") || pathname.startsWith("/winkel/") || pathname.startsWith("/preview/")) {
     return null;
   }
