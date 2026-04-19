@@ -601,6 +601,8 @@ export function GeneratorForm({
       if (slugFromUrl && isValidSubfolderSlug(slugFromUrl)) {
         body.subfolder_slug = slugFromUrl;
       }
+      body.appointments_enabled = appointmentsEnabled;
+      body.webshop_enabled = webshopEnabled;
       const refFromBriefing = extractFirstHttpUrl(prompt);
       if (refFromBriefing) {
         body.reference_style_url = refFromBriefing;

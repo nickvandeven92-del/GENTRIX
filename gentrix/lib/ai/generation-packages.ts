@@ -69,39 +69,83 @@ const PORTAL_MARKUP_RULES = `=== ZAKELIJK PORTAAL — MARKERING (verplicht) ===
 - Knoppen en nav-links naar het echte portaal (achter login op deze app): gebruik **exact** \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — géén \`#\` of verzonnen URL voor het portaal-pad.
 - Blijft **statische** mock; geen \`<script>\`, geen echte login-flow in HTML.`;
 
-const MARKETING_LINKS_COPY = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties **van dezelfde pagina**), \`mailto:\`, \`tel:\`, \`https://…\`, of **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): marketing-subroutes \`href="__STUDIO_SITE_BASE__/<slug>"\` (slug komt overeen met de keys in \`marketingPages\` voor deze run, bv. \`wat-wij-doen\`, \`collectie\`, \`faq\`) wanneer de site \`marketingPages\` gebruikt, portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — **geen** \`href="#"\` of lege links.
-- **Geen dubbele conversie-UI:** zelfde twee hoofdknoppen (bijv. shop/assortiment + contact) **niet** opnieuw als tweede full-bleed “eind-hero” vlak boven de footer; **geen** aparte \`id: "gallery"\` voor productrasters als het om verkoop/webshop gaat — dat is rommelig naast de echte shop-module.
-- **Boeking & webshop (publieke marketing, nieuwe generatie):** lever **geen** sectie \`id: "booking"\` of \`id: "shop"\`; **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`, **geen** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\`, en **geen** \`${STUDIO_DATA_ATTR_MODULE}\` / \`${STUDIO_DATA_ATTR_FEATURE_ZONE}\` / \`${STUDIO_DATA_ATTR_NAV_MODULE}\` / \`${STUDIO_DATA_ATTR_MODULE_CTA}\` voor appointments of webshop — die modules schakelt de beheerder aan en voegt de vaste blokken toe **na** generatie. Vermijd dus ook copy als “boek nu” met een nep-URL; gebruik desnoods neutrale CTA’s (\`#contact\`, \`mailto:\`, \`tel:\`) tot de module live staat.
-- **Upgrade met bron-JSON:** als de bron al booking/shop-placeholders of module-attrs bevat, **kopieer** die markup **ongewijzigd** op de betreffende rijen (geen extra dubbele booking/shop-secties toevoegen).
-- **Verboden op publieke marketing:** login, registratie, wachtwoordvelden, “mijn account” als werkende app — wel mag je **naar** het portaal linken met het portaal-placeholder.
-- **Copy:** professioneel en menselijk; **vermijd** woorden als “AI”, “gegenereerd”, “prompt” of “chatbot-engine” in zichtbare tekst voor bezoekers — en **nooit** de ruwe placeholder-tokens als leesbare tekst op de pagina.`;
+function buildMarketingLinksCopy(appointmentsEnabled: boolean, webshopEnabled: boolean): string {
+  const base = `- **Links & id’s:** elke \`<a>\` heeft een **werkend** doel: intern \`#sectie-id\` (komt overeen met \`id\` op secties **van dezelfde pagina**), \`mailto:\`, \`tel:\`, \`https://…\`, of **interne pad-placeholders** (alleen in \`href\`, nooit als zichtbare tekst): marketing-subroutes \`href="__STUDIO_SITE_BASE__/<slug>"\` (slug komt overeen met de keys in \`marketingPages\` voor deze run, bv. \`wat-wij-doen\`, \`collectie\`, \`faq\`) wanneer de site \`marketingPages\` gebruikt, portaal \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` — **geen** \`href="#"\` of lege links.
+- **Geen dubbele conversie-UI:** zelfde twee hoofdknoppen (bijv. shop/assortiment + contact) **niet** opnieuw als tweede full-bleed “eind-hero” vlak boven de footer; **geen** aparte \`id: "gallery"\` voor productrasters als het om verkoop/webshop gaat — dat is rommelig naast de echte shop-module.`;
 
-/** Vrije generatie: sectielijst in STUDIO STRUCTUUR is exhaustief. */
-const MARKETING_CORE_FREE = `**SITE STUDIO (één product — geen tier-pakketten)**
+  const modulesOff = `- **Boeking & webshop (publieke marketing — CRM-modules staan in deze run UIT):** lever **geen** sectie \`id: "booking"\` of \`id: "shop"\`; **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\`, **geen** \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\`, en **geen** \`${STUDIO_DATA_ATTR_MODULE}\` / \`${STUDIO_DATA_ATTR_FEATURE_ZONE}\` / \`${STUDIO_DATA_ATTR_NAV_MODULE}\` / \`${STUDIO_DATA_ATTR_MODULE_CTA}\` voor appointments of webshop — die schakelt de beheerder later in en voegt vaste blokken toe **na** generatie. Gebruik desnoods neutrale CTA’s (\`#contact\`, \`mailto:\`, \`tel:\`) voor “neem contact op”.`;
+
+  const parts: string[] = [base];
+  if (!appointmentsEnabled && !webshopEnabled) {
+    parts.push(modulesOff);
+  } else {
+    parts.push(
+      `- **Boeking & webshop (publieke marketing — CRM-modules in deze run):**`,
+      ...(appointmentsEnabled
+        ? [
+            `  - **Online afspraken AAN:** zet op alle relevante primaire conversieplekken (vaste header/topnav, mobiel menu, **hero** wanneer de briefing reserveren/afspraken benadrukt, footer) minstens **één** duidelijke knop of link (bv. “Reserveer”, “Maak een afspraak”, “Boek online”) met \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` — **exact dit token**, geen \`#contact\`, geen verzonnen \`/boek/…\`-pad. Secundair “Bel / WhatsApp” mag \`tel:\` of \`https://wa.me/…\` blijven; de **hoofd**-reserveeractie gebruikt het boekings-token.`,
+          ]
+        : []),
+      ...(webshopEnabled
+        ? [
+            `  - **Webshop AAN:** minstens **één** duidelijke “winkel / bestellen / shop”-link in nav en/of hero en/of footer met \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` — **exact dit token**, geen nep-\`/winkel/…\`-pad.`,
+          ]
+        : []),
+      `  - **Geen** ingesloten agenda-widget, geen booking-\`<iframe>\`, geen checkout-\`<form>\` op de marketingpagina dat naar een verzonnen endpoint post. **Geen** rijke marketingsectie \`id: "booking"\` of \`id: "shop"\` met echte module-UI — het platform voegt minimaal canonieke ankertellingen toe bij opslaan; jij levert zichtbare **juiste \`href\`-placeholders**.`,
+      `  - **Handmatig** \`${STUDIO_DATA_ATTR_MODULE}\` / \`${STUDIO_DATA_ATTR_FEATURE_ZONE}\` / \`${STUDIO_DATA_ATTR_NAV_MODULE}\` / \`${STUDIO_DATA_ATTR_MODULE_CTA}\` **niet** toevoegen tenzij de **bron-JSON** bij upgrade die al had — het platform tagt \`href\`-placeholders bij publicatie.`,
+    );
+  }
+
+  parts.push(
+    `- **Upgrade met bron-JSON:** als de bron al booking/shop-placeholders of module-attrs bevat, **kopieer** die markup **ongewijzigd** op de betreffende rijen (geen extra dubbele booking/shop-secties toevoegen).`,
+    `- **Verboden op publieke marketing:** login, registratie, wachtwoordvelden, “mijn account” als werkende app — wel mag je **naar** het portaal linken met het portaal-placeholder.`,
+    `- **Copy:** professioneel en menselijk; **vermijd** woorden als “AI”, “gegenereerd”, “prompt” of “chatbot-engine” in zichtbare tekst voor bezoekers — en **nooit** de ruwe placeholder-tokens als leesbare tekst op de pagina.`,
+  );
+
+  return parts.join("\n");
+}
+
+function buildMarketingCoreFree(marketingLinks: string): string {
+  return `**SITE STUDIO (één product — geen tier-pakketten)**
 
 **Structuur (vrije generatie):** De sectie-\`id\`'s in \`_site_config.sections\` (zelfde volgorde als in de studio-sectielijst / §5) zijn **exhaustief**. Je \`sections\`-array bevat **uitsluitend** die \`id\`'s — **geen** extra marketingsecties, **geen** verzonnen \`id\`'s. FAQ, testimonials en pricing **alleen** als het bijbehorende \`id\` in die lijst staat. Vul elk blok rijk uit.
 
-${MARKETING_LINKS_COPY}`;
+${marketingLinks}`;
+}
 
-/** Upgrade: gemergde lijst = bron + geplande uitbreiding; bronrijen eerst ongewijzigd (zie ook §1). */
-const MARKETING_CORE_UPGRADE = `**SITE STUDIO (één product — geen tier-pakketten)**
+function buildMarketingCoreUpgrade(marketingLinks: string): string {
+  return `**SITE STUDIO (één product — geen tier-pakketten)**
 
 **Structuur (upgrade — prioriteit, onverbiddelijk):**
 1. **Bron eerst:** Alle secties uit de bron-JSON blijven staan: **zelfde** \`id\`, **zelfde** \`html\`, **zelfde onderlinge volgorde** van die rijen als in de bron (zie §1).
 2. **Gemergde lijst = enige waarheid:** \`_site_config.sections\` in dit bericht is de **gemergde** lijst (bestaande site + geplande id's uit de interpreter). Elke marketingsectie in je output heeft een \`id\` dat **in precies die lijst** voorkomt.
 3. **Nieuwe rijen:** Voeg **alleen** \`sections\`-rijen toe voor \`id\`'s die **wel** in de gemergde lijst staan en **nog niet** in de bron-JSON, en **alleen** als de briefing of upgrade-opdracht dat **expliciet** verlangt. **Verboden:** elk \`id\` buiten de gemergde lijst; marketingsecties toevoegen “op gevoel”.
 
-${MARKETING_LINKS_COPY}`;
+${marketingLinks}`;
+}
 
-const PORTAL_AND_MOCKS = `${PORTAL_MARKUP_RULES}
+function buildPortalAndMocks(appointmentsEnabled: boolean, webshopEnabled: boolean): string {
+  const bookingPortalLine = appointmentsEnabled
+    ? `  - **Boeken / afspraken (ondernemer-mock):** statische UI in portaal-sectie mag. Op de **publieke** marketingpagina: **geen** volwaardige \`id: "booking"\`-sectie met formulier of widget; **wel** reserveer-/boek-CTA’s met exact \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` zoals in het blok “Boeking & webshop” hierboven. Geen nep-formulier op de marketingpagina dat data post.`
+    : `  - **Boeken / afspraken (ondernemer-mock):** statische UI in portaal-sectie mag; op de **publieke** marketingpagina **geen** \`id: "booking"\` en **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` in nieuwe builds wanneer de module uit staat (zie CRM-blok). Geen nep-formulier op de marketingpagina dat data post.`;
+
+  const shopPortalNote =
+    webshopEnabled && !appointmentsEnabled
+      ? `  - **Webshop (ondernemer-mock):** statische UI in portaal-sectie mag; op de **publieke** marketingpagina **geen** \`id: "shop"\` met checkout — gebruik \`href="${STUDIO_SHOP_PATH_PLACEHOLDER}"\` voor shop-links zoals in het CRM-blok.`
+      : webshopEnabled && appointmentsEnabled
+        ? `  - **Webshop (ondernemer-mock):** zelfde scheiding als booking: publiek = placeholders in nav/hero/footer; geen echte checkout-HTML op de marketingpagina.`
+        : "";
+
+  return `${PORTAL_MARKUP_RULES}
 
 - Naast de **publieke** pagina, voeg waar het de briefing ondersteunt **portaal-gemarkeerde** secties toe (\`data-studio-visibility="portal"\`):
   - **Zakelijk portaal mock:** facturen/overzicht/documenten (kaarten, placeholders).
-  - **Boeken / afspraken (ondernemer-mock):** statische UI in portaal-sectie mag; op de **publieke** marketingpagina **geen** \`id: "booking"\` en **geen** \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` in nieuwe builds (beheerder voegt het vaste blok + toggles later toe). Geen nep-formulier op de marketingpagina dat data post.
+${bookingPortalLine}${shopPortalNote ? `\n${shopPortalNote}` : ""}
   - **Klant-dashboard mock** (“Mijn afspraken”, placeholders) waar passend.
 - Op de **publieke** marketingpagina: **één** link naar het portaal met \`href="${STUDIO_PORTAL_PATH_PLACEHOLDER}"\` (bv. “Portaal”, “Zakelijk portaal” of “Inloggen ondernemers”) — **uitsluitend in de footer**, bij de andere footer-navigatielinks (zelfde rij of linkgroep als Diensten / FAQ / Contact). **Verboden in header/topnav:** geen portaal-link in de primaire navigatiebalk of mobiele menu-header — dat is voor bezoekers onnodig zichtbaar; de eigenaar vindt het portaal in de footer. **Verboden:** geïsoleerd helemaal rechtsonder naast kleine copyright-/signature-tekst; **verboden:** één doorlopende zichtbare zin als \`Zakelijk portaal by GENTRIX\` — de studio voegt een aparte **By GENTRIX**-signatuur toe; jij levert alleen de portaal-linktekst + \`href\`.
 - Publieke nav: **geen** volledige dashboard-HTML buiten de gemarkeerde portal-secties.
 - **Verboden:** werkende backend, database-koppelingen in HTML, \`<script>\` voor echte auth.`;
+}
 
 const BRIEFING_EXTRAS_FREE = `=== MAATWERK UIT BRIEFING (aanvullend) ===
 - Gebruik de **bedrijfsomschrijving/briefing** voor tone of voice, copy, nadruk, sectoren en integratie-placeholders **binnen** de vaste sectie-\`id\`'s — **geen** structurele uitbreiding: **geen** nieuwe marketingsectie-\`id\`'s buiten \`_site_config.sections\`.
@@ -118,6 +162,13 @@ const BRIEFING_EXTRAS_UPGRADE = `=== MAATWERK UIT BRIEFING (aanvullend) ===
 export type GetGenerationPackagePromptBlockOptions = {
   /** `true` = upgrade / behoud lay-out: gemergde sectielijst + bron-eerst-regels. */
   preserveLayoutUpgrade?: boolean;
+  /**
+   * `true` = model moet `__STUDIO_BOOKING_PATH__` op reserveer-/boek-CTA’s zetten (studio/CRM).
+   * Standaard `false`/`undefined` = oude gedrag (geen boekingsplaceholder in nieuwe generatie).
+   */
+  appointmentsEnabled?: boolean;
+  /** `true` = idem voor `__STUDIO_SHOP_PATH__`. */
+  webshopEnabled?: boolean;
 };
 
 /** Volledige §0B-blok voor Claude (voorheen samengevoegd uit alle pakketten). */
@@ -130,11 +181,15 @@ export function getGenerationPackagePromptBlock(
   options?: GetGenerationPackagePromptBlockOptions,
 ): string {
   const preserve = Boolean(options?.preserveLayoutUpgrade);
-  const marketing = preserve ? MARKETING_CORE_UPGRADE : MARKETING_CORE_FREE;
+  const appointmentsEnabled = options?.appointmentsEnabled === true;
+  const webshopEnabled = options?.webshopEnabled === true;
+  const marketingLinks = buildMarketingLinksCopy(appointmentsEnabled, webshopEnabled);
+  const marketing = preserve ? buildMarketingCoreUpgrade(marketingLinks) : buildMarketingCoreFree(marketingLinks);
+  const portalBlock = buildPortalAndMocks(appointmentsEnabled, webshopEnabled);
   const briefing = preserve ? BRIEFING_EXTRAS_UPGRADE : BRIEFING_EXTRAS_FREE;
   return `${marketing}
 
-${PORTAL_AND_MOCKS}
+${portalBlock}
 
 ${briefing}
 

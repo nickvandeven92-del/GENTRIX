@@ -9,7 +9,10 @@ import {
   filterSectionsForPortalOnly,
   filterSectionsForPublicSite,
 } from "@/lib/site/studio-section-visibility";
-import type { ContactSubpageNavScriptInput } from "@/lib/site/tailwind-contact-subpage";
+import {
+  type ContactSubpageNavScriptInput,
+  publicSiteIframeDocumentPathname,
+} from "@/lib/site/tailwind-contact-subpage";
 import { PublishedTailwindAssets } from "@/components/site/published-tailwind-assets";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { PublicSitePageSkeleton } from "@/components/site/public-site-page-skeleton";
@@ -80,6 +83,11 @@ export function PublicPublishedTailwind({
     [visibility, sections],
   );
 
+  const iframeDocumentPathname = useMemo(
+    () => publicSiteIframeDocumentPathname(publishedSlug, contactSubpageNavBase ?? undefined),
+    [publishedSlug, contactSubpageNavBase],
+  );
+
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,6 +115,7 @@ export function PublicPublishedTailwind({
           compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
           previewScriptOrigin: window.location.origin,
           navBrandLabel: navBrandLabel?.trim() || undefined,
+          iframeDocumentPathname,
           ...(contactSubpageNav ? { contactSubpageNav } : {}),
         });
         if (typeof window !== "undefined") {
@@ -147,6 +156,7 @@ export function PublicPublishedTailwind({
     contactSubpageNavBase,
     draftPublicPreviewToken,
     navBrandLabel,
+    iframeDocumentPathname,
   ]);
 
   const iframeStyle: CSSProperties = embedded

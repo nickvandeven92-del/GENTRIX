@@ -28,6 +28,12 @@ export const generateSiteRequestBodySchema = z.object({
    * Weglaten = server kiest (service-default of retail-detectie).
    */
   marketing_page_slugs: z.array(z.string().min(2).max(48)).min(1).max(8).optional(),
+  /**
+   * Optioneel: CRM-modules voor de §0B-prompt (boek-/shop-links in HTML).
+   * Wordt genegeerd wanneer `subfolder_slug` naar een bestaande klant wijst — dan leest de server CRM.
+   */
+  appointments_enabled: z.boolean().optional(),
+  webshop_enabled: z.boolean().optional(),
   /** Optioneel: publieke http(s)-URL; server haalt HTML op als stijl-/structuurhint (geen pixel-perfect kopie). */
   reference_style_url: z.preprocess((v) => {
     if (v == null) return undefined;

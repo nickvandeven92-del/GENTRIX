@@ -18,6 +18,7 @@ import {
   tryAppendClaudeActivityJournal,
 } from "@/lib/ai/claude-activity-journal";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
+import { resolveGenerateSiteModuleFlags } from "@/lib/api/resolve-generate-site-module-flags";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
@@ -339,6 +340,8 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     subfolder_slug?: string;
     generation_preset_ids?: string[];
     layout_archetypes?: string[];
+    appointments_enabled?: boolean;
+    webshop_enabled?: boolean;
   };
 
   let businessName = String(req.businessName ?? "").trim();
@@ -361,6 +364,11 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
   const briefingReferenceImages = req.briefingReferenceImages ?? [];
   const referenceStyleUrl = req.reference_style_url?.trim();
   const slugForStorage = req.subfolder_slug?.trim();
+  const moduleFlags = await resolveGenerateSiteModuleFlags({
+    subfolder_slug: slugForStorage,
+    appointments_enabled: req.appointments_enabled,
+    webshop_enabled: req.webshop_enabled,
+  });
   const promptOpts: GenerateSitePromptOptions = {
     ...(slugForStorage && isValidSubfolderSlug(slugForStorage)
       ? { siteStorageSubfolderSlug: slugForStorage }
@@ -369,6 +377,8 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
     ...(req.marketing_page_slugs?.length ? { marketingPageSlugs: req.marketing_page_slugs } : {}),
+    ...(moduleFlags.appointmentsEnabled ? { appointmentsEnabled: true } : {}),
+    ...(moduleFlags.webshopEnabled ? { webshopEnabled: true } : {}),
   };
   const hasPromptOpts = Object.keys(promptOpts).length > 0;
 

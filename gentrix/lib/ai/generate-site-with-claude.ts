@@ -986,6 +986,20 @@ function buildUpgradeMergeSection(): string {
 - Als er **geen** bestaande JSON in de prompt staat: bouw de marketingpagina compact volgens de briefing, maar **zonder** "alles opnieuw verzinnen" ??? focus op **toevoegen** van gevraagde secties; varieer niet gratuit t.o.v. de beschreven huidige site.`;
 }
 
+function buildUpgradeCrmModuleLinksHint(appointmentsEnabled: boolean, webshopEnabled: boolean): string {
+  if (!appointmentsEnabled && !webshopEnabled) return "";
+  const hrefLine =
+    appointmentsEnabled && webshopEnabled
+      ? `- **Minimale href-aanpassingen:** zet boek-/reserveerlinks op exact \`__STUDIO_BOOKING_PATH__\` en shop-/bestel-links op exact \`__STUDIO_SHOP_PATH__\` volgens ??0B. Behoud Tailwind en lay-out van de omringende \`html\` zoveel mogelijk.`
+      : appointmentsEnabled
+        ? `- **Minimale href-aanpassingen:** zet boek-/reserveerlinks op exact \`__STUDIO_BOOKING_PATH__\` volgens ??0B. Behoud Tailwind en lay-out van de omringende \`html\` zoveel mogelijk.`
+        : `- **Minimale href-aanpassingen:** zet shop-/bestel-links op exact \`__STUDIO_SHOP_PATH__\` volgens ??0B. Behoud Tailwind en lay-out van de omringende \`html\` zoveel mogelijk.`;
+  return `=== 1B. UPGRADE ??? CRM-MODULELINKS (verplicht; modules staan AAN) ===
+
+${hrefLine}
+- **Geen** nieuwe marketingsecties \`id: "booking"\` of \`id: "shop"\` met formulier of checkout-HTML ??? conform ??0B.`;
+}
+
 // ---------------------------------------------------------------------------
 // Branche-specifieke prompt-blokken voor gedetecteerde secties
 // ---------------------------------------------------------------------------
@@ -1068,6 +1082,12 @@ export type GenerateSitePromptOptions = {
    * Optioneel: geldige klant-`subfolder_slug` voor het Supabase-pad van AI-hero (`site-assets`).
    */
   siteStorageSubfolderSlug?: string;
+  /**
+   * Wanneer `true`: §0B verplicht `__STUDIO_BOOKING_PATH__` op reserveer-/boek-CTA’s (CRM / studio).
+   */
+  appointmentsEnabled?: boolean;
+  /** Wanneer `true`: idem voor `__STUDIO_SHOP_PATH__`. */
+  webshopEnabled?: boolean;
 };
 
 const UPGRADE_PROMPT_JSON_MAX = 150_000;
@@ -1723,9 +1743,19 @@ export function buildWebsiteGenerationUserPrompt(
   const variance = preserve
     ? buildUpgradePreserveLayoutBlock()
     : buildVarianceBlock(businessName, description, recentClientNames, options?.varianceNonce);
-  const packageBlock = getGenerationPackagePromptBlock(undefined, { preserveLayoutUpgrade: preserve });
+  const appointmentsEnabled = options?.appointmentsEnabled === true;
+  const webshopEnabled = options?.webshopEnabled === true;
+  const packageBlock = getGenerationPackagePromptBlock(undefined, {
+    preserveLayoutUpgrade: preserve,
+    appointmentsEnabled,
+    webshopEnabled,
+  });
   const existingBlock = buildExistingSiteJsonBlock(options?.existingSiteTailwindJson);
   const section1 = preserve ? buildUpgradeMergeSection() : buildUniquenessProtocolSection(recent);
+  const crmUpgradeHint =
+    preserve && (appointmentsEnabled || webshopEnabled)
+      ? buildUpgradeCrmModuleLinksHint(appointmentsEnabled, webshopEnabled)
+      : "";
 
   const psychColorLead = preserve
     ? `In **upgrade-modus met bron-JSON:** negeer "nieuw palet kiezen" ??? kopieer \`config\` (style, theme, font) **exact** uit de bestaande site. Zonder bron-JSON: trek \`config\` uit de briefing en wijzig die niet gratuit.\n\n`
@@ -1806,7 +1836,7 @@ ${packageBlock}${existingBlock}
 4. **JSON:** altijd \`config\` (volledig \`theme\`) + \`sections\`${marketingMultiPage ? ` + **verplicht** \`marketingPages\` (exact deze keys: ${mpKeysLine || "zie ?3B"}) + \`contactSections\` (alleen contact-subroute met formulier)` : ""}.
 5. **Kleur:** als een flashy wens botst met de branche, gebruik die kleur liever **als accent** (?2). ${preserve ? " **Upgrade:** bestaande \`config.theme\` uit bron wint." : ""}
 
-${section1}
+${section1}${crmUpgradeHint ? `\n\n${crmUpgradeHint}` : ""}
 
 === 2. THEMA / KLEUR ===
 

@@ -324,3 +324,30 @@ export function contactNavCaptureFragmentId(plan: PublicTailwindContactPlan): st
   if (plan.kind === "dedicated") return plan.firstContactSectionId;
   return plan.contactSectionId;
 }
+
+/**
+ * Canonical pathname van de huidige Tailwind-pagina in de browser (`/site/{slug}`, subroute, contact).
+ * Gebruikt door de iframe-nav: een link naar de landings-URL moet de parent laten navigeren, niet alleen scrollen in `srcDoc`.
+ */
+export function publicSiteIframeDocumentPathname(
+  publishedSlug: string | undefined | null,
+  nav:
+    | {
+        view: "landing" | "contact" | "marketing";
+        activeMarketingSlug?: string;
+      }
+    | null
+    | undefined,
+): string | undefined {
+  const raw = publishedSlug?.trim();
+  if (!raw) return undefined;
+  const enc = encodeURIComponent(raw);
+  const root = `/site/${enc}`;
+  if (!nav) return root;
+  if (nav.view === "contact") return `${root}/contact`;
+  if (nav.view === "marketing") {
+    const mk = nav.activeMarketingSlug?.trim();
+    if (mk) return `${root}/${encodeURIComponent(mk)}`;
+  }
+  return root;
+}

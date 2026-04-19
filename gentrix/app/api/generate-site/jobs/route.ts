@@ -50,6 +50,8 @@ export async function POST(request: Request) {
     ...(slug ? { subfolder_slug: slug } : {}),
     ...(d.generation_preset_ids?.length ? { generation_preset_ids: d.generation_preset_ids } : {}),
     ...(d.layout_archetypes?.length ? { layout_archetypes: d.layout_archetypes } : {}),
+    ...(d.appointments_enabled === true ? { appointments_enabled: true } : {}),
+    ...(d.webshop_enabled === true ? { webshop_enabled: true } : {}),
   };
 
   const jobId = await insertSiteGenerationJob({ clientId, requestJson });

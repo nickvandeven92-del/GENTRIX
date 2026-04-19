@@ -8,6 +8,7 @@ import {
   tryAppendClaudeActivityJournal,
 } from "@/lib/ai/claude-activity-journal";
 import { generateSiteRequestBodySchema } from "@/lib/api/generate-site-request-schema";
+import { resolveGenerateSiteModuleFlags } from "@/lib/api/resolve-generate-site-module-flags";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
@@ -57,12 +58,19 @@ export async function POST(request: Request) {
   const referenceStyleUrl = parsed.data.reference_style_url;
 
   const slug = parsed.data.subfolder_slug?.trim();
+  const moduleFlags = await resolveGenerateSiteModuleFlags({
+    subfolder_slug: slug,
+    appointments_enabled: parsed.data.appointments_enabled,
+    webshop_enabled: parsed.data.webshop_enabled,
+  });
   const promptOpts: GenerateSitePromptOptions = {
     ...(slug && isValidSubfolderSlug(slug) ? { siteStorageSubfolderSlug: slug } : {}),
     ...(clientImages.length > 0 ? { clientImages } : {}),
     ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
     ...(parsed.data.marketing_page_slugs?.length ? { marketingPageSlugs: parsed.data.marketing_page_slugs } : {}),
+    ...(moduleFlags.appointmentsEnabled ? { appointmentsEnabled: true } : {}),
+    ...(moduleFlags.webshopEnabled ? { webshopEnabled: true } : {}),
   };
   const hasPromptOpts = Object.keys(promptOpts).length > 0;
 

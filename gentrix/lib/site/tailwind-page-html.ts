@@ -1830,7 +1830,10 @@ export type DraftSiteNavRewriteForIframe = {
   mseg?: Record<string, string>;
 };
 
-export function buildStudioSinglePageInternalNavScript(draftSiteNavRewrite: DraftSiteNavRewriteForIframe | null): string {
+export function buildStudioSinglePageInternalNavScript(
+  draftSiteNavRewrite: DraftSiteNavRewriteForIframe | null,
+  iframeDocPath?: string | null,
+): string {
   const draftJson =
     draftSiteNavRewrite != null &&
     typeof draftSiteNavRewrite.slug === "string" &&
@@ -1845,10 +1848,12 @@ export function buildStudioSinglePageInternalNavScript(draftSiteNavRewrite: Draf
             : {}),
         })
       : "null";
+  const iframeDocPathJson = JSON.stringify((iframeDocPath ?? "").trim());
   return `<script>
 (function(){
   var STUDIO_NAV=${JSON.stringify(STUDIO_PUBLIC_NAV_MESSAGE_SOURCE)};
   var DRAFT_SITE_NAV_REWRITE=${draftJson};
+  var IFRAME_DOC_PATH=${iframeDocPathJson};
   function rewriteDraftSiteNavUrl(absUrl){
     if(!DRAFT_SITE_NAV_REWRITE)return absUrl;
     try{
@@ -1931,6 +1936,19 @@ export function buildStudioSinglePageInternalNavScript(draftSiteNavRewrite: Draf
     if(p.indexOf("/site/")!==0)return 0;
     return p.split("/").filter(Boolean).length;
   }
+  function mustNavigateTopForLandingLink(targetPathname){
+    var cur=IFRAME_DOC_PATH;
+    if(!cur||!targetPathname)return false;
+    try{
+      var c=(cur.split("?")[0]||"").split("#")[0];
+      var t=(targetPathname.split("?")[0]||"").split("#")[0];
+      if(t.indexOf("/site/")!==0)return false;
+      if(sitePublicPathDepth(t)!==2)return false;
+      if(c===t)return false;
+      if(c.indexOf(t+"/")===0)return true;
+    }catch(_){}
+    return false;
+  }
   function tryScroll(e,id){
     if(!id)return false;
     try{id=decodeURIComponent(id);}catch(_){}
@@ -1983,6 +2001,10 @@ export function buildStudioSinglePageInternalNavScript(draftSiteNavRewrite: Draf
             navigateTop(e,a);
             return;
           }
+          if(mustNavigateTopForLandingLink(pn)){
+            navigateTop(e,a);
+            return;
+          }
           var ah=href.indexOf("#");
           var siteHash=ah>=0?href.slice(ah+1):"";
           if(tryScroll(e,siteHash))return;
@@ -2020,6 +2042,10 @@ export function buildStudioSinglePageInternalNavScript(draftSiteNavRewrite: Draf
     if(path.indexOf("/site/")===0){
       e.preventDefault();
       if(sitePublicPathDepth(path)>2){
+        navigateTop(e,a);
+        return;
+      }
+      if(mustNavigateTopForLandingLink(path)){
         navigateTop(e,a);
         return;
       }
@@ -2098,6 +2124,11 @@ export type BuildTailwindIframeSrcDocOptions = {
    * Korte merknaam voor de geïnjecteerde auto-navbar (niet `config.style` — dat is een briefing).
    */
   navBrandLabel?: string | null;
+  /**
+   * Pathname van deze pagina zoals in de parent (`/site/{slug}`, marketing-subroute, `/contact`).
+   * Zonder dit blijft een home-link op een subpagina hangen in iframe-scroll i.p.v. echte navigatie.
+   */
+  iframeDocumentPathname?: string | null;
 };
 
 /**
@@ -2401,6 +2432,14 @@ export function buildTailwindIframeSrcDoc(
         }
       : null;
 
+  const iframeDocPathExplicit = options?.iframeDocumentPathname?.trim() ?? "";
+  const iframeDocPathForScript =
+    iframeDocPathExplicit.length > 0
+      ? iframeDocPathExplicit
+      : slug
+        ? `/site/${encodeURIComponent(slug)}`
+        : "";
+
   const viewportContent = options?.previewMatchParentWindowBreakpoints
     ? "width=1280, initial-scale=1"
     : "width=device-width, initial-scale=1";
@@ -2476,7 +2515,7 @@ ${scrollRevealScript}${scrollBorderScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT}
 ${contactSubpageScript}
-${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite)}
+${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite, iframeDocPathForScript)}
 ${bridge}
 ${userJsBlock}
 </body>
