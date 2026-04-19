@@ -1,3 +1,5 @@
+import { slugify } from "@/lib/slug";
+
 /**
  * Model / handmatige nav gebruikt vaak andere URL-segmenten dan de canonieke
  * `marketingPages`-keys in JSON. Zonder mapping: `/site/x/wat-wij-doen` → 404/redirect naar landing.
@@ -103,5 +105,15 @@ export function resolveMarketingPageKeyForUrlSegment(
   if (!n) return null;
   const hit = mseg[n];
   if (hit && keys.includes(hit)) return hit;
+  const fuzz = slugify(t);
+  if (fuzz.length >= 2) {
+    for (const key of keys) {
+      if (key === fuzz) return key;
+    }
+    const fuzzN = normalizeSegment(fuzz);
+    for (const key of keys) {
+      if (normalizeSegment(key) === fuzzN) return key;
+    }
+  }
   return null;
 }

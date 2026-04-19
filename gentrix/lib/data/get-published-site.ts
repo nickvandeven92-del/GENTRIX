@@ -2,7 +2,11 @@ import { cache } from "react";
 import { createAnonServerClient } from "@/lib/supabase/anon-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
-import { resolveDraftSitePayloadJson, resolvePublishedSitePayloadJson } from "@/lib/data/resolve-site-payload-json";
+import {
+  fetchSiteSnapshotPayloadJson,
+  resolveDraftSitePayloadJson,
+  resolvePublishedSitePayloadJson,
+} from "@/lib/data/resolve-site-payload-json";
 import { ensureTailwindCompiledCssOnPublishedPayload } from "@/lib/data/tailwind-compiled-css-attach";
 import { previewSecretsEqual } from "@/lib/preview/preview-secret-crypto";
 import {
@@ -23,17 +27,16 @@ function devLogPublishedSite(slug: string, message: string, detail?: unknown) {
 }
 
 /**
- * Generator/editor schrijft altijd naar `clients.site_data_json`; live leest eerst `published_snapshot_id`.
- * Tot **Opnieuw publiceren** kan de snapshot dus achterlopen — dan ontbreken `marketingPages` op /site/…
- * terwijl de kolom wél de nieuwe subpagina's heeft. Vul ontbrekende keys dan in vanuit de kolom.
+ * Live payload komt uit `published_snapshot_id`; concept kan nieuwer zijn (`draft_snapshot_id` + kolom).
+ * Ontbrekende `marketingPages`-keys worden aangevuld vanuit extra JSON (kolom en/of concept-snapshot).
  */
-function mergeTailwindMarketingPagesFromSiteDataColumn(
+function mergeTailwindMarketingPagesFromAlternateJson(
   payload: PublishedSitePayload,
-  siteDataColumn: unknown,
+  alternateJson: unknown,
   slug: string,
 ): PublishedSitePayload {
   if (payload.kind !== "tailwind") return payload;
-  const col = parseStoredSiteData(siteDataColumn);
+  const col = parseStoredSiteData(alternateJson);
   if (col?.kind !== "tailwind" || !col.marketingPages) return payload;
   const colMp = col.marketingPages;
   if (Object.keys(colMp).length === 0) return payload;
@@ -52,7 +55,7 @@ function mergeTailwindMarketingPagesFromSiteDataColumn(
   if (!changed) return payload;
   devLogPublishedSite(
     slug,
-    "marketingPages aangevuld vanuit clients.site_data_json (published snapshot miste niet-lege keys; vaak nog niet gepubliceerd na generatie).",
+    "marketingPages aangevuld vanuit site_data_json of concept-snapshot (published miste niet-lege marketing-keys).",
   );
   return { ...payload, marketingPages: merged };
 }
@@ -275,15 +278,15 @@ async function fetchActiveClientRow(
   slug: string,
 ): Promise<{ data: ActiveClientRow | null; error: { message: string } | null }> {
   const selectFull =
-    "site_data_json, name, generation_package, published_snapshot_id, appointments_enabled, webshop_enabled";
+    "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, appointments_enabled, webshop_enabled";
   const selectFullNoWebshop =
-    "site_data_json, name, generation_package, published_snapshot_id, appointments_enabled";
+    "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, appointments_enabled";
   const selectFullNoAppt =
-    "site_data_json, name, generation_package, published_snapshot_id";
+    "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id";
   const selectFullNoApptWithShop =
-    "site_data_json, name, generation_package, published_snapshot_id, webshop_enabled";
-  const selectWithPkg = "site_data_json, name, generation_package";
-  const selectMinimal = "site_data_json, name";
+    "site_data_json, name, generation_package, published_snapshot_id, draft_snapshot_id, webshop_enabled";
+  const selectWithPkg = "site_data_json, name, generation_package, draft_snapshot_id, published_snapshot_id";
+  const selectMinimal = "site_data_json, name, draft_snapshot_id";
 
   async function tryServiceSelect(
     supabase: ReturnType<typeof createServiceRoleClient>,
@@ -294,7 +297,13 @@ async function fetchActiveClientRow(
 
   try {
     const supabase = createServiceRoleClient();
-    const first = await tryServiceSelect(supabase, selectFull);
+    let first = await tryServiceSelect(supabase, selectFull);
+    if (first.error && isPostgrestUnknownColumnError(first.error, "draft_snapshot_id")) {
+      first = await tryServiceSelect(
+        supabase,
+        "site_data_json, name, generation_package, published_snapshot_id, appointments_enabled, webshop_enabled",
+      );
+    }
     let data: ActiveClientRow | null =
       first.error == null && first.data != null ? (first.data as unknown as ActiveClientRow) : null;
     let error = first.error;
@@ -337,8 +346,15 @@ async function fetchActiveClientRow(
         site_data_json: unknown;
         name: string;
         generation_package?: string | null;
+        draft_snapshot_id?: string | null;
       };
-      data = { ...row, published_snapshot_id: null, appointments_enabled: false, webshop_enabled: false };
+      data = {
+        ...row,
+        published_snapshot_id: null,
+        draft_snapshot_id: row.draft_snapshot_id ?? null,
+        appointments_enabled: false,
+        webshop_enabled: false,
+      };
       error = null;
     }
 
@@ -347,11 +363,16 @@ async function fetchActiveClientRow(
       if (second.error || !second.data) {
         return { data: null, error: second.error ?? { message: "Onbekende fout." } };
       }
-      const row = second.data as unknown as { site_data_json: unknown; name: string };
+      const row = second.data as unknown as {
+        site_data_json: unknown;
+        name: string;
+        draft_snapshot_id?: string | null;
+      };
       data = {
         ...row,
         generation_package: null,
         published_snapshot_id: null,
+        draft_snapshot_id: row.draft_snapshot_id ?? null,
         appointments_enabled: false,
         webshop_enabled: false,
       };
@@ -367,12 +388,22 @@ async function fetchActiveClientRow(
         "Geen SUPABASE_SERVICE_ROLE_KEY: read via anon (RLS moet anon toe staan). Zet de service role key in .env.local.",
       );
       const supabase = createAnonServerClient();
-      const anonFirst = await supabase
+      let anonFirst = await supabase
         .from("clients")
         .select(selectFull)
         .eq("subfolder_slug", slug)
         .eq("status", "active")
         .maybeSingle();
+      if (anonFirst.error && isPostgrestUnknownColumnError(anonFirst.error, "draft_snapshot_id")) {
+        anonFirst = await supabase
+          .from("clients")
+          .select(
+            "site_data_json, name, generation_package, published_snapshot_id, appointments_enabled, webshop_enabled",
+          )
+          .eq("subfolder_slug", slug)
+          .eq("status", "active")
+          .maybeSingle();
+      }
 
       let data: ActiveClientRow | null =
         anonFirst.error == null && anonFirst.data != null
@@ -438,8 +469,15 @@ async function fetchActiveClientRow(
           site_data_json: unknown;
           name: string;
           generation_package?: string | null;
+          draft_snapshot_id?: string | null;
         };
-        data = { ...row, published_snapshot_id: null, appointments_enabled: false, webshop_enabled: false };
+        data = {
+          ...row,
+          published_snapshot_id: null,
+          draft_snapshot_id: row.draft_snapshot_id ?? null,
+          appointments_enabled: false,
+          webshop_enabled: false,
+        };
         error = null;
       }
 
@@ -453,11 +491,16 @@ async function fetchActiveClientRow(
         if (second.error || !second.data) {
           return { data: null, error: second.error ?? { message: "Onbekende fout." } };
         }
-        const row = second.data as unknown as { site_data_json: unknown; name: string };
+        const row = second.data as unknown as {
+          site_data_json: unknown;
+          name: string;
+          draft_snapshot_id?: string | null;
+        };
         data = {
           ...row,
           generation_package: null,
           published_snapshot_id: null,
+          draft_snapshot_id: row.draft_snapshot_id ?? null,
           appointments_enabled: false,
           webshop_enabled: false,
         };
@@ -547,8 +590,16 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
       );
       return null;
     }
-    if (!conceptAccess) {
-      payload = mergeTailwindMarketingPagesFromSiteDataColumn(payload, data.site_data_json, slug);
+    if (!conceptAccess && payload.kind === "tailwind") {
+      payload = mergeTailwindMarketingPagesFromAlternateJson(payload, data.site_data_json, slug);
+      const draftId = data.draft_snapshot_id?.trim();
+      const pubId = data.published_snapshot_id?.trim();
+      if (draftId && draftId !== pubId) {
+        const draftJson = await fetchSiteSnapshotPayloadJson(draftId);
+        if (draftJson != null) {
+          payload = mergeTailwindMarketingPagesFromAlternateJson(payload, draftJson, slug);
+        }
+      }
     }
     const beforeEnsure =
       payload.kind === "tailwind" &&

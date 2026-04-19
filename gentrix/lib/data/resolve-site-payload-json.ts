@@ -5,7 +5,8 @@ export type ClientPayloadPointersRow = {
   published_snapshot_id: string | null;
 };
 
-async function fetchPayloadJsonBySnapshotId(snapshotId: string): Promise<unknown | null> {
+/** O.a. live-site merge: concept-snapshot kan nieuwere `marketingPages` hebben dan `published_snapshot_id`. */
+export async function fetchSiteSnapshotPayloadJson(snapshotId: string): Promise<unknown | null> {
   try {
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase
@@ -27,7 +28,7 @@ async function fetchPayloadJsonBySnapshotId(snapshotId: string): Promise<unknown
  */
 export async function resolveDraftSitePayloadJson(row: ClientPayloadPointersRow): Promise<unknown> {
   if (row.draft_snapshot_id) {
-    const fromSnap = await fetchPayloadJsonBySnapshotId(row.draft_snapshot_id);
+    const fromSnap = await fetchSiteSnapshotPayloadJson(row.draft_snapshot_id);
     if (fromSnap != null) return fromSnap;
   }
   return row.site_data_json;
@@ -38,7 +39,7 @@ export async function resolveDraftSitePayloadJson(row: ClientPayloadPointersRow)
  */
 export async function resolvePublishedSitePayloadJson(row: ClientPayloadPointersRow): Promise<unknown> {
   if (row.published_snapshot_id) {
-    const fromSnap = await fetchPayloadJsonBySnapshotId(row.published_snapshot_id);
+    const fromSnap = await fetchSiteSnapshotPayloadJson(row.published_snapshot_id);
     if (fromSnap != null) return fromSnap;
   }
   return row.site_data_json;

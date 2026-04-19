@@ -43,4 +43,9 @@ describe("resolveMarketingPageKeyForUrlSegment", () => {
     expect(resolveMarketingPageKeyForUrlSegment("faq", { faq: [] })).toBeNull();
     expect(resolveMarketingPageKeyForUrlSegment("onbekend", { "over-ons": [{ html: "" }] })).toBeNull();
   });
+
+  it("matcht ruwe labels via slugify tegen een bestaande key", () => {
+    const pages = { "over-ons": [{ html: "" }] };
+    expect(resolveMarketingPageKeyForUrlSegment("Over Ons", pages)).toBe("over-ons");
+  });
 });
