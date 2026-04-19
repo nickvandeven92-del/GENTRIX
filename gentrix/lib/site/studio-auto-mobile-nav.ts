@@ -43,6 +43,44 @@ export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolea
   return false;
 }
 
+/**
+ * AI levert soms een menuknop met `md:/lg:…:hidden` of aria-label, maar **zonder** `@click` op die knop.
+ * Dan is er geen werkende toggle, maar `headerHasDesktopOnlyNavWithoutSmallScreenMenuButton` is ook false
+ * (er “is” wel een knop) — waardoor we anders géén Gentrix-auto-nav injecteerden.
+ *
+ * `scopeForXData` = vaak volledige `body`-inner: `x-data` staat soms op een wrapper vóór `<header>`.
+ */
+export function headerHasUnwiredMobileMenuButton(fromHeader: string, scopeForXData: string = fromHeader): boolean {
+  if (!GENERIC_XDATA_RE.test(scopeForXData)) return false;
+  const buttonRe = /<button\b[^>]{0,8000}>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = buttonRe.exec(fromHeader)) !== null) {
+    const tag = m[0];
+    const looksMobileControl =
+      BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE.test(tag) ||
+      /\baria-(?:label|expanded)\s*=\s*["'][^"']*(?:enu|menu|open|sluiten|close|openen|expand|collapse)/i.test(
+        tag,
+      );
+    if (!looksMobileControl) continue;
+    if (!BUTTON_HAS_ALPINE_CLICK_RE.test(tag)) return true;
+  }
+  return false;
+}
+
+/** `x-show="navOpen"` / sheet aanwezig maar geen enkele `@click` die die state zet (lege div, vergeten handler). */
+function headerHasAlpineNavOpenSheetWithoutNavToggle(fromHeader: string, scopeForXData: string): boolean {
+  if (!GENERIC_XDATA_RE.test(scopeForXData)) return false;
+  if (!/\bx-show\s*=\s*["'][^"']*(?:navOpen|menuOpen)\b/i.test(fromHeader)) return false;
+  const probe = scopeForXData.slice(0, 48_000);
+  if (
+    /@click\s*=\s*["'][^"']*(?:navOpen|menuOpen)\b/i.test(probe) ||
+    /x-on:click\s*=\s*["'][^"']*(?:navOpen|menuOpen)\b/i.test(probe)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function headerAppearsDesigned(scanSlice: string): boolean {
   const relIdx = scanSlice.search(/<header\b/i);
   if (relIdx < 0) return false;
@@ -214,6 +252,8 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
   if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) {
     if (headerHasDesktopOnlyNavWithoutSmallScreenMenuButton(win)) return true;
+    if (headerHasUnwiredMobileMenuButton(win, bodyInnerHtml)) return true;
+    if (headerHasAlpineNavOpenSheetWithoutNavToggle(win, bodyInnerHtml)) return true;
     return false;
   }
   return true;
