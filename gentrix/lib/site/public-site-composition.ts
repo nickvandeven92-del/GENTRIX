@@ -3,7 +3,10 @@ import {
   logSiteIrComposePlanMismatches,
   orderTailwindSectionsByIdPlan,
 } from "@/lib/site/compose-site-plan";
-import { coerceHeaderWhatsappLinksToBookingPlaceholder } from "@/lib/site/coerce-appointment-header-hrefs";
+import {
+  coerceContactBookCtaAnchorsInHtmlFragment,
+  coerceHeaderAppointmentCtaHrefs,
+} from "@/lib/site/coerce-appointment-header-hrefs";
 import { ensureStudioModuleMarkersOnAnchors } from "@/lib/site/ensure-studio-module-markers-on-anchors";
 import { filterTailwindSectionsForPublicSiteModuleFlags } from "@/lib/site/filter-tailwind-public-modules";
 import {
@@ -49,10 +52,14 @@ export function composePublicMarketingTailwindSections(
 
   const preTagged =
     flags.appointmentsEnabled === true
-      ? ordered.map((s) => ({
-          ...s,
-          html: coerceHeaderWhatsappLinksToBookingPlaceholder(s.html),
-        }))
+      ? ordered.map((s) => {
+          let html = coerceHeaderAppointmentCtaHrefs(s.html);
+          /** Hero-CTA’s staan vaak in de sectie-rij `id: "hero"` zonder inner `<section id="hero">`. */
+          if ((s.id ?? "").trim().toLowerCase() === "hero") {
+            html = coerceContactBookCtaAnchorsInHtmlFragment(html);
+          }
+          return { ...s, html };
+        })
       : ordered;
 
   const tagged = preTagged.map((s) => ({

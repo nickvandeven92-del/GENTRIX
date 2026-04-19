@@ -68,6 +68,36 @@ describe("composePublicMarketingTailwindSections", () => {
     expect(out[0]?.html.includes(STUDIO_BOOKING_PATH_PLACEHOLDER)).toBe(false);
   });
 
+  it("met appointments AAN: tailwind-sectie id hero coerced volledige HTML (geen inner id=hero nodig)", () => {
+    const sections: TailwindSection[] = [
+      {
+        id: "hero",
+        sectionName: "Hero",
+        html: `<section class="min-h-screen"><a href="#contact" class="btn">MAAK EEN AFSPRAAK</a></section>`,
+      },
+    ];
+    const out = composePublicMarketingTailwindSections(sections, {
+      appointmentsEnabled: true,
+      webshopEnabled: false,
+    });
+    expect(out[0]?.html).toContain(STUDIO_BOOKING_PATH_PLACEHOLDER);
+  });
+
+  it("met appointments AAN: #contact + reserveer-tekst in header wordt booking-placeholder", () => {
+    const sections: TailwindSection[] = [
+      {
+        id: "header",
+        sectionName: "Header",
+        html: `<header><a href="#contact" class="btn">Reserveer</a></header>`,
+      },
+    ];
+    const out = composePublicMarketingTailwindSections(sections, {
+      appointmentsEnabled: true,
+      webshopEnabled: false,
+    });
+    expect(out[0]?.html).toContain(STUDIO_BOOKING_PATH_PLACEHOLDER);
+  });
+
   it("prefereert siteIr.sectionIdsOrdered boven plan.sectionIdsOrdered", () => {
     const sections: TailwindSection[] = [
       { id: "a", sectionName: "A", html: "<section>a</section>" },
