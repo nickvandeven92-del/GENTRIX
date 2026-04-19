@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { nl } from "date-fns/locale";
 import { TZDate } from "@date-fns/tz";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import type { PublicBookingSlot } from "@/lib/gentrix-booking-helpers";
 import {
   LiveConfirmCard,
   LiveDetailsForm,
@@ -29,14 +34,16 @@ export default function BookingPageLive() {
     });
   }, [slug]);
 
-  const showEmployeeStep = !b.staffCatalog.loading && !b.staffCatalog.err && b.staffCatalog.staff.length > 1;
+  /** Zelfde flow als BookFlow (zip): medewerker-stap ook bij één persoon (kaart + “Verder”). */
+  const showEmployeeStep =
+    !b.staffCatalog.loading && !b.staffCatalog.err && b.staffCatalog.staff.length >= 1;
 
   const flowSteps = useMemo(() => {
     const out: { id: Exclude<LiveStep, "success">; label: string }[] = [];
     if (b.requiresTreatmentChoice) out.push({ id: "service", label: "Dienst" });
     if (showEmployeeStep) out.push({ id: "employee", label: "Medewerker" });
     out.push(
-      { id: "datetime", label: "Datum & tijd" },
+      { id: "datetime", label: "Datum & Tijd" },
       { id: "details", label: "Gegevens" },
       { id: "confirm", label: "Bevestig" },
     );
@@ -95,11 +102,9 @@ export default function BookingPageLive() {
     setStep("datetime");
   }
 
-  function goNextFromDatetime() {
-    if (!b.selectedSlot) {
-      b.setErr("Kies een datum en tijdslot.");
-      return;
-    }
+  /** Net als `DateTimeSelect` in de zip: één klik op een tijd gaat door naar gegevens. */
+  function pickSlotAndContinue(slot: PublicBookingSlot) {
+    b.setSelectedSlot(slot);
     b.setErr(null);
     setStep("details");
   }
@@ -253,7 +258,9 @@ export default function BookingPageLive() {
                 />
               ) : null}
 
-              {step === "datetime" ? <LiveDateTimeStep b={b} meta={meta} onNext={goNextFromDatetime} /> : null}
+              {step === "datetime" ? (
+                <LiveDateTimeStep b={b} meta={meta} businessLabel={businessLabel} onSlotPickContinue={pickSlotAndContinue} />
+              ) : null}
 
               {step === "details" ? <LiveDetailsForm b={b} onContinue={() => setStep("confirm")} /> : null}
 
@@ -285,159 +292,104 @@ export default function BookingPageLive() {
   );
 }
 
+function ymdFromLocalCalendarDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function LiveDateTimeStep({
   b,
   meta,
-  onNext,
+  businessLabel,
+  onSlotPickContinue,
 }: {
   b: GentrixPublicBookingController;
   meta: NonNullable<GentrixPublicBookingController["meta"]>;
-  onNext: () => void;
+  businessLabel: string;
+  onSlotPickContinue: (slot: PublicBookingSlot) => void;
 }) {
+  const selectedCalendarDate =
+    b.selectedYmd != null
+      ? (() => {
+          const [y, mo, da] = b.selectedYmd.split("-").map(Number);
+          return new Date(y, mo - 1, da);
+        })()
+      : undefined;
+
+  const staffName =
+    b.pickedStaffId != null ? b.staffCatalog.staff.find((s) => s.id === b.pickedStaffId)?.name ?? "" : "";
+  const svc = b.selectedService;
+  const dur = svc ? svc.duration_minutes : meta.slotDurationMinutes;
+  const summaryLeft = svc ? `${svc.name} bij ${staffName || businessLabel}` : staffName || businessLabel;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="font-heading text-2xl font-bold">Datum & tijd</h2>
-        <p className="mt-1 text-muted-foreground">
-          Kies een dag en een vrij slot
-          {b.selectedService ? ` (${b.selectedService.duration_minutes} min)` : ` (${meta.slotDurationMinutes} min)`}.
-        </p>
-      </div>
+    <div>
+      <h2 className="mb-2 font-heading text-2xl font-bold">{"Kies datum & tijd"}</h2>
+      <p className="mb-6 text-muted-foreground">
+        {summaryLeft} · {dur} min
+      </p>
 
       {b.requiresTreatmentChoice && !b.selectedServiceId ? (
         <p className="text-sm text-muted-foreground">Ga eerst terug en kies een behandeling.</p>
       ) : (
-        <>
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <button
-                type="button"
-                className="inline-flex items-center rounded-lg border border-border p-2 hover:bg-muted"
-                aria-label="Vorige maand"
-                onClick={() => {
-                  if (b.viewM <= 1) {
-                    b.setViewM(12);
-                    b.setViewY((y) => y - 1);
-                  } else b.setViewM((m) => m - 1);
-                }}
-              >
-                <ChevronLeft className="size-5" />
-              </button>
-              <span className="text-sm font-medium">
-                {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" }).format(new Date(b.viewY, b.viewM - 1, 1))}
-              </span>
-              <button
-                type="button"
-                className="inline-flex items-center rounded-lg border border-border p-2 hover:bg-muted"
-                aria-label="Volgende maand"
-                onClick={() => {
-                  if (b.viewM >= 12) {
-                    b.setViewM(1);
-                    b.setViewY((y) => y + 1);
-                  } else b.setViewM((m) => m + 1);
-                }}
-              >
-                <ChevronRight className="size-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase text-muted-foreground">
-              {["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"].map((d) => (
-                <div key={d} className="py-1">
-                  {d}
-                </div>
-              ))}
-            </div>
-            <div className="mt-1 grid grid-cols-7 gap-1">
-              {b.grid.map((cell, idx) => {
-                const dis = ymdCompare(cell.ymd, meta.todayYmd) < 0 || ymdCompare(cell.ymd, meta.maxYmd) > 0;
-                const sel = b.selectedYmd === cell.ymd;
-                return (
-                  <button
-                    key={cell.ymd + idx}
-                    type="button"
-                    disabled={dis}
-                    onClick={() => {
-                      if (dis) return;
-                      b.setSelectedYmd(cell.ymd);
-                    }}
-                    className={cn(
-                      "aspect-square rounded-lg text-sm font-medium transition",
-                      !cell.inMonth && "text-muted-foreground/70",
-                      !dis && "text-foreground hover:bg-primary/15",
-                      dis && "cursor-not-allowed opacity-40",
-                      sel && "bg-primary text-primary-foreground hover:bg-primary",
-                    )}
-                  >
-                    {cell.label}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="flex justify-center">
+            <Calendar
+              mode="single"
+              locale={nl}
+              selected={selectedCalendarDate}
+              onSelect={(d) => {
+                if (!d) return;
+                b.setSelectedYmd(ymdFromLocalCalendarDate(d));
+              }}
+              disabled={(date) => {
+                const ymd = ymdFromLocalCalendarDate(date);
+                return ymdCompare(ymd, meta.todayYmd) < 0 || ymdCompare(ymd, meta.maxYmd) > 0;
+              }}
+              className="pointer-events-auto rounded-lg border"
+            />
           </div>
 
-          {b.selectedYmd ? (
-            <div className="border-t border-border pt-6">
-              <h3 className="text-sm font-medium">
-                {(() => {
-                  const [sy, sm, sd] = b.selectedYmd.split("-").map(Number);
-                  const dd = new TZDate(sy, sm - 1, sd, 12, 0, 0, meta.timeZone);
-                  return new Intl.DateTimeFormat("nl-NL", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  }).format(dd);
-                })()}
-              </h3>
-
-              {b.staffCatalog.staff.length === 1 ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Je boekt bij <strong>{b.staffCatalog.staff[0]!.name}</strong>.
-                </p>
-              ) : null}
-
-              <h4 className="mt-6 text-sm font-medium">Beschikbare tijden</h4>
-              {b.loadingSlots ? (
-                <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Slots laden…
-                </p>
-              ) : b.slots.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">Geen vrije tijden op deze dag.</p>
-              ) : (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {b.slots.map((s) => {
-                    const active = b.selectedSlot?.starts_at === s.starts_at && b.selectedSlot?.ends_at === s.ends_at;
-                    return (
-                      <button
+          <div>
+            {b.selectedYmd ? (
+              <div>
+                <h3 className="mb-3 font-heading font-semibold">
+                  {(() => {
+                    const [sy, sm, sd] = b.selectedYmd!.split("-").map(Number);
+                    return format(new TZDate(sy, sm - 1, sd, 12, 0, 0, meta.timeZone), "EEEE d MMMM", { locale: nl });
+                  })()}
+                </h3>
+                {b.loadingSlots ? (
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    Slots laden…
+                  </p>
+                ) : b.slots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Geen beschikbare tijden op deze dag.</p>
+                ) : (
+                  <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto">
+                    {b.slots.map((s) => (
+                      <Button
                         key={s.starts_at}
                         type="button"
-                        onClick={() => b.setSelectedSlot(s)}
-                        className={cn(
-                          "rounded-lg border px-3 py-2 text-sm font-medium transition",
-                          active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted/50 hover:border-primary/50",
-                        )}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSlotPickContinue(s)}
+                        className="hover:bg-primary hover:text-primary-foreground"
                       >
                         {b.slotLabel(s)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={onNext}
-                disabled={!b.selectedSlot}
-                className="mt-8 w-full rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
-              >
-                Verder naar gegevens
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Selecteer eerst een datum in de kalender.</p>
-          )}
-        </>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Selecteer een datum om beschikbare tijden te zien.</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

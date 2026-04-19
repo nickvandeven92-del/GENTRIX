@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { Calendar, CheckCircle2, Clock, Loader2, Mail, User } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ export function LiveServicePick({ services, selectedId, loading, onSelect, onNex
             <Card
               key={svc.id}
               className={cn(
-                "cursor-pointer p-4 transition-all hover:border-primary/40 hover:shadow-md",
+                "group cursor-pointer p-4 transition-all hover:border-primary/40 hover:shadow-md",
                 on && "border-primary ring-2 ring-primary/30",
               )}
               onClick={() => onSelect(svc.id)}
@@ -58,11 +59,15 @@ export function LiveServicePick({ services, selectedId, loading, onSelect, onNex
               <div className="flex items-center gap-4">
                 <div className="h-10 w-3 shrink-0 rounded-full" style={{ backgroundColor: serviceAccent(i) }} />
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-heading font-semibold">{svc.name}</h3>
+                  <h3 className="font-heading font-semibold transition-colors group-hover:text-primary">{svc.name}</h3>
                   {svc.description?.trim() ? <p className="truncate text-sm text-muted-foreground">{svc.description}</p> : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {svc.duration_minutes} min{pl ? ` · ${pl}` : ""}
-                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3.5 shrink-0" aria-hidden />
+                    {svc.duration_minutes} min
+                  </span>
+                  {pl ? <span className="font-semibold text-foreground">{pl}</span> : null}
                 </div>
               </div>
             </Card>
@@ -101,17 +106,17 @@ export function LiveEmployeePick({ staff, selectedId, onSelect, onNext }: LiveEm
             <Card
               key={emp.id}
               className={cn(
-                "cursor-pointer p-4 transition-all hover:border-primary/40 hover:shadow-md",
+                "group cursor-pointer p-4 transition-all hover:border-primary/40 hover:shadow-md",
                 on && "border-primary ring-2 ring-primary/30",
               )}
               onClick={() => onSelect(emp.id)}
             >
               <div className="flex items-center gap-4">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent font-heading font-bold text-accent-foreground">
-                  {initials}
-                </div>
+                <Avatar className="size-12 bg-accent">
+                  <AvatarFallback className="bg-accent font-heading font-bold text-accent-foreground">{initials}</AvatarFallback>
+                </Avatar>
                 <div>
-                  <h3 className="font-heading font-semibold">{emp.name}</h3>
+                  <h3 className="font-heading font-semibold transition-colors group-hover:text-primary">{emp.name}</h3>
                   <p className="text-sm text-muted-foreground">Medewerker · Online boeken</p>
                 </div>
               </div>
@@ -194,7 +199,7 @@ export function LiveDetailsForm({ b, onContinue }: LiveDetailsFormProps) {
             <Textarea id="live-notes" value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)} rows={3} />
           </div>
           <Button type="submit" className="w-full">
-            Controleren & bevestigen
+            Verder
           </Button>
         </form>
       </Card>
