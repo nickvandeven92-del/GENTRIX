@@ -1916,6 +1916,7 @@ export function buildStudioSinglePageInternalNavScript(
   function isBoekOrWinkelPath(p){
     if(!p||p.charAt(0)!=="/")return false;
     if(p==="/boek"||p.indexOf("/boek/")===0)return true;
+    if(p==="/boek-venster"||p.indexOf("/boek-venster/")===0)return true;
     if(p==="/booking-app"||p.indexOf("/booking-app/")===0)return true;
     if(p==="/winkel"||p.indexOf("/winkel/")===0)return true;
     return false;

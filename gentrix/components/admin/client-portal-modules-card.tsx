@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { STUDIO_WORKFLOW_PRESET_ADD_BOOKING } from "@/lib/admin/studio-workflow-presets";
+import { publicLiveBookingVensterHref } from "@/lib/site/studio-section-visibility";
 
 type Props = {
   subfolderSlug: string;
@@ -136,6 +137,14 @@ export function ClientPortalModulesCard({
   ];
 
   const iframeSnippet = `<iframe title="Afspraak maken" src="${bookingAbsoluteUrl}" width="100%" height="920" style="border:0;border-radius:12px;max-width:42rem"></iframe>`;
+
+  let bookingVensterAbsoluteUrl = "";
+  try {
+    bookingVensterAbsoluteUrl = new URL(publicLiveBookingVensterHref(subfolderSlug), bookingAbsoluteUrl).href;
+  } catch {
+    bookingVensterAbsoluteUrl = "";
+  }
+  const popupKnopSnippet = `<button type="button" onclick='window.open(${JSON.stringify(bookingVensterAbsoluteUrl)},${JSON.stringify("gentrix-boek-venster")},${JSON.stringify("width=440,height=860,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,status=no")})'>Afspraak maken</button>`;
   const shopIframeSnippet = `<iframe title="Webshop" src="${shopAbsoluteUrl}" width="100%" height="920" style="border:0;border-radius:12px;max-width:42rem"></iframe>`;
 
   return (
@@ -205,7 +214,10 @@ export function ClientPortalModulesCard({
           <li>Preview en publiceren zoals gebruikelijk.</li>
           <li>
             Extern domein: <strong className="text-zinc-800 dark:text-zinc-200">iframe</strong> naar de boek-URL (alleen
-            met module aan).
+            met module aan), óf geen ruimte op de pagina: gebruik een{" "}
+            <strong className="text-zinc-800 dark:text-zinc-200">knop + popup</strong> naar{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/boek-venster/…</code> (zie
+            snippet hieronder).
           </li>
         </ol>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -249,11 +261,21 @@ export function ClientPortalModulesCard({
         {appointments_enabled ? (
           <details className="mt-4 rounded-md border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
             <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">
-              Boek-URL &amp; iframe-voorbeeld
+              Boek-URL, iframe &amp; popup-knop
             </summary>
-            <p className="mt-2 break-all font-mono text-[11px] text-zinc-600 dark:text-zinc-400">{bookingAbsoluteUrl}</p>
+            <p className="mt-2 text-[11px] font-medium text-zinc-700 dark:text-zinc-300">Directe boek-SPA</p>
+            <p className="mt-1 break-all font-mono text-[11px] text-zinc-600 dark:text-zinc-400">{bookingAbsoluteUrl}</p>
             <pre className="mt-2 max-h-40 overflow-auto rounded bg-zinc-900 p-2 text-[10px] leading-snug text-zinc-100">
               {iframeSnippet}
+            </pre>
+            <p className="mt-3 text-[11px] font-medium text-zinc-700 dark:text-zinc-300">
+              Popup-shell (geen ruimte op eigen site — apart venster met agenda)
+            </p>
+            <p className="mt-1 break-all font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+              {bookingVensterAbsoluteUrl || "—"}
+            </p>
+            <pre className="mt-2 max-h-40 overflow-auto rounded bg-zinc-900 p-2 text-[10px] leading-snug text-zinc-100">
+              {popupKnopSnippet}
             </pre>
           </details>
         ) : (

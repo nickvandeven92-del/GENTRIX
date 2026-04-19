@@ -5,7 +5,7 @@ import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { getPortalDashboardSnapshot } from "@/lib/data/get-portal-dashboard-snapshot";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 import { getSupabaseForPortalDataReads } from "@/lib/portal/studio-portal-preview";
-import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
+import { publicLiveBookingHref, publicLiveBookingVensterHref } from "@/lib/site/studio-section-visibility";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -37,6 +37,7 @@ export default async function ClientPortalOverviewPage({ params }: Props) {
   ]);
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${encodeURIComponent(decoded)}` : undefined;
   const publicBookingAbsoluteUrl = origin ? `${origin}${publicLiveBookingHref(decoded)}` : undefined;
+  const publicBookingVensterAbsoluteUrl = origin ? `${origin}${publicLiveBookingVensterHref(decoded)}` : undefined;
   const ownerDashboardAbsoluteUrl = origin
     ? `${origin}/booking-app/dashboard/${encodeURIComponent(decoded)}`
     : undefined;
@@ -52,6 +53,7 @@ export default async function ClientPortalOverviewPage({ params }: Props) {
         accountEnabled={client.portal_account_enabled}
         publicSiteAbsoluteUrl={publicSiteAbsoluteUrl}
         publicBookingAbsoluteUrl={publicBookingAbsoluteUrl}
+        publicBookingVensterAbsoluteUrl={publicBookingVensterAbsoluteUrl}
         ownerDashboardAbsoluteUrl={ownerDashboardAbsoluteUrl}
       />
     </main>

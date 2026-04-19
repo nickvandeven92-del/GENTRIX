@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CreditCard, Download, ExternalLink, FileText, LayoutDashboard, Link2 } from "lucide-react";
 import type { PortalDashboardSnapshot } from "@/lib/data/get-portal-dashboard-snapshot";
-import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
+import { publicLiveBookingHref, publicLiveBookingVensterHref } from "@/lib/site/studio-section-visibility";
+import { PortalBookingOpenVensterButton } from "@/components/portal/portal-booking-open-venster-button";
 import { PortalOwnerWebAppInstall } from "@/components/portal/portal-owner-web-app-install";
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
   publicSiteAbsoluteUrl?: string;
   /** Publieke online boekpagina (Vite `/booking-app/book/{slug}`), zelfde flow als op de klant-site. */
   publicBookingAbsoluteUrl?: string;
+  /** `/boek-venster/{slug}` — klein venster met geneste boek-SPA (geen ruimte op eigen site nodig). */
+  publicBookingVensterAbsoluteUrl?: string;
   /** Zaak-dashboard + PWA-install (Vite `/booking-app/dashboard/{slug}`). */
   ownerDashboardAbsoluteUrl?: string;
 };
@@ -28,6 +31,7 @@ export function PortalDashboard({
   accountEnabled,
   publicSiteAbsoluteUrl,
   publicBookingAbsoluteUrl,
+  publicBookingVensterAbsoluteUrl,
   ownerDashboardAbsoluteUrl,
 }: Props) {
   const decodedSlug = decodeURIComponent(slug);
@@ -35,6 +39,8 @@ export function PortalDashboard({
   const base = `/portal/${enc}`;
   const sitePublicHref = publicSiteAbsoluteUrl ?? `/site/${enc}`;
   const bookingPublicHref = publicBookingAbsoluteUrl ?? publicLiveBookingHref(decodedSlug);
+  const bookingVensterHref =
+    publicBookingVensterAbsoluteUrl ?? publicLiveBookingVensterHref(decodedSlug);
 
   const links: { href: string; label: string; icon: typeof FileText; nativeSite?: boolean }[] = [
     { href: base, label: "Dashboard", icon: LayoutDashboard },
@@ -131,15 +137,24 @@ export function PortalDashboard({
           <p className="mt-1 text-sm text-violet-950/80 dark:text-violet-100/90">
             Dezelfde stap-voor-stap boekflow als bezoekers zien. Deel deze link op je site of socials.
           </p>
-          <a
-            href={bookingPublicHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-violet-700 px-3 py-2 text-sm font-medium text-white hover:bg-violet-800 dark:bg-violet-600 dark:hover:bg-violet-500"
-          >
-            <Link2 className="size-4 shrink-0" aria-hidden />
-            Open boekpagina
-          </a>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <a
+              href={bookingPublicHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-700 px-3 py-2 text-sm font-medium text-white hover:bg-violet-800 dark:bg-violet-600 dark:hover:bg-violet-500"
+            >
+              <Link2 className="size-4 shrink-0" aria-hidden />
+              Open boekpagina
+            </a>
+            <PortalBookingOpenVensterButton href={bookingVensterHref} />
+          </div>
+          <p className="mt-2 text-[11px] leading-snug text-violet-900/80 dark:text-violet-200/85">
+            Geen ruimte voor een iframe op je eigen site? Gebruik{" "}
+            <strong className="font-medium text-violet-950 dark:text-violet-100">Open in klein venster</strong> of de
+            knop-snippet in het beheerdersportaal — bezoekers blijven op jullie pagina tot ze klikken; daarna opent een
+            compact Gentrix-venster met de agenda.
+          </p>
         </div>
       ) : null}
 

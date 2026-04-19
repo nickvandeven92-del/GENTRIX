@@ -31,6 +31,14 @@ export function publicLiveBookingHref(subfolderSlug: string): string {
   return `/booking-app/book/${encodeURIComponent(subfolderSlug)}`;
 }
 
+/**
+ * Minimale “popup-shell”: volledig venster met daarin de boek-SPA (`/booking-app/book/…`).
+ * Geschikt voor `window.open` vanaf externe sites zonder iframe-ruimte op de eigen pagina.
+ */
+export function publicLiveBookingVensterHref(subfolderSlug: string): string {
+  return `/boek-venster/${encodeURIComponent(subfolderSlug)}`;
+}
+
 /** Publieke webshop-landingspagina op deze app: `/winkel/{slug}`. */
 export const STUDIO_SHOP_PATH_PLACEHOLDER = "__STUDIO_SHOP_PATH__";
 

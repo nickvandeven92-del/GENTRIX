@@ -23,6 +23,7 @@ export function maybeRewritePortalHost(request: NextRequest): NextResponse | nul
   if (pathname.startsWith("/agenda/") || pathname === "/agenda") return null;
   if (
     pathname.startsWith("/boek/") ||
+    pathname.startsWith("/boek-venster/") ||
     pathname.startsWith("/booking-app") ||
     pathname.startsWith("/winkel/") ||
     pathname.startsWith("/preview/")
