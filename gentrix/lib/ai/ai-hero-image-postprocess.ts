@@ -96,14 +96,20 @@ function stripImgTagsFromHtml(html: string): string {
   return html.replace(/<img\b[^>]*(?:\/>|>)/gi, "");
 }
 
+/** Geen letterlijke `bg-` + `[url` in één regex-bron: Tailwind content-scan maakt daar utilities van (Vercel/Turbopack). */
+const STRIP_TAILWIND_ARBITRARY_BG_URL_CLASS = new RegExp(
+  "\\bbg-" + "\\[url\\(" + "[^\\]]*" + "\\)\\]",
+  "gi",
+);
+
 /**
  * Site-chat: Claude zet geüploade schermafbeeldingen nogal eens als `<img src=…>` of
- * `style="background-image:url(…)"` / `bg-[url(…)]` — dan blokkeert
+ * inline background-image / Tailwind arbitrary bg-url — dan blokkeert
  * {@link shouldAttemptAiHeroImageForHtml} de Gemini/OpenAI-pijplijn en blijft de screenshot staan.
  */
 export function stripHeroRasterPlaceholdersForSiteChatAiHero(html: string): string {
   let out = stripImgTagsFromHtml(html);
-  out = out.replace(/\bbg-\[url\([^\]]*\)\]/gi, "bg-transparent");
+  out = out.replace(STRIP_TAILWIND_ARBITRARY_BG_URL_CLASS, "bg-transparent");
   out = out.replace(/\sstyle=(["'])([^"']*)\1/gi, (full, q: string, st: string) => {
     let s = String(st)
       .replace(/background-image\s*:\s*[^;]+;?/gi, "")
@@ -557,7 +563,7 @@ export type ApplyAiHeroImageContext = {
   prebakedHeroPublicUrl?: string | null;
   /**
    * Site-assistent: gebruiker wil server-side Gemini/OpenAI-hero — altijd bestaande hero-`<img>` én
-   * `background-image` / `bg-[url]` uit Claude-output strippen vóór inject (anders blijft een geplakte screenshot staan).
+   * `background-image` / Tailwind arbitrary background-url uit Claude-output strippen vóór inject (anders blijft een geplakte screenshot staan).
    */
   siteChatRequestedAiHeroRaster?: boolean;
 };

@@ -109,8 +109,6 @@ export function SiteHtmlEditor({
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
-  /** Na concept-opslag: waar je de opgeslagen site volledig kunt bekijken (los van de editor-preview). */
-  const [postSaveDraftView, setPostSaveDraftView] = useState<{ clientPreviewTokenUrl: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [autoSaveHint, setAutoSaveHint] = useState<string | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
@@ -234,7 +232,6 @@ export function SiteHtmlEditor({
         setSaving(true);
         setSaveError(null);
         setSaveMsg(null);
-        setPostSaveDraftView(null);
         setAutoSaveError(null);
         setAutoSaveHint(null);
       }
@@ -297,15 +294,8 @@ export function SiteHtmlEditor({
           );
         } else if (status === "draft") {
           setSaveMsg("Concept opgeslagen — volledige site staat in de database (werkversie / draft).");
-          setPostSaveDraftView({
-            clientPreviewTokenUrl:
-              typeof data.data?.preview_url === "string" && data.data.preview_url.length > 0
-                ? data.data.preview_url
-                : null,
-          });
         } else {
           setSaveMsg("Opgeslagen.");
-          setPostSaveDraftView(null);
         }
         setPreviewKey((k) => k + 1);
       } catch {
@@ -509,7 +499,6 @@ export function SiteHtmlEditor({
               onChange={(e) => {
                 setStatus(e.target.value as typeof status);
                 setSaveMsg(null);
-                setPostSaveDraftView(null);
               }}
               className="h-8 max-w-[8.75rem] shrink-0 rounded-lg border border-zinc-300 bg-white px-2 text-xs font-medium text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
             >
@@ -635,43 +624,6 @@ export function SiteHtmlEditor({
           <Check className="size-4" aria-hidden />
           {saveMsg}
         </p>
-      )}
-      {postSaveDraftView && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/95 px-3 py-2.5 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-50">
-          <p className="font-medium text-emerald-950 dark:text-emerald-100">Volledige pagina bekijken (concept)</p>
-          <ul className="mt-2 space-y-2 text-xs leading-relaxed text-emerald-900 dark:text-emerald-100/95">
-            <li>
-              <strong>Admin</strong> — zelfde werkversie als in de editor:{" "}
-              <Link
-                href={`/admin/clients/${encodeURIComponent(subfolderSlug)}/preview`}
-                className="font-medium underline underline-offset-2 hover:text-emerald-950 dark:hover:text-white"
-              >
-                Concept-preview openen
-              </Link>
-              .
-            </li>
-            {postSaveDraftView.clientPreviewTokenUrl ? (
-              <li>
-                <strong>Deel met klant</strong> (niet geïndexeerd, met token):{" "}
-                <a
-                  href={postSaveDraftView.clientPreviewTokenUrl}
-                  className="font-medium break-all underline underline-offset-2 hover:text-emerald-950 dark:hover:text-white"
-                >
-                  {postSaveDraftView.clientPreviewTokenUrl}
-                </a>
-              </li>
-            ) : (
-              <li className="text-emerald-800/90 dark:text-emerald-200/85">
-                Geen publieke token-link (controleer of <code className="rounded bg-emerald-200/60 px-1 font-mono text-[11px] dark:bg-emerald-900/60">preview_secret</code>{" "}
-                in Supabase staat voor deze klant).
-              </li>
-            )}
-          </ul>
-          <p className="mt-2 text-[11px] text-emerald-800/90 dark:text-emerald-200/85">
-            Openbare <code className="rounded bg-emerald-200/50 px-1 font-mono dark:bg-emerald-900/50">/site/…</code> voor
-            iedereen blijft uit zolang de klantstatus <strong>Concept</strong> is.
-          </p>
-        </div>
       )}
       </div>
 

@@ -25,7 +25,10 @@ describe("ai-hero-image-postprocess", () => {
   });
 
   it("stripHeroRasterPlaceholdersForSiteChatAiHero verwijdert img en background-url zodat AI-inject mag", () => {
-    const html = `<section id="hero" class="relative min-h-screen bg-[url(https://x.example.com/screen.png)]">
+    // Geen letterlijke Tailwind arbitrary background-url class in één string: build toolchain kan dat parsen.
+    const arbitraryBg =
+      "bg" + "-" + "[url(https://x.example.com/screen.png)]";
+    const html = `<section id="hero" class="relative min-h-screen ${arbitraryBg}">
       <img src="https://x.example.com/paste.png" alt="" class="absolute inset-0" />
       <div style="background-image: url(https://x.example.com/bg.jpg)" class="p-4">tekst</div>
     </section>`;
