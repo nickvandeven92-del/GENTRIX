@@ -16,7 +16,7 @@ import {
   cleanupStrippedStockMarkup,
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/strip-unsplash-urls";
-import { replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
+import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -1512,6 +1512,59 @@ export function ensureClaudeMarketingSiteJsonHasContactSections(
   }
   const row = buildDefaultClaudeMarketingContactSectionRow(primary, accent, slugs);
   return { ...o, contactSections: [row] };
+}
+
+// ---------------------------------------------------------------------------
+// Hero: dubbele #hero + AOS op buitenste hero (layout/stacking in preview)
+// ---------------------------------------------------------------------------
+
+/** Verwijdert `data-aos*` en `data-animation` alleen op de **open-tag** string (geen body-HTML). */
+function stripRootHeroScrollMotionAttrsFromOpenTag(openTag: string): string {
+  let t = openTag.replace(/\sdata-aos(?:-[a-z0-9-]+)?\s*=\s*(["'])[^"']*\1/gi, "");
+  t = t.replace(/\sdata-animation\s*=\s*(["'])[^"']*\1/gi, "");
+  return t;
+}
+
+function stripDuplicateHeroIdFromOpenTag(openTag: string): string {
+  return openTag.replace(/\s\bid\s*=\s*(["'])hero\1/gi, ' data-gentrix-secondary-hero="1"');
+}
+
+/**
+ * Site-assistent / model kan per ongeluk **twee** `<section id="hero">` leveren of AOS op de **buitenste**
+ * hero zetten. Dubbele id's breken anchors; AOS (`transform`/`opacity`) op de volledige hero-stack laat
+ * een tweede (geneste) hero-blad eroverheen schuiven.
+ *
+ * - Eerste `id="hero"`: `data-aos*` en `data-animation` van de **open-tag** verwijderd (animatie hoort op inner wrappers).
+ * - Tweede en volgende `id="hero"`: `id` → `data-gentrix-secondary-hero="1"` (geen dubbele id in het fragment).
+ */
+export function normalizeStudioHeroDomIdsAndRootMotion(html: string): string {
+  if (!html || !/<section\b/i.test(html) || !/\bid\s*=\s*["']hero["']/i.test(html)) {
+    return html;
+  }
+  let pos = 0;
+  let seenHeroId = false;
+  const pieces: string[] = [];
+  while (pos < html.length) {
+    const idx = html.toLowerCase().indexOf("<section", pos);
+    if (idx === -1) {
+      pieces.push(html.slice(pos));
+      break;
+    }
+    pieces.push(html.slice(pos, idx));
+    const end = findHtmlOpenTagEnd(html, idx);
+    let open = html.slice(idx, end);
+    if (/\bid\s*=\s*["']hero["']/i.test(open)) {
+      if (seenHeroId) {
+        open = stripDuplicateHeroIdFromOpenTag(open);
+      } else {
+        open = stripRootHeroScrollMotionAttrsFromOpenTag(open);
+        seenHeroId = true;
+      }
+    }
+    pieces.push(open);
+    pos = end;
+  }
+  return pieces.join("");
 }
 
 // ---------------------------------------------------------------------------

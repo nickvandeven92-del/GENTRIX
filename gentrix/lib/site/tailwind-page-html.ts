@@ -7,6 +7,7 @@ import {
   ensureAlpineMobileOverlayHasLgHidden,
   ensureAlpineMobileToggleButtonHasLgHidden,
   fixAlpineNavToggleDefaultsInXData,
+  normalizeStudioHeroDomIdsAndRootMotion,
   repairBrokenMobileDrawer,
   repairHeaderMobileMenuButton,
   stripDecorativeScrollCueMarkup,
@@ -1450,7 +1451,9 @@ export function sanitizeTailwindFragment(html: string): string {
 
   const htmlForSanitize = stripDecorativeScrollCueMarkup(
     ensureAlpineMobileOverlayHasLgHidden(
-      ensureAlpineMobileToggleButtonHasLgHidden(repairBrokenMobileDrawer(fixAlpineNavToggleDefaultsInXData(html))),
+      ensureAlpineMobileToggleButtonHasLgHidden(
+        repairBrokenMobileDrawer(fixAlpineNavToggleDefaultsInXData(normalizeStudioHeroDomIdsAndRootMotion(html))),
+      ),
     ),
   );
 
