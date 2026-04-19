@@ -4,79 +4,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { TZDate } from "@date-fns/tz";
 import {
-  useGentrixPublicBooking,
-  type GentrixPublicBookingController,
-} from "@/hooks/use-gentrix-public-booking";
-import { ymdCompare, type PublicBookingService, type BookingMeta } from "@/lib/gentrix-booking-helpers";
+  LiveConfirmCard,
+  LiveDetailsForm,
+  LiveEmployeePick,
+  LiveServicePick,
+  LiveSuccessCard,
+} from "@/components/booking/live-booking-steps";
+import { useGentrixPublicBooking, type GentrixPublicBookingController } from "@/hooks/use-gentrix-public-booking";
+import { ymdCompare } from "@/lib/gentrix-booking-helpers";
 import { cn } from "@/lib/utils";
-import { ServiceSelect } from "@/components/booking/ServiceSelect";
-import { EmployeeSelect } from "@/components/booking/EmployeeSelect";
-import { CustomerForm } from "@/components/booking/CustomerForm";
-import { BookingConfirm } from "@/components/booking/BookingConfirm";
-import { BookingSuccess } from "@/components/booking/BookingSuccess";
-import type { CustomerInfo, Employee, Service, WeekSchedule } from "@/types";
-
-const ACCENT_COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f97316", "#ec4899"];
-
-const emptyWeek = {} as WeekSchedule;
-
-function publicServiceToService(svc: PublicBookingService, index: number): Service {
-  return {
-    id: svc.id,
-    businessId: "gentrix-live",
-    name: svc.name,
-    description: svc.description?.trim() ?? "",
-    duration: svc.duration_minutes,
-    price: svc.price_cents != null ? svc.price_cents / 100 : null,
-    color: ACCENT_COLORS[index % ACCENT_COLORS.length]!,
-    active: true,
-    employeeIds: [],
-  };
-}
-
-function staffMemberToEmployee(row: { id: string; name: string }): Employee {
-  return {
-    id: row.id,
-    businessId: "gentrix-live",
-    name: row.name,
-    role: "Medewerker",
-    specialization: "Online boeken",
-    serviceIds: [],
-    schedule: emptyWeek,
-    breaks: [],
-    daysOff: [],
-    active: true,
-  };
-}
-
-function placeholderService(meta: BookingMeta, name: string): Service {
-  return {
-    id: "default",
-    businessId: "gentrix-live",
-    name,
-    description: "",
-    duration: meta.slotDurationMinutes,
-    price: null,
-    color: ACCENT_COLORS[0]!,
-    active: true,
-    employeeIds: [],
-  };
-}
-
-function placeholderEmployee(label: string): Employee {
-  return {
-    id: "team",
-    businessId: "gentrix-live",
-    name: label,
-    role: "",
-    specialization: "",
-    serviceIds: [],
-    schedule: emptyWeek,
-    breaks: [],
-    daysOff: [],
-    active: true,
-  };
-}
 
 type LiveStep = "service" | "employee" | "datetime" | "details" | "confirm" | "success";
 
@@ -118,21 +54,6 @@ export default function BookingPageLive() {
 
   const stepIndex = step === "success" ? flowSteps.length : flowSteps.findIndex((s) => s.id === step);
   const businessLabel = b.businessName.trim() || slug || "Afspraak";
-
-  const serviceForUi: Service | null = useMemo(() => {
-    if (!b.meta) return null;
-    if (b.selectedService) {
-      const idx = b.publicServices.findIndex((s) => s.id === b.selectedService!.id);
-      return publicServiceToService(b.selectedService, Math.max(0, idx));
-    }
-    return placeholderService(b.meta, "Afspraak");
-  }, [b.meta, b.selectedService, b.publicServices]);
-
-  const employeeForUi: Employee | null = useMemo(() => {
-    if (!b.pickedStaffId) return placeholderEmployee(businessLabel);
-    const row = b.staffCatalog.staff.find((s) => s.id === b.pickedStaffId);
-    return row ? staffMemberToEmployee(row) : placeholderEmployee(businessLabel);
-  }, [b.pickedStaffId, b.staffCatalog.staff, businessLabel]);
 
   function goBack() {
     b.setErr(null);
@@ -183,19 +104,6 @@ export default function BookingPageLive() {
     setStep("details");
   }
 
-  function handleCustomerSubmit(info: CustomerInfo) {
-    b.setBookerName(info.name);
-    b.setBookerEmail(info.email);
-    const phone = info.phone?.trim();
-    const extra = info.notes?.trim();
-    const parts: string[] = [];
-    if (phone) parts.push(`Tel: ${phone}`);
-    if (extra) parts.push(extra);
-    b.setNotes(parts.join("\n"));
-    b.setErr(null);
-    setStep("confirm");
-  }
-
   async function confirmAndBook() {
     const r = await b.submitBooking();
     if (r.ok) {
@@ -205,10 +113,10 @@ export default function BookingPageLive() {
 
   function newBooking() {
     b.resetFlow();
-    didInitStep.current = false;
     if (b.requiresTreatmentChoice) setStep("service");
     else if (showEmployeeStep) setStep("employee");
     else setStep("datetime");
+    didInitStep.current = true;
   }
 
   if (!slug) {
@@ -323,119 +231,50 @@ export default function BookingPageLive() {
               transition={{ duration: 0.25 }}
             >
               {step === "service" ? (
-                <div>
-                  {b.servicesLoading ? (
-                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                      Behandelingen laden…
-                    </p>
-                  ) : (
-                    <>
-                      <ServiceSelect
-                        selectedServiceId={b.selectedServiceId}
-                        services={b.publicServices.map((s, i) => publicServiceToService(s, i))}
-                        onSelect={(svc) => {
-                          b.selectService(svc.id);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={goNextFromService}
-                        className="mt-6 w-full rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
-                      >
-                        Verder
-                      </button>
-                    </>
-                  )}
-                </div>
+                <LiveServicePick
+                  services={b.publicServices}
+                  selectedId={b.selectedServiceId}
+                  loading={b.servicesLoading}
+                  onSelect={(id) => b.selectService(id)}
+                  onNext={goNextFromService}
+                />
               ) : null}
 
               {step === "employee" ? (
-                <div>
-                  <EmployeeSelect
-                    selectedEmployeeId={b.pickedStaffId}
-                    employees={b.staffCatalog.staff.map(staffMemberToEmployee)}
-                    onSelect={(emp) => {
-                      b.setPickedStaffId(emp.id);
-                      b.setSelectedYmd(null);
-                      b.setSelectedSlot(null);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={goNextFromEmployee}
-                    className="mt-6 w-full rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
-                  >
-                    Verder naar datum & tijd
-                  </button>
-                </div>
+                <LiveEmployeePick
+                  staff={b.staffCatalog.staff}
+                  selectedId={b.pickedStaffId}
+                  onSelect={(id) => {
+                    b.setPickedStaffId(id);
+                    b.setSelectedYmd(null);
+                    b.setSelectedSlot(null);
+                  }}
+                  onNext={goNextFromEmployee}
+                />
               ) : null}
 
               {step === "datetime" ? <LiveDateTimeStep b={b} meta={meta} onNext={goNextFromDatetime} /> : null}
 
-              {step === "details" ? (
-                <div className="space-y-6">
-                  <CustomerForm
-                    phoneOptional
-                    initialData={{
-                      name: b.bookerName,
-                      email: b.bookerEmail,
-                      phone: "",
-                      notes: b.notes,
-                    }}
-                    onSubmit={handleCustomerSubmit}
-                  />
-                  <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-4">
-                    <label className="block text-xs font-medium text-muted-foreground">
-                      Soort afspraak (optioneel)
-                      <input
-                        value={b.title}
-                        onChange={(e) => b.setTitle(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                        placeholder="Bijv. Intake"
-                      />
-                    </label>
-                    <label className="flex cursor-pointer items-start gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={b.wantsConfirmation}
-                        onChange={(e) => b.setWantsConfirmation(e.target.checked)}
-                        className="mt-0.5"
-                      />
-                      <span>Ja, stuur mij een bevestiging per e-mail (inclusief agenda-bestand).</span>
-                    </label>
-                    <label className="flex cursor-pointer items-start gap-2 text-sm">
-                      <input type="checkbox" checked={b.wantsReminder} onChange={(e) => b.setWantsReminder(e.target.checked)} className="mt-0.5" />
-                      <span>Herinner mij één dag van tevoren per e-mail.</span>
-                    </label>
-                  </div>
-                </div>
-              ) : null}
+              {step === "details" ? <LiveDetailsForm b={b} onContinue={() => setStep("confirm")} /> : null}
 
-              {step === "confirm" && serviceForUi && employeeForUi && selectedDateForConfirm && b.selectedSlot ? (
-                <BookingConfirm
-                  service={serviceForUi}
-                  employee={employeeForUi}
+              {step === "confirm" && selectedDateForConfirm && b.selectedSlot ? (
+                <LiveConfirmCard
+                  b={b}
+                  meta={meta}
+                  businessLabel={businessLabel}
                   date={selectedDateForConfirm}
-                  time={timeLabelForConfirm}
-                  customer={{
-                    name: b.bookerName.trim() || "—",
-                    email: b.bookerEmail.trim(),
-                    phone: "",
-                    notes: b.notes.trim() || undefined,
-                  }}
-                  confirmDisabled={b.saving}
+                  timeLabel={timeLabelForConfirm}
                   onConfirm={() => void confirmAndBook()}
                 />
               ) : null}
 
-              {step === "success" && serviceForUi && employeeForUi && selectedDateForConfirm && b.selectedSlot ? (
-                <BookingSuccess
-                  service={serviceForUi}
-                  employee={employeeForUi}
+              {step === "success" && selectedDateForConfirm && b.selectedSlot ? (
+                <LiveSuccessCard
+                  b={b}
+                  businessLabel={businessLabel}
                   date={selectedDateForConfirm}
-                  time={timeLabelForConfirm}
-                  onNewBooking={newBooking}
+                  timeLabel={timeLabelForConfirm}
+                  onNew={newBooking}
                 />
               ) : null}
             </motion.div>
