@@ -6,17 +6,11 @@ import { cn } from "@/lib/utils";
 
 type PortalNavProps = {
   slug: string;
-  appointmentsEnabled: boolean;
   invoicesEnabled: boolean;
   accountEnabled: boolean;
 };
 
-export function PortalNav({
-  slug,
-  appointmentsEnabled,
-  invoicesEnabled,
-  accountEnabled,
-}: PortalNavProps) {
+export function PortalNav({ slug, invoicesEnabled, accountEnabled }: PortalNavProps) {
   const pathname = usePathname();
   const enc = encodeURIComponent(slug);
   const base = `/portal/${enc}`;
@@ -25,7 +19,6 @@ export function PortalNav({
     { href: base, label: "Dashboard" },
     { href: `${base}/website`, label: "Website" },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen" }] : []),
-    ...(appointmentsEnabled ? [{ href: `/agenda/${enc}`, label: "Agenda" }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account" }] : []),
   ];
 

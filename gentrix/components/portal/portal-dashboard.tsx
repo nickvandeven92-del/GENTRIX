@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Calendar, CreditCard, ExternalLink, FileText, LayoutDashboard, Link2 } from "lucide-react";
+import { CreditCard, Download, ExternalLink, FileText, LayoutDashboard, Link2 } from "lucide-react";
 import type { PortalDashboardSnapshot } from "@/lib/data/get-portal-dashboard-snapshot";
 import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
+import { PortalOwnerWebAppInstall } from "@/components/portal/portal-owner-web-app-install";
 
 type Props = {
   slug: string;
@@ -14,6 +15,8 @@ type Props = {
   publicSiteAbsoluteUrl?: string;
   /** Publieke online boekpagina (Vite `/booking-app/book/{slug}`), zelfde flow als op de klant-site. */
   publicBookingAbsoluteUrl?: string;
+  /** Zaak-dashboard + PWA-install (Vite `/booking-app/dashboard/{slug}`). */
+  ownerDashboardAbsoluteUrl?: string;
 };
 
 export function PortalDashboard({
@@ -25,6 +28,7 @@ export function PortalDashboard({
   accountEnabled,
   publicSiteAbsoluteUrl,
   publicBookingAbsoluteUrl,
+  ownerDashboardAbsoluteUrl,
 }: Props) {
   const decodedSlug = decodeURIComponent(slug);
   const enc = encodeURIComponent(decodedSlug);
@@ -35,7 +39,6 @@ export function PortalDashboard({
   const links: { href: string; label: string; icon: typeof FileText; nativeSite?: boolean }[] = [
     { href: base, label: "Dashboard", icon: LayoutDashboard },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),
-    ...(appointmentsEnabled ? [{ href: `/agenda/${enc}`, label: "Agenda & boekingen", icon: Calendar }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account", icon: CreditCard }] : []),
     { href: sitePublicHref, label: "Publieke site", icon: ExternalLink, nativeSite: true },
   ];
@@ -104,12 +107,14 @@ export function PortalDashboard({
                 <span className="font-medium text-zinc-700 dark:text-zinc-300">{snapshot.appointmentStats.upcomingWeekScheduled}</span>
               </p>
             ) : null}
-            <Link
-              href={`/agenda/${enc}?tab=afspraken`}
+            <a
+              href={ownerDashboardAbsoluteUrl ?? `/booking-app/dashboard/${enc}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="mt-2 inline-block text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
             >
-              Werkdagen &amp; planning →
-            </Link>
+              Agenda in zaak-app →
+            </a>
           </div>
         ) : null}
       </div>
@@ -135,6 +140,25 @@ export function PortalDashboard({
             <Link2 className="size-4 shrink-0" aria-hidden />
             Open boekpagina
           </a>
+        </div>
+      ) : null}
+
+      {ownerDashboardAbsoluteUrl ? (
+        <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+            Boekingen-app (PWA)
+          </p>
+          <p className="mt-1 text-sm text-emerald-950/85 dark:text-emerald-100/90">
+            Aparte <strong>web app</strong> voor agenda en boekingen-dashboard — niet het klantportaal-hoofdscherm. Open de link, log in, daarna{" "}
+            <strong>App installeren</strong> (Android) of <strong>Zet op beginscherm</strong> (iPhone).
+          </p>
+          <div className="mt-3">
+            <PortalOwnerWebAppInstall dashboardUrl={ownerDashboardAbsoluteUrl} />
+          </div>
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-900/70 dark:text-emerald-200/80">
+            <Download className="size-3.5 shrink-0" aria-hidden />
+            Geen App Store nodig: dit is een <strong>progressive web app</strong> (PWA).
+          </p>
         </div>
       ) : null}
 

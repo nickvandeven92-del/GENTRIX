@@ -14,6 +14,7 @@ import {
   type PortalServiceRow,
   type PortalStaffRow,
 } from "@/lib/map-portal-owner-to-bookflow";
+import { rememberBookingsAppSlug } from "@/lib/bookings-app-persistence";
 import { portalOwnerFetch } from "@/lib/portal-owner-fetch";
 import type { Appointment, Business, Employee, Service, ServiceCategory } from "@/types";
 
@@ -48,6 +49,10 @@ async function readJson<T>(res: Response): Promise<{ ok: boolean; data?: T; erro
 export function LiveBusinessProvider({ children }: { children: React.ReactNode }) {
   const { ownerSlug: rawSlug } = useParams();
   const ownerSlug = decodeURIComponent(rawSlug ?? "").trim();
+
+  useEffect(() => {
+    if (ownerSlug) rememberBookingsAppSlug(ownerSlug);
+  }, [ownerSlug]);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);

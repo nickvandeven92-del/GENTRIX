@@ -37,6 +37,9 @@ export default async function ClientPortalOverviewPage({ params }: Props) {
   ]);
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${encodeURIComponent(decoded)}` : undefined;
   const publicBookingAbsoluteUrl = origin ? `${origin}${publicLiveBookingHref(decoded)}` : undefined;
+  const ownerDashboardAbsoluteUrl = origin
+    ? `${origin}/booking-app/dashboard/${encodeURIComponent(decoded)}`
+    : undefined;
 
   return (
     <main>
@@ -49,6 +52,7 @@ export default async function ClientPortalOverviewPage({ params }: Props) {
         accountEnabled={client.portal_account_enabled}
         publicSiteAbsoluteUrl={publicSiteAbsoluteUrl}
         publicBookingAbsoluteUrl={publicBookingAbsoluteUrl}
+        ownerDashboardAbsoluteUrl={ownerDashboardAbsoluteUrl}
       />
     </main>
   );

@@ -85,12 +85,7 @@ export function PortalShell({
             </div>
           </div>
         </header>
-        <PortalNav
-          slug={slug}
-          appointmentsEnabled={appointmentsEnabled}
-          invoicesEnabled={invoicesEnabled}
-          accountEnabled={accountEnabled}
-        />
+        <PortalNav slug={slug} invoicesEnabled={invoicesEnabled} accountEnabled={accountEnabled} />
       </div>
       <PortalPushEnrollment
         slug={slug}

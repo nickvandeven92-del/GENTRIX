@@ -1,14 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isBookingsAppStandalone, readRememberedBookingsAppSlug } from "@/lib/bookings-app-persistence";
 
 /**
  * Startscherm: live boeking (Gentrix API) vs. mock-demo.
+ * Geïnstalleerde Boekingen-app (PWA): meteen door naar boekingen-dashboard, gescheiden van het klantportaal.
  */
 export default function HomePage() {
   const [slug, setSlug] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isBookingsAppStandalone()) return;
+    const saved = readRememberedBookingsAppSlug();
+    if (saved) {
+      navigate(`dashboard/${encodeURIComponent(saved)}`, { replace: true });
+    } else {
+      navigate("dashboard", { replace: true });
+    }
+  }, [navigate]);
 
   function goLive(e: React.FormEvent) {
     e.preventDefault();
@@ -21,11 +33,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-background px-4 py-16">
       <div className="mx-auto max-w-lg space-y-10">
         <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">GENTRIX — Boeking</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">GENTRIX — Boekingen</h1>
           <p className="mt-2 text-muted-foreground">
-            Publieke afspraken via dezelfde API als{" "}
-            <code className="rounded bg-muted px-1">gentrix.nl/booking-app/book/…</code> (
-            deze app). Alleen bij aparte Vite-host: <code className="rounded bg-muted px-1">VITE_GENTRIX_API_BASE</code> + CORS op Next.
+            Publieke boekpagina en <strong>boekingen-dashboard</strong> (eigen PWA, los van het Gentrix-klantportaal). Zelfde API als{" "}
+            <code className="rounded bg-muted px-1">gentrix.nl/booking-app/book/…</code>. Alleen bij aparte Vite-host:{" "}
+            <code className="rounded bg-muted px-1">VITE_GENTRIX_API_BASE</code> + CORS op Next.
           </p>
         </div>
 
@@ -45,10 +57,11 @@ export default function HomePage() {
             <Link to="demo">Naar mock-demo</Link>
           </Button>
           <Button variant="ghost" className="mt-2 block w-full" asChild>
-            <Link to="dashboard">Zaak-dashboard (live, na inloggen)</Link>
+            <Link to="dashboard">Boekingen-dashboard (live, na inloggen)</Link>
           </Button>
           <p className="mt-2 text-xs text-muted-foreground">
-            Of direct: <code className="rounded bg-muted px-1">/booking-app/dashboard/jouw-slug</code> — zelfde data als het portaal.
+            Of direct: <code className="rounded bg-muted px-1">/booking-app/dashboard/jouw-slug</code> — aparte web app van{" "}
+            <code className="rounded bg-muted px-1">gentrix.nl/portal/…</code>.
           </p>
         </div>
       </div>
