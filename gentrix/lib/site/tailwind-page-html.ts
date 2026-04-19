@@ -173,6 +173,10 @@ html[data-gentrix-site-credit-variant="2"] [data-studio-site-credit]{
  * `scroll-padding` op `html` helpt alleen bij hash-scroll; `fixed` nav laat inhoud visueel onder de balk starten.
  * Zet `data-gentrix-studio-auto-nav="1"` op `<html>` wanneer `buildStudioAutoMobileNavHeaderHtml` is toegevoegd —
  * dan geldt alleen de eerste regel (anders telt `:has(> header.fixed)` dubbel op verborgen AI-headers).
+ *
+ * **Dubbele inset:** veel AI-hero’s hebben al `pt-12` / `pt-16` op de eerste content-`div` na `header`. Dan is
+ * `padding-top` op `#hero` **overbodig** en ontstaat een wit/grijs band **boven** de vaste balk + extra ruimte
+ * tussen nav en hero (dubbele “navbar offset”).
  */
 export const STUDIO_FIXED_NAV_HERO_INSET_CSS = `html[data-gentrix-studio-iframe="1"][data-gentrix-studio-auto-nav="1"] body > section[data-section]:first-of-type {
   padding-top: 5.5rem;
@@ -184,6 +188,11 @@ html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) #he
 html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + #hero,
 html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + section#hero {
   padding-top: 5.5rem;
+}
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section#hero:has(> header[class*="fixed"] + *[class*="pt-"]),
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) #hero:has(> header[class*="fixed"] + *[class*="pt-"]),
+html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + section#hero:has(> *[class*="pt-"]) {
+  padding-top: 0 !important;
 }
 `;
 
@@ -2421,6 +2430,8 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS}
     /* Vaste top-nav (fixed) + hash-scroll: zonder padding komen koppen onder de balk (afgeknipt, "overlap"). */
     html { scroll-padding-top: 5.5rem; }
+    /* Geen browser-default marge rondom de preview: voorkomt een witte strook boven de vaste header. */
+    html, body { margin: 0; padding: 0; }
     /* Voorkom wazige rasterisatie op kleine tekst in footers (Chromium + transforms/filters in model-HTML). */
     footer, [role="contentinfo"] {
       -webkit-font-smoothing: antialiased;
