@@ -9,7 +9,7 @@
     "dev:with-booking-spa": "npm run build:booking-app && npm run dev",
     "dev:lan": "next dev --webpack",
     "dev:turbo": "next dev --turbopack --hostname localhost",
-    "build:booking-app": "npm run build --prefix frontends/booking",
+    "build:booking-app": "npm install --prefix frontends/booking && npm run build --prefix frontends/booking",
     "build": "npm run build:booking-app && next build",
     "start": "next start",
     "lint": "eslint",
