@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { bookingVitePreflightResponse, jsonWithMaybeCors } from "@/lib/api/public-booking-cors";
 import { resolvePublicBookingSlotDurationMinutes } from "@/lib/booking/booking-services-db";
 import { computePublicBookingSlotsForDay } from "@/lib/booking/compute-public-booking-slots-for-day";
 import { parseYmd } from "@/lib/booking/compute-booking-slots";
@@ -9,6 +9,10 @@ import { resolveActivePortalClientIdBySlug } from "@/lib/portal/resolve-portal-c
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type RouteContext = { params: Promise<{ slug: string }> };
+
+export async function OPTIONS(request: Request) {
+  return bookingVitePreflightResponse(request);
+}
 
 async function requestClientIp(): Promise<string> {
   const h = await headers();
@@ -23,27 +27,27 @@ export async function GET(request: Request, context: RouteContext) {
   const ip = await requestClientIp();
 
   if (!checkPublicRateLimit(ip, `public:book-staff:${slug}`, 60)) {
-    return NextResponse.json({ ok: false, error: "Te veel verzoeken." }, { status: 429 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Te veel verzoeken." }, { status: 429 });
   }
 
   const resolved = await resolveActivePortalClientIdBySlug(slug);
   if (!resolved.ok) {
-    return NextResponse.json({ ok: false, error: "Niet gevonden." }, { status: 404 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Niet gevonden." }, { status: 404 });
   }
   if (!resolved.appointmentsEnabled) {
-    return NextResponse.json({ ok: false, error: "Online boeken staat niet aan." }, { status: 403 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Online boeken staat niet aan." }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date")?.trim() ?? "";
   const serviceParam = searchParams.get("service")?.trim() ?? "";
   if (!dateParam || !parseYmd(dateParam)) {
-    return NextResponse.json({ ok: false, error: "Parameter date (YYYY-MM-DD) is verplicht." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Parameter date (YYYY-MM-DD) is verplicht." }, { status: 400 });
   }
 
   const durRes = await resolvePublicBookingSlotDurationMinutes(resolved.clientId, serviceParam);
   if (!durRes.ok) {
-    return NextResponse.json({ ok: false, error: durRes.error }, { status: durRes.status });
+    return jsonWithMaybeCors(request, { ok: false, error: durRes.error }, { status: durRes.status });
   }
 
   const settings = await loadBookingSettingsForClientId(resolved.clientId);
@@ -58,14 +62,14 @@ export async function GET(request: Request, context: RouteContext) {
     .order("sort_order", { ascending: true });
 
   if (error?.message?.includes("client_staff") || error?.code === "42P01") {
-    return NextResponse.json({ ok: true, requiresStaffSelection: false, staff: [] });
+    return jsonWithMaybeCors(request, { ok: true, requiresStaffSelection: false, staff: [] });
   }
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return jsonWithMaybeCors(request, { ok: false, error: error.message }, { status: 500 });
   }
 
   if (!members?.length) {
-    return NextResponse.json({ ok: true, requiresStaffSelection: false, staff: [] });
+    return jsonWithMaybeCors(request, { ok: true, requiresStaffSelection: false, staff: [] });
   }
 
   const staffOut: { id: string; name: string }[] = [];
@@ -83,5 +87,5 @@ export async function GET(request: Request, context: RouteContext) {
     }
   }
 
-  return NextResponse.json({ ok: true, requiresStaffSelection: true, staff: staffOut });
+  return jsonWithMaybeCors(request, { ok: true, requiresStaffSelection: true, staff: staffOut });
 }

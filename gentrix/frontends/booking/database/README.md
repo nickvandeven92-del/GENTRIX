@@ -50,4 +50,4 @@ Per-tabel RLS is uitgeschakeld in deze migraties. Voeg policies toe wanneer je a
 
 Deze map hoort bij **deze booking-frontend** (`frontends/booking`): tabellen `businesses`, `services`, `employees`, `appointments`, enz.
 
-De productie-**studio** in deze monorepo gebruikt een **ander** schema in `gentrix/supabase/migrations/` (o.a. `clients`, `client_appointments`, `client_staff`, `client_booking_services`). Voer dit SQL-pakket niet op hetzelfde Supabase-productieproject uit tenzij je bewust twee parallelle boekingstacken wilt. `009_seed.sql` is alleen voor ontwikkeling/demo.
+De productie-**studio** in deze monorepo gebruikt een **ander** schema in `gentrix/supabase/migrations/` (o.a. `clients`, `client_appointments`, `client_staff`, `client_booking_services`). Zie ook **`docs/BOOKING_GENTRIX_UNIFIED.md`** (één model voor alle klanten, mapping, checklist). Voer dit SQL-pakket niet op hetzelfde Supabase-productieproject uit tenzij je bewust twee parallelle boekingstacken wilt. `009_seed.sql` is alleen voor ontwikkeling/demo.

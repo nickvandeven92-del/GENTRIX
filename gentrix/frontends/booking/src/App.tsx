@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BusinessProvider } from "@/context/BusinessContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import HomePage from "./pages/HomePage";
 import BookingPage from "./pages/BookingPage";
+import BookingPageLive from "./pages/BookingPageLive";
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
 import DashboardServices from "./pages/dashboard/DashboardServices";
 import DashboardEmployees from "./pages/dashboard/DashboardEmployees";
@@ -26,8 +28,9 @@ const App = () => (
       <BusinessProvider>
         <BrowserRouter>
           <Routes>
-            {/* Booking system */}
-            <Route path="/" element={<BookingPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/book/:slug" element={<BookingPageLive />} />
+            <Route path="/demo" element={<BookingPage />} />
 
             {/* Owner dashboard */}
             <Route path="/dashboard" element={<DashboardLayout />}>

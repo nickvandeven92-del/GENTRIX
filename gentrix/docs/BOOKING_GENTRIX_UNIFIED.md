@@ -32,8 +32,15 @@ Gebruik die SQL hooguit op een **leeg** dev-project, of als referentie bij het p
 | `appointments`: DATE + TIME, enum status | `client_appointments`: timestamptz, `status` (o.a. `scheduled` / `cancelled`; uitbreidingen via migraties indien nodig) |
 | `settings.openingHours` op business | `clients.booking_settings` (Zod: `week`, `slotDurationMinutes`, … — zie `lib/booking/booking-settings.ts`) |
 
+## Vite booking-app (`frontends/booking/`, live)
+
+- Route **`/book/{slug}`** in de SPA praat met dezelfde endpoints als `/boek/{slug}` in Next: `GET/POST /api/public/clients/{slug}/booking-*` en `…/appointments`.
+- **Lokaal:** Next op `:3000`, Vite op `:8080`; Vite proxy’t `/api` naar Next (geen CORS).
+- **Productie:** Vite-deploy op eigen URL → zet `VITE_GENTRIX_API_BASE=https://www.jouw-gentrix.nl` in de Vite-build en op Next **`BOOKING_VITE_PUBLIC_ORIGINS`** (of `NEXT_PUBLIC_BOOKING_VITE_ORIGINS`) op de exacte SPA-`Origin`(s).
+- **Optioneel:** `NEXT_PUBLIC_BOOKING_VITE_APP_URL` in Next laat `/boek/{slug}` **redirecten** naar de Vite-app (`…/book/{slug}`).
+
 ## Praktische checklist
 
 1. **Productie / staging:** alleen `supabase/migrations/`; geen `frontends/booking/database/*.sql` op datzelfde project.
 2. **Per klant:** `appointments_enabled` aan; `booking_settings` en team/diensten vullen via portaal (of admin).
-3. **Vite-app:** blijft mock tot hij expliciet dezelfde API’s/Supabase-tabellen gebruikt — dan is er nog steeds maar **één** schema.
+3. **Vite-app:** mock-demo blijft op **`/demo`**; live boeking op **`/book/{slug}`** — één schema via de Next-API’s hierboven.

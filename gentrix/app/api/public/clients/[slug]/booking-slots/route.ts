@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { bookingVitePreflightResponse, jsonWithMaybeCors } from "@/lib/api/public-booking-cors";
 import { getBookingCalendarMeta } from "@/lib/booking/booking-calendar-meta";
 import { computePublicBookingSlotsForDay } from "@/lib/booking/compute-public-booking-slots-for-day";
 import { getBookingDayBoundsMs, parseYmd } from "@/lib/booking/compute-booking-slots";
@@ -21,21 +21,25 @@ async function requestClientIp(): Promise<string> {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export async function OPTIONS(request: Request) {
+  return bookingVitePreflightResponse(request);
+}
+
 export async function GET(request: Request, context: RouteContext) {
   const { slug: raw } = await context.params;
   const slug = decodeURIComponent(raw);
   const ip = await requestClientIp();
 
   if (!checkPublicRateLimit(ip, `public:book-slots:${slug}`, 60)) {
-    return NextResponse.json({ ok: false, error: "Te veel verzoeken." }, { status: 429 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Te veel verzoeken." }, { status: 429 });
   }
 
   const resolved = await resolveActivePortalClientIdBySlug(slug);
   if (!resolved.ok) {
-    return NextResponse.json({ ok: false, error: "Niet gevonden." }, { status: 404 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Niet gevonden." }, { status: 404 });
   }
   if (!resolved.appointmentsEnabled) {
-    return NextResponse.json({ ok: false, error: "Online boeken staat niet aan." }, { status: 403 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Online boeken staat niet aan." }, { status: 403 });
   }
 
   const settings = await loadBookingSettingsForClientId(resolved.clientId);
@@ -48,16 +52,16 @@ export async function GET(request: Request, context: RouteContext) {
   const serviceParam = searchParams.get("service")?.trim() ?? "";
 
   if (!dateParam) {
-    return NextResponse.json({ ok: true, meta, slots: [] });
+    return jsonWithMaybeCors(request, { ok: true, meta, slots: [], businessName: resolved.name });
   }
 
   if (!parseYmd(dateParam)) {
-    return NextResponse.json({ ok: false, error: "Ongeldige datum (gebruik YYYY-MM-DD)." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Ongeldige datum (gebruik YYYY-MM-DD)." }, { status: 400 });
   }
 
   const bounds = getBookingDayBoundsMs(dateParam, settings.timeZone);
   if (!bounds) {
-    return NextResponse.json({ ok: false, error: "Ongeldige datum." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Ongeldige datum." }, { status: 400 });
   }
 
   const activeStaffIds = await listActiveClientStaffIds(resolved.clientId);
@@ -65,22 +69,22 @@ export async function GET(request: Request, context: RouteContext) {
 
   if (activeStaffIds.length > 0) {
     if (!staffParam || !UUID_RE.test(staffParam)) {
-      return NextResponse.json(
+      return jsonWithMaybeCors(request,
         { ok: false, error: "Kies een medewerker om tijden te zien (parameter staff ontbreekt of is ongeldig)." },
         { status: 400 },
       );
     }
     if (!activeStaffIds.includes(staffParam)) {
-      return NextResponse.json({ ok: true, meta, slots: [] });
+      return jsonWithMaybeCors(request, { ok: true, meta, slots: [], businessName: resolved.name });
     }
     staffId = staffParam;
   } else if (staffParam) {
-    return NextResponse.json({ ok: false, error: "Deze zaak gebruikt geen medewerkerskeuze." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Deze zaak gebruikt geen medewerkerskeuze." }, { status: 400 });
   }
 
   const durRes = await resolvePublicBookingSlotDurationMinutes(resolved.clientId, serviceParam);
   if (!durRes.ok) {
-    return NextResponse.json({ ok: false, error: durRes.error }, { status: durRes.status });
+    return jsonWithMaybeCors(request, { ok: false, error: durRes.error }, { status: durRes.status });
   }
 
   const slots = await computePublicBookingSlotsForDay({
@@ -92,5 +96,5 @@ export async function GET(request: Request, context: RouteContext) {
     slotDurationMinutes: durRes.slotDurationMinutes,
   });
 
-  return NextResponse.json({ ok: true, meta, slots });
+  return jsonWithMaybeCors(request, { ok: true, meta, slots, businessName: resolved.name });
 }

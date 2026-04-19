@@ -10,6 +10,13 @@ export default defineConfig({
     hmr: {
       overlay: false,
     },
+    /** Proxy naar Gentrix Next (localhost:3000): `/api` → live boek-API zonder CORS. */
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:3000",
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [react()],
   resolve: {

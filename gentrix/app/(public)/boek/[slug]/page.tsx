@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PublicBookingForm } from "@/components/public/public-booking-form";
 import { PublicModuleInactive } from "@/components/public/public-module-inactive";
 import { resolveActivePortalClientIdBySlug } from "@/lib/portal/resolve-portal-client";
@@ -42,6 +42,12 @@ export default async function PublicBookingPage({ params }: Props) {
         />
       </div>
     );
+  }
+
+  const viteBookingApp = process.env.NEXT_PUBLIC_BOOKING_VITE_APP_URL?.trim();
+  if (viteBookingApp) {
+    const base = viteBookingApp.replace(/\/$/, "");
+    redirect(`${base}/book/${encodeURIComponent(slug)}`);
   }
 
   return (

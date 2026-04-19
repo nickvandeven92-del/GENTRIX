@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { bookingVitePreflightResponse, jsonWithMaybeCors } from "@/lib/api/public-booking-cors";
 import { z } from "zod";
 import { insertClientAppointment } from "@/lib/appointments/insert-client-appointment";
 import { checkPublicRateLimit } from "@/lib/api/public-rate-limit";
@@ -31,6 +31,10 @@ const publicPostSchema = z.object({
 
 type RouteContext = { params: Promise<{ slug: string }> };
 
+export async function OPTIONS(request: Request) {
+  return bookingVitePreflightResponse(request);
+}
+
 async function requestClientIp(): Promise<string> {
   const h = await headers();
   const xf = h.get("x-forwarded-for");
@@ -44,27 +48,27 @@ export async function POST(request: Request, context: RouteContext) {
   const ip = await requestClientIp();
 
   if (!checkPublicRateLimit(ip, `public:appts:${slug}`, 20)) {
-    return NextResponse.json({ ok: false, error: "Te veel verzoeken. Probeer later opnieuw." }, { status: 429 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Te veel verzoeken. Probeer later opnieuw." }, { status: 429 });
   }
 
   const resolved = await resolveActivePortalClientIdBySlug(slug);
   if (!resolved.ok) {
-    return NextResponse.json({ ok: false, error: "Niet gevonden." }, { status: 404 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Niet gevonden." }, { status: 404 });
   }
   if (!resolved.appointmentsEnabled) {
-    return NextResponse.json({ ok: false, error: "Online boeken staat niet aan." }, { status: 403 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Online boeken staat niet aan." }, { status: 403 });
   }
 
   let json: unknown;
   try {
     json = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "Ongeldige JSON." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Ongeldige JSON." }, { status: 400 });
   }
 
   const parsed = publicPostSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json(
+    return jsonWithMaybeCors(request,
       { ok: false, error: parsed.error.issues.map((i) => i.message).join(" ") },
       { status: 400 },
     );
@@ -73,16 +77,16 @@ export async function POST(request: Request, context: RouteContext) {
   const starts = new Date(parsed.data.starts_at);
   const ends = new Date(parsed.data.ends_at);
   if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) {
-    return NextResponse.json({ ok: false, error: "Ongeldige datum/tijd." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Ongeldige datum/tijd." }, { status: 400 });
   }
   if (ends <= starts) {
-    return NextResponse.json({ ok: false, error: "Einde moet na start zijn." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Einde moet na start zijn." }, { status: 400 });
   }
 
   const slackMs = 60_000;
   const nowMs = Date.now();
   if (starts.getTime() < nowMs - slackMs) {
-    return NextResponse.json({ ok: false, error: "Kies een starttijd in de toekomst." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Kies een starttijd in de toekomst." }, { status: 400 });
   }
 
   const settings = await loadBookingSettingsForClientId(resolved.clientId);
@@ -94,14 +98,14 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (needsBookingService) {
     if (!bookingServiceRaw) {
-      return NextResponse.json(
+      return jsonWithMaybeCors(request,
         { ok: false, error: "Kies een behandeling en probeer opnieuw." },
         { status: 400 },
       );
     }
     resolvedService = await resolveActiveBookingService(resolved.clientId, bookingServiceRaw);
     if (!resolvedService) {
-      return NextResponse.json(
+      return jsonWithMaybeCors(request,
         { ok: false, error: "Ongeldige of inactieve behandeling." },
         { status: 400 },
       );
@@ -109,13 +113,13 @@ export async function POST(request: Request, context: RouteContext) {
     const expectedMs = resolvedService.duration_minutes * 60 * 1000;
     const actualMs = ends.getTime() - starts.getTime();
     if (Math.abs(actualMs - expectedMs) > 90_000) {
-      return NextResponse.json(
+      return jsonWithMaybeCors(request,
         { ok: false, error: "De gekozen tijden komen niet overeen met de duur van de behandeling." },
         { status: 400 },
       );
     }
   } else if (bookingServiceRaw) {
-    return NextResponse.json(
+    return jsonWithMaybeCors(request,
       { ok: false, error: "Behandeling is voor deze zaak niet van toepassing." },
       { status: 400 },
     );
@@ -123,13 +127,13 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (activeStaffIds.length > 0) {
     if (!staffIdRaw || !activeStaffIds.includes(staffIdRaw)) {
-      return NextResponse.json(
+      return jsonWithMaybeCors(request,
         { ok: false, error: "Kies een geldige medewerker en probeer opnieuw." },
         { status: 400 },
       );
     }
   } else if (staffIdRaw) {
-    return NextResponse.json({ ok: false, error: "Medewerker is voor deze zaak niet van toepassing." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Medewerker is voor deze zaak niet van toepassing." }, { status: 400 });
   }
 
   const dateYmd = (() => {
@@ -141,7 +145,7 @@ export async function POST(request: Request, context: RouteContext) {
   })();
   const bounds = getBookingDayBoundsMs(dateYmd, settings.timeZone);
   if (!bounds) {
-    return NextResponse.json({ ok: false, error: "Ongeldige boekingstijd." }, { status: 400 });
+    return jsonWithMaybeCors(request, { ok: false, error: "Ongeldige boekingstijd." }, { status: 400 });
   }
 
   const slotOk = await isValidPublicBookedSlot(
@@ -154,7 +158,7 @@ export async function POST(request: Request, context: RouteContext) {
     resolvedService?.duration_minutes,
   );
   if (!slotOk) {
-    return NextResponse.json(
+    return jsonWithMaybeCors(request,
       { ok: false, error: "Dit tijdslot is niet beschikbaar. Vernieuw de pagina en kies een ander slot." },
       { status: 409 },
     );
@@ -182,10 +186,10 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!inserted.ok) {
     if (inserted.error.includes("booker_") || inserted.error.includes("reminder_sent")) {
-      return NextResponse.json({ ok: false, error: "Boeking tijdelijk niet beschikbaar." }, { status: 503 });
+      return jsonWithMaybeCors(request, { ok: false, error: "Boeking tijdelijk niet beschikbaar." }, { status: 503 });
     }
-    return NextResponse.json({ ok: false, error: inserted.error }, { status: 500 });
+    return jsonWithMaybeCors(request, { ok: false, error: inserted.error }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, appointment: inserted.appointment });
+  return jsonWithMaybeCors(request, { ok: true, appointment: inserted.appointment });
 }
