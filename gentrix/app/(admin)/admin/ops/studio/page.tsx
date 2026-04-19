@@ -39,6 +39,7 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
       <div className="studio-generator-scope flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
         <StudioTailwindWorkspace
           subfolderSlug={existing.subfolder_slug}
+          draftUpdatedAt={existing.updated_at}
           initialName={existing.name}
           initialDescription={existing.description}
           initialStatus={existing.status}

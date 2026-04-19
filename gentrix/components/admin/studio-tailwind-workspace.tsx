@@ -17,6 +17,8 @@ type Tab = "edit" | "generate";
 
 export type StudioTailwindWorkspaceProps = {
   subfolderSlug: string;
+  /** DB `clients.updated_at` — wijzigt bij elke site-opslag; gebruikt als React `key` zodat de editor na `router.refresh()` opnieuw mount met verse secties. */
+  draftUpdatedAt: string;
   initialName: string;
   initialDescription: string | null;
   initialStatus: "draft" | "active" | "paused" | "archived";
@@ -98,6 +100,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {tab === "edit" ? (
           <SiteHtmlEditor
+            key={`${props.subfolderSlug}:${props.draftUpdatedAt}`}
             subfolderSlug={props.subfolderSlug}
             initialName={props.initialName}
             initialDescription={props.initialDescription}
