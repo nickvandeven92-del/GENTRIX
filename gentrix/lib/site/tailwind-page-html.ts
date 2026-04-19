@@ -8,6 +8,7 @@ import {
   ensureAlpineMobileToggleButtonHasLgHidden,
   fixAlpineNavToggleDefaultsInXData,
   repairBrokenMobileDrawer,
+  repairHeaderMobileMenuButton,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
 import {
@@ -1618,7 +1619,7 @@ export function sanitizeTailwindFragment(html: string): string {
     ALLOW_DATA_ATTR: false,
   });
   DOMPurify.removeHook("uponSanitizeAttribute");
-  return repairBrokenMobileDrawer(appendImgOnErrorHide(purified));
+  return repairBrokenMobileDrawer(appendImgOnErrorHide(repairHeaderMobileMenuButton(purified)));
 }
 
 function escapeDataAttr(value: string): string {

@@ -413,6 +413,111 @@ const stateKey =
   return out;
 }
 
+/** Geen `dark:` op de strepen: bij lichte header + system dark kan `dark:bg-*` witte streepjes op wit geven. */
+function buildGentrixHamburgerFallbackInner(headerHtml: string, buttonAttrs: string): string {
+  const blob = `${headerHtml}\n${buttonAttrs}`;
+  const looksDarkNav =
+    /\bbg-(?:stone|zinc|slate|neutral)-(8|9)00\b/i.test(blob) ||
+    /\bbg-black\b/i.test(blob) ||
+    /\bbg-\[#0/i.test(blob);
+  const looksLightNav =
+    /\bbg-white\b/i.test(blob) ||
+    /\bbg-stone-50\b/i.test(blob) ||
+    /\bbg-zinc-50\b/i.test(blob) ||
+    /\bbg-stone-100\b/i.test(blob);
+  const bar = looksDarkNav && !looksLightNav
+    ? "h-0.5 w-5 rounded-full bg-white/95 shadow-sm"
+    : "h-0.5 w-5 rounded-full bg-neutral-900 shadow-sm";
+  return `<span class="gentrix-hamburger-fallback pointer-events-none flex flex-col justify-center gap-[5px]" aria-hidden="true"><span class="${bar}"></span><span class="${bar}"></span><span class="${bar}"></span></span>`;
+}
+
+function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
+  if (menuButtonHintScore(attrs) >= 6) return true;
+  return (
+    /\b(?:lg|md|sm|xl):hidden\b/i.test(attrs) &&
+    /\baria-label\s*=\s*["'][^"']*(?:menu|Menu|enu|hamburger)/i.test(attrs) &&
+    /\bflex\b/i.test(attrs) &&
+    /\bgap-/.test(attrs)
+  );
+}
+
+/**
+ * `repairBrokenMobileDrawer` pakt vooral **zij-drawers** (`fixed right-0 h-full`). Veel AI-headers gebruiken
+ * een **top-sheet** (`x-show="navOpen"`) zonder side-drawer — dan bleef de hamburger leeg en/of zonder @click.
+ * Repareert de eerste `<header>`: toggle + vaste streepjes als de knop inhoudloos is.
+ */
+export function repairHeaderMobileMenuButton(html: string): string {
+  const headerRe = /<header\b[^>]*>[\s\S]*?<\/header>/i;
+  const hm = html.match(headerRe);
+  if (!hm || hm.index === undefined) return html;
+
+  const fullHeader = hm[0];
+  const probe = html.slice(0, Math.min(html.length, 120_000));
+  const stateKey =
+    extractFirstNavToggleKeyFromInteractiveMarkup(probe) ??
+    extractFirstNavToggleKeyFromXDataScope(probe) ??
+    "navOpen";
+
+  let h = fullHeader;
+
+  if (
+    !/\bx-data\s*=/i.test(probe) &&
+    /\bx-show\s*=\s*["'][^"']*\b(?:navOpen|menuOpen)\b/i.test(h)
+  ) {
+    h = injectNavStateScope(h, stateKey);
+  }
+
+  const next = h.replace(/<button(\b[^>]*)>([\s\S]*?)<\/button>/gi, (full, attrs: string, inner: string) => {
+    if (!isLikelyHeaderMobileMenuButton(attrs)) return full;
+    if (/\bgentrix-menu-repaired\b/.test(attrs)) return full;
+
+    const trimmed = inner.replace(/<!--[\s\S]*?-->/g, "").trim();
+    if (trimmed.includes("gentrix-hamburger-fallback")) return full;
+
+    const needsClick = !/(?:@click|x-on:click)\s*=/.test(attrs);
+    const needsBars = trimmed.length === 0;
+    if (!needsClick && !needsBars) return full;
+
+    let nextAttrs = attrs;
+    if (needsClick) {
+      nextAttrs = `${nextAttrs} @click="${stateKey} = !${stateKey}"`;
+      if (!/\baria-expanded\s*=/.test(nextAttrs)) {
+        nextAttrs = `${nextAttrs} :aria-expanded="${stateKey}.toString()"`;
+      }
+    }
+    if (needsBars) {
+      const blob = `${h}\n${attrs}`;
+      const lightNav =
+        /\bbg-white\b/i.test(blob) ||
+        /\bbg-stone-50\b/i.test(blob) ||
+        /\bbg-zinc-50\b/i.test(blob) ||
+        /\bbg-stone-100\b/i.test(blob);
+      if (lightNav) {
+        nextAttrs = nextAttrs.replace(/\btext-white\b/g, "text-neutral-900");
+        if (!/\btext-(?:neutral|stone|zinc|slate|gray)-(?:[6-9]00|950)\b/.test(nextAttrs) && !/\btext-black\b/.test(nextAttrs)) {
+          nextAttrs = `${nextAttrs} text-neutral-900`.replace(/\s+/g, " ");
+        }
+      } else if (!/\btext-(?:stone|zinc|neutral|slate|gray|white|black)\b/.test(nextAttrs)) {
+        nextAttrs = `${nextAttrs} text-neutral-200`.replace(/\s+/g, " ");
+      }
+    }
+    if (/\bclass\s*=\s*["']/i.test(nextAttrs)) {
+      nextAttrs = nextAttrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/i, (_m, q: string, c: string) => {
+        if (/\bgentrix-menu-repaired\b/.test(c)) return `class=${q}${c}${q}`;
+        return `class=${q}${c} gentrix-menu-repaired${q}`;
+      });
+    } else {
+      nextAttrs = `${nextAttrs} class="gentrix-menu-repaired"`;
+    }
+
+    const nextInner = needsBars ? buildGentrixHamburgerFallbackInner(h, attrs) : inner;
+    return `<button${nextAttrs}>${nextInner}</button>`;
+  });
+
+  if (next === fullHeader) return html;
+  return html.slice(0, hm.index) + next + html.slice(hm.index + fullHeader.length);
+}
+
 /**
  * Repareert veelvoorkomende "broken drawer"-output:
  * - hamburgerknop zonder @click

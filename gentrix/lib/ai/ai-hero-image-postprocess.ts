@@ -69,7 +69,8 @@ export function siteChatMessageSuggestsAiHeroRaster(message: string): boolean {
   const visual = /\b(luxe|luxer|high.end|high-end|premium|sfeerbeeld|achtergrond|fotografie|foto|beeld|stijl|look|atmosfeer|mood|zwart.?wit|motion blur|close.up|close-up|scheer|scheermes|barbier|gegenereerde|genereer|ai.?beeld|stock|unsplash|pexels)\b/.test(
     lower,
   );
-  const change = /\b(maak|vervang|update|wijzig|wijziging|nieuw|nieuwe|andere|betere|verbeter|verbeteren|frisser|frisse)\b/.test(
+  /** Onder andere `genereer` — anders matcht bv. "Genereer een close-up ... voor mijn hero" niet en start de server-pipeline niet. */
+  const change = /\b(maak|vervang|update|wijzig|wijziging|nieuw|nieuwe|andere|betere|verbeter|verbeteren|frisser|frisse|genereer|creëer|creer)\b/.test(
     lower,
   );
   if (visual && change) return true;
@@ -149,7 +150,7 @@ export function getAiHeroImagePostProcessSkipReason(): string | null {
     return "uitgeschakeld met STUDIO_AI_HERO_IMAGE=0.";
   }
   if (!hasAnyHeroImageUpstreamKey()) {
-    return "Geen beeld-API-key: zet GOOGLE_AI_STUDIO_API (of GEMINI_API_KEY), of als fallback OPENAI_API_KEY.";
+    return "Geen beeld-API-key: zet GOOGLE_AI_STUDIO_API (Google AI Studio / Gemini) of GEMINI_API_KEY. OPENAI_API_KEY is alleen nodig als je DALL·E-fallback gebruikt.";
   }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     return "NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn nodig om de afbeelding naar de bucket «site-assets» te uploaden.";
@@ -519,6 +520,56 @@ async function uploadRasterToSiteAssets(
   }
 }
 
+function stripTailwindGradientBackgroundTokens(classValue: string): string {
+  return classValue
+    .split(/\s+/)
+    .filter((t) => {
+      const x = t.trim();
+      if (!x) return false;
+      if (/^bg-gradient(?:$|-)/.test(x)) return false;
+      if (/^from-/.test(x)) return false;
+      if (/^via-/.test(x)) return false;
+      if (/^to-/.test(x)) return false;
+      return true;
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function ensureRelativeOverflowHiddenClassValue(classValue: string): string {
+  let c = classValue.trim();
+  if (!/\brelative\b/i.test(c)) c = `relative ${c}`;
+  if (!/\boverflow-hidden\b/i.test(c)) c = `${c} overflow-hidden`;
+  return c.replace(/\s+/g, " ").trim();
+}
+
+function mutateFirstDivOpeningStripGradient(divOpen: string): string {
+  if (!/\bclass\s*=/i.test(divOpen)) {
+    return divOpen.replace(/^<div\b/i, '<div class="relative overflow-hidden"');
+  }
+  return divOpen.replace(/\bclass\s*=\s*(["'])([^"']*)\1/i, (_full, q: string, cls: string) => {
+    const next = ensureRelativeOverflowHiddenClassValue(stripTailwindGradientBackgroundTokens(cls));
+    return `class=${q}${next}${q}`;
+  });
+}
+
+/**
+ * Split-hero (`grid` / `md:grid-cols-2` op de `<section>`): full-bleed-injectie op sectie-niveau
+ * verdwijnt onder een linkerkolom met effen `bg-gradient-*`. Zet het raster in de eerste kolom en strip gradient-`bg-*`.
+ */
+function tryInjectAiHeroIntoSplitGridFirstColumn(html: string, imgTag: string): string | null {
+  const out = html.replace(
+    /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>(\s*)(<div)(\s[^>]*>)/i,
+    (full, secAttrs: string, ws: string, divLt: string, divRest: string) => {
+      if (!/\b(?:(?:md|lg):)?grid-cols-2\b/i.test(secAttrs)) return full;
+      const newDivOpen = mutateFirstDivOpeningStripGradient(`${divLt}${divRest}`);
+      return `<section${secAttrs}>${ws}${newDivOpen}${imgTag}`;
+    },
+  );
+  return out === html ? null : out;
+}
+
 /**
  * Voegt één **full-bleed** hero-beeld toe (onder de overige inhoud, `z-0`).
  * Geen desktop-halve-breedte meer: `md:w-1/2` + complexe AI-grids met ondoorzichtige zijkolommen
@@ -529,6 +580,9 @@ export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUr
   const escUrl = publicImageUrl.replace(/"/g, "&quot;");
   /** `z-0` (niet negatief): negatieve z-index verdween vaak achter sibling-kolommen met effen `bg-*`, waardoor de injectie “onzichtbaar” leek. */
   const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center" loading="eager" fetchpriority="high" />`;
+
+  const splitFirst = tryInjectAiHeroIntoSplitGridFirstColumn(html, img);
+  if (splitFirst != null) return splitFirst;
 
   const out = html.replace(
     /<section(\s[^>]*?\bid\s*=\s*["']hero["'][^>]*?)>/i,

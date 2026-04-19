@@ -22,6 +22,11 @@ describe("ai-hero-image-postprocess", () => {
     );
     expect(siteChatMessageSuggestsAiHeroRaster("indrukwekkende hero met scheermes zwart-wit")).toBe(true);
     expect(siteChatMessageSuggestsAiHeroRaster("another hero image please")).toBe(true);
+    expect(
+      siteChatMessageSuggestsAiHeroRaster(
+        "Genereer een close up afbeelding van een scheer apparaat voor mijn hero, ik wil de split hero behouden",
+      ),
+    ).toBe(true);
   });
 
   it("stripHeroRasterPlaceholdersForSiteChatAiHero verwijdert img en background-url zodat AI-inject mag", () => {
@@ -46,6 +51,23 @@ describe("ai-hero-image-postprocess", () => {
     expect(out).toContain("data-gentrix-ai-hero-img=");
     expect(out).toContain("https://example.com/x.png");
     expect(out).toMatch(/class="[^"]*\brelative\b/);
+  });
+
+  it("injectAiHeroImageIntoHeroSectionHtml split-grid: img in eerste kolom, gradient uit class", () => {
+    const html = `<section id="hero" class="relative grid min-h-screen grid-cols-1 md:grid-cols-2">
+      <div class="min-h-[50vh] bg-gradient-to-br from-stone-400 to-stone-200"></div>
+      <div class="p-8">Copy</div>
+    </section>`;
+    const out = injectAiHeroImageIntoHeroSectionHtml(html, "https://example.com/razor.png");
+    expect(out).not.toBeNull();
+    expect(out).toContain("data-gentrix-ai-hero-img=");
+    expect(out).toContain("https://example.com/razor.png");
+    expect(out).not.toMatch(/bg-gradient-to-br/);
+    expect(out).toMatch(/<div[^>]*class="[^"]*overflow-hidden/);
+    const firstImg = out!.indexOf("data-gentrix-ai-hero-img");
+    const firstDiv = out!.indexOf("<div");
+    expect(firstImg).toBeLessThan(out!.indexOf("Copy"));
+    expect(firstImg).toBeGreaterThan(firstDiv);
   });
 
   it("shouldAttemptAiHeroImageForHtml is false bij video", () => {
