@@ -101,6 +101,7 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
     mabs[k] = `${origin}${basePath}/${encodeURIComponent(k)}${tokenQ}`;
   }
   const cfg = {
+    origin,
     src: STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
     view: input.view,
     basePath,
@@ -150,6 +151,19 @@ function isMarketingPath(p){
   if(sk){
     for(var j=0;j<CFG.ms.length;j++){
       if((CFG.ms[j]||"").toLowerCase()===sk)return CFG.ms[j];
+    }
+  }
+  var rp=(p||"").split("?")[0];
+  if(rp.charAt(0)==="/"){
+    var rootOnly=rp.split("/").filter(Boolean);
+    if(rootOnly.length===1){
+      var rseg=rootOnly[0]||"";
+      try{rseg=decodeURIComponent(rseg);}catch(_){}
+      var rlow=rseg.toLowerCase();
+      if(CFG.mseg&&CFG.mseg[rlow])return CFG.mseg[rlow];
+      for(var t=0;t<CFG.ms.length;t++){
+        if((CFG.ms[t]||"").toLowerCase()===rlow)return CFG.ms[t];
+      }
     }
   }
   return null;
