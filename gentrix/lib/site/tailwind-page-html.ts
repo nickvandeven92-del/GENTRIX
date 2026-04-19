@@ -1835,7 +1835,10 @@ export type DraftSiteNavRewriteForIframe = {
 export function buildStudioSinglePageInternalNavScript(
   draftSiteNavRewrite: DraftSiteNavRewriteForIframe | null,
   iframeDocPath?: string | null,
+  /** Parent-`origin` (Next `/site`-pagina); nodig voor `postMessage`-target en absolute boek-URL’s in srcDoc-iframe. */
+  topPageOrigin?: string | null,
 ): string {
+  const topOriginJson = JSON.stringify((topPageOrigin ?? "").trim());
   const draftJson =
     draftSiteNavRewrite != null &&
     typeof draftSiteNavRewrite.slug === "string" &&
@@ -1856,6 +1859,7 @@ export function buildStudioSinglePageInternalNavScript(
   var STUDIO_NAV=${JSON.stringify(STUDIO_PUBLIC_NAV_MESSAGE_SOURCE)};
   var DRAFT_SITE_NAV_REWRITE=${draftJson};
   var IFRAME_DOC_PATH=${iframeDocPathJson};
+  var STUDIO_TOP_ORIGIN=${topOriginJson};
   function rewriteDraftSiteNavUrl(absUrl){
     if(!DRAFT_SITE_NAV_REWRITE)return absUrl;
     try{
@@ -1933,13 +1937,14 @@ export function buildStudioSinglePageInternalNavScript(
     e.preventDefault();
     var url=rewriteDraftSiteNavUrl(a.href);
     if(window.top!==window){
-      try{window.top.location.assign(url);return;}catch(_){}
       try{
         if(window.parent&&window.parent!==window){
-          window.parent.postMessage({source:STUDIO_NAV,href:url},window.location.origin||"*");
+          var pmOrigin=STUDIO_TOP_ORIGIN&&STUDIO_TOP_ORIGIN.length?STUDIO_TOP_ORIGIN:"*";
+          window.parent.postMessage({source:STUDIO_NAV,href:url},pmOrigin);
           return;
         }
       }catch(_){}
+      try{window.top.location.assign(url);return;}catch(_){}
       try{window.open(url,"_top");return;}catch(_){}
     }
     try{window.location.assign(url);}catch(_){window.location.assign(a.getAttribute("href"));}
@@ -2040,8 +2045,8 @@ export function buildStudioSinglePageInternalNavScript(
           window.scrollTo({top:0,behavior:"smooth"});
           return;
         }
-        /* Zelfde origin als parent/srcDoc: géén echte iframe-navigatie (die laadt /prijzen etc. in de iframe → wit/kapot beeld). */
-        if(u.origin===window.location.origin){
+        /* Zelfde origin als parent (srcDoc-iframe heeft vaak opaque origin → STUDIO_TOP_ORIGIN). */
+        if((STUDIO_TOP_ORIGIN&&u.origin===STUDIO_TOP_ORIGIN)||u.origin===window.location.origin){
           e.preventDefault();
           var sh=u.hash&&u.hash.length>1?u.hash.slice(1):"";
           if(pn==="/"||pn===""){
@@ -2471,6 +2476,8 @@ export function buildTailwindIframeSrcDoc(
         ? `/site/${encodeURIComponent(slug)}`
         : "";
 
+  const previewOriginTrimmed = options?.previewScriptOrigin?.trim() ?? "";
+
   const viewportContent = options?.previewMatchParentWindowBreakpoints
     ? "width=1280, initial-scale=1"
     : "width=device-width, initial-scale=1";
@@ -2546,12 +2553,12 @@ ${scrollRevealScript}${scrollBorderScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT}
 ${contactSubpageScript}
-${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite, iframeDocPathForScript)}
+${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite, iframeDocPathForScript, previewOriginTrimmed || null)}
 ${bridge}
 ${userJsBlock}
 </body>
 </html>`;
-  const po = options?.previewScriptOrigin?.trim();
+  const po = previewOriginTrimmed;
   if (po) out = rewriteStudioPreviewExternalScripts(out, po);
   return out;
 }
