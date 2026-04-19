@@ -9,6 +9,13 @@ import { cn } from "@/lib/utils";
 
 type ChatRow = { id: string; role: "user" | "assistant"; content: string };
 
+function isAbortError(e: unknown): boolean {
+  return (
+    (e instanceof DOMException && e.name === "AbortError") ||
+    (e instanceof Error && e.name === "AbortError")
+  );
+}
+
 const ACCEPT_MIME = new Set([
   "image/png",
   "image/jpeg",
@@ -33,6 +40,8 @@ const CHAT_STARTER_PROMPTS = [
 
 type SiteAiChatPanelProps = {
   subfolderSlug: string;
+  /** Klant-/sitenaam voor server-side AI-hero (Gemini/OpenAI) na chat. */
+  businessName: string;
   sections: TailwindSection[];
   config: TailwindPageConfig | null | undefined;
   /** Zelfde als klantdossier; stuurt mee naar API voor prompt-context. */
@@ -49,6 +58,7 @@ type SiteAiChatPanelProps = {
 
 export function SiteAiChatPanel({
   subfolderSlug,
+  businessName,
   sections,
   config,
   appointmentsEnabled = true,
@@ -71,6 +81,8 @@ export function SiteAiChatPanel({
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
+  /** Annuleer lopende POST naar `/api/ai-site-chat/stream` (body stream stopt mee). */
+  const chatAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -161,12 +173,17 @@ export function SiteAiChatPanel({
 
     let sawComplete = false;
     let sawError = false;
+    let userAborted = false;
+
+    const ac = new AbortController();
+    chatAbortRef.current = ac;
 
     try {
       const res = await fetch("/api/ai-site-chat/stream", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
+        signal: ac.signal,
         body: JSON.stringify({
           messages: apiMessages,
           sections,
@@ -174,6 +191,8 @@ export function SiteAiChatPanel({
           attachmentUrls,
           appointmentsEnabled,
           webshopEnabled,
+          businessName: businessName.trim() || undefined,
+          subfolder_slug: subfolderSlug,
         }),
       });
 
@@ -224,27 +243,45 @@ export function SiteAiChatPanel({
         }
       };
 
-      while (!sawComplete && !sawError) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer = consumeSiteChatNdjsonBuffer(buffer, decoder.decode(value, { stream: true }), handleNdjsonEvent);
+      try {
+        while (!sawComplete && !sawError) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer = consumeSiteChatNdjsonBuffer(buffer, decoder.decode(value, { stream: true }), handleNdjsonEvent);
+        }
+      } catch (readErr) {
+        if (ac.signal.aborted || isAbortError(readErr)) {
+          userAborted = true;
+        } else {
+          throw readErr;
+        }
       }
+
       if (buffer.trim()) {
         buffer = consumeSiteChatNdjsonBuffer(buffer, "\n", handleNdjsonEvent);
       }
 
       await reader.cancel().catch(() => {});
 
-      if (!sawComplete && !sawError) {
+      if (!sawComplete && !sawError && !userAborted) {
         setError((prev) => prev ?? "Het antwoord werd niet afgerond (verbinding of time-out). Probeer opnieuw.");
       }
-    } catch {
-      setError("Netwerkfout.");
+    } catch (e) {
+      if (isAbortError(e) || ac.signal.aborted) {
+        userAborted = true;
+      } else {
+        setError("Netwerkfout.");
+      }
     } finally {
+      chatAbortRef.current = null;
       setLoading(false);
       setStreamingStatus(null);
       setStreamingReply("");
     }
+  }
+
+  function cancelGeneration() {
+    chatAbortRef.current?.abort();
   }
 
   return (
@@ -478,25 +515,37 @@ export function SiteAiChatPanel({
                 <Loader2 className="size-4 animate-spin text-zinc-600 dark:text-zinc-300" aria-hidden />
               </span>
             ) : null}
-            <button
-              type="button"
-              disabled={loading || disabled || sections.length === 0 || uploading}
-              onClick={() => void send()}
-              className={cn(
-                "pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
-                "border-zinc-200 bg-zinc-900 text-white hover:bg-zinc-800",
-                "disabled:pointer-events-none disabled:opacity-35",
-                "dark:border-zinc-600 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
-              )}
-              title="Verstuur"
-              aria-label="Verstuur bericht"
-            >
-              {loading ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
+            {loading ? (
+              <button
+                type="button"
+                onClick={cancelGeneration}
+                className={cn(
+                  "pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-md border transition-colors",
+                  "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100",
+                  "dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800",
+                )}
+                title="Annuleer"
+                aria-label="Annuleer generatie"
+              >
+                <span className="size-3 rounded-[2px] bg-current" aria-hidden />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={disabled || sections.length === 0 || uploading}
+                onClick={() => void send()}
+                className={cn(
+                  "pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
+                  "border-zinc-200 bg-zinc-900 text-white hover:bg-zinc-800",
+                  "disabled:pointer-events-none disabled:opacity-35",
+                  "dark:border-zinc-600 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
+                )}
+                title="Verstuur"
+                aria-label="Verstuur bericht"
+              >
                 <ArrowUp className="size-4" aria-hidden strokeWidth={2.25} />
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </div>
         <p className="mt-1.5 text-center text-[10px] text-zinc-500 dark:text-zinc-500">

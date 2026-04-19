@@ -26,6 +26,8 @@ import {
   STUDIO_SCROLL_BORDER_SCRIPT,
   STUDIO_SITE_CREDIT_BODY_HTML,
   STUDIO_SITE_CREDIT_CSS,
+  STUDIO_SITE_CREDIT_VARIANT_CSS,
+  pickStudioSiteCreditVariant,
   STUDIO_FIXED_NAV_HERO_INSET_CSS,
   getStudioAosHtmlFragments,
   getStudioGsapHtmlFragments,
@@ -163,9 +165,12 @@ export function buildStandaloneExportHtmlDocument(
   const faviconLink = buildFaviconLinkTagForLogoSet(userAssets?.logoSet);
   const aos = getStudioAosHtmlFragments(false);
   const gsap = getStudioGsapHtmlFragments(false);
+  const siteCreditVariant = pickStudioSiteCreditVariant(
+    userAssets?.exportPublish?.subfolderSlug?.trim() || docTitle,
+  );
 
   return `<!DOCTYPE html>
-<html lang="nl" data-gentrix-studio-iframe="1"${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}>
+<html lang="nl" data-gentrix-studio-iframe="1" data-gentrix-site-credit-variant="${siteCreditVariant}"${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -176,7 +181,7 @@ export function buildStandaloneExportHtmlDocument(
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}
     html { scroll-padding-top: 5.5rem; }
-    body { font-family: ${fontStack}; }
+    body { font-family: ${fontStack}; position: relative; }
     ${rootCssBlock}
     ${STUDIO_DATA_ANIMATION_CSS}
     ${STUDIO_BORDER_REVEAL_CSS}
@@ -189,6 +194,7 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
+    ${STUDIO_SITE_CREDIT_VARIANT_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n    ` : ""}
   </style>

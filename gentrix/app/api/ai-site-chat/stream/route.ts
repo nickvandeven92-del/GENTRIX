@@ -17,6 +17,8 @@ const bodySchema = z.object({
   attachmentUrls: z.array(z.string().url()).max(12).optional(),
   appointmentsEnabled: z.boolean().optional(),
   webshopEnabled: z.boolean().optional(),
+  businessName: z.string().min(1).max(200).optional(),
+  subfolder_slug: z.string().min(2).max(64).optional(),
 });
 
 /** Langere site-chat runs (grote JSON). */
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
   const msgs = parsed.data.messages;
   const lastUser = msgs[msgs.length - 1];
 
+  const bn = parsed.data.businessName?.trim();
   const stream = createSiteChatReadableStream(
     msgs,
     parsed.data.sections,
@@ -76,6 +79,12 @@ export async function POST(request: Request) {
           });
         }
       },
+      heroPostProcess: bn
+        ? {
+            businessName: bn,
+            subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
+          }
+        : undefined,
     },
   );
 

@@ -4,9 +4,17 @@ import {
   heroSectionOpenTagHasInjectableHeroId,
   injectAiHeroImageIntoHeroSectionHtml,
   shouldAttemptAiHeroImageForHtml,
+  siteChatMessageSuggestsAiHeroRaster,
 } from "@/lib/ai/ai-hero-image-postprocess";
 
 describe("ai-hero-image-postprocess", () => {
+  it("siteChatMessageSuggestsAiHeroRaster herkent hero + luxe en sluit verwijder-flow uit", () => {
+    expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero luxer en high-end")).toBe(true);
+    expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero afbeelding luxer")).toBe(true);
+    expect(siteChatMessageSuggestsAiHeroRaster("verwijder de hero foto")).toBe(false);
+    expect(siteChatMessageSuggestsAiHeroRaster("verwijder de hero")).toBe(false);
+  });
+
   it("injectAiHeroImageIntoHeroSectionHtml voegt img toe en zet relative op section", () => {
     const html = `<section id="hero" class="min-h-screen overflow-hidden bg-zinc-900 text-white"><div class="p-8">Hi</div></section>`;
     const out = injectAiHeroImageIntoHeroSectionHtml(html, "https://example.com/x.png");

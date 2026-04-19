@@ -693,6 +693,7 @@ export function SiteHtmlEditor({
             <SiteAiChatPanel
               className="flex min-h-[min(420px,50dvh)] flex-1 flex-col min-h-0 lg:min-h-0"
               subfolderSlug={subfolderSlug}
+              businessName={initialName}
               sections={sections}
               config={config}
               appointmentsEnabled={appointmentsEnabled}

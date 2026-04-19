@@ -1,7 +1,11 @@
 import { randomBytes } from "crypto";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
-import type { GeneratedTailwindPage, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type {
+  GeneratedTailwindPage,
+  MasterPromptPageConfig,
+  TailwindSection,
+} from "@/lib/ai/tailwind-sections-schema";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
@@ -42,6 +46,44 @@ export function briefingWantsAiGeneratedHeroImage(description: string): boolean 
   const lower = description.toLowerCase();
   return GENERATED_HERO_KEYWORDS.some((kw) => lower.includes(kw));
 }
+
+/**
+ * Site-chat: ruimere detectie dan {@link briefingWantsAiGeneratedHeroImage} zodat prompts als
+ * "Maak de hero luxer (high-end)" óók de server-side Gemini/OpenAI-hero-pipeline starten,
+ * zonder valse triggers op bv. "verwijder de hero" (geen visueel upgrade-signaal).
+ */
+export function siteChatMessageSuggestsAiHeroRaster(message: string): boolean {
+  const lower = message.toLowerCase();
+  /** `briefingWantsAiGeneratedHeroImage` matcht ook "hero foto" — dat zit in "verwijder de hero foto". */
+  const removalOnly =
+    /\b(verwijder|weghaal|verberg|hide)\b/.test(lower) &&
+    !/\b(maak|nieuw|nieuwe|genereer|vervang|door|met|via|unsplash|stock|pexels)\b/.test(lower);
+  if (removalOnly) return false;
+
+  if (briefingWantsAiGeneratedHeroImage(message)) return true;
+  if (!/\bhero\b/.test(lower)) return false;
+  const visual = /\b(luxe|luxer|high.end|high-end|premium|sfeerbeeld|achtergrond|fotografie|foto|beeld|stijl|look|atmosfeer|mood|zwart.?wit|motion blur|close.up|close-up|gegenereerde|genereer|ai.?beeld|stock|unsplash|pexels)\b/.test(
+    lower,
+  );
+  const change = /\b(maak|vervang|update|wijzig|wijziging|nieuw|nieuwe|andere|betere|verbeter|verbeteren|frisser|frisse)\b/.test(
+    lower,
+  );
+  if (visual && change) return true;
+  return false;
+}
+
+/** Minimale `config` alleen voor {@link applyAiHeroImageToGeneratedPage} in site-chat (veld wordt niet teruggeschreven). */
+const SITE_CHAT_AI_HERO_STUB_MASTER_CONFIG: MasterPromptPageConfig = {
+  style: "studio_site_chat",
+  font: "system-ui, sans-serif",
+  theme: {
+    primary: "#18181b",
+    accent: "#c9a227",
+    primaryLight: "#27272a",
+    primaryMain: "#18181b",
+    primaryDark: "#09090b",
+  },
+};
 
 // ─── Strip helper ─────────────────────────────────────────────────────────────
 
@@ -353,7 +395,7 @@ function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
   if (!u) return "";
   return (
     "\n\n=== SERVER: HERO-SFEERFOTO (AL KLAAR — ASSET-FIRST) ===\n\n" +
-    "Er is **nu al** één AI-sfeerbeeld geüpload. **Geen Unsplash/Pexels of andere stock-URL** voor dit hoofdbeeld — gebruik **exact** deze URL (letterlijk copy-paste, geen query-params wijzigen):\n\n" +
+    "Er is **nu al** één AI-sfeerbeeld geüpload. **Geen externe stock-foto-URL** voor dit hoofdbeeld — gebruik **exact** deze URL (letterlijk copy-paste, geen query-params wijzigen):\n\n" +
     `\`${u}\`\n\n` +
     "**In de landings-`hero`-sectie (`id: \"hero\"`):**\n" +
     "- Buitenste wrapper **moet** `<section id=\"hero\" …>` zijn met `relative` in de `class` (stacking voor overlays).\n" +
@@ -573,4 +615,34 @@ export function generatedPageMayUseAiHeroImage(
   const heroHtmlForCheck =
     wantsGenerated && heroHtmlHasRealImage(html) ? stripImgTagsFromHtml(html) : html;
   return shouldAttemptAiHeroImageForHtml(heroHtmlForCheck);
+}
+
+export type SiteChatAiHeroContext = {
+  businessName: string;
+  subfolderSlug?: string | null;
+};
+
+/**
+ * Site-chat: bij passende gebruikerstekst hetzelfde AI-hero-raster als bij site-generatie (Google Gemini eerst, daarna OpenAI).
+ * Stock-URL’s worden vóór deze stap al in {@link finalizeSiteChatWithAiHeroPipeline} gestript.
+ */
+export async function mergeSiteChatSectionsWithOptionalAiHero(
+  sections: TailwindSection[],
+  lastUserMessage: string,
+  ctx: SiteChatAiHeroContext,
+): Promise<TailwindSection[]> {
+  if (!siteChatMessageSuggestsAiHeroRaster(lastUserMessage)) return sections;
+  if (!isAiHeroImagePostProcessEnabled()) return sections;
+
+  const page: GeneratedTailwindPage = {
+    config: SITE_CHAT_AI_HERO_STUB_MASTER_CONFIG,
+    sections,
+  };
+  const out = await applyAiHeroImageToGeneratedPage(page, {
+    businessName: ctx.businessName.trim() || "Studio",
+    description: lastUserMessage,
+    designContract: null,
+    subfolderSlug: ctx.subfolderSlug ?? undefined,
+  });
+  return out.sections;
 }

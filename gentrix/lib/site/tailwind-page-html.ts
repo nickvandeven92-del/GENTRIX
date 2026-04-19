@@ -129,6 +129,43 @@ export const STUDIO_SITE_CREDIT_CSS = `[data-studio-site-credit]{position:fixed;
 
 export const STUDIO_SITE_CREDIT_BODY_HTML = `<div data-studio-site-credit translate="no">By <a href="${STUDIO_SITE_CREDIT_URL}" target="_blank" rel="noopener noreferrer" aria-label="GENTRIX — meer informatie">GENTRIX</a></div>`;
 
+/** Luminantie-drempel: eigen oppervlak van de nav is licht → altijd donkere chrome (icoon/links), ook als de hero onder de balk donker is. */
+const STUDIO_NAV_SELF_SURFACE_LIGHT_LUM = 0.58;
+
+/**
+ * Deterministische variant (0–2) o.b.v. slug/merk — voorkomt dat elke preview dezelfde hoek/plaatsing heeft.
+ */
+export function pickStudioSiteCreditVariant(seed: string | null | undefined): "0" | "1" | "2" {
+  const s = (seed ?? "").trim().toLowerCase() || "studio";
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const v = Math.abs(h) % 3;
+  return v === 0 ? "0" : v === 1 ? "1" : "2";
+}
+
+/**
+ * `0` = standaard (fixed, onder midden). `1` = compact rechtsonder. `2` = onderaan document (scrollt mee t.o.v. viewport).
+ * Variant 2 vereist `position: relative` op `body` (zet de iframe- en export-templates).
+ */
+export const STUDIO_SITE_CREDIT_VARIANT_CSS = `
+html[data-gentrix-site-credit-variant="1"] [data-studio-site-credit]{
+  left:auto;
+  right:max(0.65rem, env(safe-area-inset-right, 0px));
+  margin-left:0;
+  margin-right:0;
+  font-size:10px;
+  padding:0.3rem 0.65rem;
+  opacity:0.9;
+}
+html[data-gentrix-site-credit-variant="2"] [data-studio-site-credit]{
+  position:absolute;
+  opacity:0.78;
+}
+`;
+
 /**
  * `scroll-padding` op `html` helpt alleen bij hash-scroll; `fixed` nav laat inhoud visueel onder de balk starten.
  * Zet `data-gentrix-studio-auto-nav="1"` op `<html>` wanneer `buildStudioAutoMobileNavHeaderHtml` is toegevoegd —
@@ -1152,11 +1189,17 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     if(s2!=null)samples.push(s2);
     if(s3!=null)samples.push(s3);
     if(!samples.length){
-      nav.classList.remove("studio-nav-tone-light");
+      if(navSelf!=null&&navSelf>${STUDIO_NAV_SELF_SURFACE_LIGHT_LUM}){
+        nav.classList.add("studio-nav-tone-light");
+      }else{
+        nav.classList.remove("studio-nav-tone-light");
+      }
       return;
     }
     var L=Math.max.apply(Math,samples);
-    nav.classList.toggle("studio-nav-tone-light",L>THRESH);
+    var useLightChrome=(L>THRESH);
+    if(navSelf!=null&&navSelf>${STUDIO_NAV_SELF_SURFACE_LIGHT_LUM})useLightChrome=true;
+    nav.classList.toggle("studio-nav-tone-light",useLightChrome);
   }
   function onTick(){
     if(ticking)return;
@@ -2225,6 +2268,7 @@ export function buildTailwindIframeSrcDoc(
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();
+  const siteCreditVariant = pickStudioSiteCreditVariant(slug || options?.navBrandLabel?.trim() || "");
   if (slug) {
     const previewTok = options?.draftPublicPreviewToken?.trim();
     body = applyStudioPublishedPathPlaceholders(body, slug, {
@@ -2333,7 +2377,7 @@ export function buildTailwindIframeSrcDoc(
   const studioMobileCss = options?.studioMobileEditorFrame
     ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
     : "";
-  const iframeShellAttr = ` data-gentrix-studio-iframe="1"`;
+  const iframeShellAttr = ` data-gentrix-studio-iframe="1" data-gentrix-site-credit-variant="${siteCreditVariant}"`;
   const autoNavDupCss = studioAutoMobileNavInjected
     ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n`
     : "";
@@ -2358,7 +2402,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-    body { font-family: ${fontStack}; }
+    body { font-family: ${fontStack}; position: relative; }
     ${rootCss}
     ${animationCss}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
@@ -2369,6 +2413,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
+    ${STUDIO_SITE_CREDIT_VARIANT_CSS}
     ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>

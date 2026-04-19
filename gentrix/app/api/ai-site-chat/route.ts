@@ -18,6 +18,9 @@ const bodySchema = z.object({
   attachmentUrls: z.array(z.string().url()).max(12).optional(),
   appointmentsEnabled: z.boolean().optional(),
   webshopEnabled: z.boolean().optional(),
+  /** Wanneer gezet: na chat merge ook AI-hero (Gemini/OpenAI). Stock-URL-strip draait altijd server-side. */
+  businessName: z.string().min(1).max(200).optional(),
+  subfolder_slug: z.string().min(2).max(64).optional(),
 });
 
 export async function POST(request: Request) {
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const bn = parsed.data.businessName?.trim();
     const result = await siteChatWithClaude(
       parsed.data.messages,
       parsed.data.sections,
@@ -51,6 +55,12 @@ export async function POST(request: Request) {
         appointmentsEnabled: parsed.data.appointmentsEnabled,
         webshopEnabled: parsed.data.webshopEnabled,
       },
+      bn
+        ? {
+            businessName: bn,
+            subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
+          }
+        : undefined,
     );
     if (!result.ok) {
       return NextResponse.json(

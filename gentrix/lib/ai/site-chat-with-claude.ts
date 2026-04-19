@@ -7,7 +7,9 @@ import { getAlpineInteractivityPromptBlock } from "@/lib/ai/interactive-alpine-p
 import { getKnowledgeContextForClaude } from "@/lib/data/ai-knowledge";
 import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
+import { mergeSiteChatSectionsWithOptionalAiHero } from "@/lib/ai/ai-hero-image-postprocess";
 import { mergeTailwindSectionUpdates, tailwindSectionUpdateSchema } from "@/lib/ai/merge-tailwind-section-updates";
+import { stripAllUnsplashFromSections } from "@/lib/ai/strip-unsplash-urls";
 import { extractPartialReplyFromStreamingSiteChatJson } from "@/lib/ai/site-chat-reply-extract";
 import {
   isLegacyTailwindPageConfig,
@@ -114,15 +116,19 @@ function buildChatSystemPrompt(legacy: boolean, studioModuleFlags?: SiteChatStud
   const moduleBlock = buildStudioModulePromptBlock(studioModuleFlags);
   const moduleSection = moduleBlock ? `\n\n${moduleBlock}\n` : "";
 
-  return `Je bent een vriendelijke Nederlandstalige assistent die een bestaande Tailwind-landingspagina helpt aanpassen.
+  return `Je bent een Nederlandstalige **senior front-end / UX-specialist** (alsof je decennialang lead bent op landingspagina’s voor MKB): rustig, nieuwsgierig, scherp op hiërarchie, conversie en toegankelijkheid — geen opgeblazen tone, wel vakmanschap en doorvragen waar dat de kwaliteit verhoogt.
 
 ${getAlpineInteractivityPromptBlock()}
 ${moduleSection}
 GEDRAG:
-- Beantwoord eerst helder in \`reply\` (markdown toegestaan in plain text).
-- Wijzig de site **alleen** als de gebruiker dat expliciet vraagt of het duidelijk nodig is voor het verzoek. Als een puur inhoudelijke vraag zonder wijziging: laat \`sectionUpdates\` en \`config\` weg.
+- Beantwoord helder in \`reply\` (markdown toegestaan in plain text).
+- **Consultatie eerst (sterk aanbevolen):** bij **vage, creatieve of grote ontwerpverzoeken** (nieuwe hero, andere sfeer/huisstijl, herschikken van secties, “luxer”, “anders”, enkele woorden zonder context): reageer in **dezelfde beurt** met **2 tot 4 gerichte vragen** (doelgroep, gewenste sfeer, wat mag wél/niet weg, mobiel vs. desktop-prioriteit, referentie). Laat in die beurt \`sectionUpdates\` en \`config\` **weg** — tenzij de gebruiker expliciet vraagt om **directe uitvoering** (bijv. “doe maar”, “implementeer”, “voer uit”, “geen vragen”, “fix dit”).
+- **Direct uitvoeren mag** bij kleine, eenduidige technische verzoeken (bv. sticky header, contrast, typo, één class wijzigen) als de scope helder is; voeg hoogstens **één** korte verduidelijkingsvraag toe als er echt risico op verkeerde interpretatie is.
+- Wijzig de site **alleen** als de gebruiker uitvoering wil of het verzoek zo concreet is dat wachten onzin is. Bij een puur inhoudelijke vraag zonder wijziging: laat \`sectionUpdates\` en \`config\` weg.
+- **Streaming / leesvolgorde:** de UI toont het begin van \`reply\` al terwijl de rest van het antwoord nog binnenkomt. Begin \`reply\` daarom **niet** met formuleringen als “Het is klaar”, “Is nu gemaakt”, “Heb ik gedaan” of andere **voltooide** boodschap als eerste zin. Als je wél \`sectionUpdates\` meestuurt: begin met korte context of intentie (bijv. “Ik pas dit toe in de preview:”), werk daarna uit, en **sluit af** met een korte technische samenvatting (wat is waar aangepast). Zo voelt het niet alsof er “al klaar” wordt gezegd vóór de wijziging zichtbaar is.
 - Als je HTML wijzigt: gebruik \`sectionUpdates\`: alleen objecten voor secties die **echt** veranderen, elk met \`index\` (zoals in de JSON) en volledige nieuwe \`html\` voor die sectie. Voorbeeld: alleen navbar → één update; alleen footer → één update. **Nooit** ongewijzigde secties opnieuw uitschrijven.
 - HTML-regels: geen \`<script>\`/\`<style>\` in fragmenten, geen klassieke inline handlers, geen javascript:-links; Alpine (\`x-*\`, \`@\`, \`:\`) volgens het blok hierboven. Alleen https voor afbeeldingen.
+- **Hero-beeld / stock:** zet **géén** \`<img src>\` of \`background-image: url(...)\` naar **externe stock- of CDN-foto’s** (het model heeft **geen** stock-API; verzonnen \`https://…\` links zijn verboden). Toegestaan: **https**-URL’s die de gebruiker in dit gesprek heeft **geüpload**, of een hero met **gradient**, SVG of patronen. Vraagt de gebruiker om een **nieuwe / luxere / andere hero-foto** of **AI-beeld**: leg in \`reply\` uit dat de **server** daarna **één** hero-raster genereert (**Google AI Studio / Gemini image**, fallback OpenAI) en host op Gentrix-opslag — **niet** met verwijzingen naar stockwebsites.
 - Gebruik geüploade logo-URL's waar de gebruiker om vraagt.
 - **Standaard uit tot toggle:** vraagt de gebruiker om iets dat **eerst onzichtbaar of inactief** moet blijven tot een knop/schakelaar: gebruik Alpine met startwaarde **false** (bv. \`x-data="{ open: false }"\`), inhoud met \`x-show="open"\` of \`hidden\` + \`:class\`, en eventueel vaste ruimte met \`min-h-*\` + \`invisible\` / \`opacity-0 pointer-events-none\` zolang \`open\` false is. Geen automatisch startende video, modal of agressieve animatie zonder expliciete gebruikersactie, tenzij de gebruiker dat zo wil.
 
@@ -198,6 +204,48 @@ export function processSiteChatFromModelText(
   return { ok: true, reply, sections: mergeResult.sections, config: nextConfig };
 }
 
+export type SiteChatHeroPostProcessContext = {
+  businessName: string;
+  subfolderSlug?: string | null;
+};
+
+function sectionsEqual(a: TailwindSection[], b: TailwindSection[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].html !== b[i].html) return false;
+  }
+  return true;
+}
+
+/**
+ * Na Claude: verwijdert gehallucineerde `images.unsplash.com`-URL’s uit **alle** teruggestuurde secties (geen API — pure string-sanitatie).
+ * Optioneel daarna AI-hero (Gemini/OpenAI) wanneer `heroCtx` gezet is en het gebruikersbericht daarvoor kwalificeert.
+ */
+export async function finalizeSiteChatWithAiHeroPipeline(
+  _baseSections: TailwindSection[],
+  result: SiteChatResult,
+  messages: SiteChatTurn[],
+  heroCtx?: SiteChatHeroPostProcessContext,
+): Promise<SiteChatResult> {
+  if (!result.ok) return result;
+  const okResult = result;
+  if (okResult.sections === undefined) return okResult;
+
+  const lastUser = messages[messages.length - 1]?.content ?? "";
+  const stripped = stripAllUnsplashFromSections(okResult.sections);
+  let nextSections = stripped;
+  if (heroCtx) {
+    nextSections = await mergeSiteChatSectionsWithOptionalAiHero(stripped, lastUser, heroCtx);
+  }
+  if (sectionsEqual(okResult.sections, nextSections)) return okResult;
+  return {
+    ok: true,
+    reply: okResult.reply,
+    sections: nextSections,
+    ...("config" in okResult ? { config: okResult.config } : {}),
+  };
+}
+
 export type SiteChatClaudeRequest = {
   client: Anthropic;
   model: string;
@@ -240,6 +288,7 @@ export async function siteChatWithClaude(
   config: TailwindPageConfig | null | undefined,
   attachmentUrls: string[],
   studioModuleFlags?: SiteChatStudioModuleFlags,
+  heroPostProcess?: SiteChatHeroPostProcessContext,
 ): Promise<SiteChatResult> {
   const built = await buildSiteChatClaudeRequest(messages, sections, config, attachmentUrls, studioModuleFlags);
   if (!built.ok) {
@@ -261,7 +310,8 @@ export async function siteChatWithClaude(
     return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
   }
 
-  return processSiteChatFromModelText(textBlock.text, secs, cfg, message.stop_reason);
+  const parsed = processSiteChatFromModelText(textBlock.text, secs, cfg, message.stop_reason);
+  return finalizeSiteChatWithAiHeroPipeline(secs, parsed, messages, heroPostProcess);
 }
 
 export type SiteChatStreamNdjsonEvent =
@@ -284,6 +334,8 @@ export type CreateSiteChatReadableStreamOptions = {
     sections?: TailwindSection[];
     config: TailwindPageConfig | null | undefined;
   }) => Promise<void>;
+  /** Optioneel: `businessName` + slug voor AI-hero (Gemini/OpenAI). Stock-URL-strip gebeurt altijd zonder dit. */
+  heroPostProcess?: SiteChatHeroPostProcessContext;
 };
 
 /**
@@ -349,9 +401,21 @@ export function createSiteChatReadableStream(
           return;
         }
 
-        const result = processSiteChatFromModelText(textBlock.text, secs, cfg, finalMessage.stop_reason);
-        if (!result.ok) {
-          send(controller, { type: "error", message: result.error, rawText: result.rawText });
+        const parsed = processSiteChatFromModelText(textBlock.text, secs, cfg, finalMessage.stop_reason);
+        if (!parsed.ok) {
+          send(controller, { type: "error", message: parsed.error, rawText: parsed.rawText });
+          controller.close();
+          return;
+        }
+
+        const finalized = await finalizeSiteChatWithAiHeroPipeline(
+          secs,
+          parsed,
+          messages,
+          streamOptions?.heroPostProcess,
+        );
+        if (!finalized.ok) {
+          send(controller, { type: "error", message: finalized.error, rawText: finalized.rawText });
           controller.close();
           return;
         }
@@ -359,9 +423,9 @@ export function createSiteChatReadableStream(
         if (streamOptions?.onSuccess) {
           try {
             await streamOptions.onSuccess({
-              reply: result.reply,
-              sections: result.sections,
-              config: result.config ?? null,
+              reply: finalized.reply,
+              sections: finalized.sections,
+              config: finalized.config ?? null,
             });
           } catch {
             /* journal of logging mag de chat niet breken */
@@ -371,9 +435,9 @@ export function createSiteChatReadableStream(
         send(controller, {
           type: "complete",
           data: {
-            reply: result.reply,
-            sections: result.sections,
-            config: result.config ?? null,
+            reply: finalized.reply,
+            sections: finalized.sections,
+            config: finalized.config ?? null,
           },
         });
         controller.close();

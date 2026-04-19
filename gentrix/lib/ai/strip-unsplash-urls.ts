@@ -1,5 +1,10 @@
 import type { GeneratedTailwindPage, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 
+/**
+ * Verwijdert hardcoded `images.unsplash.com/photo-*`-URL’s uit HTML.
+ * **Geen** Unsplash- of andere stock-API: LLM’s produceren deze URL’s vaak uit trainingsvoorbeelden;
+ * dit bestand is uitsluitend deterministische string-sanitatie.
+ */
 /** Regex die typische model-gehallucineerde Unsplash-photo-URL's matcht. */
 const UNSPLASH_URL_RE =
   /https:\/\/images\.unsplash\.com\/photo-[a-zA-Z0-9_-]+[^"'\s)>]*/g;
