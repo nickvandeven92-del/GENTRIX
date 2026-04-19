@@ -1819,7 +1819,8 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
  * of blokkeer host-navigatie. **Uitzondering:** `/site/{slug}/{subroute}` (contact, marketingpagina) is een echte
  * Next-route — dan `navigateTop` (postMessage naar parent / top) i.p.v. scrollen in de iframe.
  * Links naar app-shell (`/portal/*`, `/admin`, `/login`, `/home`, `/dashboard`) en naar
- * `/boek/*`, `/booking-app/*` en `/winkel/*` moeten **top** navigeren — anders vangen we `/diensten`-achtige paden af met
+ * `/boek/*`, `/booking-app/book/*` en `/boek-venster/*`: **postMessage** naar parent → modal met iframe (geen volledige tab).
+ * `/winkel/*` en overige app-shell-paden: **top** navigeren — anders vangen we `/diensten`-achtige paden af met
  * `preventDefault` en blijft een klik zonder effect (meerdere path-segmenten).
  *
  * **Concept + token:** zorg dat interne `/site/{slug}/…`-links de `token`-query behouden (en oude `/preview/…`-links naar `/site/…` normaliseren).
@@ -1921,6 +1922,13 @@ export function buildStudioSinglePageInternalNavScript(
     if(p==="/winkel"||p.indexOf("/winkel/")===0)return true;
     return false;
   }
+  function isBookingOnlyPath(p){
+    if(!p||p.charAt(0)!=="/")return false;
+    if(p==="/boek"||p.indexOf("/boek/")===0)return true;
+    if(p==="/boek-venster"||p.indexOf("/boek-venster/")===0)return true;
+    if(p==="/booking-app/book"||p.indexOf("/booking-app/book/")===0)return true;
+    return false;
+  }
   function navigateTop(e,a){
     e.preventDefault();
     var url=rewriteDraftSiteNavUrl(a.href);
@@ -1991,10 +1999,22 @@ export function buildStudioSinglePageInternalNavScript(
   document.addEventListener("click",function(e){
     var a=e.target&&e.target.closest&&e.target.closest("a[href]");
     if(!a)return;
-    if(a.getAttribute("target")==="_blank")return;
     var raw=a.getAttribute("href");
     if(!raw)return;
     var href=raw.trim();
+    if(a.getAttribute("target")==="_blank"){
+      if(!href||/^(mailto:|tel:|javascript:)/i.test(href))return;
+      try{
+        var pBlank;
+        if(/^https?:\\/\\//i.test(href)){pBlank=(new URL(href)).pathname||"";}
+        else{pBlank=splitHashQuery(href).path;}
+        if(isBookingOnlyPath(pBlank)){
+          e.preventDefault();
+          navigateTop(e,a);
+        }
+      }catch(__){}
+      return;
+    }
     if(!href||/^(mailto:|tel:|javascript:)/i.test(href))return;
     if(href.charAt(0)==="#")return;
     var pqApp=splitHashQuery(href);
