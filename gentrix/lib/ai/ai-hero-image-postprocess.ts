@@ -129,9 +129,11 @@ export function stripHeroRasterPlaceholdersForSiteChatAiHero(html: string): stri
  * Mensleesbare reden waarom de AI-hero-pipeline uit staat (`null` = aan).
  * Gebruikt o.a. statusregels in de site-generatiestroom.
  */
+/** Eén key volstaat; meerdere namen omdat AI Studio / docs / hosting verschillende env-namen gebruiken. */
 function getGoogleAiStudioApiKey(): string | undefined {
   const k =
     process.env.GOOGLE_AI_STUDIO_API?.trim() ||
+    process.env.GOOGLE_AI_STUDIO_API_KEY?.trim() ||
     process.env.GEMINI_API_KEY?.trim() ||
     process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
   return k || undefined;
@@ -151,10 +153,18 @@ export function getAiHeroImagePostProcessSkipReason(): string | null {
     return "uitgeschakeld met STUDIO_AI_HERO_IMAGE=0.";
   }
   if (!hasAnyHeroImageUpstreamKey()) {
-    return "Geen beeld-API-key: zet GOOGLE_AI_STUDIO_API (Google AI Studio / Gemini) of GEMINI_API_KEY. OPENAI_API_KEY is alleen nodig als je DALL·E-fallback gebruikt.";
+    return (
+      "Geen Gemini/OpenAI-beeldkey in de server-omgeving. Zet één van: GOOGLE_AI_STUDIO_API, GOOGLE_AI_STUDIO_API_KEY, " +
+      "GEMINI_API_KEY of GOOGLE_GENERATIVE_AI_API_KEY (key van https://aistudio.google.com/apikey). " +
+      "Zonder deze key wordt generativelanguage.googleapis.com niet aangeroepen — geen usage in AI Studio. " +
+      "OPENAI_API_KEY alleen voor DALL·E-fallback of STUDIO_AI_HERO_IMAGE_PROVIDER=openai."
+    );
   }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    return "NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn nodig om de afbeelding naar de bucket «site-assets» te uploaden.";
+    return (
+      "NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn nodig om de hero naar de bucket «site-assets» te uploaden. " +
+      "Zonder service role-key draait de AI-hero-pipeline niet en wordt Gemini/OpenAI niet aangeroepen."
+    );
   }
   return null;
 }
