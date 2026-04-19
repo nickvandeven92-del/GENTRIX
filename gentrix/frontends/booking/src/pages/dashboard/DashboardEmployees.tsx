@@ -10,8 +10,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-
 export default function DashboardEmployees() {
   const { employees, services, addEmployee, updateEmployee, deleteEmployee } = useBusiness();
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -20,10 +18,10 @@ export default function DashboardEmployees() {
   const openNew = () => { setEditingEmployee(null); setDialogOpen(true); };
   const openEdit = (emp: Employee) => { setEditingEmployee(emp); setDialogOpen(true); };
 
-  const handleSave = (data: Partial<Employee>) => {
+  const handleSave = async (data: Partial<Employee>) => {
+    let ok: boolean;
     if (editingEmployee) {
-      updateEmployee(editingEmployee.id, data);
-      toast.success('Medewerker bijgewerkt');
+      ok = await Promise.resolve(updateEmployee(editingEmployee.id, data));
     } else {
       const defaultSchedule: WeekSchedule = {};
       (['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const).forEach((d) => {
@@ -33,19 +31,23 @@ export default function DashboardEmployees() {
         defaultSchedule[d] = { enabled: false, blocks: [] };
       });
 
-      addEmployee({
-        id: millisPrefixedId('emp'),
-        businessId: employees[0]?.businessId || 'biz-1',
-        schedule: defaultSchedule,
-        breaks: [],
-        daysOff: [],
-        active: true,
-        serviceIds: [],
-        ...data,
-      } as Employee);
-      toast.success('Medewerker toegevoegd');
+      ok = await Promise.resolve(
+        addEmployee({
+          id: millisPrefixedId('emp'),
+          businessId: employees[0]?.businessId || 'biz-1',
+          schedule: defaultSchedule,
+          breaks: [],
+          daysOff: [],
+          active: true,
+          serviceIds: [],
+          role: '',
+          specialization: '',
+          name: '',
+          ...data,
+        } as Employee),
+      );
     }
-    setDialogOpen(false);
+    if (ok) setDialogOpen(false);
   };
 
   return (
@@ -75,7 +77,15 @@ export default function DashboardEmployees() {
               </div>
               <div className="flex flex-col gap-1 shrink-0">
                 <Button variant="ghost" size="icon" onClick={() => openEdit(emp)}><Pencil className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => { deleteEmployee(emp.id); toast.success('Verwijderd'); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    void deleteEmployee(emp.id);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </div>
             </div>
           </Card>

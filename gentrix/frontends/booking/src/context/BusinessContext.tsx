@@ -16,9 +16,9 @@ interface BusinessContextType {
   addService: (service: Service) => void;
   updateService: (id: string, updates: Partial<Service>) => void;
   deleteService: (id: string) => void;
-  addEmployee: (employee: Employee) => void;
-  updateEmployee: (id: string, updates: Partial<Employee>) => void;
-  deleteEmployee: (id: string) => void;
+  addEmployee: (employee: Employee) => boolean | Promise<boolean>;
+  updateEmployee: (id: string, updates: Partial<Employee>) => boolean | Promise<boolean>;
+  deleteEmployee: (id: string) => boolean | Promise<boolean>;
   updateSettings: (settings: Partial<Business['settings']>) => void;
 }
 
@@ -94,6 +94,7 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
         employees: [...prev[currentBusinessId].employees, employee],
       },
     }));
+    return true;
   }, [currentBusinessId]);
 
   const updateEmployee = useCallback((id: string, updates: Partial<Employee>) => {
@@ -104,6 +105,7 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
         employees: prev[currentBusinessId].employees.map(e => e.id === id ? { ...e, ...updates } : e),
       },
     }));
+    return true;
   }, [currentBusinessId]);
 
   const deleteEmployee = useCallback((id: string) => {
@@ -114,6 +116,7 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
         employees: prev[currentBusinessId].employees.filter(e => e.id !== id),
       },
     }));
+    return true;
   }, [currentBusinessId]);
 
   const updateSettings = useCallback((settings: Partial<Business['settings']>) => {

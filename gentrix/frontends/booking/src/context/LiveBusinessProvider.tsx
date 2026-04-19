@@ -252,17 +252,84 @@ export function LiveBusinessProvider({ children }: { children: React.ReactNode }
     [ownerSlug, load],
   );
 
-  const addEmployee = useCallback((_e: Employee) => {
-    toast.message("Medewerkers beheer je in het Gentrix-portaal onder «Medewerkers».");
-  }, []);
+  const addEmployee = useCallback(
+    async (employee: Employee): Promise<boolean> => {
+      const name = employee.name.trim();
+      if (!name) {
+        toast.error("Vul een naam in.");
+        return false;
+      }
+      const res = await portalOwnerFetch(ownerSlug, "/staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const j = await readJson(res);
+      if (!j.ok) {
+        toast.error(j.error ?? "Medewerker aanmaken mislukt.");
+        return false;
+      }
+      toast.success("Medewerker toegevoegd.");
+      await load();
+      return true;
+    },
+    [ownerSlug, load],
+  );
 
-  const updateEmployee = useCallback((_id: string, _u: Partial<Employee>) => {
-    toast.message("Medewerkers beheer je in het Gentrix-portaal onder «Medewerkers».");
-  }, []);
+  const updateEmployee = useCallback(
+    async (id: string, updates: Partial<Employee>): Promise<boolean> => {
+      const body: Record<string, unknown> = {};
+      if (updates.name !== undefined) body.name = String(updates.name).trim();
+      if (updates.active !== undefined) body.is_active = updates.active;
+      if (Object.keys(body).length === 0) {
+        if (updates.schedule != null || updates.breaks != null || updates.daysOff != null) {
+          toast.message(
+            "Roosters, pauzes en vrije dagen stel je in via het Gentrix-klantportaal (shifts / agenda).",
+          );
+          return false;
+        }
+        toast.message(
+          "Alleen naam en «actief» worden nu opgeslagen. Functie, specialisatie en diensten volgen later — of bewerk in het volledige portaal.",
+        );
+        return true;
+      }
+      if (body.name === "") {
+        toast.error("Naam mag niet leeg zijn.");
+        return false;
+      }
+      const res = await portalOwnerFetch(ownerSlug, `/staff/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await readJson(res);
+      if (!j.ok) {
+        toast.error(j.error ?? "Bijwerken mislukt.");
+        return false;
+      }
+      toast.success("Medewerker bijgewerkt.");
+      await load();
+      return true;
+    },
+    [ownerSlug, load],
+  );
 
-  const deleteEmployee = useCallback((_id: string) => {
-    toast.message("Medewerkers beheer je in het Gentrix-portaal onder «Medewerkers».");
-  }, []);
+  const deleteEmployee = useCallback(
+    async (id: string): Promise<boolean> => {
+      const res = await portalOwnerFetch(ownerSlug, `/staff/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const j = await readJson(res);
+      if (!j.ok) {
+        toast.error(j.error ?? "Verwijderen mislukt.");
+        return false;
+      }
+      toast.success("Medewerker verwijderd.");
+      await load();
+      return true;
+    },
+    [ownerSlug, load],
+  );
 
   const updateSettings = useCallback((_s: Partial<Business["settings"]>) => {
     toast.message("Agenda-instellingen wijzig je in het Gentrix-portaal onder «Boeken» / instellingen.");
