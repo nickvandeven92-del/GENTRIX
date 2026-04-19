@@ -577,6 +577,9 @@ export function GeneratorForm({
     setRunStartedAtMs(Date.now());
     try {
       const readyBriefing = briefingImages.filter((img) => img.url && !img.uploading);
+      if (!descriptionLocked) {
+        setBriefingImages([]);
+      }
       const nameForApi = studioBedrijfsnaam.trim() || deriveStudioBusinessNameFromBriefing(prompt);
       const body: Record<string, unknown> = {
         businessName: nameForApi,
@@ -959,35 +962,74 @@ export function GeneratorForm({
               <StudioThemeStylesHint />
             </div>
           ) : null}
-          <textarea
-            id="studioBriefing"
-            name="studioBriefing"
-            aria-describedby={descriptionLocked ? undefined : "studio-briefing-a11y-hint"}
-            required={!descriptionLocked}
-            maxLength={4000}
-            rows={zen ? 8 : 5}
-            value={briefingText}
-            onChange={(e) => {
-              if (descriptionLocked) return;
-              setBriefingText(e.target.value);
-            }}
-            onPaste={handleDescriptionPaste}
-            onKeyDown={(e) => {
-              if (descriptionLocked || loading) return;
-              if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
-              e.preventDefault();
-              if (!briefingText.trim()) return;
-              e.currentTarget.form?.requestSubmit();
-            }}
-            readOnly={descriptionLocked}
+          <div
             className={cn(
-              "block w-full border-0 bg-transparent py-2.5 pl-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
-              !descriptionLocked ? "pr-14 pt-10" : "pr-3",
-              zen ? "min-h-[220px] resize-y" : "max-h-[min(36vh,220px)] min-h-[104px] resize-y overflow-y-auto",
-              descriptionLocked && fieldLockedClass,
+              "flex gap-2",
+              !descriptionLocked ? "items-start pt-10 pr-14 pb-11 pl-2" : "p-2",
             )}
-            placeholder={submittedPromptTurns.length > 0 ? "Volgende opdracht…" : "Ask GENTRIX…"}
-          />
+          >
+            {!descriptionLocked && briefingImages.length > 0 ? (
+              <div
+                className="flex max-h-[min(160px,32vh)] shrink-0 flex-col gap-1.5 overflow-y-auto py-0.5"
+                aria-label="Referentie-afbeeldingen bij deze opdracht"
+              >
+                {briefingImages.map((img, i) => (
+                  <div
+                    key={img.url || `b-${i}`}
+                    className="group relative size-11 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white dark:border-zinc-700"
+                  >
+                    {img.uploading ? (
+                      <div className="flex size-full items-center justify-center">
+                        <Loader2 className="size-3.5 animate-spin text-indigo-400" />
+                      </div>
+                    ) : (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.url} alt={img.label} className="size-full object-cover" />
+                        <button
+                          type="button"
+                          disabled={descriptionLocked}
+                          onClick={() => setBriefingImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute -right-1 -top-1 rounded-full bg-zinc-900 p-0.5 text-white opacity-0 shadow hover:opacity-100 group-hover:opacity-100 dark:bg-zinc-100 dark:text-zinc-900"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <textarea
+              id="studioBriefing"
+              name="studioBriefing"
+              aria-describedby={descriptionLocked ? undefined : "studio-briefing-a11y-hint"}
+              required={!descriptionLocked}
+              maxLength={4000}
+              rows={zen ? 8 : 5}
+              value={briefingText}
+              onChange={(e) => {
+                if (descriptionLocked) return;
+                setBriefingText(e.target.value);
+              }}
+              onPaste={handleDescriptionPaste}
+              onKeyDown={(e) => {
+                if (descriptionLocked || loading) return;
+                if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+                e.preventDefault();
+                if (!briefingText.trim()) return;
+                e.currentTarget.form?.requestSubmit();
+              }}
+              readOnly={descriptionLocked}
+              className={cn(
+                "block min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-1 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500",
+                !descriptionLocked ? "pr-1" : "pr-3",
+                zen ? "min-h-[220px] resize-y" : "max-h-[min(36vh,220px)] min-h-[104px] resize-y overflow-y-auto",
+                descriptionLocked && fieldLockedClass,
+              )}
+              placeholder={submittedPromptTurns.length > 0 ? "Volgende opdracht…" : "Ask GENTRIX…"}
+            />
+          </div>
           {!descriptionLocked ? (
             <button
               type="submit"
@@ -1007,35 +1049,6 @@ export function GeneratorForm({
                 <ArrowUp className="size-4 shrink-0" aria-hidden />
               )}
             </button>
-          ) : null}
-          {briefingImages.length > 0 ? (
-            <div className="flex flex-wrap gap-2 border-t border-slate-100 px-2 py-2 dark:border-zinc-800">
-              {briefingImages.map((img, i) => (
-                <div
-                  key={img.url || `b-${i}`}
-                  className="group relative size-12 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white dark:border-zinc-700"
-                >
-                  {img.uploading ? (
-                    <div className="flex size-full items-center justify-center">
-                      <Loader2 className="size-3.5 animate-spin text-indigo-400" />
-                    </div>
-                  ) : (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.url} alt={img.label} className="size-full object-cover" />
-                      <button
-                        type="button"
-                        disabled={descriptionLocked}
-                        onClick={() => setBriefingImages((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white shadow-sm group-hover:block disabled:hidden"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
           ) : null}
         </div>
         {imageUploadError && !descriptionLocked ? (

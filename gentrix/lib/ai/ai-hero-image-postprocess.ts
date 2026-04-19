@@ -62,7 +62,11 @@ export function siteChatMessageSuggestsAiHeroRaster(message: string): boolean {
 
   if (briefingWantsAiGeneratedHeroImage(message)) return true;
   if (!/\bhero\b/.test(lower)) return false;
-  const visual = /\b(luxe|luxer|high.end|high-end|premium|sfeerbeeld|achtergrond|fotografie|foto|beeld|stijl|look|atmosfeer|mood|zwart.?wit|motion blur|close.up|close-up|gegenereerde|genereer|ai.?beeld|stock|unsplash|pexels)\b/.test(
+  if (/\b(another|different|new)\s+hero\b/i.test(message)) return true;
+  if (/\b(impressive|stunning)\s+hero\b/i.test(message)) return true;
+  if (/\bindrukwekkend[ea]?\s+hero\b/i.test(lower)) return true;
+  if (/\bhero\s+(photo|picture|shot|visual|image)\b/i.test(lower)) return true;
+  const visual = /\b(luxe|luxer|high.end|high-end|premium|sfeerbeeld|achtergrond|fotografie|foto|beeld|stijl|look|atmosfeer|mood|zwart.?wit|motion blur|close.up|close-up|scheer|scheermes|barbier|gegenereerde|genereer|ai.?beeld|stock|unsplash|pexels)\b/.test(
     lower,
   );
   const change = /\b(maak|vervang|update|wijzig|wijziging|nieuw|nieuwe|andere|betere|verbeter|verbeteren|frisser|frisse)\b/.test(
@@ -90,6 +94,27 @@ const SITE_CHAT_AI_HERO_STUB_MASTER_CONFIG: MasterPromptPageConfig = {
 /** Verwijdert alle `<img>` tags uit een HTML-fragment (voor geforceerde AI-hero). */
 function stripImgTagsFromHtml(html: string): string {
   return html.replace(/<img\b[^>]*(?:\/>|>)/gi, "");
+}
+
+/**
+ * Site-chat: Claude zet geüploade schermafbeeldingen nogal eens als `<img src=…>` of
+ * `style="background-image:url(…)"` / `bg-[url(…)]` — dan blokkeert
+ * {@link shouldAttemptAiHeroImageForHtml} de Gemini/OpenAI-pijplijn en blijft de screenshot staan.
+ */
+export function stripHeroRasterPlaceholdersForSiteChatAiHero(html: string): string {
+  let out = stripImgTagsFromHtml(html);
+  out = out.replace(/\bbg-\[url\([^\]]*\)\]/gi, "bg-transparent");
+  out = out.replace(/\sstyle=(["'])([^"']*)\1/gi, (full, q: string, st: string) => {
+    let s = String(st)
+      .replace(/background-image\s*:\s*[^;]+;?/gi, "")
+      .replace(/background\s*:\s*url\s*\([^)]*\)[^;]*;?/gi, "")
+      .replace(/;\s*;/g, ";")
+      .trim();
+    s = s.replace(/^;+|;+$/g, "").trim();
+    if (!s) return "";
+    return ` style=${q}${s}${q}`;
+  });
+  return out;
 }
 
 /**
@@ -530,6 +555,11 @@ export type ApplyAiHeroImageContext = {
    * Bij mislukte inject (geen `<section id="hero">`) geen tweede generatie — asset staat al op CDN.
    */
   prebakedHeroPublicUrl?: string | null;
+  /**
+   * Site-assistent: gebruiker wil server-side Gemini/OpenAI-hero — altijd bestaande hero-`<img>` én
+   * `background-image` / `bg-[url]` uit Claude-output strippen vóór inject (anders blijft een geplakte screenshot staan).
+   */
+  siteChatRequestedAiHeroRaster?: boolean;
 };
 
 export async function applyAiHeroImageToGeneratedPage(
@@ -544,11 +574,16 @@ export async function applyAiHeroImageToGeneratedPage(
 
   // Wanneer de briefing expliciet een AI-hero vraagt én er al een klantfoto in de
   // hero zit, verwijder die img-tags zodat de shouldAttempt-check niet blokkeert.
-  const wantsGenerated = briefingWantsAiGeneratedHeroImage(ctx.description);
-  const heroHtmlForCheck =
-    wantsGenerated && heroHtmlHasRealImage(sec.html)
-      ? stripImgTagsFromHtml(sec.html)
-      : sec.html;
+  // Site-chat: zelfde strip altijd (incl. background-url), anders blijft een geüploade screenshot
+  // als volledige achtergrond staan terwijl Gemini nooit draait.
+  const siteChatAi = ctx.siteChatRequestedAiHeroRaster === true;
+  const wantsBriefingStrip = briefingWantsAiGeneratedHeroImage(ctx.description);
+  let heroHtmlForCheck = sec.html;
+  if (siteChatAi) {
+    heroHtmlForCheck = stripHeroRasterPlaceholdersForSiteChatAiHero(sec.html);
+  } else if (wantsBriefingStrip && heroHtmlHasRealImage(sec.html)) {
+    heroHtmlForCheck = stripImgTagsFromHtml(sec.html);
+  }
 
   if (!shouldAttemptAiHeroImageForHtml(heroHtmlForCheck)) return data;
 
@@ -573,7 +608,14 @@ export async function applyAiHeroImageToGeneratedPage(
   if (!prefetch) {
     prefetch = await createHeroImageRasterB64(prompt);
   }
-  if (!prefetch) return data;
+  if (!prefetch) {
+    if (siteChatAi && heroHtmlForCheck !== sec.html) {
+      const nextSections = [...data.sections];
+      nextSections[idx] = { ...sec, html: heroHtmlForCheck };
+      return { ...data, sections: nextSections };
+    }
+    return data;
+  }
 
   let bytes: Buffer;
   try {
@@ -643,6 +685,7 @@ export async function mergeSiteChatSectionsWithOptionalAiHero(
     description: lastUserMessage,
     designContract: null,
     subfolderSlug: ctx.subfolderSlug ?? undefined,
+    siteChatRequestedAiHeroRaster: true,
   });
   return out.sections;
 }

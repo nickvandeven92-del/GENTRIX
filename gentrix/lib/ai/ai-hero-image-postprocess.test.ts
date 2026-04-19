@@ -5,6 +5,7 @@ import {
   injectAiHeroImageIntoHeroSectionHtml,
   shouldAttemptAiHeroImageForHtml,
   siteChatMessageSuggestsAiHeroRaster,
+  stripHeroRasterPlaceholdersForSiteChatAiHero,
 } from "@/lib/ai/ai-hero-image-postprocess";
 
 describe("ai-hero-image-postprocess", () => {
@@ -13,6 +14,26 @@ describe("ai-hero-image-postprocess", () => {
     expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero afbeelding luxer")).toBe(true);
     expect(siteChatMessageSuggestsAiHeroRaster("verwijder de hero foto")).toBe(false);
     expect(siteChatMessageSuggestsAiHeroRaster("verwijder de hero")).toBe(false);
+  });
+
+  it("siteChatMessageSuggestsAiHeroRaster herkent EN/NL varianten voor nieuwe hero-visual", () => {
+    expect(siteChatMessageSuggestsAiHeroRaster("I want an impressive hero with a close-up shaver in black and white")).toBe(
+      true,
+    );
+    expect(siteChatMessageSuggestsAiHeroRaster("indrukwekkende hero met scheermes zwart-wit")).toBe(true);
+    expect(siteChatMessageSuggestsAiHeroRaster("another hero image please")).toBe(true);
+  });
+
+  it("stripHeroRasterPlaceholdersForSiteChatAiHero verwijdert img en background-url zodat AI-inject mag", () => {
+    const html = `<section id="hero" class="relative min-h-screen bg-[url(https://x.example.com/screen.png)]">
+      <img src="https://x.example.com/paste.png" alt="" class="absolute inset-0" />
+      <div style="background-image: url(https://x.example.com/bg.jpg)" class="p-4">tekst</div>
+    </section>`;
+    const stripped = stripHeroRasterPlaceholdersForSiteChatAiHero(html);
+    expect(stripped).not.toContain("paste.png");
+    expect(stripped).not.toContain("background-image:");
+    expect(stripped).toContain("bg-transparent");
+    expect(shouldAttemptAiHeroImageForHtml(stripped)).toBe(true);
   });
 
   it("injectAiHeroImageIntoHeroSectionHtml voegt img toe en zet relative op section", () => {

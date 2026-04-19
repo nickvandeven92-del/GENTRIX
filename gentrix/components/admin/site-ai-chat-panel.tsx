@@ -160,12 +160,14 @@ export function SiteAiChatPanel({
       setError("Schrijf een bericht.");
       return;
     }
+    const attachmentUrlsThisTurn = [...attachmentUrls];
     const userRow: ChatRow = { id: crypto.randomUUID(), role: "user", content: text };
     const nextRows = [...rows, userRow];
     const apiMessages: SiteChatTurn[] = nextRows.map((r) => ({ role: r.role, content: r.content }));
 
     setRows(nextRows);
     setInput("");
+    setAttachmentUrls([]);
     setLoading(true);
     setStreamingStatus("Verzoek wordt klaargezet…");
     setStreamingReply("");
@@ -188,7 +190,7 @@ export function SiteAiChatPanel({
           messages: apiMessages,
           sections,
           config: config ?? null,
-          attachmentUrls,
+          attachmentUrls: attachmentUrlsThisTurn,
           appointmentsEnabled,
           webshopEnabled,
           businessName: businessName.trim() || undefined,
@@ -324,38 +326,6 @@ export function SiteAiChatPanel({
         </div>
       </details>
 
-      {attachmentUrls.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-2 px-4">
-          {attachmentUrls.map((url) => (
-            <li
-              key={url}
-              className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white pl-2 text-xs dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              {/\.(mp4|webm)(\?|$)/i.test(url) ? (
-                <span
-                  className="flex size-6 shrink-0 items-center justify-center rounded bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
-                  aria-hidden
-                >
-                  <Film className="size-3.5" />
-                </span>
-              ) : (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={url} alt="" className="size-6 rounded object-cover" />
-              )}
-              <span className="max-w-[140px] truncate font-mono text-[10px] text-zinc-600 dark:text-zinc-400">{url}</span>
-              <button
-                type="button"
-                aria-label="Verwijder bijlage"
-                className="p-1 text-zinc-500 hover:text-red-600"
-                onClick={() => setAttachmentUrls((u) => u.filter((x) => x !== url))}
-              >
-                <X className="size-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       <div
         ref={listRef}
         className="mx-4 mt-3 flex min-h-[min(160px,28dvh)] flex-1 flex-col space-y-3 overflow-y-auto rounded-lg border border-zinc-200/80 bg-white p-3 dark:border-zinc-700/60 dark:bg-zinc-950/80"
@@ -482,33 +452,68 @@ export function SiteAiChatPanel({
             if (files?.length) onDropFiles(files);
           }}
         >
-          <textarea
-            ref={inputRef}
-            id="site-ai-chat-composer"
-            aria-describedby="site-ai-chat-composer-hint"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onPaste={handleComposerPaste}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                if (!loading && !disabled && !uploading) void send();
-                return;
-              }
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (!loading && !disabled && !uploading) void send();
-              }
-            }}
-            rows={2}
-            disabled={loading || disabled || uploading}
-            placeholder="Vraag of instructie… (sleep of plak bestanden)"
-            className={cn(
-              "max-h-[min(200px,40dvh)] min-h-[44px] w-full resize-none rounded-2xl border-0 bg-transparent px-3 pb-11 pt-2.5 text-sm leading-relaxed",
-              "text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0",
-              "disabled:opacity-60 dark:text-zinc-100 dark:placeholder:text-zinc-500",
-            )}
-          />
+          <div className="flex gap-2 px-2 pt-2">
+            {attachmentUrls.length > 0 ? (
+              <div
+                className="flex max-h-[min(120px,28dvh)] shrink-0 flex-col gap-1.5 overflow-y-auto pr-0.5"
+                aria-label="Bijlagen bij dit bericht"
+              >
+                {attachmentUrls.map((url) => (
+                  <div
+                    key={url}
+                    className="group relative size-11 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800"
+                  >
+                    {/\.(mp4|webm)(\?|$)/i.test(url) ? (
+                      <span
+                        className="flex size-full items-center justify-center text-zinc-600 dark:text-zinc-300"
+                        aria-hidden
+                      >
+                        <Film className="size-5" />
+                      </span>
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={url} alt="" className="size-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Verwijder bijlage"
+                      className="absolute -right-1 -top-1 rounded-full bg-zinc-900 p-0.5 text-white opacity-0 shadow hover:opacity-100 group-hover:opacity-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      onClick={() => setAttachmentUrls((u) => u.filter((x) => x !== url))}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <textarea
+              ref={inputRef}
+              id="site-ai-chat-composer"
+              aria-describedby="site-ai-chat-composer-hint"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onPaste={handleComposerPaste}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  if (!loading && !disabled && !uploading) void send();
+                  return;
+                }
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!loading && !disabled && !uploading) void send();
+                }
+              }}
+              rows={2}
+              disabled={loading || disabled || uploading}
+              placeholder="Vraag of instructie… (sleep of plak bestanden)"
+              className={cn(
+                "max-h-[min(200px,40dvh)] min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border-0 bg-transparent px-1 pb-11 pt-1 text-sm leading-relaxed",
+                "text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0",
+                "disabled:opacity-60 dark:text-zinc-100 dark:placeholder:text-zinc-500",
+              )}
+            />
+          </div>
           <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-2">
             {uploading ? (
               <span className="pointer-events-auto flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900">
