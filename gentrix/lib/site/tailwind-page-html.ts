@@ -1118,6 +1118,16 @@ header.studio-nav-tone-light [class*="border-white"],
 nav.studio-nav-tone-light [class*="border-white"] {
   border-color: rgba(15, 23, 42, 0.22) !important;
 }
+/*
+ * Hamburger / sluit-icoon: veel templates gebruiken drie <span class="… bg-white …">-streepjes
+ * voor donkere headers. STUDIO_NAV_SCROLL_CONTRAST_SCRIPT zet dan .studio-nav-tone-light op de
+ * header (licht beeld erachter) — tekst wordt donker, maar bg-white op de streepjes bleef wit:
+ * wit op wit / bijna wit = “ontbrekende” menuknop op mobiel.
+ */
+header.studio-nav-tone-light button span[class*="bg-white"],
+nav.studio-nav-tone-light button span[class*="bg-white"] {
+  background-color: var(--studio-nav-auto-fg) !important;
+}
 `;
 
 export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
