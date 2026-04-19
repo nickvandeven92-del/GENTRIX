@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# Vite booking-SPA (output van `npm run build:booking-app`)
+/public/booking-app/
+
 # production
 /build
 

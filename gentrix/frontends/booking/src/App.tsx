@@ -26,14 +26,14 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BusinessProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || "/"}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/book/:slug" element={<BookingPageLive />} />
-            <Route path="/demo" element={<BookingPage />} />
+            <Route index element={<HomePage />} />
+            <Route path="book/:slug" element={<BookingPageLive />} />
+            <Route path="demo" element={<BookingPage />} />
 
             {/* Owner dashboard */}
-            <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<DashboardLayout />}>
               <Route index element={<DashboardOverview />} />
               <Route path="diensten" element={<DashboardServices />} />
               <Route path="medewerkers" element={<DashboardEmployees />} />

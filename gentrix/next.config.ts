@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return {
+      /** Vite SPA onder `public/booking-app` — client-routes (`/booking-app/book/…`) naar index.html. */
+      afterFiles: [
+        { source: "/booking-app", destination: "/booking-app/index.html" },
+        { source: "/booking-app/", destination: "/booking-app/index.html" },
+        { source: "/booking-app/:path*", destination: "/booking-app/index.html" },
+      ],
+    };
+  },
   /**
    * Next 16 dev blokkeert /_next/* bij Sec-Fetch-Site: cross-site + no-cors zonder Referer (“unknown source”).
    * Zie `npm run dev`: gebruik `--hostname localhost` zodat pagina en /_next hetzelfde host hebben.

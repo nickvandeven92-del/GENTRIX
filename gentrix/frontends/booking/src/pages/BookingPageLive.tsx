@@ -105,7 +105,7 @@ export default function BookingPageLive() {
   if (!slug) {
     return (
       <div className="min-h-screen bg-background px-4 py-16 text-center text-muted-foreground">
-        Geen studio-slug in de URL. Gebruik <code className="rounded bg-muted px-1">/book/mosham</code> (voorbeeld).
+        Geen studio-slug in de URL. Gebruik <code className="rounded bg-muted px-1">/booking-app/book/mosham</code> (voorbeeld).
       </div>
     );
   }

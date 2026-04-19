@@ -4,13 +4,16 @@ Vite + React boekingsflow en dashboard. Pad: `gentrix/frontends/booking` (eigen 
 
 ## Live boeken (Gentrix API)
 
-1. Start de Next-app in de repo-root: `npm run dev` (poort **3000**).
-2. Start deze app: `npm run dev` (standaard **8080**). Vite proxy’t `/api` naar `127.0.0.1:3000`.
-3. Open `http://localhost:8080/`, vul een studio-**slug** in, of ga direct naar **`/book/mosham`** (voorbeeld).
+**Ingebouwd in Next (productie):** vanaf de projectroot `npm run build` bouwt automatisch deze SPA naar `public/booking-app/`. Gebruikers gaan naar **`/boek/{slug}`** → redirect naar **`/booking-app/book/{slug}`**.
 
-Zelfde contract als `gentrix.nl/boek/…` — zie `docs/BOOKING_GENTRIX_UNIFIED.md`. Optioneel: deploy de SPA elders en zet `VITE_GENTRIX_API_BASE` + CORS op Next (`BOOKING_VITE_PUBLIC_ORIGINS`). Optioneel: in Next `NEXT_PUBLIC_BOOKING_VITE_APP_URL` zodat `/boek/{slug}` redirect naar deze app.
+**Alleen Vite dev (UI):**
 
-**Mock-demo** (lokale JSON, geen API): `/demo`.
+1. Next: `npm run dev` in repo-root (poort **3000**).
+2. Deze map: `npm run dev` (poort **8080**). Proxy: `/api` → `127.0.0.1:3000`. SPA-URL: **`http://localhost:8080/booking-app/`** (base `/booking-app/`).
+
+Zie `docs/BOOKING_GENTRIX_UNIFIED.md`. Zeldzaam: SPA op ander domein → `VITE_GENTRIX_API_BASE` + CORS (`BOOKING_VITE_PUBLIC_ORIGINS`).
+
+**Mock-demo:** `/booking-app/demo` (onder Vite-dev) of na build op hetzelfde pad op je Next-domein.
 
 ## Database
 

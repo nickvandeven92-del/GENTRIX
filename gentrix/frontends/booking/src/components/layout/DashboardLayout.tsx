@@ -1,24 +1,24 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useBusiness } from '@/context/BusinessContext';
 import {
   LayoutDashboard, Scissors, Users, Calendar, Clock, Coffee, CalendarOff, Settings, ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** Relatief t.o.v. `/booking-app/dashboard` (BrowserRouter basename). */
 const navItems = [
-  { label: 'Overzicht', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Diensten', path: '/dashboard/diensten', icon: Scissors },
-  { label: 'Medewerkers', path: '/dashboard/medewerkers', icon: Users },
-  { label: 'Roosters', path: '/dashboard/roosters', icon: Clock },
-  { label: 'Pauzes', path: '/dashboard/pauzes', icon: Coffee },
-  { label: 'Vrije dagen', path: '/dashboard/vrije-dagen', icon: CalendarOff },
-  { label: 'Afspraken', path: '/dashboard/afspraken', icon: Calendar },
-  { label: 'Instellingen', path: '/dashboard/instellingen', icon: Settings },
-];
+  { label: 'Overzicht', to: '.', end: true, icon: LayoutDashboard },
+  { label: 'Diensten', to: 'diensten', end: false, icon: Scissors },
+  { label: 'Medewerkers', to: 'medewerkers', end: false, icon: Users },
+  { label: 'Roosters', to: 'roosters', end: false, icon: Clock },
+  { label: 'Pauzes', to: 'pauzes', end: false, icon: Coffee },
+  { label: 'Vrije dagen', to: 'vrije-dagen', end: false, icon: CalendarOff },
+  { label: 'Afspraken', to: 'afspraken', end: false, icon: Calendar },
+  { label: 'Instellingen', to: 'instellingen', end: false, icon: Settings },
+] as const;
 
 export function DashboardLayout() {
   const { business } = useBusiness();
-  const location = useLocation();
 
   return (
     <div className="min-h-screen flex">
@@ -29,26 +29,26 @@ export function DashboardLayout() {
           <p className="text-xs text-sidebar-foreground/60">{business.industry}</p>
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(item => {
-            const active = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to === '.' ? 'index' : item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                  active ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50'
-                )}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+                  isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50',
+                )
+              }
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
         <div className="p-3 border-t border-sidebar-border">
-          <Link to="/" className="flex items-center gap-2 text-sm hover:text-sidebar-primary transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Terug naar website
+          <Link to=".." className="flex items-center gap-2 text-sm hover:text-sidebar-primary transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Terug naar start
           </Link>
         </div>
       </aside>
@@ -61,22 +61,22 @@ export function DashboardLayout() {
           'pb-[max(0.5rem,env(safe-area-inset-bottom))]',
         )}
       >
-        {navItems.map(item => {
-          const active = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to === '.' ? 'index-m' : item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              cn(
                 'flex min-w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-lg px-1 py-2 text-[11px] leading-tight',
-                active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground',
-              )}
-            >
-              <item.icon className="mb-0.5 h-4 w-4 shrink-0" />
-              <span className="max-w-[4.25rem] text-center">{item.label}</span>
-            </Link>
-          );
-        })}
+                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground',
+              )
+            }
+          >
+            <item.icon className="mb-0.5 h-4 w-4 shrink-0" />
+            <span className="max-w-[4.25rem] text-center">{item.label}</span>
+          </NavLink>
+        ))}
       </div>
 
       {/* Content */}

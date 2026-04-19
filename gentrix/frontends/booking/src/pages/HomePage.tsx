@@ -14,7 +14,7 @@ export default function HomePage() {
     e.preventDefault();
     const s = slug.trim().toLowerCase();
     if (!s) return;
-    navigate(`/book/${encodeURIComponent(s)}`);
+    navigate(`book/${encodeURIComponent(s)}`);
   }
 
   return (
@@ -23,9 +23,8 @@ export default function HomePage() {
         <div>
           <h1 className="font-heading text-3xl font-bold tracking-tight">GENTRIX — Boeking</h1>
           <p className="mt-2 text-muted-foreground">
-            Publieke afspraken via dezelfde API als <code className="rounded bg-muted px-1">gentrix.nl/boek/…</code>. Zet in{" "}
-            <code className="rounded bg-muted px-1">.env</code> een proxy naar je Next-dev-server of{" "}
-            <code className="rounded bg-muted px-1">VITE_GENTRIX_API_BASE</code> op productie.
+            Publieke afspraken via dezelfde API als <code className="rounded bg-muted px-1">gentrix.nl/boek/…</code> (redirect naar
+            deze app). Alleen bij aparte Vite-host: <code className="rounded bg-muted px-1">VITE_GENTRIX_API_BASE</code> + CORS op Next.
           </p>
         </div>
 
@@ -40,12 +39,12 @@ export default function HomePage() {
 
         <div className="rounded-2xl border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
           <p className="font-medium text-foreground">Mock-data (los van Supabase)</p>
-          <p className="mt-1">De originele demo met lokale JSON staat op /demo — handig voor UI-experimenten.</p>
+          <p className="mt-1">De originele demo met lokale JSON staat onder /booking-app/demo — handig voor UI-experimenten.</p>
           <Button variant="outline" className="mt-4" asChild>
-            <Link to="/demo">Naar mock-demo</Link>
+            <Link to="demo">Naar mock-demo</Link>
           </Button>
           <Button variant="ghost" className="mt-2 block w-full" asChild>
-            <Link to="/dashboard">Dashboard (mock)</Link>
+            <Link to="dashboard">Dashboard (mock)</Link>
           </Button>
         </div>
       </div>

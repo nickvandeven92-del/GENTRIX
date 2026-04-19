@@ -34,13 +34,14 @@ Gebruik die SQL hooguit op een **leeg** dev-project, of als referentie bij het p
 
 ## Vite booking-app (`frontends/booking/`, live)
 
-- Route **`/book/{slug}`** in de SPA praat met dezelfde endpoints als `/boek/{slug}` in Next: `GET/POST /api/public/clients/{slug}/booking-*` en `…/appointments`.
-- **Lokaal:** Next op `:3000`, Vite op `:8080`; Vite proxy’t `/api` naar Next (geen CORS).
-- **Productie:** Vite-deploy op eigen URL → zet `VITE_GENTRIX_API_BASE=https://www.jouw-gentrix.nl` in de Vite-build en op Next **`BOOKING_VITE_PUBLIC_ORIGINS`** (of `NEXT_PUBLIC_BOOKING_VITE_ORIGINS`) op de exacte SPA-`Origin`(s).
-- **Optioneel:** `NEXT_PUBLIC_BOOKING_VITE_APP_URL` in Next laat `/boek/{slug}` **redirecten** naar de Vite-app (`…/book/{slug}`).
+- **Standaard (ingebouwd):** `npm run build` bouwt de SPA naar **`public/booking-app/`** met pad **`/booking-app/book/{slug}`**. De route **`/boek/{slug}`** in Next **redirect** daar naartoe (zelfde domein, geen aparte env-URL).
+- **Lokaal:** eenmalig `npm run build:booking-app` (of `dev:with-booking-spa`), daarna `npm run dev` — anders toont `/boek/…` een korte instructiepagina.
+- **Alleen Vite dev-server** (`frontends/booking`, poort 8080): proxy’t `/api` naar Next; SPA draait op **`/booking-app/`** onder die server.
+- **Nood:** oude Next-wizard tijdelijk: `BOOKING_EMBEDDED_SPA=0` in `.env.local`.
+- **Zeldzaam — SPA op ander domein:** `VITE_GENTRIX_API_BASE` + `BOOKING_VITE_PUBLIC_ORIGINS` op Next.
 
 ## Praktische checklist
 
 1. **Productie / staging:** alleen `supabase/migrations/`; geen `frontends/booking/database/*.sql` op datzelfde project.
 2. **Per klant:** `appointments_enabled` aan; `booking_settings` en team/diensten vullen via portaal (of admin).
-3. **Vite-app:** mock-demo blijft op **`/demo`**; live boeking op **`/book/{slug}`** — één schema via de Next-API’s hierboven.
+3. **Vite-app:** mock-demo op **`/booking-app/demo`**; live boeking op **`/booking-app/book/{slug}`** (ingebouwd) of eigen host + CORS — één schema via de Next-API’s hierboven.

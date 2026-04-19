@@ -34,7 +34,7 @@ Main app Vitest: tests under `lib/ai/_archive/` have broken imports (archived co
 
 The main app needs `.env.local` in `gentrix/` (see `.env.example`). At minimum, set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `ANTHROPIC_API_KEY`. Without real Supabase credentials, the app still starts and renders static/SSR pages but any data-dependent features will fail.
 
-Chameleon needs `.env` in `frontends/chameleon/` (see `.env.example`). Booking: voor **live** boeken tegen de Next-API draai je `npm run dev` in `gentrix/` op poort 3000 en Vite proxy’t `/api` (zie `frontends/booking/vite.config.ts`). Zie `frontends/booking/.env.example` voor `VITE_GENTRIX_API_BASE` / productie-CORS.
+Chameleon needs `.env` in `frontends/chameleon/` (see `.env.example`). **Boeken:** `npm run build` bouwt de Vite-SPA naar `public/booking-app/`; `/boek/{slug}` redirect daar naartoe. Lokaal eenmalig `npm run build:booking-app` vóór `/boek/…` testen, of `npm run dev:with-booking-spa`. Zie `docs/BOOKING_GENTRIX_UNIFIED.md`.
 
 Set `STUDIO_PROMO_VIDEO=0` in `.env.local` to disable Playwright-based promo video generation (avoids needing Chromium).
 
