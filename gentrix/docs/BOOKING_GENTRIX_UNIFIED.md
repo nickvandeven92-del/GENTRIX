@@ -34,10 +34,9 @@ Gebruik die SQL hooguit op een **leeg** dev-project, of als referentie bij het p
 
 ## Vite booking-app (`frontends/booking/`, live)
 
-- **Standaard (ingebouwd):** `npm run build` bouwt de SPA naar **`public/booking-app/`** met pad **`/booking-app/book/{slug}`**. De route **`/boek/{slug}`** in Next **redirect** daar naartoe (zelfde domein, geen aparte env-URL).
+- **Standaard (ingebouwd):** `npm run build` bouwt de SPA naar **`public/booking-app/`** met pad **`/booking-app/book/{slug}`** (canonieke links uit studio/CRM). De route **`/boek/{slug}`** **redirect** nog naar dezelfde SPA voor oude bookmarks en korte URL’s.
 - **Lokaal:** eenmalig `npm run build:booking-app` (of `dev:with-booking-spa`), daarna `npm run dev` — anders toont `/boek/…` een korte instructiepagina.
 - **Alleen Vite dev-server** (`frontends/booking`, poort 8080): proxy’t `/api` naar Next; SPA draait op **`/booking-app/`** onder die server.
-- **Nood:** oude Next-wizard tijdelijk: `BOOKING_EMBEDDED_SPA=0` in `.env.local`.
 - **Zeldzaam — SPA op ander domein:** `VITE_GENTRIX_API_BASE` + `BOOKING_VITE_PUBLIC_ORIGINS` op Next.
 
 ## Praktische checklist

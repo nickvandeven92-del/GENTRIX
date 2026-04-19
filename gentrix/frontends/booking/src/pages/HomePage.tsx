@@ -23,7 +23,8 @@ export default function HomePage() {
         <div>
           <h1 className="font-heading text-3xl font-bold tracking-tight">GENTRIX — Boeking</h1>
           <p className="mt-2 text-muted-foreground">
-            Publieke afspraken via dezelfde API als <code className="rounded bg-muted px-1">gentrix.nl/boek/…</code> (redirect naar
+            Publieke afspraken via dezelfde API als{" "}
+            <code className="rounded bg-muted px-1">gentrix.nl/booking-app/book/…</code> (
             deze app). Alleen bij aparte Vite-host: <code className="rounded bg-muted px-1">VITE_GENTRIX_API_BASE</code> + CORS op Next.
           </p>
         </div>

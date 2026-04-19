@@ -5,6 +5,7 @@ import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { getPortalDashboardSnapshot } from "@/lib/data/get-portal-dashboard-snapshot";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 import { getSupabaseForPortalDataReads } from "@/lib/portal/studio-portal-preview";
+import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -35,7 +36,7 @@ export default async function ClientPortalOverviewPage({ params }: Props) {
     getRequestOrigin(),
   ]);
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${encodeURIComponent(decoded)}` : undefined;
-  const publicBookingAbsoluteUrl = origin ? `${origin}/boek/${encodeURIComponent(decoded)}` : undefined;
+  const publicBookingAbsoluteUrl = origin ? `${origin}${publicLiveBookingHref(decoded)}` : undefined;
 
   return (
     <main>

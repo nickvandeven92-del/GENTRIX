@@ -5,6 +5,7 @@ import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 import { canAccessPortalForUserId } from "@/lib/portal/studio-portal-preview";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 
 type Props = { children: React.ReactNode; params: Promise<{ slug: string }> };
 
@@ -30,7 +31,8 @@ export default async function AgendaSlugLayout({ children, params }: Props) {
   }
 
   const origin = await getRequestOrigin();
-  const publicBookingHref = origin ? `${origin}/boek/${enc}` : `/boek/${enc}`;
+  const bookingPath = publicLiveBookingHref(decoded);
+  const publicBookingHref = origin ? `${origin}${bookingPath}` : bookingPath;
 
   return (
     <AgendaShell

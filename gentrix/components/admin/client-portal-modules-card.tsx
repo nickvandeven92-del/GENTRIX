@@ -124,7 +124,7 @@ export function ClientPortalModulesCard({
     {
       field: "appointments_enabled",
       label: "Afspraken",
-      hint: "Aan: portaal-tabs en publieke boekpagina; boekingslinks op de site wijzen naar /boek/{slug}. Uit: booking-blok en boek-links verborgen op /site.",
+      hint: "Aan: portaal-tabs en publieke boekpagina; boekingslinks op de site wijzen naar /booking-app/book/{slug}. Uit: booking-blok en boek-links verborgen op /site.",
       checked: appointments_enabled,
     },
     {
@@ -331,7 +331,8 @@ export function ClientPortalModulesCard({
       </div>
 
       <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Werkdagen en weekplanning voor <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/boek/…</code>{" "}
+        Werkdagen en weekplanning voor{" "}
+        <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/booking-app/book/…</code>{" "}
         beheert de klant in het portaal onder Afspraken (zelfde database als de site).
       </p>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">

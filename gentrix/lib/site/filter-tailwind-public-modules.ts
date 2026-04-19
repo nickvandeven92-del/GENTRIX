@@ -9,7 +9,7 @@ import {
 /**
  * Verwijdert canonieke module-secties voor **inactieve** modules (CRM).
  * `__STUDIO_BOOKING_PATH__` / `__STUDIO_SHOP_PATH__` blijven in overgebleven HTML staan — resolvers zetten ze
- * altijd om naar echte `/boek/`- en `/winkel/`-routes; inactive-state is een pagina, geen `href="#"`.
+ * altijd om naar `/booking-app/book/…` en `/winkel/…`; inactive-state is een pagina, geen `href="#"`.
  */
 export function filterTailwindSectionsForInactivePublicModules(
   sections: TailwindSection[],

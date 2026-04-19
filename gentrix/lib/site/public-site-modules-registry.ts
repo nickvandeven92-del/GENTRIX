@@ -1,4 +1,5 @@
 import {
+  publicLiveBookingHref,
   STUDIO_BOOKING_PATH_PLACEHOLDER,
   STUDIO_SHOP_PATH_PLACEHOLDER,
 } from "@/lib/site/studio-section-visibility";
@@ -69,7 +70,7 @@ export const PUBLIC_SITE_MODULE_DEFINITIONS: readonly PublicSiteModuleDefinition
     crmFlag: "appointmentsEnabled",
     pathPlaceholder: STUDIO_BOOKING_PATH_PLACEHOLDER,
     route: {
-      hrefFromPublishedSlug: (slug) => `/boek/${encodeURIComponent(slug)}`,
+      hrefFromPublishedSlug: (slug) => publicLiveBookingHref(slug),
     },
     nav: { stripTaggedNavWhenInactive: true },
     allowedPlacements: ["marketing_body", "canonical_section"],

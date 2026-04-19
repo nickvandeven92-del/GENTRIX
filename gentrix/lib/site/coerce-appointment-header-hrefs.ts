@@ -39,7 +39,7 @@ export function coerceContactBookCtaAnchorsInHtmlFragment(html: string): string 
 
 /**
  * Als de AI (of handmatige edit) per ongeluk WhatsApp op de primaire afspraak-knop in de header zet,
- * maar de tekst duidelijk om een afspraak gaat, dwingen we het studio-boekingspad (compose lost het op naar `/boek/{slug}`).
+ * maar de tekst duidelijk om een afspraak gaat, dwingen we het studio-boekingspad (compose lost het op naar `/booking-app/book/{slug}`).
  */
 export function coerceHeaderWhatsappLinksToBookingPlaceholder(html: string): string {
   return html.replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, (headerBlock) =>

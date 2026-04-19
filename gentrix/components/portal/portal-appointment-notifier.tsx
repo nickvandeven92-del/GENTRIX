@@ -38,7 +38,7 @@ type Props = {
 const POLL_MS = 30_000;
 
 /**
- * Toont een pop-up wanneer er een nieuwe afspraak bijkomt (o.a. via /boek/…)
+ * Toont een pop-up wanneer er een nieuwe afspraak bijkomt (o.a. via de publieke boek-SPA)
  * terwijl het portaal of de agenda-hub open staat.
  */
 export function PortalAppointmentNotifier({ slug, appointmentsEnabled }: Props) {

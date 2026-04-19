@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * Read-only samenvatting voor studio: zelfde `booking_settings` als portaal + /boek.
+ * Read-only samenvatting voor studio: zelfde `booking_settings` als portaal + publieke boek-SPA.
  */
 export async function AdminBookingAgendaSummary({ clientId, subfolderSlug, bookingAbsoluteUrl }: Props) {
   const supabase = createServiceRoleClient();

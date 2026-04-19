@@ -23,8 +23,13 @@ export function filterSectionsForPortalOnly(sections: TailwindSection[]): Tailwi
  */
 export const STUDIO_PORTAL_PATH_PLACEHOLDER = "__STUDIO_PORTAL_PATH__";
 
-/** Publieke online boekingspagina op deze app: `/boek/{slug}`. */
+/** Publieke online boek-flow: ingebouwde Vite-SPA onder `/booking-app/book/{slug}`. */
 export const STUDIO_BOOKING_PATH_PLACEHOLDER = "__STUDIO_BOOKING_PATH__";
+
+/** Canonieke URL voor live boeken (zelfde origin als `/boek/{slug}`, die redirect kan blijven doen). */
+export function publicLiveBookingHref(subfolderSlug: string): string {
+  return `/booking-app/book/${encodeURIComponent(subfolderSlug)}`;
+}
 
 /** Publieke webshop-landingspagina op deze app: `/winkel/{slug}`. */
 export const STUDIO_SHOP_PATH_PLACEHOLDER = "__STUDIO_SHOP_PATH__";
@@ -44,8 +49,7 @@ export function applyStudioPortalPathPlaceholder(html: string, subfolderSlug: st
 }
 
 export function applyStudioBookingPathPlaceholder(html: string, subfolderSlug: string): string {
-  const path = `/boek/${encodeURIComponent(subfolderSlug)}`;
-  return html.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join(path);
+  return html.split(STUDIO_BOOKING_PATH_PLACEHOLDER).join(publicLiveBookingHref(subfolderSlug));
 }
 
 export function applyStudioShopPathPlaceholder(html: string, subfolderSlug: string): string {
@@ -65,9 +69,8 @@ export function applyStudioSiteBasePlaceholder(html: string, siteBasePath: strin
 
 export type ApplyStudioPathsOptions = {
   /**
-   * @deprecated Boeking- en webshop-placeholders worden **altijd** naar `/boek/{slug}` en `/winkel/{slug}`
-   * omgezet zodra er een gepubliceerde slug is. CRM stuurt zichtbaarheid/activatie via compose en inactive-routes,
-   * niet via `href="#"`.
+   * @deprecated Boeking- en webshop-placeholders worden **altijd** naar live paden omgezet zodra er een
+   * gepubliceerde slug is (`/booking-app/book/{slug}` en `/winkel/{slug}`). CRM stuurt zichtbaarheid via compose.
    */
   includeBooking?: boolean;
   /** @deprecated Zie `includeBooking`. */

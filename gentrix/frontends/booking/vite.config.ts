@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  /** Ingebouwd in Next `public/booking-app` — zelfde origin als `/boek/{slug}` (geen aparte deploy-URL). */
+  /** Ingebouwd in Next `public/booking-app` — canoniek `/booking-app/book/{slug}` (geen aparte deploy-URL). */
   base: "/booking-app/",
   build: {
     outDir: path.resolve(__dirname, "../../public/booking-app"),

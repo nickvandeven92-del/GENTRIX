@@ -83,7 +83,7 @@ function buildMarketingLinksCopy(appointmentsEnabled: boolean, webshopEnabled: b
       `- **Boeking & webshop (publieke marketing — CRM-modules in deze run):**`,
       ...(appointmentsEnabled
         ? [
-            `  - **Online afspraken AAN:** zet op alle relevante primaire conversieplekken (vaste header/topnav, mobiel menu, **hero** wanneer de briefing reserveren/afspraken benadrukt, footer) minstens **één** duidelijke knop of link (bv. “Reserveer”, “Maak een afspraak”, “Boek online”) met \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` — **exact dit token**, geen \`#contact\`, geen verzonnen \`/boek/…\`-pad. Secundair “Bel / WhatsApp” mag \`tel:\` of \`https://wa.me/…\` blijven; de **hoofd**-reserveeractie gebruikt het boekings-token.`,
+            `  - **Online afspraken AAN:** zet op alle relevante primaire conversieplekken (vaste header/topnav, mobiel menu, **hero** wanneer de briefing reserveren/afspraken benadrukt, footer) minstens **één** duidelijke knop of link (bv. “Reserveer”, “Maak een afspraak”, “Boek online”) met \`href="${STUDIO_BOOKING_PATH_PLACEHOLDER}"\` — **exact dit token**, geen \`#contact\`, geen verzonnen pad als \`/booking-app/book/…\`. Secundair “Bel / WhatsApp” mag \`tel:\` of \`https://wa.me/…\` blijven; de **hoofd**-reserveeractie gebruikt het boekings-token.`,
           ]
         : []),
       ...(webshopEnabled

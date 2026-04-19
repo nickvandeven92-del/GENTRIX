@@ -58,7 +58,8 @@ export function GeneratorStudioFaqContent() {
         <h3 className="text-sm font-semibold text-slate-900">Boeken &amp; webshop</h3>
         <p className="mt-2 text-xs text-slate-600">
           Volledige checkout/agenda zit niet in de generator-HTML; modules schakel je per klant (Portaal). CRM bepaalt of{" "}
-          <code className="font-mono text-[11px]">/boek/…</code> / <code className="font-mono text-[11px]">/winkel/…</code>{" "}
+          <code className="font-mono text-[11px]">/booking-app/book/…</code> /{" "}
+          <code className="font-mono text-[11px]">/winkel/…</code>{" "}
           actief is.
         </p>
       </section>

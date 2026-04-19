@@ -20,13 +20,6 @@ export type PublicBookingService = {
   sort_order: number;
 };
 
-export type StaffDayState = {
-  loading: boolean;
-  requiresStaffSelection: boolean;
-  staff: { id: string; name: string }[];
-  err: string | null;
-};
-
 export function formatPriceEur(cents: number | null): string | null {
   if (cents == null) return null;
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(cents / 100);

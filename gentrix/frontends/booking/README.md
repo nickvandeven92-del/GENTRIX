@@ -4,7 +4,7 @@ Vite + React boekingsflow en dashboard. Pad: `gentrix/frontends/booking` (eigen 
 
 ## Live boeken (Gentrix API)
 
-**Ingebouwd in Next (productie):** vanaf de projectroot `npm run build` bouwt automatisch deze SPA naar `public/booking-app/`. Gebruikers gaan naar **`/boek/{slug}`** → redirect naar **`/booking-app/book/{slug}`**.
+**Ingebouwd in Next (productie):** vanaf de projectroot `npm run build` bouwt automatisch deze SPA naar `public/booking-app/`. Canonieke URL: **`/booking-app/book/{slug}`** (studio/knoppen). **`/boek/{slug}`** redirect daar nog naartoe voor korte links.
 
 **Alleen Vite dev (UI):**
 

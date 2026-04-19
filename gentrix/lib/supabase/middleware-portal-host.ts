@@ -21,7 +21,12 @@ export function maybeRewritePortalHost(request: NextRequest): NextResponse | nul
   if (pathname === "/p" || pathname.startsWith("/p/")) return null;
   if (pathname.startsWith("/site/") || pathname === "/site") return null;
   if (pathname.startsWith("/agenda/") || pathname === "/agenda") return null;
-  if (pathname.startsWith("/boek/") || pathname.startsWith("/winkel/") || pathname.startsWith("/preview/")) {
+  if (
+    pathname.startsWith("/boek/") ||
+    pathname.startsWith("/booking-app") ||
+    pathname.startsWith("/winkel/") ||
+    pathname.startsWith("/preview/")
+  ) {
     return null;
   }
   if (pathname.startsWith("/portal")) return null;

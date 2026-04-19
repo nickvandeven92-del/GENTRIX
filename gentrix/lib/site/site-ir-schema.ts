@@ -8,7 +8,7 @@ export const SITE_IR_SCHEMA_VERSION = 1 as const;
 export const siteIrRouteKeySchema = z.enum([
   "public_landing",
   "public_contact",
-  /** Publieke app-route `/boek/{slug}` — altijd capability; CRM stuurt activatie/inactive UI. */
+  /** Publieke boek-flow (`/booking-app/book/{slug}`; `/boek/{slug}` kan redirecten) — capability; CRM stuurt activatie. */
   "public_booking",
   /** Publieke app-route `/winkel/{slug}` — altijd capability. */
   "public_shop",

@@ -7,6 +7,7 @@ import { DEFAULT_BOOKING_SETTINGS } from "@/lib/booking/booking-settings";
 import type { StaffMember } from "@/components/portal/portal-staff-client";
 import { PortalAppointmentPlanning } from "@/components/portal/portal-appointment-planning";
 import { PortalBookingAgendaSettings } from "@/components/portal/portal-booking-agenda-settings";
+import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 type AppointmentRow = {
@@ -65,6 +66,7 @@ type Props = { slug: string; clientName: string };
 
 export function PortalAppointmentsClient({ slug, clientName }: Props) {
   const enc = encodeURIComponent(slug);
+  const liveBookingPath = publicLiveBookingHref(decodeURIComponent(slug));
   const base = `/api/portal/clients/${enc}/appointments`;
   const settingsBase = `/api/portal/clients/${enc}/booking-settings`;
   const staffBase = `/api/portal/clients/${enc}/staff`;
@@ -304,12 +306,12 @@ export function PortalAppointmentsClient({ slug, clientName }: Props) {
             </h2>
             <p className="mt-1 max-w-xl text-xs text-violet-900/85 dark:text-violet-200/85">
               Dit is dezelfde stap-voor-stap flow als bezoekers zien op{" "}
-              <code className="rounded bg-white/80 px-1 dark:bg-violet-950/50">/boek/{encodeURIComponent(slug)}</code>.
+              <code className="rounded bg-white/80 px-1 dark:bg-violet-950/50">{liveBookingPath}</code>.
               Handmatig invoeren doe je hieronder — niet in dit venster.
             </p>
           </div>
           <a
-            href={`/boek/${enc}`}
+            href={liveBookingPath}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-2 text-xs font-medium text-violet-900 hover:bg-violet-50 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/40"
@@ -321,7 +323,7 @@ export function PortalAppointmentsClient({ slug, clientName }: Props) {
         <div className="mt-4 overflow-hidden rounded-xl border border-violet-200/90 bg-white shadow-sm dark:border-violet-800/60 dark:bg-zinc-900">
           <iframe
             title="Voorbeeld online boekpagina voor bezoekers"
-            src={`/boek/${enc}`}
+            src={liveBookingPath}
             className="h-[min(680px,82vh)] w-full border-0"
           />
         </div>
@@ -608,9 +610,7 @@ export function PortalAppointmentsClient({ slug, clientName }: Props) {
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Werkdagen onder &quot;Online boekagenda&quot; en het iframe hierboven gebruiken dezelfde instellingen als de
         publieke pagina{" "}
-        <code className="rounded bg-zinc-100 px-1 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-          /boek/{encodeURIComponent(slug)}
-        </code>
+        <code className="rounded bg-zinc-100 px-1 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">{liveBookingPath}</code>
         . Bij een ingevulde <strong className="text-zinc-700 dark:text-zinc-300">factuur e-mail</strong> (commercie)
         sturen we jou een bevestiging met <strong className="text-zinc-700 dark:text-zinc-300">.ics</strong> bij nieuwe
         en verzette afspraken; bij annulering een korte mail. Optioneel: bevestiging/herinnering naar de boeker

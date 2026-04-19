@@ -27,6 +27,7 @@ import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-s
 import { listClientDossierNotes } from "@/lib/data/list-client-dossier-notes";
 import { listInvoices } from "@/lib/data/list-invoices";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
+import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -70,7 +71,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   const enc = encodeURIComponent(row.subfolder_slug);
   const base = `/admin/clients/${enc}`;
   const appOrigin = getPublicAppUrl();
-  const bookingAbsoluteUrl = `${appOrigin}/boek/${encodeURIComponent(row.subfolder_slug)}`;
+  const bookingAbsoluteUrl = `${appOrigin}${publicLiveBookingHref(row.subfolder_slug)}`;
   const shopAbsoluteUrl = `${appOrigin}/winkel/${encodeURIComponent(row.subfolder_slug)}`;
 
   const companyName = row.company_legal_name?.trim() || row.name;

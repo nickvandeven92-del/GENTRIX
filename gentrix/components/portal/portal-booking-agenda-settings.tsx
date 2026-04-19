@@ -182,7 +182,8 @@ export function PortalBookingAgendaSettings({ slug, onSaved }: Props) {
     >
       <h2 className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Online boekagenda</h2>
       <p className="mt-1 text-xs leading-relaxed text-emerald-900/80 dark:text-emerald-200/80">
-        Zelfde regels als de publieke boekflow voor bezoekers (<code className="rounded bg-white/80 px-1 dark:bg-emerald-950/60">/boek/…</code>
+        Zelfde regels als de publieke boekflow voor bezoekers (
+        <code className="rounded bg-white/80 px-1 dark:bg-emerald-950/60">/booking-app/book/…</code>
         ). Per dag kun je <strong className="font-medium text-emerald-950 dark:text-emerald-100">meerdere werkblokken</strong>{" "}
         instellen; de <strong className="font-medium text-emerald-950 dark:text-emerald-100">ruimte ertussen</strong> is
         pauze (geen boekbare slots), bijv. lunch tussen ochtend en middag.

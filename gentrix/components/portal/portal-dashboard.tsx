@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Calendar, CreditCard, ExternalLink, FileText, LayoutDashboard, Link2 } from "lucide-react";
 import type { PortalDashboardSnapshot } from "@/lib/data/get-portal-dashboard-snapshot";
+import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 
 type Props = {
   slug: string;
@@ -11,7 +12,7 @@ type Props = {
   accountEnabled: boolean;
   /** Volledige URL naar /site/... voor nieuwe browsertab (PWA). */
   publicSiteAbsoluteUrl?: string;
-  /** Publieke online boekpagina (`/boek/{slug}`), zelfde flow als op de klant-site. */
+  /** Publieke online boekpagina (Vite `/booking-app/book/{slug}`), zelfde flow als op de klant-site. */
   publicBookingAbsoluteUrl?: string;
 };
 
@@ -25,10 +26,11 @@ export function PortalDashboard({
   publicSiteAbsoluteUrl,
   publicBookingAbsoluteUrl,
 }: Props) {
-  const enc = encodeURIComponent(decodeURIComponent(slug));
+  const decodedSlug = decodeURIComponent(slug);
+  const enc = encodeURIComponent(decodedSlug);
   const base = `/portal/${enc}`;
   const sitePublicHref = publicSiteAbsoluteUrl ?? `/site/${enc}`;
-  const bookingPublicHref = publicBookingAbsoluteUrl ?? `/boek/${enc}`;
+  const bookingPublicHref = publicBookingAbsoluteUrl ?? publicLiveBookingHref(decodedSlug);
 
   const links: { href: string; label: string; icon: typeof FileText; nativeSite?: boolean }[] = [
     { href: base, label: "Dashboard", icon: LayoutDashboard },

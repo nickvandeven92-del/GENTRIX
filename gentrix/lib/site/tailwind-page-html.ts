@@ -1819,7 +1819,7 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
  * of blokkeer host-navigatie. **Uitzondering:** `/site/{slug}/{subroute}` (contact, marketingpagina) is een echte
  * Next-route — dan `navigateTop` (postMessage naar parent / top) i.p.v. scrollen in de iframe.
  * Links naar app-shell (`/portal/*`, `/admin`, `/login`, `/home`, `/dashboard`) en naar
- * `/boek/*` / `/winkel/*` moeten **top** navigeren — anders vangen we `/diensten`-achtige paden af met
+ * `/boek/*`, `/booking-app/*` en `/winkel/*` moeten **top** navigeren — anders vangen we `/diensten`-achtige paden af met
  * `preventDefault` en blijft een klik zonder effect (meerdere path-segmenten).
  *
  * **Concept + token:** zorg dat interne `/site/{slug}/…`-links de `token`-query behouden (en oude `/preview/…`-links naar `/site/…` normaliseren).
@@ -1915,7 +1915,10 @@ export function buildStudioSinglePageInternalNavScript(
   }
   function isBoekOrWinkelPath(p){
     if(!p||p.charAt(0)!=="/")return false;
-    return p==="/boek"||p.indexOf("/boek/")===0||p==="/winkel"||p.indexOf("/winkel/")===0;
+    if(p==="/boek"||p.indexOf("/boek/")===0)return true;
+    if(p==="/booking-app"||p.indexOf("/booking-app/")===0)return true;
+    if(p==="/winkel"||p.indexOf("/winkel/")===0)return true;
+    return false;
   }
   function navigateTop(e,a){
     e.preventDefault();
@@ -2088,7 +2091,7 @@ export type BuildTailwindIframeSrcDocOptions = {
   logoSet?: GeneratedLogoSet | null;
   /** Vervangt studio-placeholders in de body-HTML (live site + preview). */
   publishedSlug?: string;
-  /** `false` wanneer afspraken-module uit: geen `/boek/`-links uit placeholder. */
+  /** `false` wanneer afspraken-module uit: geen boekings-`href` uit placeholder. */
   appointmentsEnabled?: boolean;
   /** `false` wanneer webshop-module uit: geen `/winkel/`-links uit placeholder. */
   webshopEnabled?: boolean;

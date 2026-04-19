@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { PublicBookingForm } from "@/components/public/public-booking-form";
 import { PublicModuleInactive } from "@/components/public/public-module-inactive";
 import { resolveActivePortalClientIdBySlug } from "@/lib/portal/resolve-portal-client";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
@@ -44,15 +43,6 @@ export default async function PublicBookingPage({ params }: Props) {
           title="Online boeken"
           description="Online afspraken maken is voor deze site nog niet geactiveerd. Je kunt wel doorklikken naar de website voor andere contactmogelijkheden."
         />
-      </div>
-    );
-  }
-
-  /** Nood: tijdelijk de ingebouwde Next-wizard (`BOOKING_EMBEDDED_SPA=0`). */
-  if (process.env.BOOKING_EMBEDDED_SPA === "0") {
-    return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-12 dark:bg-zinc-950">
-        <PublicBookingForm slug={slug} businessName={resolved.name} />
       </div>
     );
   }
