@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 
 export type ActivePortalClient = {
@@ -83,8 +84,23 @@ function normalizePortalRow(
  * Actieve klant voor /portal/{slug}: zelfde basis als live site (status active).
  * Ontbrekende DB-kolommen → veilige defaults (afspraken uit, factuur/account aan).
  */
+function supabaseForPortalClientRead() {
+  try {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+      return createServiceRoleClient();
+    }
+  } catch {
+    /* ontbreekt in lokale .env */
+  }
+  return null;
+}
+
+/**
+ * Leest `clients` voor `/portal/{slug}` — service role (zoals `resolve-portal-client`) zodat RLS/sessie
+ * op de server niet tot stille 404 leidt; valt terug op de gewone serverclient als er geen service key is.
+ */
 export async function getActivePortalClient(subfolderSlug: string): Promise<ActivePortalClient | null> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = supabaseForPortalClientRead() ?? (await createSupabaseServerClient());
 
   let selectList = [...PORTAL_COLS_BASE, ...PORTAL_OPTIONAL];
   const maxAttempts = 8;

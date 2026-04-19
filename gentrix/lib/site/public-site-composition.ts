@@ -3,6 +3,7 @@ import {
   logSiteIrComposePlanMismatches,
   orderTailwindSectionsByIdPlan,
 } from "@/lib/site/compose-site-plan";
+import { coerceHeaderWhatsappLinksToBookingPlaceholder } from "@/lib/site/coerce-appointment-header-hrefs";
 import { ensureStudioModuleMarkersOnAnchors } from "@/lib/site/ensure-studio-module-markers-on-anchors";
 import { filterTailwindSectionsForPublicSiteModuleFlags } from "@/lib/site/filter-tailwind-public-modules";
 import {
@@ -46,7 +47,15 @@ export function composePublicMarketingTailwindSections(
 
   const inactive = inactivePublicSiteModuleIds(flags);
 
-  const tagged = ordered.map((s) => ({
+  const preTagged =
+    flags.appointmentsEnabled === true
+      ? ordered.map((s) => ({
+          ...s,
+          html: coerceHeaderWhatsappLinksToBookingPlaceholder(s.html),
+        }))
+      : ordered;
+
+  const tagged = preTagged.map((s) => ({
     ...s,
     html: ensureStudioModuleMarkersOnAnchors(s.html),
   }));
