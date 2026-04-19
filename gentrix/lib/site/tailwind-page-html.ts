@@ -1818,8 +1818,9 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
  * (geneste iframe → miniatuur in de hoek). Vang dat af: zelfde-document scroll op hash/`data-section`,
  * of blokkeer host-navigatie. **Uitzondering:** `/site/{slug}/{subroute}` (contact, marketingpagina) is een echte
  * Next-route — dan `navigateTop` (postMessage naar parent / top) i.p.v. scrollen in de iframe.
- * Links naar app-shell (`/portal/*`, `/admin`, `/login`, `/home`, `/dashboard`) moeten **top** navigeren,
- * anders blijft de adresbalk op `/` en zie je o.a. kale login in de iframe.
+ * Links naar app-shell (`/portal/*`, `/admin`, `/login`, `/home`, `/dashboard`) en naar
+ * `/boek/*` / `/winkel/*` moeten **top** navigeren — anders vangen we `/diensten`-achtige paden af met
+ * `preventDefault` en blijft een klik zonder effect (meerdere path-segmenten).
  *
  * **Concept + token:** zorg dat interne `/site/{slug}/…`-links de `token`-query behouden (en oude `/preview/…`-links naar `/site/…` normaliseren).
  */
@@ -1911,6 +1912,10 @@ export function buildStudioSinglePageInternalNavScript(
     if(path==="/home"||path==="/dashboard")return true;
     if(path.indexOf("/api/")===0||path.indexOf("/_next")===0)return true;
     return false;
+  }
+  function isBoekOrWinkelPath(p){
+    if(!p||p.charAt(0)!=="/")return false;
+    return p==="/boek"||p.indexOf("/boek/")===0||p==="/winkel"||p.indexOf("/winkel/")===0;
   }
   function navigateTop(e,a){
     e.preventDefault();
@@ -2019,6 +2024,7 @@ export function buildStudioSinglePageInternalNavScript(
             window.scrollTo({top:0,behavior:"smooth"});
             return;
           }
+          if(isBoekOrWinkelPath(pn)){navigateTop(e,a);return;}
           var ap=pn.split("/").filter(Boolean);
           if(ap.length!==1)return;
           if(tryScroll(e,ap[0]))return;
@@ -2059,6 +2065,7 @@ export function buildStudioSinglePageInternalNavScript(
       return;
     }
     if(path.charAt(0)!=="/")return;
+    if(isBoekOrWinkelPath(path)){navigateTop(e,a);return;}
     var parts=path.split("/").filter(Boolean);
     if(parts.length!==1){
       e.preventDefault();
