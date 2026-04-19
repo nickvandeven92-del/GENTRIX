@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 type SiteRendererProps = {
   data: GeneratedSite;
   className?: string;
+  /** Voor logo → landingspagina (`/site/{slug}`) i.p.v. alleen `#top`. */
+  publishedSlug?: string | null;
 };
 
 function StarRow({ rating }: { rating: number }) {
@@ -22,7 +24,7 @@ function StarRow({ rating }: { rating: number }) {
 /**
  * Publieke landingspagina met navbar, hero met foto’s, galerij en barbier-stijl footer.
  */
-export function SiteRenderer({ data, className }: SiteRendererProps) {
+export function SiteRenderer({ data, className, publishedSlug }: SiteRendererProps) {
   const { theme, sections } = data;
   const surface = theme.surface ?? theme.background;
   const gFrom = theme.heroGradientFrom ?? theme.primary;
@@ -43,7 +45,7 @@ export function SiteRenderer({ data, className }: SiteRendererProps) {
   return (
     <div className={className} style={cssVars}>
       <div className="min-h-full bg-[var(--site-bg)] text-[var(--site-fg)] antialiased selection:bg-[var(--site-primary)]/25">
-        <SiteNav site={data} />
+        <SiteNav site={data} publishedSlug={publishedSlug} />
         <main>
           {sections.map((section) => (
             <SectionBlock key={section.id} section={section} />

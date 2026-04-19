@@ -147,3 +147,12 @@ export function resolveStudioShopHref(href: string, publishedSlug?: string | nul
   if (!slug) return href;
   return applyStudioShopPathPlaceholder(href, slug);
 }
+
+/**
+ * Enkele `href` voor gepubliceerde site of preview — dezelfde regels als `ReactPublishedSiteView.resolveHref`.
+ */
+export function resolvePublishedStudioHref(href: string, publishedSlug?: string | null): string {
+  const slug = publishedSlug?.trim();
+  if (!slug) return neutralizeStudioPathPlaceholdersWithoutSlug(href);
+  return stripLeakedStudioPlaceholderTokens(applyStudioPublishedPathPlaceholders(href, slug));
+}

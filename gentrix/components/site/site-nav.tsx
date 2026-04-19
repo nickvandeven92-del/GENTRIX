@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import type { GeneratedSite, SiteNavigation } from "@/lib/ai/generated-site-schema";
 import { SiteRemoteImage } from "@/components/site/site-remote-image";
+import {
+  resolvePublishedStudioHref,
+  STUDIO_SITE_BASE_PLACEHOLDER,
+} from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 function defaultNav(site: GeneratedSite): SiteNavigation {
@@ -18,9 +22,10 @@ function defaultNav(site: GeneratedSite): SiteNavigation {
   };
 }
 
-export function SiteNav({ site }: { site: GeneratedSite }) {
+export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishedSlug?: string | null }) {
   const [open, setOpen] = useState(false);
   const nav = site.navigation ?? defaultNav(site);
+  const logoHomeHref = resolvePublishedStudioHref(STUDIO_SITE_BASE_PLACEHOLDER, publishedSlug) || "#top";
 
   // Sluit menu bij resize; zelfde breakpoint als lg: (tablet krijgt hamburger tot 1024px)
   useEffect(() => {
@@ -55,7 +60,7 @@ export function SiteNav({ site }: { site: GeneratedSite }) {
       </a>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
         <a
-          href="#top"
+          href={logoHomeHref}
           className="group flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--site-bg)]"
         >
           {nav.logoImageUrl ? (

@@ -7,11 +7,7 @@ import {
 } from "@/lib/site/react-section-visibility";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import { classForFixedNavOverlap, siteHasFixedNavOverlay } from "@/lib/site/react-fixed-nav-inset";
-import {
-  applyStudioPublishedPathPlaceholders,
-  neutralizeStudioPathPlaceholdersWithoutSlug,
-  stripLeakedStudioPlaceholderTokens,
-} from "@/lib/site/studio-section-visibility";
+import { resolvePublishedStudioHref } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 const ACCENT_CSS_VAR = "--site-accent";
@@ -45,11 +41,7 @@ export function ReactPublishedSiteView({
     return visibility === "public" ? filterReactSectionsForWebshop(base, webshopEnabled) : base;
   })();
 
-  const resolveHref = (href: string) => {
-    const slug = publishedSlug?.trim();
-    if (!slug) return neutralizeStudioPathPlaceholdersWithoutSlug(href);
-    return stripLeakedStudioPlaceholderTokens(applyStudioPublishedPathPlaceholders(href, slug));
-  };
+  const resolveHref = (href: string) => resolvePublishedStudioHref(href, publishedSlug);
 
   const sans = doc.theme.fontSans?.trim();
   const serif = doc.theme.fontSerif?.trim();

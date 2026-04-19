@@ -38,7 +38,7 @@ export function applyBrandLogoFallbackToSections(
   if (pNorm.length >= 16 && collapseWs(full).includes(pNorm)) return sections;
 
   const brandEsc = escapeHtmlAttr(logoSet.brandName);
-  const block = `\n<div class="flex shrink-0 items-center [&_svg]:max-h-8 [&_svg]:w-auto [&_svg]:h-8" ${STUDIO_BRAND_MARK_ATTR}="1"><a href="#top" class="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 rounded-sm" aria-label="${brandEsc}"><span class="inline-flex h-8 max-w-[min(100%,280px)] items-center">${primary}</span></a></div>\n`;
+  const block = `\n<div class="flex shrink-0 items-center [&_svg]:max-h-8 [&_svg]:w-auto [&_svg]:h-8" ${STUDIO_BRAND_MARK_ATTR}="1"><a href="__STUDIO_SITE_BASE__" class="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 rounded-sm" aria-label="${brandEsc}"><span class="inline-flex h-8 max-w-[min(100%,280px)] items-center">${primary}</span></a></div>\n`;
 
   const copy = sections.map((s) => ({ ...s, html: s.html }));
   for (const tag of ["header", "nav", "section"] as const) {

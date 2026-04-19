@@ -14,6 +14,7 @@ import type { ReactSiteSection } from "@/lib/site/react-site-schema";
 import { CinematicNavMenuEntries } from "@/components/site/react-site/cinematic/cinematic-nav-menu";
 import { MotionNavShell } from "@/components/site/react-site/cinematic/cinematic-motion";
 import type { ResolveHref } from "./types";
+import { STUDIO_SITE_BASE_PLACEHOLDER } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
 type NavSection = Extract<ReactSiteSection, { type: "nav_overlay" }>;
@@ -132,6 +133,8 @@ export function CinematicNav({
 }) {
   const { logoText, links } = section.props;
   const barStyle = section.props.barStyle ?? "floating";
+  /** Landingspagina: zelfde pad als nav-links met `__STUDIO_SITE_BASE__` (fallback `#top` zonder gepubliceerde slug). */
+  const homeHref = resolveHref(STUDIO_SITE_BASE_PLACEHOLDER) || "#top";
   const [mobileOpen, setMobileOpen] = useState(false);
   /** 0 = transparant glas boven hero, 1 = vaste donkere balk (scroll). */
   const [navElevated, setNavElevated] = useState(0);
@@ -196,12 +199,13 @@ export function CinematicNav({
         style={fontSans}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-          <span
-            className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-900 sm:text-lg"
+          <a
+            href={homeHref}
+            className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-900 sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             style={fontSerifLogo}
           >
             {logoText}
-          </span>
+          </a>
           <nav
             className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
@@ -240,9 +244,13 @@ export function CinematicNav({
         style={fontSans}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-          <span className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg" style={fontSerifLogo}>
+          <a
+            href={homeHref}
+            className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg rounded-sm text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+            style={fontSerifLogo}
+          >
             {logoText}
-          </span>
+          </a>
           <nav
             className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
@@ -274,11 +282,12 @@ export function CinematicNav({
     );
   }
 
-  /* floating — glass pill; scroll: glas → vaste donkere strook (referentie: ambachtelijke landingspagina’s). */
+  /* floating — glass pill; scroll: glas → vaste donkere strook (referentie: ambachtelijke landingspagina’s).
+   * Rust: genoeg dekking dat tekst leesbaar blijft (te lage alpha oogt als “geen achtergrond”). */
   const floatingShellStyle: CSSProperties = {
     ...fontSans,
     borderColor: `rgba(255,255,255,${0.14 * (1 - navElevated) + 0.22 * navElevated})`,
-    backgroundColor: `rgba(9,9,11,${0.36 * (1 - navElevated) + 0.9 * navElevated})`,
+    backgroundColor: `rgba(9,9,11,${0.48 * (1 - navElevated) + 0.9 * navElevated})`,
     boxShadow:
       navElevated > 0.12
         ? `0 18px 50px rgba(0,0,0,${0.32 + navElevated * 0.28})`
@@ -300,12 +309,13 @@ export function CinematicNav({
         style={floatingShellStyle}
       >
         <div className="flex w-full items-center justify-between gap-3 lg:contents">
-          <span
-            className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg"
+          <a
+            href={homeHref}
+            className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950/90"
             style={fontSerifLogo}
           >
             {logoText}
-          </span>
+          </a>
           <button
             type="button"
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"

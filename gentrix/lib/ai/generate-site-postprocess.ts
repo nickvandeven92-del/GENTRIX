@@ -753,6 +753,88 @@ export function mergeDuplicateClassOnChromeTags(html: string): string {
   });
 }
 
+function tailwindClassHasZIndex(classStr: string): boolean {
+  return /\bz-(?:\d+|\[[^\]]+\])\b/i.test(classStr);
+}
+
+/**
+ * Bouwt class-string voor primaire site-chrome: altijd `sticky top-0` + z-index.
+ * `fixed` op dezelfde host wordt verwijderd (studio dwingt sticky i.p.v. fixed top-bar).
+ */
+function buildStickyPrimaryChromeClasses(existing: string): string {
+  let c = existing
+    .replace(/\bfixed\b/gi, " ")
+    .replace(/\binset-x-0\b/gi, " ")
+    .replace(/\bsticky\b/gi, " ")
+    .replace(/\btop-0\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  c = `sticky top-0 ${c}`.trim();
+  if (!tailwindClassHasZIndex(c)) c = `${c} z-50`.trim();
+  return c.replace(/\s+/g, " ").trim();
+}
+
+function shouldSkipChromeTagForStickyInjection(tag: string, classStr: string): boolean {
+  return tag.toLowerCase() === "nav" && /\babsolute\b/.test(classStr);
+}
+
+function injectStickyIntoChromeOpenTag(tag: string, attrs: string): string {
+  const clsDouble = attrs.match(/\bclass\s*=\s*"([^"]*)"/i);
+  const clsSingle = attrs.match(/\bclass\s*=\s*'([^']*)'/i);
+  if (!clsDouble && !clsSingle) {
+    const rest = attrs.replace(/^\s+/, "");
+    return rest ? `<${tag} class="sticky top-0 z-50" ${rest}>` : `<${tag} class="sticky top-0 z-50">`;
+  }
+  if (clsDouble) {
+    const merged = buildStickyPrimaryChromeClasses(clsDouble[1]);
+    const nextAttrs = attrs.replace(/\bclass\s*=\s*"[^"]*"/i, `class="${merged}"`);
+    return `<${tag}${nextAttrs}>`;
+  }
+  const merged = buildStickyPrimaryChromeClasses(clsSingle![1]);
+  const nextAttrs = attrs.replace(/\bclass\s*=\s*'[^']*'/i, `class='${merged}'`);
+  return `<${tag}${nextAttrs}>`;
+}
+
+/**
+ * Eerste geschikte `<header>` / `<nav>` in dit fragment: sticky primary chrome.
+ * Slaat decoratieve `nav.absolute` over (test: overlay + echte header eronder).
+ */
+export function injectStickyPrimaryChromeOnceInHtml(html: string): { html: string; applied: boolean } {
+  if (!html) return { html, applied: false };
+  let applied = false;
+  const out = html.replace(/<(header|nav)\b([^>]*)>/gi, (full, tag: string, inner: string) => {
+    if (applied) return full;
+    const t = tag.toLowerCase();
+    const cls =
+      inner.match(/\bclass\s*=\s*"([^"]*)"/i)?.[1] ?? inner.match(/\bclass\s*=\s*'([^']*)'/i)?.[1] ?? "";
+    const clsTrim = cls.trim();
+    if (shouldSkipChromeTagForStickyInjection(t, clsTrim)) return full;
+    if (/\bsticky\b/i.test(clsTrim) && /\btop-0\b/.test(clsTrim) && tailwindClassHasZIndex(clsTrim)) {
+      applied = true;
+      return full;
+    }
+    applied = true;
+    return injectStickyIntoChromeOpenTag(tag, inner);
+  });
+  return { html: out, applied };
+}
+
+type SectionRow = { id: string; html: string; name?: string };
+
+/**
+ * Zorgt dat gegenereerde Tailwind-landings **één** kleef-balk hebben: eerste geschikte
+ * `<header>`/`<nav>` in sectie-volgorde krijgt `sticky top-0` (+ `z-50` als geen `z-*`).
+ */
+export function enforceStickyPrimaryTailwindChromeAcrossSections(sections: SectionRow[]): SectionRow[] {
+  let done = false;
+  return sections.map((row) => {
+    if (done) return row;
+    const { html, applied } = injectStickyPrimaryChromeOnceInHtml(row.html);
+    if (applied) done = true;
+    return applied ? { ...row, html } : row;
+  });
+}
+
 function pickFallbackFragment(validIds: Set<string>): string {
   for (const k of ["footer", "contact", "hero", "features", "faq"]) {
     if (validIds.has(k)) return k;
@@ -1271,8 +1353,9 @@ export function postProcessClaudeTailwindPage(
   });
 
   const sectionsDeduped = dedupeExcessTelAndWhatsAppAnchorsAcrossSections(sectionsLinked);
+  const sectionsSticky = enforceStickyPrimaryTailwindChromeAcrossSections(sectionsDeduped);
 
-  return { ...page, sections: sectionsDeduped };
+  return { ...page, sections: sectionsSticky };
 }
 
 const STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG: MasterPromptPageConfig = {
