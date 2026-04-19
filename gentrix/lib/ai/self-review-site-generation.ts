@@ -40,6 +40,7 @@ import {
   type GeneratedTailwindPage,
 } from "@/lib/ai/tailwind-sections-schema";
 import { validateMarketingSiteHardRules } from "@/lib/ai/validate-marketing-site-output";
+import { validateMarketingPageContent } from "@/lib/ai/validate-marketing-pages";
 import { validateGeneratedPageHtml } from "@/lib/ai/validate-generated-page";
 import {
   formatReferenceVisualAxesForPrompt,
@@ -57,6 +58,7 @@ Je krijgt de briefing, een **concept**-JSON, en **automatische checks** (validat
 === OUTPUT ===
 - Antwoord met **alleen** één geldig JSON-object (geen markdown-fences, geen toelichting buiten JSON).
 - Vorm: **zelfde top-level keys als het concept** (sectie-arrays + dezelfde \`marketingPages\`-keys als het concept). Geen keys weglaten die het concept wél had.
+- **Pipeline-ingreep:** als het gebruikersbericht onder PIPELINE-DETECTIE **marketingPageSlugs** noemt, moet de output **altijd** \`marketingPages\` bevatten met **precies die** keys (geen extra, geen weglaten), elk minstens **twee** secties met unieke \`id\`'s op die pagina. Ontbreekt \`marketingPages\` in het concept of zijn keys incompleet, **vul** \`marketingPages\` conform die slug-lijst met echte inhoud (zelfde nav-placeholders \`__STUDIO_SITE_BASE__/…\`); lege shells of "Lorem ipsum" zijn niet genoeg — voldoende zichtbare NL-copy per route.
 - Houd **hetzelfde aantal secties** in elke array en **dezelfde sectie-\`id\`’s in dezelfde volgorde** als het concept. Alleen \`html\` (en zo nodig \`name\`) inhoudelijk verbeteren; \`config\` alleen bij kleine correctie als die duidelijk botst met de briefing (kleur/font), niet opnieuw ontwerpen.
 - **Multi-pagina:** landing zonder \`<form>\`; subpagina's in \`marketingPages\` zonder \`<form>\`; contact met formulier; cross-route via \`__STUDIO_SITE_BASE__/…\` en \`__STUDIO_CONTACT_PATH__\`; **geen** \`href="#"\`.
 
@@ -252,7 +254,7 @@ Dit is **niet** een tweede meningsvorming: de eerste generatie is gebouwd met de
 ${pi.referenceStyle ? `- **Referentiesite:** ${pi.referenceStyle.requestedUrl} — ${pi.referenceStyle.status === "ingested" ? `ingelezen (${pi.referenceStyle.excerptChars ?? "?"} tekens, final: ${pi.referenceStyle.finalUrl ?? "—"})` : `ophalen mislukt: ${pi.referenceStyle.error ?? "onbekend"}`}` : ""}
 - **Kwaliteit:** trek het concept **niet** terug naar timide/generiek tenzij dat nodig is voor echte fouten, claims of briefing-schendingen.
 Als de markup **duidelijk** afwijkt van deze stijl (bijv. luxe flyer i.p.v. industrieel, of omgekeerd), **corrigeer** dan binnen dezelfde sectie-\`id\`'s en JSON-structuur. Bij twijfel: briefing + dit blok samen lezen.
-
+${pi.marketingPageSlugs?.length ? `- **Verplichte marketing-routes (JSON):** \`marketingPages\` moet exact deze keys bevatten: ${pi.marketingPageSlugs.map((s) => `\`${s}\``).join(", ")} — die keys mogen in je antwoord **niet** ontbreken.\n` : ""}
 `
     : "";
 
@@ -405,14 +407,21 @@ export async function applySelfReviewToGeneratedPage(options: {
   if (marketingMulti) {
     const normalized = normalizeClaudeSectionArraysInParsedJson(parsedResult.value);
     const draftMp = draft.marketingPages;
-    const mpKeys =
-      draftMp != null && Object.keys(draftMp).length > 0 ? Object.keys(draftMp).sort() : null;
+    const draftHasMarketing = draftMp != null && Object.keys(draftMp).length > 0;
+    const pipelineSlugs = (pipelineInterpreted?.marketingPageSlugs ?? [])
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const mpKeysForSchema: string[] | null = (() => {
+      if (pipelineSlugs.length > 0) return [...new Set(pipelineSlugs)];
+      if (draftHasMarketing) return Object.keys(draftMp!);
+      return null;
+    })();
     const marketingSchema =
-      mpKeys != null && mpKeys.length > 0
-        ? buildClaudeTailwindMarketingSiteOutputSchema(mpKeys)
+      mpKeysForSchema != null && mpKeysForSchema.length > 0
+        ? buildClaudeTailwindMarketingSiteOutputSchema(mpKeysForSchema)
         : claudeTailwindMarketingSiteOutputSchema;
     const validated = marketingSchema.safeParse(
-      ensureClaudeMarketingSiteJsonHasContactSections(normalized, mpKeys ?? undefined),
+      ensureClaudeMarketingSiteJsonHasContactSections(normalized, mpKeysForSchema ?? undefined),
     );
     if (!validated.success) {
       console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);
@@ -439,8 +448,8 @@ export async function applySelfReviewToGeneratedPage(options: {
         return { data: draft, ran: true, usedRefined: false };
       }
     }
-    if (draft.marketingPages != null && Object.keys(draft.marketingPages).length > 0) {
-      const dMp = draft.marketingPages;
+    if (draftHasMarketing) {
+      const dMp = draft.marketingPages!;
       const mMp = mapped.marketingPages;
       if (mMp == null) {
         console.warn("[self-review] marketingPages ontbreken na revisie; concept behouden.");
@@ -465,6 +474,30 @@ export async function applySelfReviewToGeneratedPage(options: {
             return { data: draft, ran: true, usedRefined: false };
           }
         }
+      }
+    } else if (pipelineSlugs.length > 0) {
+      const mMp = mapped.marketingPages;
+      if (mMp == null || Object.keys(mMp).length === 0) {
+        console.warn(
+          "[self-review] marketingPages ontbreken na revisie (pipeline had subroute-slugs); concept behouden.",
+        );
+        return { data: draft, ran: true, usedRefined: false };
+      }
+      const want = [...new Set(pipelineSlugs)].sort().join("\0");
+      const got = Object.keys(mMp)
+        .map((k) => k.trim().toLowerCase())
+        .sort()
+        .join("\0");
+      if (want !== got) {
+        console.warn("[self-review] marketingPages-keys sluiten niet aan bij pipeline; concept behouden.");
+        return { data: draft, ran: true, usedRefined: false };
+      }
+      const thin = validateMarketingPageContent(
+        mMp as Record<string, { id: string; html: string }[]>,
+      );
+      if (!thin.valid) {
+        console.warn("[self-review] marketingPages te karig na revisie; concept behouden:", thin.errors.join(" "));
+        return { data: draft, ran: true, usedRefined: false };
       }
     }
     const rules = validateMarketingSiteHardRules(mapped.sections, mapped.contactSections, mapped.marketingPages);

@@ -25,6 +25,12 @@ describe("buildMarketingSlugSegmentResolutionMap", () => {
     expect(m["wat-wij-doen"]).toBeUndefined();
     expect(m["prijzen"]).toBe("prijzen");
   });
+
+  it("mapt /diensten naar standaardkey wat-wij-doen (generator-default)", () => {
+    const m = buildMarketingSlugSegmentResolutionMap(["wat-wij-doen", "over-ons", "faq"]);
+    expect(m["diensten"]).toBe("wat-wij-doen");
+    expect(m["wat-wij-doen"]).toBe("wat-wij-doen");
+  });
 });
 
 describe("resolveMarketingPageKeyForUrlSegment", () => {
@@ -47,5 +53,14 @@ describe("resolveMarketingPageKeyForUrlSegment", () => {
   it("matcht ruwe labels via slugify tegen een bestaande key", () => {
     const pages = { "over-ons": [{ html: "" }] };
     expect(resolveMarketingPageKeyForUrlSegment("Over Ons", pages)).toBe("over-ons");
+  });
+
+  it("lost /diensten op naar wat-wij-doen wanneer alleen die key in marketingPages staat", () => {
+    const pages = {
+      "wat-wij-doen": [{ html: "<section></section>" }],
+      "over-ons": [{ html: "<section></section>" }],
+      faq: [{ html: "<section></section>" }],
+    };
+    expect(resolveMarketingPageKeyForUrlSegment("diensten", pages)).toBe("wat-wij-doen");
   });
 });

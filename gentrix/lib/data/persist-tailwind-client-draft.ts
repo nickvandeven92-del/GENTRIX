@@ -8,6 +8,7 @@ import {
   projectSnapshotToJson,
 } from "@/lib/site/project-snapshot-io";
 import { getPersistSiteValidationErrors } from "@/lib/site/site-ir-compose-validation";
+import { describeTailwindMarketingNavPayloadIssues } from "@/lib/site/tailwind-marketing-nav-consistency";
 import type { PublicSiteModuleFlags } from "@/lib/site/public-site-modules-registry";
 import type { ProjectSnapshotFromTailwindOptions } from "@/lib/site/project-snapshot-schema";
 import { mapSnapshotSourceToCreatedBy } from "@/lib/site/snapshot-created-by";
@@ -75,6 +76,14 @@ export async function persistTailwindDraftForExistingClient(
   const docTitle = options.documentTitle?.trim() || existing.name?.trim() || "Website";
   const withCss = await attachCompiledTailwindCssToPayload(tailwindPayload, docTitle);
   const withCanonicalModules = ensureCanonicalModuleSectionsForCrmFlags(withCss, flags);
+  const navPayloadIssue = describeTailwindMarketingNavPayloadIssues({
+    sections: withCanonicalModules.sections,
+    contactSections: withCanonicalModules.contactSections,
+    marketingPages: withCanonicalModules.marketingPages,
+  });
+  if (navPayloadIssue) {
+    return { ok: false, error: navPayloadIssue, status: 422 };
+  }
   const snapshot = projectSnapshotFromTailwindPayload(withCanonicalModules, {
     generationSource,
     documentTitle: docTitle,

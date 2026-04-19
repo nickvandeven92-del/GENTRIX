@@ -157,7 +157,7 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
 
   let userContentWithComposition = appendCompositionPlanToUserContent(
     userContentForGeneration,
-    buildCompositionPlanPromptInjection(compositionPlanNs),
+    buildCompositionPlanPromptInjection(compositionPlanNs, p.marketingPageSlugs),
   );
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;

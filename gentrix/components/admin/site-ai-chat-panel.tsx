@@ -302,7 +302,9 @@ export function SiteAiChatPanel({
             <p className="mt-1 text-[11px] leading-snug text-zinc-600 dark:text-zinc-400">
               Praat met Claude over feedback en aanpassingen. Sleep bestanden naar het invoerveld of{" "}
               <strong>plak</strong> een screenshot / logo / video (Ctrl+V). <strong>Ongedaan</strong> /{" "}
-              <strong>Stappen</strong> bovenaan om terug te gaan.
+              <strong>Stappen</strong> bovenaan om terug te gaan. Noem een <strong>sectienaam</strong>,{" "}
+              <strong>id</strong> of rol (zoals hero) in je bericht om alleen die sectie mee te sturen — sneller en
+              voorspelbaarder.
             </p>
           </div>
         </div>

@@ -27,6 +27,8 @@ const refinementBase = `Studio: **conceptverfijning** (lichte tweede pass — **
  * Instructie voor \`editSiteWithClaude\` / \`/api/ai-edit-site\` — korte tweede pass na generatie.
  * (API: optioneel \`target_section_indices\` om alleen bepaalde secties volledig mee te sturen; bij
  * conceptverfijning meestal **weglaten** — richting raakt vaak hero + meerdere secties.)
+ * Site-assistent (\`/api/ai-site-chat\`) gebruikt dezelfde scope: inferentie uit sectienaam/id/semanticRole in het
+ * bericht, of expliciet \`target_section_indices\` in de JSON-body.
  */
 export function buildConceptRefinementInstruction(
   direction: ConceptRefinementDirection,

@@ -45,6 +45,7 @@ import {
 } from "@/lib/ai/generate-site-postprocess";
 import { tryExtractCompletedSections } from "@/lib/ai/stream-json-section-extractor";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
+import { describeTailwindMarketingNavPayloadIssues } from "@/lib/site/tailwind-marketing-nav-consistency";
 import {
   collectMarketingNavScanHtml,
   validateMarketingPageContent,
@@ -1279,8 +1280,17 @@ function buildMarketingMultiPageOperationalTail(
     )
     .join(",\n");
   const slugHints = buildMarketingSlugContentHintsLines(marketingPageSlugs);
+  const uniqueSlugCount = new Set(marketingPageSlugs.map((s) => s.trim().toLowerCase())).size;
 
-  return `=== 3B. OPERATIONELE SITE ??? TEKSTEN & WERKENDE LINKS (verplicht) ===
+  const multipageCloseChecklist = `=== MULTIPAGE ??? VOOR JE JSON SLUIT (zelfde checks als de server) ===
+- Top-level keys: \`config\`, \`sections\`, \`marketingPages\`, \`contactSections\` ??? **alle vier** aanwezig.
+- \`marketingPages\`: **exact** deze ${uniqueSlugCount} key(s), geen extra, geen misser: ${slugList}.
+- Per key: **minstens 2** secties met unieke \`id\`'s op die pagina + genoeg zichtbare tekst (geen lege shells).
+- Nav (landing + elke subpagina): elke key minstens **één** keer als \`href="__STUDIO_SITE_BASE__/<key>"\`.
+
+`;
+
+  return `${multipageCloseChecklist}=== 3B. OPERATIONELE SITE ??? TEKSTEN & WERKENDE LINKS (verplicht) ===
 
 - **Copy:** Nederlands, **strak en kort** (geen Lorem ipsum) ??? zelfde CONTENT AUTHORITY; zie **COPY ??? MINDER IS MEER** op de landing.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
@@ -1765,8 +1775,13 @@ export function buildWebsiteGenerationUserPrompt(
     marketingMultiPage && marketingPageSlugsForTail.length > 0
       ? marketingPageSlugsForTail.map((s) => `\`${s}\``).join(", ")
       : "";
+  const multipageJsonCritical =
+    marketingMultiPage && marketingPageSlugsForTail.length > 0
+      ? `\n**KRITISCH (multipage):** sluit je JSON pas af als top-level \`marketingPages\` **alle** keys bevat: ${mpKeysLine}, plus \`contactSections\` met formulier. **Eén** ontbrekende marketing-key of een lege \`marketingPages\` ??? de server wijst de run af (parse-check).\n`
+      : "";
 
   return `Je genereert **??n** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**??n** one-pager (`sections`)"}. Maak een **professionele, onderscheidende** site die past bij de briefing ??? **niet** anoniem-veilig; je hebt ruimte voor sterk ontwerp.
+${multipageJsonCritical}
 
 ${buildStudioBrandNameUserPromptBlock(businessName)}
 Context / branche: ${description}
@@ -2422,7 +2437,7 @@ export async function generateSiteWithClaude(
   }
   let userContentWithComposition = appendCompositionPlanToUserContent(
     userContentForGeneration,
-    buildCompositionPlanPromptInjection(compositionPlanNs),
+    buildCompositionPlanPromptInjection(compositionPlanNs, p.marketingPageSlugs),
   );
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;
@@ -2743,7 +2758,7 @@ export function createGenerateSiteReadableStream(
             : p.userContent;
         userContentForGeneration = appendCompositionPlanToUserContent(
           userContentForGeneration,
-          buildCompositionPlanPromptInjection(compositionPlan),
+          buildCompositionPlanPromptInjection(compositionPlan, p.marketingPageSlugs),
         );
 
         const clientImgCount = promptOptions?.clientImages?.length ?? 0;
@@ -3054,6 +3069,21 @@ export function createGenerateSiteReadableStream(
           stopPostProcessKeepalive();
         }
         trace("sending_complete");
+
+        const navPayloadIssue = describeTailwindMarketingNavPayloadIssues({
+          sections: data.sections,
+          contactSections: data.contactSections,
+          marketingPages: data.marketingPages,
+        });
+        if (navPayloadIssue) {
+          trace("marketing_nav_payload_mismatch", navPayloadIssue.slice(0, 400));
+          send(controller, {
+            type: "error",
+            message: navPayloadIssue,
+          });
+          controller.close();
+          return;
+        }
 
         send(controller, { type: "complete", outputFormat: "tailwind_sections", data });
         send(controller, { type: "status", message: "Generatie voltooid" });

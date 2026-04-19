@@ -76,14 +76,24 @@ export function inferTargetIndicesFromInstruction(
   sections: TailwindSection[],
 ): number[] {
   const lower = instruction.toLowerCase();
-  const out: number[] = [];
+  const seen = new Set<number>();
   sections.forEach((s, i) => {
     const name = (s.sectionName ?? "").trim().toLowerCase();
     if (name.length >= 2 && lower.includes(name)) {
-      out.push(i);
+      seen.add(i);
+      return;
+    }
+    const id = s.id?.trim().toLowerCase();
+    if (id && id.length >= 2 && lower.includes(id)) {
+      seen.add(i);
+      return;
+    }
+    const role = s.semanticRole?.trim().toLowerCase();
+    if (role && role.length >= 2 && lower.includes(role)) {
+      seen.add(i);
     }
   });
-  return out;
+  return [...seen].sort((a, b) => a - b);
 }
 
 function buildEditUserPrompt(

@@ -12,6 +12,10 @@ import { mergeTailwindSectionUpdates, tailwindSectionUpdateSchema } from "@/lib/
 import { stripAllUnsplashFromSections } from "@/lib/ai/strip-unsplash-urls";
 import { extractPartialReplyFromStreamingSiteChatJson } from "@/lib/ai/site-chat-reply-extract";
 import {
+  inferTargetIndicesFromInstruction,
+  resolveTargetSectionIndices,
+} from "@/lib/ai/edit-site-with-claude";
+import {
   isLegacyTailwindPageConfig,
   masterPromptPageConfigSchema,
   type TailwindPageConfig,
@@ -57,9 +61,69 @@ function buildSitePayload(sections: TailwindSection[], config: TailwindPageConfi
   };
 }
 
+/** JSON voor Claude: volledige site, of alleen targetSections met volledige HTML + sectionIndex-overzicht. */
+function buildChatPayloadForModel(
+  sections: TailwindSection[],
+  config: TailwindPageConfig | null | undefined,
+  scopedIndices: readonly number[] | null,
+): unknown {
+  if (scopedIndices == null || scopedIndices.length === 0) {
+    return buildSitePayload(sections, config);
+  }
+  const sectionIndex = sections.map((s, i) => {
+    const row: {
+      index: number;
+      sectionName: string;
+      semanticRole?: string;
+      id?: string;
+    } = { index: i, sectionName: s.sectionName };
+    if (s.semanticRole != null) row.semanticRole = s.semanticRole;
+    if (s.id != null) row.id = s.id;
+    return row;
+  });
+  const targetSections = scopedIndices.map((i) => {
+    const s = sections[i]!;
+    return {
+      index: i,
+      sectionName: s.sectionName,
+      html: s.html,
+      ...(s.semanticRole != null ? { semanticRole: s.semanticRole } : {}),
+      ...(s.copyIntent != null ? { copyIntent: s.copyIntent } : {}),
+      ...(s.id != null ? { id: s.id } : {}),
+    };
+  });
+  return {
+    config: config ?? null,
+    sectionIndex,
+    targetSections,
+  };
+}
+
+/**
+ * Bepaalt welke secties deze beurt “scoped” zijn (minder tokens + harde index-check na het model).
+ * Expliciete indices (API) overschrijven inferentie uit het laatste gebruikersbericht.
+ */
+export function resolveSiteChatTargetIndices(
+  messages: SiteChatTurn[],
+  sections: TailwindSection[],
+  explicitTargetSectionIndices?: readonly number[] | null,
+): readonly number[] | null {
+  if (explicitTargetSectionIndices != null && explicitTargetSectionIndices.length > 0) {
+    const r = resolveTargetSectionIndices([...explicitTargetSectionIndices], sections.length);
+    return r.ok && r.indices != null ? r.indices : null;
+  }
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== "user") return null;
+  const inferred = inferTargetIndicesFromInstruction(last.content, sections);
+  if (inferred.length === 0) return null;
+  const r2 = resolveTargetSectionIndices(inferred, sections.length);
+  return r2.ok && r2.indices != null ? r2.indices : null;
+}
+
 function buildClaudeMessages(
   messages: SiteChatTurn[],
-  currentPayload: ReturnType<typeof buildSitePayload>,
+  payload: unknown,
+  scopedIndices: readonly number[] | null,
   attachmentUrls: string[],
   knowledgePrefixBlocks: ContentBlockParam[],
 ): MessageParam[] {
@@ -76,7 +140,16 @@ function buildClaudeMessages(
     attachmentUrls.length > 0
       ? `\n\nGeüploade afbeelding-URL's (gebruik als src in <img> in de passende sectie, bijv. logo in header/hero):\n${attachmentUrls.map((u) => `- ${u}`).join("\n")}`
       : "";
-  const tailText = `${last.content}${attach}\n\n---\nHuidige website (JSON, alle secties — dit is de waarheid voor deze beurt):\n${JSON.stringify(currentPayload)}\n---`;
+  const scopedBlock =
+    scopedIndices != null && scopedIndices.length > 0
+      ? `
+
+=== Scope (deze beurt) ===
+Volledige HTML staat alleen onder **targetSections**. **sectionIndex** somt alle secties zonder HTML (context voor ankertjes en volgorde).
+In \`sectionUpdates\` mag je **uitsluitend** deze indices wijzigen: ${scopedIndices.join(", ")}. Geen wijzigingen aan andere secties — ook niet voor “kleine” consistentie-fixes. Algemene thema/kleuren via \`config\` blijft toegestaan als de gebruiker dat expliciet vraagt.
+`
+      : "";
+  const tailText = `${last.content}${attach}\n\n---\nHuidige website (JSON)${scopedIndices != null && scopedIndices.length > 0 ? " — beperkte scope voor deze beurt" : " — alle secties"}:\n${JSON.stringify(payload)}\n---${scopedBlock}`;
 
   if (knowledgePrefixBlocks.length === 0) {
     out.push({ role: "user", content: tailText });
@@ -126,7 +199,7 @@ GEDRAG:
 - **Direct uitvoeren mag** bij kleine, eenduidige technische verzoeken (bv. sticky header, contrast, typo, één class wijzigen) als de scope helder is; voeg hoogstens **één** korte verduidelijkingsvraag toe als er echt risico op verkeerde interpretatie is.
 - Wijzig de site **alleen** als de gebruiker uitvoering wil of het verzoek zo concreet is dat wachten onzin is. Bij een puur inhoudelijke vraag zonder wijziging: laat \`sectionUpdates\` en \`config\` weg.
 - **Streaming / leesvolgorde:** de UI toont het begin van \`reply\` al terwijl de rest van het antwoord nog binnenkomt. Begin \`reply\` daarom **niet** met formuleringen als “Het is klaar”, “Is nu gemaakt”, “Heb ik gedaan” of andere **voltooide** boodschap als eerste zin. Als je wél \`sectionUpdates\` meestuurt: begin met korte context of intentie (bijv. “Ik pas dit toe in de preview:”), werk daarna uit, en **sluit af** met een korte technische samenvatting (wat is waar aangepast). Zo voelt het niet alsof er “al klaar” wordt gezegd vóór de wijziging zichtbaar is.
-- Als je HTML wijzigt: gebruik \`sectionUpdates\`: alleen objecten voor secties die **echt** veranderen, elk met \`index\` (zoals in de JSON) en volledige nieuwe \`html\` voor die sectie. Voorbeeld: alleen navbar → één update; alleen footer → één update. **Nooit** ongewijzigde secties opnieuw uitschrijven.
+- Als je HTML wijzigt: gebruik \`sectionUpdates\`: alleen objecten voor secties die **echt** veranderen, elk met \`index\` (zoals in de JSON) en volledige nieuwe \`html\` voor die sectie. Voorbeeld: alleen navbar → één update; alleen footer → één update. **Nooit** ongewijzigde secties opnieuw uitschrijven. Bevat het user-JSON een **Scope**-blok met toegestane indices, mag je **alleen** die indices in \`sectionUpdates\` gebruiken.
 - HTML-regels: geen \`<script>\`/\`<style>\` in fragmenten, geen klassieke inline handlers, geen javascript:-links; Alpine (\`x-*\`, \`@\`, \`:\`) volgens het blok hierboven. Alleen https voor afbeeldingen.
 - **Hero-beeld / stock:** zet **géén** \`<img src>\` of CSS-background naar **externe stock- of CDN-foto’s** (het model heeft **geen** stock-API; verzonnen \`https://…\` links zijn verboden). Toegestaan: **https**-URL’s die de gebruiker in dit gesprek heeft **geüpload**, of een hero met **gradient**, SVG of patronen. **Precies één** buitenste \`<section id="hero">\` per pagina — **nooit** een tweede \`id="hero"\` toevoegen (geen dubbele hero-blokken). **AOS (\`data-aos\`) en \`data-animation\`:** niet op die **buitenste** \`<section id="hero">\`-tag (volledige viewport + transform = overlap/ghost); wel op **binnenliggende** kolommen/kaarten/koppen. Vraagt de gebruiker om een **nieuwe / luxere / andere hero-foto**, klaagt over **dezelfde / identieke afbeelding**, of wil **opnieuw genereren**: leg in \`reply\` uit dat de **server** daarna **één** hero-raster genereert (**Google AI Studio / Gemini image**, fallback OpenAI) en host op Gentrix-opslag — **niet** met verwijzingen naar stockwebsites. Stuur in die beurt **minstens één** \`sectionUpdates\` voor de hero-sectie (mag minimaal zijn: overlay/klassen/copy) zodat de server-pipeline **daadwerkelijk** kan draaien; **geen** puur tekstantwoord zonder \`sectionUpdates\` als het verzoek al concreet is (bv. close-up, materiaal, belichting). Gebruik **geen** geüploade bestanden (bv. schermafbeelding) als full-bleed \`<img>\` of volledige-hero-achtergrond via Tailwind arbitrary background-url in \`#hero\` — anders blokkeert dat de server-side generatie; houd de hero geschikt voor injectie (copy/gradient bovenop, geen dominante foto-URL van een plaksel).
 - Gebruik geüploade logo-URL's waar de gebruiker om vraagt.
@@ -145,6 +218,7 @@ export function processSiteChatFromModelText(
   sections: TailwindSection[],
   config: TailwindPageConfig | null | undefined,
   stopReason: string | null | undefined,
+  allowedSectionIndices?: readonly number[] | null,
 ): SiteChatResult {
   const parsedResult = parseModelJsonObject(modelText);
   if (!parsedResult.ok) {
@@ -167,6 +241,23 @@ export function processSiteChatFromModelText(
   }
 
   const { reply, sectionUpdates, config: outConfig } = validated.data;
+
+  if (
+    allowedSectionIndices != null &&
+    allowedSectionIndices.length > 0 &&
+    sectionUpdates != null &&
+    sectionUpdates.length > 0
+  ) {
+    const allowed = new Set(allowedSectionIndices);
+    const bad = sectionUpdates.find((u) => !allowed.has(u.index));
+    if (bad) {
+      return {
+        ok: false,
+        error: `Het model wijzigde sectie-index ${bad.index}, maar deze beurt was beperkt tot: ${allowedSectionIndices.join(", ")}.`,
+        rawText: modelText,
+      };
+    }
+  }
 
   let nextConfig: TailwindPageConfig | null | undefined = config;
   if (outConfig) {
@@ -253,6 +344,8 @@ export type SiteChatClaudeRequest = {
   messages: MessageParam[];
   sections: TailwindSection[];
   config: TailwindPageConfig | null | undefined;
+  /** Wanneer gezet: `sectionUpdates` mag alleen deze indices wijzigen (zelfde contract als `editSiteWithClaude`). */
+  allowedSectionIndices: readonly number[] | null;
 };
 
 export async function buildSiteChatClaudeRequest(
@@ -261,6 +354,7 @@ export async function buildSiteChatClaudeRequest(
   config: TailwindPageConfig | null | undefined,
   attachmentUrls: string[],
   studioModuleFlags?: SiteChatStudioModuleFlags,
+  explicitTargetSectionIndices?: readonly number[] | null,
 ): Promise<{ ok: true; req: SiteChatClaudeRequest } | { ok: false; error: string }> {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) {
@@ -274,12 +368,22 @@ export async function buildSiteChatClaudeRequest(
   const client = new Anthropic({ apiKey });
 
   const legacy = config != null && isLegacyTailwindPageConfig(config);
-  const currentPayload = buildSitePayload(sections, config);
+  const scopedIndices = resolveSiteChatTargetIndices(messages, sections, explicitTargetSectionIndices);
+  const currentPayload = buildChatPayloadForModel(sections, config, scopedIndices);
   const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
   const system = [knowledge, buildChatSystemPrompt(legacy, studioModuleFlags)].filter(Boolean).join("\n\n---\n\n");
-  const claudeMessages = buildClaudeMessages(messages, currentPayload, attachmentUrls, userPrefixBlocks);
+  const claudeMessages = buildClaudeMessages(
+    messages,
+    currentPayload,
+    scopedIndices,
+    attachmentUrls,
+    userPrefixBlocks,
+  );
 
-  return { ok: true, req: { client, model, system, messages: claudeMessages, sections, config } };
+  return {
+    ok: true,
+    req: { client, model, system, messages: claudeMessages, sections, config, allowedSectionIndices: scopedIndices },
+  };
 }
 
 export async function siteChatWithClaude(
@@ -289,12 +393,28 @@ export async function siteChatWithClaude(
   attachmentUrls: string[],
   studioModuleFlags?: SiteChatStudioModuleFlags,
   heroPostProcess?: SiteChatHeroPostProcessContext,
+  explicitTargetSectionIndices?: readonly number[] | null,
 ): Promise<SiteChatResult> {
-  const built = await buildSiteChatClaudeRequest(messages, sections, config, attachmentUrls, studioModuleFlags);
+  const built = await buildSiteChatClaudeRequest(
+    messages,
+    sections,
+    config,
+    attachmentUrls,
+    studioModuleFlags,
+    explicitTargetSectionIndices,
+  );
   if (!built.ok) {
     return { ok: false, error: built.error };
   }
-  const { client, model, system, messages: claudeMessages, sections: secs, config: cfg } = built.req;
+  const {
+    client,
+    model,
+    system,
+    messages: claudeMessages,
+    sections: secs,
+    config: cfg,
+    allowedSectionIndices,
+  } = built.req;
 
   const message = await client.messages.create({
     model,
@@ -310,7 +430,7 @@ export async function siteChatWithClaude(
     return { ok: false, error: "Geen tekst-antwoord van Claude ontvangen." };
   }
 
-  const parsed = processSiteChatFromModelText(textBlock.text, secs, cfg, message.stop_reason);
+  const parsed = processSiteChatFromModelText(textBlock.text, secs, cfg, message.stop_reason, allowedSectionIndices);
   return finalizeSiteChatWithAiHeroPipeline(secs, parsed, messages, heroPostProcess);
 }
 
@@ -336,6 +456,8 @@ export type CreateSiteChatReadableStreamOptions = {
   }) => Promise<void>;
   /** Optioneel: `businessName` + slug voor AI-hero (Gemini/OpenAI). Stock-URL-strip gebeurt altijd zonder dit. */
   heroPostProcess?: SiteChatHeroPostProcessContext;
+  /** Overschrijft inferentie uit het laatste gebruikersbericht (zelfde semantiek als `/api/ai-edit-site`). */
+  explicitTargetSectionIndices?: readonly number[] | null;
 };
 
 /**
@@ -359,14 +481,29 @@ export function createSiteChatReadableStream(
       try {
         send(controller, { type: "status", message: "Je verzoek wordt verstuurd naar Claude…" });
 
-        const built = await buildSiteChatClaudeRequest(messages, sections, config, attachmentUrls, studioModuleFlags);
+        const built = await buildSiteChatClaudeRequest(
+          messages,
+          sections,
+          config,
+          attachmentUrls,
+          studioModuleFlags,
+          streamOptions?.explicitTargetSectionIndices,
+        );
         if (!built.ok) {
           send(controller, { type: "error", message: built.error });
           controller.close();
           return;
         }
 
-        const { client, model, system, messages: claudeMessages, sections: secs, config: cfg } = built.req;
+        const {
+          client,
+          model,
+          system,
+          messages: claudeMessages,
+          sections: secs,
+          config: cfg,
+          allowedSectionIndices,
+        } = built.req;
 
         send(controller, { type: "status", message: "Claude werkt aan je antwoord — even geduld." });
 
@@ -401,7 +538,13 @@ export function createSiteChatReadableStream(
           return;
         }
 
-        const parsed = processSiteChatFromModelText(textBlock.text, secs, cfg, finalMessage.stop_reason);
+        const parsed = processSiteChatFromModelText(
+          textBlock.text,
+          secs,
+          cfg,
+          finalMessage.stop_reason,
+          allowedSectionIndices,
+        );
         if (!parsed.ok) {
           send(controller, { type: "error", message: parsed.error, rawText: parsed.rawText });
           controller.close();

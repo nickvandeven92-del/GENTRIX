@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Check, ChevronRight, Circle, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import { formatDesignContractHumanSummaryNl } from "@/lib/ai/design-contract-human-summary";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
 
 export type StudioRightPaneMode = "preview" | "details";
@@ -42,7 +43,15 @@ function buildCardSubtitle(
   contract: DesignGenerationContract | null | undefined,
 ): string {
   if (streamPhase?.trim()) return streamPhase.trim();
-  if (loading) return "Bezig met genereren…";
+  if (loading) {
+    const last = activityLog?.length ? activityLog[activityLog.length - 1]?.text?.trim() : "";
+    if (last) return last.length > 200 ? `${last.slice(0, 197)}…` : last;
+    return "Bezig met genereren…";
+  }
+  if (contract) {
+    const human = formatDesignContractHumanSummaryNl(contract, { maxChars: 220 }).trim();
+    if (human) return human;
+  }
   const last = activityLog?.length ? activityLog[activityLog.length - 1]?.text?.trim() : "";
   if (last) return last.length > 200 ? `${last.slice(0, 197)}…` : last;
   if (rationale?.trim()) {

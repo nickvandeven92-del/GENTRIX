@@ -7,6 +7,13 @@ import { slugify } from "@/lib/slug";
  * Map: **kleine letters, decoded** segment → **exacte** key uit `marketingSlugs` (eerste match).
  */
 const MARKETING_SLUG_URL_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  /**
+   * Omgekeerde nav: UI zegt “Diensten” → pad `/diensten`, terwijl `resolveMarketingPageSlugsForGeneration`
+   * standaard de sleutel **`wat-wij-doen`** schrijft (geen `diensten`-key in JSON).
+   */
+  diensten: ["wat-wij-doen", "diensten", "aanbod"],
+  "onze-diensten": ["wat-wij-doen", "diensten"],
+  aanbodpagina: ["wat-wij-doen", "aanbod"],
   "wat-wij-doen": ["diensten", "services", "aanbod", "offerte", "wat-wij-doen"],
   "what-we-do": ["diensten", "services", "wat-wij-doen"],
   services: ["diensten", "wat-wij-doen"],
@@ -23,6 +30,11 @@ const MARKETING_SLUG_URL_ALIASES: Readonly<Record<string, readonly string[]>> = 
   questions: ["faq"],
   "q-a": ["faq"],
   help: ["faq"],
+  /** Retail-nav vs standaardkey `collectie` */
+  shop: ["collectie", "winkel"],
+  producten: ["collectie", "aanbod"],
+  catalogus: ["collectie"],
+  winkel: ["collectie"],
 };
 
 function normalizeSegment(seg: string): string {

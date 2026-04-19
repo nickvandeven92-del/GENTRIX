@@ -162,12 +162,35 @@ export function buildFallbackCompositionPlan(canonicalSectionIds: readonly strin
 function slimContractForPlan(contract: Record<string, unknown> | null | undefined): string {
   if (!contract || typeof contract !== "object") return "";
   const sig = contract.siteSignature as { archetype?: string; commitment_nl?: string } | undefined;
+  const axes = contract.referenceVisualAxes as
+    | {
+        layoutRhythm?: string;
+        themeMode?: string;
+        paletteIntent?: string;
+        typographyDirection?: string;
+        heroComposition?: string;
+        motionStyle?: string;
+        sectionDensity?: string;
+      }
+    | undefined;
   const pick = {
     heroVisualSubject: contract.heroVisualSubject,
     paletteMode: contract.paletteMode,
     motionLevel: contract.motionLevel,
     siteSignature: sig
       ? { archetype: sig.archetype, commitment_nl: sig.commitment_nl?.toString().slice(0, 200) }
+      : undefined,
+    referenceVisualAxes: axes
+      ? {
+          layoutRhythm: axes.layoutRhythm,
+          themeMode: axes.themeMode,
+          paletteIntent: typeof axes.paletteIntent === "string" ? axes.paletteIntent.slice(0, 280) : undefined,
+          typographyDirection: axes.typographyDirection,
+          heroComposition:
+            typeof axes.heroComposition === "string" ? axes.heroComposition.slice(0, 220) : undefined,
+          motionStyle: axes.motionStyle,
+          sectionDensity: axes.sectionDensity,
+        }
       : undefined,
   };
   return JSON.stringify(pick, null, 2);
@@ -183,6 +206,7 @@ Je schrijft **alleen** een **klein JSON-compositieplan** (geen HTML, geen Tailwi
 2. **Creativiteit:** Kies \`hero.archetype\`, \`visualIntensity\`, \`ctaMode\` en \`ctaStrategyNl\` passend bij sector en briefing — **niet** generiek SaaS-default tenzij de briefing dat echt is.
 3. **Copy-budget:** Stel **realistische** \`maxWords\` / \`maxBullets\` per sectie in (hero: gebruik \`hero.max*\`, niet dubbel). **Compact** wint: liever te strak dan te lang.
 4. **flags:** Alleen \`true\` als die **inhoud** echt op de **landings-secties** thuishoort (niet “misschien leuk”). Als de server geen \`testimonials\`/\`gallery\`/\`pricing\`/\`faq\` id geeft, zet die flag op \`false\`.
+5. **Multipage:** als de server **marketing-slugs** (subroutes) noemt, is de volgende stap een JSON met \`marketingPages\` met **exact die** keys — plan per route korte maar **eigen** copy (geen homepage herhalen); ontbrekende keys betekenen een mislukte bouwfase.
 
 === OUTPUT ===
 Antwoord met **uitsluitend** één geldig JSON-object (geen markdown-fences).`;
@@ -262,7 +286,10 @@ Lever nu het JSON-compositieplan volgens het schema in je system prompt.`;
 }
 
 /** Markdown voor injectie in de bouw-prompt (na Denklijn-contract). */
-export function buildCompositionPlanPromptInjection(plan: SiteCompositionPlan): string {
+export function buildCompositionPlanPromptInjection(
+  plan: SiteCompositionPlan,
+  marketingPageSlugs?: readonly string[],
+): string {
   const lines: string[] = [];
   lines.push(`**Site-intentie (NL):** ${plan.siteTypeNl}`);
   lines.push(`**Copy-dichtheid:** ${plan.copyDensity} — hou tekst kort tenzij een enkele marketing-subpagina meer uitleg nodig heeft.`);
@@ -285,6 +312,14 @@ export function buildCompositionPlanPromptInjection(plan: SiteCompositionPlan): 
   lines.push(
     "**No late structural compression:** overschrijf deze budgetten niet in de HTML-fase. Geen extra secties, geen dubbele contactblokken over de hele pagina, geen tweede volledige navbar.",
   );
+  const slugList = marketingPageSlugs?.map((s) => s.trim().toLowerCase()).filter(Boolean) ?? [];
+  if (slugList.length > 0) {
+    const uniq = [...new Set(slugList)];
+    lines.push("");
+    lines.push(
+      `**Multipage (bindend voor JSON-fase):** het antwoord moet \`marketingPages\` bevatten met **exact** deze keys (server valideert; ontbrekende key = mislukte generatie): ${uniq.map((s) => `\`${s}\``).join(", ")}. Geef elke route beknopte eigen copy; herhaal de homepage-longread niet.`,
+    );
+  }
   return lines.join("\n");
 }
 

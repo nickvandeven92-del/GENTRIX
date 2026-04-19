@@ -43,6 +43,7 @@ import { publishedPayloadFromParsed, type PublishedSitePayload } from "@/lib/sit
 import { tailwindSectionsPayloadFromPublishedTailwind } from "@/lib/data/tailwind-sections-payload-from-published";
 import { buildSiteIrV1 } from "@/lib/site/site-ir-schema";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import { formatDesignContractHumanSummaryNl } from "@/lib/ai/design-contract-human-summary";
 import {
   buildConceptRefinementInstruction,
   type ConceptRefinementDirection,
@@ -376,6 +377,10 @@ export function GeneratorForm({
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const studioReadyFeedbackLine = useMemo(() => {
+    if (designContract) {
+      const human = formatDesignContractHumanSummaryNl(designContract, { maxChars: 320 }).trim();
+      if (human) return human;
+    }
     const r = designRationale?.trim();
     if (r) {
       const first = (r.split(/\n\n+/)[0] ?? r).trim();

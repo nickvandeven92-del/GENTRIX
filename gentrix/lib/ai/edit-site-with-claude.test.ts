@@ -35,4 +35,13 @@ describe("inferTargetIndicesFromInstruction", () => {
   it("returns empty when no name matches", () => {
     expect(inferTargetIndicesFromInstruction("Alleen algemene copy", sections)).toEqual([]);
   });
+
+  it("matcht ook canonieke id en semanticRole", () => {
+    const rich = [
+      { id: "hero" as const, sectionName: "Intro", html: "<section></section>", semanticRole: "hero" as const },
+      { id: "pricing" as const, sectionName: "Tarieven", html: "<section></section>", semanticRole: "pricing" as const },
+    ];
+    expect(inferTargetIndicesFromInstruction("Wijzig sectie hero", rich)).toEqual([0]);
+    expect(inferTargetIndicesFromInstruction("pas pricing aan", rich)).toEqual([1]);
+  });
 });

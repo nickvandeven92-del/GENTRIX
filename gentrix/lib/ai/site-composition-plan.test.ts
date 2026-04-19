@@ -46,6 +46,14 @@ describe("buildCompositionPlanPromptInjection", () => {
     expect(md).toMatch(/No late structural compression/i);
     expect(md).toMatch(/`hero`/);
   });
+
+  it("mentions marketingPages keys when slugs are passed", () => {
+    const plan = mergeCompositionPlanWithCanonical(["hero", "footer"], null);
+    const md = buildCompositionPlanPromptInjection(plan, ["wat-wij-doen", "faq"]);
+    expect(md).toMatch(/`wat-wij-doen`/);
+    expect(md).toMatch(/`faq`/);
+    expect(md).toMatch(/marketingPages/i);
+  });
 });
 
 describe("appendCompositionPlanToUserContent", () => {

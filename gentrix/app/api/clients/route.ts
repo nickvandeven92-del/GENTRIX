@@ -20,6 +20,7 @@ import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { projectSnapshotFromTailwindPayload, projectSnapshotToJson } from "@/lib/site/project-snapshot-io";
 import type { ProjectSnapshot } from "@/lib/site/project-snapshot-schema";
 import { getPersistSiteValidationErrors } from "@/lib/site/site-ir-compose-validation";
+import { describeTailwindMarketingNavPayloadIssues } from "@/lib/site/tailwind-marketing-nav-consistency";
 import {
   BRIEFING_EXPLICIT_WEBSHOP_SIGNAL,
   industryProfileIncludesCanonicalShopSection,
@@ -153,6 +154,14 @@ export async function POST(request: Request) {
         { ok: false, error: `tailwind_sections ongeldig: ${twParsed.error.message}` },
         { status: 400 },
       );
+    }
+    const navPayloadIssue = describeTailwindMarketingNavPayloadIssues({
+      sections: twParsed.data.sections,
+      contactSections: twParsed.data.contactSections,
+      marketingPages: twParsed.data.marketingPages,
+    });
+    if (navPayloadIssue) {
+      return NextResponse.json({ ok: false, error: navPayloadIssue }, { status: 422 });
     }
     const docTitle = parsed.data.name?.trim() || "Website";
     const withCss = await attachCompiledTailwindCssToPayload(twParsed.data, docTitle);

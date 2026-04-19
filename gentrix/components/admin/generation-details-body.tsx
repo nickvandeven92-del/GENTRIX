@@ -2,6 +2,7 @@
 
 import { Brain, Clock, Loader2, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import { formatDesignContractHumanSummaryNl } from "@/lib/ai/design-contract-human-summary";
 import { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
 import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
 import { briefGenerationActivityLabel } from "@/lib/studio/brief-generation-activity-label";
@@ -197,6 +198,21 @@ export function GenerationDetailsBody({
             </p>
           ) : null}
         </section>
+
+        {designContract ? (
+          <section className="rounded-lg border border-indigo-200/90 bg-indigo-50/60 p-3 dark:border-indigo-900/40 dark:bg-indigo-950/35">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-950 dark:text-indigo-100">
+              Interpretatie-checkpoint
+            </h3>
+            <p className="mt-1 text-[11px] leading-snug text-indigo-900/85 dark:text-indigo-200/90">
+              Dit is wat de Denklijn <strong className="font-medium">bindend</strong> aan generatie en zelfreview koppelt
+              — controleer of dit overeenkomt met wat je bedoelde (briefing en eventuele referentiesite).
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-indigo-950 dark:text-indigo-50">
+              {formatDesignContractHumanSummaryNl(designContract)}
+            </p>
+          </section>
+        ) : null}
 
         {designContract ? (
           <section className="rounded-lg border border-emerald-200/90 bg-emerald-50/40 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/25">

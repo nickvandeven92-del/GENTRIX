@@ -12,6 +12,7 @@ import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 import { isValidSubfolderSlug, slugify, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { cn } from "@/lib/utils";
+import { describeTailwindMarketingNavPayloadIssues } from "@/lib/site/tailwind-marketing-nav-consistency";
 
 /**
  * Alleen klant-/bedrijfsnaam gebruiken voor slug — nooit de volledige briefing (voorkomt megaslugs).
@@ -100,6 +101,11 @@ export function SaveSitePanel({
   const slugDeriveBasis = textBasisForSubfolderSlug(generatorMode, name, description);
   const resolvedSlug = subfolderSlug.trim() || slugifyClientNameForSubfolder(slugDeriveBasis);
   const slugOk = isValidSubfolderSlug(resolvedSlug);
+  const marketingNavPayloadIssue = describeTailwindMarketingNavPayloadIssues({
+    sections: page.sections,
+    contactSections: page.contactSections,
+    marketingPages: page.marketingPages,
+  });
 
   async function save() {
     setError(null);
@@ -110,6 +116,10 @@ export function SaveSitePanel({
       setError(
         "Vul een geldige URL-slug in (2–64 tekens: kleine letters, cijfers, koppeltekens), of een klantnaam die daarnaar leidt.",
       );
+      return;
+    }
+    if (marketingNavPayloadIssue) {
+      setError(marketingNavPayloadIssue);
       return;
     }
     setLoading(true);
@@ -190,6 +200,15 @@ export function SaveSitePanel({
         <code className="rounded bg-slate-100 px-1 text-xs text-slate-800">SUPABASE_SERVICE_ROLE_KEY</code>.
       </p>
 
+      {marketingNavPayloadIssue && (
+        <div
+          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100"
+          role="status"
+        >
+          <strong>Opslaan geblokkeerd:</strong> {marketingNavPayloadIssue}
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="text-xs font-medium text-slate-600">Klantnaam</label>
@@ -246,7 +265,7 @@ export function SaveSitePanel({
       <button
         type="button"
         onClick={() => void save()}
-        disabled={loading || !name.trim() || !slugOk}
+        disabled={loading || !name.trim() || !slugOk || Boolean(marketingNavPayloadIssue)}
         className={cn(
           "mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm",
           "hover:bg-[#5558e8] disabled:cursor-not-allowed disabled:opacity-60",

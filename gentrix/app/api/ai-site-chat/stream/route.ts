@@ -10,16 +10,34 @@ import { tailwindPageConfigSchema, tailwindSectionsArraySchema } from "@/lib/ai/
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
 import { z } from "zod";
 
-const bodySchema = z.object({
-  messages: siteChatRequestMessagesSchema,
-  sections: tailwindSectionsArraySchema,
-  config: tailwindPageConfigSchema.optional().nullable(),
-  attachmentUrls: z.array(z.string().url()).max(12).optional(),
-  appointmentsEnabled: z.boolean().optional(),
-  webshopEnabled: z.boolean().optional(),
-  businessName: z.string().min(1).max(200).optional(),
-  subfolder_slug: z.string().min(2).max(64).optional(),
-});
+const bodySchema = z
+  .object({
+    messages: siteChatRequestMessagesSchema,
+    sections: tailwindSectionsArraySchema,
+    config: tailwindPageConfigSchema.optional().nullable(),
+    attachmentUrls: z.array(z.string().url()).max(12).optional(),
+    appointmentsEnabled: z.boolean().optional(),
+    webshopEnabled: z.boolean().optional(),
+    businessName: z.string().min(1).max(200).optional(),
+    subfolder_slug: z.string().min(2).max(64).optional(),
+    /** Optioneel: alleen deze sectie-indices volledig meesturen + model mag alleen deze indices wijzigen. */
+    target_section_indices: z.array(z.number().int().min(0)).max(24).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const targets = data.target_section_indices;
+    if (!targets?.length) return;
+    const n = data.sections.length;
+    for (let i = 0; i < targets.length; i++) {
+      const idx = targets[i]!;
+      if (idx >= n) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `target_section_indices[${i}] is ${idx}, maar er zijn maar ${n} sectie(s) (0–${n - 1}).`,
+          path: ["target_section_indices", i],
+        });
+      }
+    }
+  });
 
 /** Langere site-chat runs (grote JSON). */
 export const maxDuration = 300;
@@ -84,6 +102,7 @@ export async function POST(request: Request) {
         businessName: bn?.trim() || "Studio",
         subfolderSlug: parsed.data.subfolder_slug?.trim() || undefined,
       },
+      explicitTargetSectionIndices: parsed.data.target_section_indices,
     },
   );
 
