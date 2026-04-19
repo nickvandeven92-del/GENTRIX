@@ -684,10 +684,12 @@ export function SiteHtmlEditor({
       >
       <ResizableEditorPanels
         className={cn("min-h-0 flex-1", previewFullscreen && "min-h-0 overflow-hidden")}
+        storageKey="gentrix-site-editor-sidebar-px"
         defaultSidebarPx={400}
-        minSidebarPx={280}
-        maxSidebarPx={560}
-        minMainPx={440}
+        minSidebarPx={248}
+        maxSidebarPx={4800}
+        minMainPx={0}
+        splitterTitle="Sleep naar rechts: smallere preview; naar links: meer ruimte voor Site-assistent (zelfde als generator)."
         sidebar={
           <>
             <SiteAiChatPanel

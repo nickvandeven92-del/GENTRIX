@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const DEFAULT_STORAGE_KEY = "gentrix-site-editor-sidebar-px";
-/** Ruimte voor de sleepbalk (`lg:w-3` ≈ 12px). */
+/** Ruimte voor de sleepbalk (`md:w-3` ≈ 12px). */
 const SPLITTER_PX = 12;
 
 type ResizableEditorPanelsProps = {
@@ -43,7 +43,7 @@ function boundsForHost(
   minSidebarPx: number,
   maxSidebarPx: number,
   minMainPx: number,
-  /** Alleen op `lg+` (twee kolommen); op smalle schermen geen `minMainPx` om state niet “dicht te knijpen”. */
+  /** Alleen op `md+` (twee kolommen); op smalle schermen geen `minMainPx` om state niet “dicht te knijpen”. */
   enforceMinMain: boolean,
 ) {
   if (!enforceMinMain || !Number.isFinite(hostWidth) || hostWidth <= 0) {
@@ -83,7 +83,8 @@ export function ResizableEditorPanels({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 1024px)");
+    /** Gelijk aan Tailwind `md:` (768px) — zelfde split als generator/editor op smallere laptopvensters. */
+    const mq = window.matchMedia("(min-width: 768px)");
     const sync = () => setSplitLayout(mq.matches);
     sync();
     mq.addEventListener("change", sync);
@@ -199,17 +200,17 @@ export function ResizableEditorPanels({
     <div
       ref={hostRef}
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-0 lg:flex-row lg:items-stretch lg:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-0 md:flex-row md:items-stretch md:overflow-hidden",
         className,
       )}
     >
       <aside
         className={cn(
           /* Eén verticale scroll: binnen de sidebar-content (o.a. studio-chat), niet hier — voorkomt scrollbar-in-scrollbar. */
-          "flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:max-h-full lg:overflow-hidden lg:pl-4 lg:pt-3 lg:pr-1",
-          showBoth && "lg:w-[var(--editor-sidebar-px)] lg:shrink-0",
+          "flex min-h-0 w-full min-w-0 flex-col gap-2 md:h-full md:max-h-full md:overflow-hidden md:pl-4 md:pt-3 md:pr-1",
+          showBoth && "md:w-[var(--editor-sidebar-px)] md:shrink-0",
           !showSidebar && "hidden",
-          visiblePanels === "sidebar" && "lg:flex-1",
+          visiblePanels === "sidebar" && "md:flex-1",
         )}
         style={
           {
@@ -228,10 +229,10 @@ export function ResizableEditorPanels({
         aria-valuemax={Math.round(effMaxSidebar)}
         tabIndex={0}
         className={cn(
-          "relative z-20 hidden shrink-0 touch-none cursor-col-resize self-stretch select-none lg:w-3 lg:items-center lg:justify-center",
-          "rounded-full bg-transparent hover:bg-zinc-200/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800",
-          "dark:hover:bg-zinc-700/60",
-          showBoth ? "lg:flex" : "lg:hidden",
+          "relative z-20 shrink-0 touch-none cursor-col-resize self-stretch select-none md:w-3 md:items-center md:justify-center",
+          "rounded-full bg-zinc-200/40 hover:bg-zinc-200/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800",
+          "dark:bg-zinc-700/35 dark:hover:bg-zinc-600/70",
+          showBoth ? "hidden md:flex" : "hidden",
         )}
         onPointerDown={onSplitterPointerDown}
         onKeyDown={(e) => {
@@ -255,16 +256,16 @@ export function ResizableEditorPanels({
         }
       >
         <span
-          className="block h-full min-h-[min(480px,calc(100dvh-12rem))] w-px rounded-full bg-zinc-300 dark:bg-zinc-600"
+          className="pointer-events-none block h-full min-h-[min(480px,calc(100dvh-12rem))] w-1 max-w-[4px] rounded-full bg-zinc-400/90 dark:bg-zinc-500"
           aria-hidden
         />
       </div>
 
       <div
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden lg:h-full lg:max-h-full lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden lg:pt-3 lg:pr-4",
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden md:h-full md:max-h-full md:min-h-0 md:overflow-y-auto md:overflow-x-hidden md:pt-3 md:pr-4",
           !showMain && "hidden",
-          visiblePanels === "main" && "lg:flex-1",
+          visiblePanels === "main" && "md:flex-1",
         )}
       >
         {main}
