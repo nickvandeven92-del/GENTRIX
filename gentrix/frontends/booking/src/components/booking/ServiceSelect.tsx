@@ -1,13 +1,16 @@
 import { Service } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Props {
   services: Service[];
   onSelect: (service: Service) => void;
+  /** Live boeken: markeer gekozen kaart. */
+  selectedServiceId?: string | null;
 }
 
-export function ServiceSelect({ services, onSelect }: Props) {
+export function ServiceSelect({ services, onSelect, selectedServiceId }: Props) {
   return (
     <div>
       <h2 className="text-2xl font-heading font-bold mb-2">Kies een dienst</h2>
@@ -16,7 +19,10 @@ export function ServiceSelect({ services, onSelect }: Props) {
         {services.map(service => (
           <Card
             key={service.id}
-            className="p-4 cursor-pointer hover:shadow-md transition-all hover:border-primary/40 group"
+            className={cn(
+              'p-4 cursor-pointer hover:shadow-md transition-all hover:border-primary/40 group',
+              selectedServiceId === service.id && 'border-primary ring-2 ring-primary/30',
+            )}
             onClick={() => onSelect(service)}
           >
             <div className="flex items-center gap-4">

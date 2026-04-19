@@ -2,10 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { publicBookingApiUrls } from "@/lib/gentrix-api";
 import {
   buildMonthGrid,
+  type BookingMeta,
   type PublicBookingService,
   type PublicBookingSlot,
-  type StaffDayState,
 } from "@/lib/gentrix-booking-helpers";
+
+export type StaffCatalogState = {
+  loading: boolean;
+  err: string | null;
+  /** True wanneer er meerdere actieve medewerkers zijn (keuze vóór datum). */
+  requiresStaffSelection: boolean;
+  staff: { id: string; name: string }[];
+};
 
 type UseGentrixPublicBookingArgs = { slug: string };
 
@@ -22,16 +30,17 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
   const [metaErr, setMetaErr] = useState<string | null>(null);
   const [loadingMeta, setLoadingMeta] = useState(true);
 
+  const [staffCatalog, setStaffCatalog] = useState<StaffCatalogState>({
+    loading: true,
+    err: null,
+    requiresStaffSelection: false,
+    staff: [],
+  });
+
   const [viewY, setViewY] = useState(() => new Date().getFullYear());
   const [viewM, setViewM] = useState(() => new Date().getMonth() + 1);
 
   const [selectedYmd, setSelectedYmd] = useState<string | null>(null);
-  const [staffForDay, setStaffForDay] = useState<StaffDayState>({
-    loading: false,
-    requiresStaffSelection: false,
-    staff: [],
-    err: null,
-  });
   const [pickedStaffId, setPickedStaffId] = useState<string | null>(null);
   const [slots, setSlots] = useState<PublicBookingSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -107,6 +116,62 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
     };
   }, [servicesApi]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setStaffCatalog((s) => ({ ...s, loading: true, err: null }));
+      try {
+        const res = await fetch(staffApi);
+        const json = (await res.json()) as {
+          ok?: boolean;
+          requiresStaffSelection?: boolean;
+          staff?: { id: string; name: string }[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!res.ok || !json.ok) {
+          setStaffCatalog({
+            loading: false,
+            err: json.error ?? "Medewerkers laden mislukt.",
+            requiresStaffSelection: false,
+            staff: [],
+          });
+          return;
+        }
+        const st = json.staff ?? [];
+        setStaffCatalog({
+          loading: false,
+          err: null,
+          requiresStaffSelection: Boolean(json.requiresStaffSelection),
+          staff: st,
+        });
+      } catch {
+        if (!cancelled) {
+          setStaffCatalog({
+            loading: false,
+            err: "Netwerkfout.",
+            requiresStaffSelection: false,
+            staff: [],
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [staffApi]);
+
+  /** Eén actieve medewerker: altijd die id voor slot-API. */
+  useEffect(() => {
+    if (staffCatalog.loading || staffCatalog.err) return;
+    if (staffCatalog.staff.length === 1) {
+      setPickedStaffId(staffCatalog.staff[0]!.id);
+    }
+    if (staffCatalog.staff.length === 0) {
+      setPickedStaffId(null);
+    }
+  }, [staffCatalog.loading, staffCatalog.err, staffCatalog.staff]);
+
   const requiresTreatmentChoice = publicServices.length > 0;
   const selectedService = publicServices.find((s) => s.id === selectedServiceId) ?? null;
 
@@ -139,85 +204,34 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
 
   useEffect(() => {
     if (!selectedYmd) {
-      setStaffForDay({ loading: false, requiresStaffSelection: false, staff: [], err: null });
-      setPickedStaffId(null);
       setSlots([]);
+      setSelectedSlot(null);
       return;
     }
     if (requiresTreatmentChoice && !selectedServiceId) {
-      setStaffForDay({ loading: false, requiresStaffSelection: false, staff: [], err: null });
-      setPickedStaffId(null);
       setSlots([]);
+      setSelectedSlot(null);
       return;
     }
-    let cancelled = false;
-    setStaffForDay((s) => ({ ...s, loading: true, err: null }));
-    setPickedStaffId(null);
-    void (async () => {
-      try {
-        let staffUrl = `${staffApi}?date=${encodeURIComponent(selectedYmd)}`;
-        if (requiresTreatmentChoice && selectedServiceId) {
-          staffUrl += `&service=${encodeURIComponent(selectedServiceId)}`;
-        }
-        const res = await fetch(staffUrl);
-        const json = (await res.json()) as {
-          ok?: boolean;
-          requiresStaffSelection?: boolean;
-          staff?: { id: string; name: string }[];
-          error?: string;
-        };
-        if (cancelled) return;
-        if (!res.ok || !json.ok) {
-          setStaffForDay({
-            loading: false,
-            requiresStaffSelection: false,
-            staff: [],
-            err: json.error ?? "Medewerkers laden mislukt.",
-          });
-          setSlots([]);
-          return;
-        }
-        const req = Boolean(json.requiresStaffSelection);
-        const st = json.staff ?? [];
-        setStaffForDay({ loading: false, requiresStaffSelection: req, staff: st, err: null });
-        if (req && st.length === 1) setPickedStaffId(st[0]!.id);
-      } catch {
-        if (!cancelled) {
-          setStaffForDay({
-            loading: false,
-            requiresStaffSelection: false,
-            staff: [],
-            err: "Netwerkfout.",
-          });
-          setSlots([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedYmd, staffApi, requiresTreatmentChoice, selectedServiceId]);
-
-  useEffect(() => {
-    if (!selectedYmd) return;
-    if (staffForDay.loading || staffForDay.err) return;
+    if (staffCatalog.loading || staffCatalog.err) return;
+    const needsStaff = staffCatalog.staff.length > 0;
+    if (needsStaff && !pickedStaffId) {
+      setSlots([]);
+      setLoadingSlots(false);
+      return;
+    }
     const svcQ = requiresTreatmentChoice && selectedServiceId ? selectedServiceId : null;
-    if (staffForDay.requiresStaffSelection) {
-      if (staffForDay.staff.length === 0) {
-        setSlots([]);
-        setLoadingSlots(false);
-        return;
-      }
-      if (!pickedStaffId) {
-        setSlots([]);
-        setLoadingSlots(false);
-        return;
-      }
-      void loadSlots(selectedYmd, pickedStaffId, svcQ);
-      return;
-    }
-    void loadSlots(selectedYmd, null, svcQ);
-  }, [selectedYmd, staffForDay, pickedStaffId, loadSlots, requiresTreatmentChoice, selectedServiceId]);
+    void loadSlots(selectedYmd, needsStaff ? pickedStaffId : null, svcQ);
+  }, [
+    selectedYmd,
+    pickedStaffId,
+    staffCatalog.loading,
+    staffCatalog.err,
+    staffCatalog.staff.length,
+    requiresTreatmentChoice,
+    selectedServiceId,
+    loadSlots,
+  ]);
 
   const grid = useMemo(() => {
     if (!meta) return [];
@@ -239,7 +253,8 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
       setErr("Kies een datum en tijdslot.");
       return { ok: false };
     }
-    if (staffForDay.requiresStaffSelection && !pickedStaffId) {
+    const needsStaff = staffCatalog.staff.length > 0;
+    if (needsStaff && !pickedStaffId) {
       setErr("Kies een medewerker.");
       return { ok: false };
     }
@@ -262,7 +277,7 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
           starts_at: selectedSlot.starts_at,
           ends_at: selectedSlot.ends_at,
           notes: notes.trim() || null,
-          staff_id: staffForDay.requiresStaffSelection ? pickedStaffId : undefined,
+          staff_id: needsStaff ? pickedStaffId : undefined,
           booking_service_id: requiresTreatmentChoice ? selectedServiceId : undefined,
           booker_name: bookerName.trim() || null,
           booker_email: email,
@@ -280,15 +295,9 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
       setNotes("");
       setBookerName("");
       setBookerEmail("");
-      setSelectedSlot(null);
-      setSlots([]);
       setWantsConfirmation(false);
       setWantsReminder(false);
-      if (selectedYmd) {
-        const svcQ = requiresTreatmentChoice && selectedServiceId ? selectedServiceId : null;
-        if (staffForDay.requiresStaffSelection && pickedStaffId) void loadSlots(selectedYmd, pickedStaffId, svcQ);
-        else if (!staffForDay.requiresStaffSelection) void loadSlots(selectedYmd, null, svcQ);
-      }
+      /** selectedSlot bewaren tot `resetFlow` — succes-scherm toont nog tijd/datum. */
       return { ok: true, hadConfirmation };
     } catch {
       setErr("Netwerkfout.");
@@ -302,7 +311,6 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
     setErr(null);
     setSelectedServiceId(null);
     setSelectedYmd(null);
-    setStaffForDay({ loading: false, requiresStaffSelection: false, staff: [], err: null });
     setPickedStaffId(null);
     setSlots([]);
     setSelectedSlot(null);
@@ -324,10 +332,11 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
   function selectService(id: string) {
     setSelectedServiceId(id);
     setSelectedYmd(null);
-    setStaffForDay({ loading: false, requiresStaffSelection: false, staff: [], err: null });
-    setPickedStaffId(null);
     setSlots([]);
     setSelectedSlot(null);
+    if (staffCatalog.staff.length > 1) {
+      setPickedStaffId(null);
+    }
   }
 
   return {
@@ -341,6 +350,7 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
     selectedServiceId,
     selectedService,
     selectService,
+    staffCatalog,
     viewY,
     viewM,
     setViewY,
@@ -348,7 +358,6 @@ export function useGentrixPublicBooking({ slug }: UseGentrixPublicBookingArgs) {
     grid,
     selectedYmd,
     setSelectedYmd,
-    staffForDay,
     pickedStaffId,
     setPickedStaffId,
     slots,

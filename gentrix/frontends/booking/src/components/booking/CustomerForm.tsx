@@ -9,9 +9,11 @@ import { Card } from '@/components/ui/card';
 interface Props {
   onSubmit: (info: CustomerInfo) => void;
   initialData?: CustomerInfo | null;
+  /** Live boeken: telefoon niet verplicht (Gentrix-API vraagt alleen e-mail). */
+  phoneOptional?: boolean;
 }
 
-export function CustomerForm({ onSubmit, initialData }: Props) {
+export function CustomerForm({ onSubmit, initialData, phoneOptional }: Props) {
   const [name, setName] = useState(initialData?.name || '');
   const [email, setEmail] = useState(initialData?.email || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
@@ -22,7 +24,7 @@ export function CustomerForm({ onSubmit, initialData }: Props) {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Naam is verplicht';
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Geldig e-mailadres is verplicht';
-    if (!phone.trim() || phone.trim().length < 8) e.phone = 'Geldig telefoonnummer is verplicht';
+    if (!phoneOptional && (!phone.trim() || phone.trim().length < 8)) e.phone = 'Geldig telefoonnummer is verplicht';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -52,7 +54,7 @@ export function CustomerForm({ onSubmit, initialData }: Props) {
             {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
           </div>
           <div>
-            <Label htmlFor="phone">Telefoon *</Label>
+            <Label htmlFor="phone">Telefoon{phoneOptional ? " (optioneel)" : " *"}</Label>
             <Input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="06-12345678" />
             {errors.phone && <p className="text-destructive text-xs mt-1">{errors.phone}</p>}
           </div>

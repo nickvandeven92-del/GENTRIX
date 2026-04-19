@@ -41,8 +41,33 @@ export async function GET(request: Request, context: RouteContext) {
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date")?.trim() ?? "";
   const serviceParam = searchParams.get("service")?.trim() ?? "";
-  if (!dateParam || !parseYmd(dateParam)) {
-    return jsonWithMaybeCors(request, { ok: false, error: "Parameter date (YYYY-MM-DD) is verplicht." }, { status: 400 });
+
+  /** Zonder `date`: volledige catalogus actieve medewerkers (voor stap “Medewerker” vóór datumkeuze). */
+  if (!dateParam) {
+    const supabaseCatalog = createServiceRoleClient();
+    const { data: members, error: catErr } = await supabaseCatalog
+      .from("client_staff")
+      .select("id, name, sort_order")
+      .eq("client_id", resolved.clientId)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (catErr?.message?.includes("client_staff") || catErr?.code === "42P01") {
+      return jsonWithMaybeCors(request, { ok: true, requiresStaffSelection: false, staff: [] });
+    }
+    if (catErr) {
+      return jsonWithMaybeCors(request, { ok: false, error: catErr.message }, { status: 500 });
+    }
+    const staff = (members ?? []).map((m) => ({ id: m.id as string, name: String(m.name) }));
+    return jsonWithMaybeCors(request, {
+      ok: true,
+      requiresStaffSelection: staff.length > 1,
+      staff,
+    });
+  }
+
+  if (!parseYmd(dateParam)) {
+    return jsonWithMaybeCors(request, { ok: false, error: "Ongeldige datum (gebruik YYYY-MM-DD)." }, { status: 400 });
   }
 
   const durRes = await resolvePublicBookingSlotDurationMinutes(resolved.clientId, serviceParam);

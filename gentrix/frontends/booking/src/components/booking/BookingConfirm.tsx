@@ -12,9 +12,10 @@ interface Props {
   time: string;
   customer: CustomerInfo;
   onConfirm: () => void;
+  confirmDisabled?: boolean;
 }
 
-export function BookingConfirm({ service, employee, date, time, customer, onConfirm }: Props) {
+export function BookingConfirm({ service, employee, date, time, customer, onConfirm, confirmDisabled }: Props) {
   return (
     <div>
       <h2 className="text-2xl font-heading font-bold mb-2">Bevestig je afspraak</h2>
@@ -32,7 +33,10 @@ export function BookingConfirm({ service, employee, date, time, customer, onConf
 
           <div className="flex items-center gap-3 text-sm">
             <User className="w-4 h-4 text-muted-foreground" />
-            <span>{employee.name} – {employee.role}</span>
+            <span>
+              {employee.name}
+              {employee.role.trim() ? ` – ${employee.role}` : ""}
+            </span>
           </div>
 
           <div className="flex items-center gap-3 text-sm">
@@ -56,16 +60,18 @@ export function BookingConfirm({ service, employee, date, time, customer, onConf
             <Mail className="w-4 h-4 text-muted-foreground" />
             <span>{customer.email}</span>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <Phone className="w-4 h-4 text-muted-foreground" />
-            <span>{customer.phone}</span>
-          </div>
+          {customer.phone.trim() ? (
+            <div className="flex items-center gap-3 text-sm">
+              <Phone className="w-4 h-4 text-muted-foreground" />
+              <span>{customer.phone}</span>
+            </div>
+          ) : null}
           {customer.notes && (
             <p className="text-sm text-muted-foreground italic">{`\u201c${customer.notes}\u201d`}</p>
           )}
         </div>
 
-        <Button onClick={onConfirm} className="w-full" size="lg">
+        <Button onClick={onConfirm} className="w-full" size="lg" disabled={confirmDisabled}>
           Afspraak bevestigen
         </Button>
       </Card>
