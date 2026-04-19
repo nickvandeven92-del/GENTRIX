@@ -20,6 +20,7 @@ import {
   safeParseSiteIrV1,
   siteIrV1Schema,
 } from "@/lib/site/site-ir-schema";
+import { slugify } from "@/lib/slug";
 import { LAYOUT_PRESET_IDS } from "@/lib/site/project-snapshot-layout";
 import { CONTENT_DENSITY_VALUES } from "@/lib/site/project-snapshot-layout";
 import { SNAPSHOT_PAGE_TYPES } from "@/lib/site/snapshot-page-type";
@@ -131,9 +132,18 @@ export function upgradeLooseProjectSnapshotV1(
   const marketingPages: Record<string, Record<string, unknown>[]> = {};
   if (mpIn != null && typeof mpIn === "object" && !Array.isArray(mpIn)) {
     for (const [rawKey, rows] of Object.entries(mpIn as Record<string, unknown>)) {
-      const keyParsed = marketingPageKeyStoredSchema.safeParse(rawKey);
-      if (!keyParsed.success || !Array.isArray(rows)) continue;
-      const key = keyParsed.data;
+      if (!Array.isArray(rows)) continue;
+      const direct = marketingPageKeyStoredSchema.safeParse(rawKey);
+      const key =
+        direct.success
+          ? direct.data
+          : (() => {
+              const candidate = slugify(String(rawKey).replace(/_/g, "-"));
+              if (candidate.length < 2) return null;
+              const alt = marketingPageKeyStoredSchema.safeParse(candidate);
+              return alt.success ? alt.data : null;
+            })();
+      if (!key || marketingPages[key]) continue;
       marketingPages[key] = rows.map((row: unknown, i: number) => {
         if (!row || typeof row !== "object") {
           return { id: `${key}-section-${i}`, sectionName: `Pagina ${i + 1}`, html: "<section></section>" };

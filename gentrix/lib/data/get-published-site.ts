@@ -9,6 +9,7 @@ import {
   publishedPayloadFromSiteJson,
   type PublishedSitePayload,
 } from "@/lib/site/project-published-payload";
+import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 
 export type { PublishedSitePayload };
 
@@ -19,6 +20,41 @@ function devLogPublishedSite(slug: string, message: string, detail?: unknown) {
   } else {
     console.warn(`[publieke site /${slug}] ${message}`);
   }
+}
+
+/**
+ * Generator/editor schrijft altijd naar `clients.site_data_json`; live leest eerst `published_snapshot_id`.
+ * Tot **Opnieuw publiceren** kan de snapshot dus achterlopen — dan ontbreken `marketingPages` op /site/…
+ * terwijl de kolom wél de nieuwe subpagina's heeft. Vul ontbrekende keys dan in vanuit de kolom.
+ */
+function mergeTailwindMarketingPagesFromSiteDataColumn(
+  payload: PublishedSitePayload,
+  siteDataColumn: unknown,
+  slug: string,
+): PublishedSitePayload {
+  if (payload.kind !== "tailwind") return payload;
+  const col = parseStoredSiteData(siteDataColumn);
+  if (col?.kind !== "tailwind" || !col.marketingPages) return payload;
+  const colMp = col.marketingPages;
+  if (Object.keys(colMp).length === 0) return payload;
+
+  const snapMp = payload.marketingPages ?? {};
+  const merged = { ...snapMp };
+  let changed = false;
+  for (const [k, v] of Object.entries(colMp)) {
+    if (!Array.isArray(v) || v.length === 0) continue;
+    const cur = merged[k];
+    if (!cur || cur.length === 0) {
+      merged[k] = v;
+      changed = true;
+    }
+  }
+  if (!changed) return payload;
+  devLogPublishedSite(
+    slug,
+    "marketingPages aangevuld vanuit clients.site_data_json (published snapshot miste niet-lege keys; vaak nog niet gepubliceerd na generatie).",
+  );
+  return { ...payload, marketingPages: merged };
 }
 
 type ActiveClientRow = {
@@ -510,6 +546,9 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
         "Site-payload is leeg of ongeldig (tailwind_sections, react_sections of legacy JSON).",
       );
       return null;
+    }
+    if (!conceptAccess) {
+      payload = mergeTailwindMarketingPagesFromSiteDataColumn(payload, data.site_data_json, slug);
     }
     const beforeEnsure =
       payload.kind === "tailwind" &&
