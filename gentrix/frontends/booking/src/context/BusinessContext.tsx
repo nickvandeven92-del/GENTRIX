@@ -22,7 +22,7 @@ interface BusinessContextType {
   updateSettings: (settings: Partial<Business['settings']>) => void;
 }
 
-const BusinessContext = createContext<BusinessContextType | null>(null);
+export const BusinessContext = createContext<BusinessContextType | null>(null);
 
 export function BusinessProvider({ children }: { children: React.ReactNode }) {
   const [currentBusinessId, setCurrentBusinessId] = useState('biz-1');

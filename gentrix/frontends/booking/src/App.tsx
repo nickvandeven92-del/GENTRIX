@@ -8,6 +8,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import HomePage from "./pages/HomePage";
 import BookingPage from "./pages/BookingPage";
 import BookingPageLive from "./pages/BookingPageLive";
+import DashboardSlugPrompt from "./pages/DashboardSlugPrompt";
+import { LiveBusinessProvider } from "./context/LiveBusinessProvider";
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
 import DashboardServices from "./pages/dashboard/DashboardServices";
 import DashboardEmployees from "./pages/dashboard/DashboardEmployees";
@@ -32,8 +34,15 @@ const App = () => (
             <Route path="book/:slug" element={<BookingPageLive />} />
             <Route path="demo" element={<BookingPage />} />
 
-            {/* Owner dashboard */}
-            <Route path="dashboard" element={<DashboardLayout />}>
+            <Route path="dashboard" element={<DashboardSlugPrompt />} />
+            <Route
+              path="dashboard/:ownerSlug"
+              element={
+                <LiveBusinessProvider>
+                  <DashboardLayout />
+                </LiveBusinessProvider>
+              }
+            >
               <Route index element={<DashboardOverview />} />
               <Route path="diensten" element={<DashboardServices />} />
               <Route path="medewerkers" element={<DashboardEmployees />} />

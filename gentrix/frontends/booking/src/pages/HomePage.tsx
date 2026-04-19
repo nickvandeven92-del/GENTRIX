@@ -45,8 +45,11 @@ export default function HomePage() {
             <Link to="demo">Naar mock-demo</Link>
           </Button>
           <Button variant="ghost" className="mt-2 block w-full" asChild>
-            <Link to="dashboard">Dashboard (mock)</Link>
+            <Link to="dashboard">Zaak-dashboard (live, na inloggen)</Link>
           </Button>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Of direct: <code className="rounded bg-muted px-1">/booking-app/dashboard/jouw-slug</code> — zelfde data als het portaal.
+          </p>
         </div>
       </div>
     </div>
