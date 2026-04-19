@@ -5,14 +5,6 @@ import {
   buildDesignContractPromptInjection,
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
-import {
-  appendCompositionPlanToUserContent,
-  buildCompositionPlanPromptInjection,
-  buildFallbackCompositionPlan,
-  generateSiteCompositionPlanWithClaude,
-  mergeCompositionPlanWithCanonical,
-  type SiteCompositionPlan,
-} from "@/lib/ai/site-composition-plan";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import type { MessageDeltaUsage } from "@anthropic-ai/sdk/resources/messages/messages";
@@ -1361,6 +1353,7 @@ function buildHeroViewportRulesMarkdown(preserve: boolean): string {
   - **Achtergrond-banden** (CTA/galerij met \`background-image\`, geen hero): max. \`min-h-[40vh] md:min-h-[50vh]\`, geen volledige viewport.
   - **Padding:** op \`#hero\` mag \`py-*\` b?j \`min-h-*\`, maar voorkom extreem hoge \`py-32+\` **zonder** \`min-h-*\` (dan blijft de strook alsnog laag ten opzichte van het scherm).
   - **Hero-layout (standaard):** vermijd een vaste **\`grid md:grid-cols-2\` / 50-50** ???foto links, tekst rechts??? als default ??? dat herhaalt elke run. Voorkeur: **full-bleed**: sectie \`relative\`, achtergrondbeeld \`absolute inset-0 object-cover\`, inhoud \`relative z-10\` met **gradient/scrim** (\`bg-gradient-to-r from-black/70\`, ???) zodat koppen leesbaar zijn. Split alleen als de briefing dat expliciet wil.
+  - **Hero kopregels (kritisch):** op meerregelige \`h1\`/display **nooit** \`leading-none\` (letters vallen dan op elke elkaar). Gebruik minstens \`leading-tight\`, liever \`leading-snug\` of \`leading-[1.08]\` bij grote serif/sans-display; zet eventueel \`max-w-*\` op de kop-container i.p.v. extreem krappe interlinie.
 `;
 }
 
@@ -2253,8 +2246,8 @@ function finalizeGenerateSiteFromClaudeText(
 }
 
 /**
- * Hoofd-Claude-stream + parse + zelfreview + hero + validatie ??? dezelfde keten als na compositie
- * in `createGenerateSiteReadableStream`, voor hergebruik na een checkpoint (tweede serverless-invocatie).
+ * Hoofd-Claude-stream + parse + zelfreview + hero + validatie — dezelfde keten als in
+ * `createGenerateSiteReadableStream`, voor hergebruik na een checkpoint (tweede serverless-invocatie).
  */
 export type ExecuteGenerateSitePhase2Input = {
   prepared: PreparedGenerateSiteClaudeCall;
@@ -2414,31 +2407,7 @@ export async function generateSiteWithClaude(
     designContract = rationale.contract;
   }
 
-  const canonicalSectionIdsNs = p.pipelineFeedback.interpreted.sections ?? [];
-  let compositionPlanNs: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIdsNs);
-  if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
-    const contractSummaryNs =
-      rationale.ok && rationale.contract != null
-        ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
-        : null;
-    const compNs = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
-      businessName,
-      description,
-      canonicalSectionIds: canonicalSectionIdsNs,
-      strictLanding: p.strictLandingContract,
-      marketingMultiPage: p.useMarketingMultiPage,
-      marketingPageSlugs: p.marketingPageSlugs,
-      designContractSummary: contractSummaryNs,
-    });
-    compositionPlanNs = mergeCompositionPlanWithCanonical(
-      canonicalSectionIdsNs,
-      compNs.ok ? compNs.raw : null,
-    );
-  }
-  let userContentWithComposition = appendCompositionPlanToUserContent(
-    userContentForGeneration,
-    buildCompositionPlanPromptInjection(compositionPlanNs, p.marketingPageSlugs),
-  );
+  let userContentWithComposition = userContentForGeneration;
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;
   let prebakedHeroPublicUrl: string | null = null;
@@ -2497,7 +2466,6 @@ export type GenerateSiteStreamNdjsonEvent =
       contractWarning?: string | null;
       skipReason?: string;
     }
-  | { type: "composition_plan"; plan: SiteCompositionPlan; source: "model" | "fallback" }
   | { type: "self_review"; ran: boolean; refined: boolean }
   | { type: "token"; content: string }
   | { type: "section_complete"; section: { id: string; html: string; sectionName?: string } }
@@ -2709,46 +2677,6 @@ export function createGenerateSiteReadableStream(
             : rationale.error?.slice(0, 400),
         );
 
-        const canonicalSectionIds = p.pipelineFeedback.interpreted.sections ?? [];
-        let compositionPlan: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIds);
-        let compositionSource: "model" | "fallback" = "fallback";
-
-        if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
-          send(controller, { type: "status", message: "Compositieplan (structuur + copy-budget)???" });
-          const stopCompositionKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
-          try {
-            const contractSummary =
-              rationale.ok && rationale.contract != null
-                ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
-                : null;
-            const compResult = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
-              businessName,
-              description,
-              canonicalSectionIds,
-              strictLanding: p.strictLandingContract,
-              marketingMultiPage: p.useMarketingMultiPage,
-              marketingPageSlugs: p.marketingPageSlugs,
-              designContractSummary: contractSummary,
-            });
-            if (compResult.ok) {
-              compositionPlan = mergeCompositionPlanWithCanonical(canonicalSectionIds, compResult.raw);
-              compositionSource = "model";
-            } else {
-              send(controller, {
-                type: "status",
-                message: `Compositieplan: ${compResult.error} ??? veilige defaults gebruikt.`,
-              });
-              compositionPlan = mergeCompositionPlanWithCanonical(canonicalSectionIds, null);
-              compositionSource = "fallback";
-            }
-          } finally {
-            stopCompositionKeepalive();
-          }
-        }
-
-        send(controller, { type: "composition_plan", plan: compositionPlan, source: compositionSource });
-        trace("composition_done", `source=${compositionSource}`);
-
         let userContentForGeneration =
           rationale.ok && rationale.contract != null
             ? appendDesignContractToUserContent(
@@ -2756,10 +2684,6 @@ export function createGenerateSiteReadableStream(
                 buildDesignContractPromptInjection(rationale.contract, p.referenceSiteSnapshot ?? null),
               )
             : p.userContent;
-        userContentForGeneration = appendCompositionPlanToUserContent(
-          userContentForGeneration,
-          buildCompositionPlanPromptInjection(compositionPlan, p.marketingPageSlugs),
-        );
 
         const clientImgCount = promptOptions?.clientImages?.length ?? 0;
         let prebakedHeroPublicUrl: string | null = null;

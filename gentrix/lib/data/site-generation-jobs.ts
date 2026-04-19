@@ -393,7 +393,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       generation_checkpoint: ck,
       generation_split_phase: "awaiting_continue",
       progress_message:
-        "Checkpoint na compositie — HTML/JSON in tweede server-ronde (nieuwe tijdslimiet)…",
+        "Checkpoint na voorbereiding — HTML/JSON in tweede server-ronde (nieuwe tijdslimiet)…",
     });
     if (!persisted) {
       console.warn("[site_generation_jobs] Checkpoint niet opgeslagen — voltooien in-process.");
@@ -469,7 +469,6 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
       const msgTrim = ev.message.trim();
       const forceProgress =
         msgTrim.includes("Denklijn") ||
-        msgTrim.includes("Compositieplan") ||
         msgTrim.includes("Pagina genereren") ||
         msgTrim.includes("Zelfreview") ||
         msgTrim.includes("Hero:") ||
@@ -485,11 +484,6 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
         progress_message: pm,
         pipeline_feedback_json: JSON.parse(JSON.stringify(ev.feedback)) as Json,
       });
-      return;
-    }
-    if (ev.type === "composition_plan") {
-      const src = ev.source === "model" ? "model" : "defaults";
-      writeProgress(`Compositieplan vastgelegd (${src}) — HTML volgt deze copy-budgetten.`);
       return;
     }
     if (ev.type === "design_rationale") {

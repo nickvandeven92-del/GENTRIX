@@ -1,3 +1,6 @@
+/**
+ * Legacy Haiku JSON-compositieplan + tests; niet meer in de studio-generator ingebakken (zie `generate-site-with-claude`).
+ */
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import Anthropic from "@anthropic-ai/sdk";
 import { clampMaxTokensNonStreaming } from "@/lib/ai/anthropic-nonstream-limits";
@@ -162,35 +165,12 @@ export function buildFallbackCompositionPlan(canonicalSectionIds: readonly strin
 function slimContractForPlan(contract: Record<string, unknown> | null | undefined): string {
   if (!contract || typeof contract !== "object") return "";
   const sig = contract.siteSignature as { archetype?: string; commitment_nl?: string } | undefined;
-  const axes = contract.referenceVisualAxes as
-    | {
-        layoutRhythm?: string;
-        themeMode?: string;
-        paletteIntent?: string;
-        typographyDirection?: string;
-        heroComposition?: string;
-        motionStyle?: string;
-        sectionDensity?: string;
-      }
-    | undefined;
   const pick = {
     heroVisualSubject: contract.heroVisualSubject,
     paletteMode: contract.paletteMode,
     motionLevel: contract.motionLevel,
     siteSignature: sig
       ? { archetype: sig.archetype, commitment_nl: sig.commitment_nl?.toString().slice(0, 200) }
-      : undefined,
-    referenceVisualAxes: axes
-      ? {
-          layoutRhythm: axes.layoutRhythm,
-          themeMode: axes.themeMode,
-          paletteIntent: typeof axes.paletteIntent === "string" ? axes.paletteIntent.slice(0, 280) : undefined,
-          typographyDirection: axes.typographyDirection,
-          heroComposition:
-            typeof axes.heroComposition === "string" ? axes.heroComposition.slice(0, 220) : undefined,
-          motionStyle: axes.motionStyle,
-          sectionDensity: axes.sectionDensity,
-        }
       : undefined,
   };
   return JSON.stringify(pick, null, 2);

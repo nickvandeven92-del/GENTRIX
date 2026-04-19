@@ -18,7 +18,6 @@ export const STUDIO_SITE_GENERATION = {
    */
   maxOutputTokens: 64_000,
   briefingVisionEnabled: true,
-  /** Kleine JSON-planfase vóór HTML: copy-budget + CTA; sectie-id's blijven server-side vast. */
-  compositionPlanEnabled: true,
-  selfReviewEnabled: false,
+  /** Tweede LLM-pass: layout/typografie/claims nalopen (extra latency + kosten). */
+  selfReviewEnabled: true,
 } as const;

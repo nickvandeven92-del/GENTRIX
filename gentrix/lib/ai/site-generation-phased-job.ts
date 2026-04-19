@@ -5,14 +5,6 @@ import {
   type DesignGenerationContract,
 } from "@/lib/ai/design-generation-contract";
 import {
-  appendCompositionPlanToUserContent,
-  buildCompositionPlanPromptInjection,
-  buildFallbackCompositionPlan,
-  generateSiteCompositionPlanWithClaude,
-  mergeCompositionPlanWithCanonical,
-  type SiteCompositionPlan,
-} from "@/lib/ai/site-composition-plan";
-import {
   appendDesignContractToUserContent,
   executeGenerateSitePhase2,
   prepareGenerateSiteClaudeCall,
@@ -27,7 +19,6 @@ import {
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
-import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 
 /** Alles behalve `client` en `userContent` — die worden in fase 2 opnieuw opgebouwd. */
 export type SerializedPreparedGenerateSiteClaudeCallV1 = Omit<
@@ -136,29 +127,7 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
         )
       : p.userContent;
 
-  const canonicalSectionIdsNs = p.pipelineFeedback.interpreted.sections ?? [];
-  let compositionPlanNs: SiteCompositionPlan = buildFallbackCompositionPlan(canonicalSectionIdsNs);
-  if (STUDIO_SITE_GENERATION.compositionPlanEnabled) {
-    const contractSummaryNs =
-      rationale.ok && rationale.contract != null
-        ? (JSON.parse(JSON.stringify(rationale.contract)) as Record<string, unknown>)
-        : null;
-    const compNs = await generateSiteCompositionPlanWithClaude(p.client, p.supportModel, {
-      businessName,
-      description,
-      canonicalSectionIds: canonicalSectionIdsNs,
-      strictLanding: p.strictLandingContract,
-      marketingMultiPage: p.useMarketingMultiPage,
-      marketingPageSlugs: p.marketingPageSlugs,
-      designContractSummary: contractSummaryNs,
-    });
-    compositionPlanNs = mergeCompositionPlanWithCanonical(canonicalSectionIdsNs, compNs.ok ? compNs.raw : null);
-  }
-
-  let userContentWithComposition = appendCompositionPlanToUserContent(
-    userContentForGeneration,
-    buildCompositionPlanPromptInjection(compositionPlanNs, p.marketingPageSlugs),
-  );
+  let userContentWithComposition = userContentForGeneration;
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;
   let prebakedHeroPublicUrl: string | null = null;

@@ -13,7 +13,7 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
     label: "Site-generatie (user-bericht, stream, finalisatie)",
     path: "lib/ai/generate-site-with-claude.ts",
     description:
-      "prepareGenerateSiteClaudeCall: optioneel system-bericht alleen bij kennisinjectie (`getKnowledgeContextForClaude`); anders geen vaste system prompt — regels zitten in het user-bericht. Verder: referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; generateSiteCompositionPlanWithClaude (copy-budget); **asset-first hero** (Gemini image / Google AI Studio, fallback DALL·E + upload vóór HTML, URL in user-prompt) waar de pipeline actief is; stream; finalizeGenerateSiteFromClaudeText; self-review + strip oude stock-URL's + AI-hero-inject als vangnet; createGenerateSiteReadableStream voor NDJSON.",
+      "prepareGenerateSiteClaudeCall: optioneel system-bericht alleen bij kennisinjectie (`getKnowledgeContextForClaude`); anders geen vaste system prompt — regels zitten in het user-bericht. Verder: referentiesite-fetch, branche-/sectie-keuze, buildWebsiteGenerationUserPrompt; generateDesignRationaleWithClaude; **asset-first hero** (Gemini image / Google AI Studio, fallback DALL·E + upload vóór HTML, URL in user-prompt) waar de pipeline actief is; stream; finalizeGenerateSiteFromClaudeText; self-review + strip oude stock-URL's + AI-hero-inject als vangnet; createGenerateSiteReadableStream voor NDJSON. (Los `lib/ai/site-composition-plan.ts` = optionele module voor tests; niet meer in de live generator-prompt.)",
   },
   {
     label: "Studio-blok (pakket / briefing in user-prompt)",

@@ -8,8 +8,8 @@ export function briefGenerationActivityLabel(message: string): string {
   if (m.startsWith("Generatie via NDJSON")) return "";
   if (m.startsWith("Generatie gestart")) return "Voorbereiden: briefing & context…";
   if (m.startsWith("Denklijn uitschrijven")) return "Denklijn & designcontract…";
-  if (m.startsWith("Compositieplan (structuur")) return "Compositieplan…";
-  if (m.startsWith("Compositieplan:")) return m.length > 80 ? `${m.slice(0, 77)}…` : m;
+  if (m.startsWith("Checkpoint na voorbereiding")) return "Checkpoint: HTML in tweede ronde…";
+  if (m.startsWith("Checkpoint na compositie")) return "Checkpoint: HTML in tweede ronde…";
   if (m.startsWith("Pagina genereren")) return "Pagina (HTML/JSON)…";
   if (m.startsWith("Kwaliteitscontrole:") || m.startsWith("Kwaliteitscontrole")) return "Zelfreview…";
   if (m.startsWith("Zelfreview toegepast")) return "Zelfreview: toegepast.";
