@@ -16,6 +16,7 @@ import {
   cleanupStrippedStockMarkup,
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/strip-unsplash-urls";
+import { replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -1522,8 +1523,8 @@ function stripRasterMediaElementsFromHtml(html: string): string {
   out = out.replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, "");
   out = out.replace(/<video\b[^>]*>[\s\S]*?<\/video>/gi, "");
   out = out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
-  out = out.replace(/<img\b[^>]*>/gi, "");
-  out = out.replace(/<source\b[^>]*\/?>/gi, "");
+  out = replaceAllOpenTagsByLocalName(out, "img", () => "");
+  out = replaceAllOpenTagsByLocalName(out, "source", () => "");
   return out;
 }
 

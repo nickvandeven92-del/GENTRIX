@@ -32,6 +32,7 @@ import {
 import { buildMarketingSlugSegmentResolutionMap } from "@/lib/site/marketing-path-aliases";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
+import { replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import {
@@ -1322,7 +1323,7 @@ function ensureAlpineDomPurifyHook(): void {
  * Unsplash: alleen echte foto-paden (`/photo-<digits>-…`); geen `/random`, verzonnen id’s, etc.
  */
 export function stripLikelyBrokenImgTags(html: string): string {
-  return html.replace(/<img\b[^>]*>/gi, (tag) => {
+  return replaceAllOpenTagsByLocalName(html, "img", (tag) => {
     const srcM = tag.match(/\bsrc\s*=\s*["']([^"']*)["']/i);
     const src = srcM?.[1]?.trim() ?? "";
     if (!src) return "";
@@ -1352,12 +1353,12 @@ export function stripLikelyBrokenImgTags(html: string): string {
 
 /** Na DOMPurify: kapotte img’s verbergen (404) zonder XSS — vaste handler, geen model-input. */
 function appendImgOnErrorHide(html: string): string {
-  return html.replace(/<img\b([^>]*?)\s*\/?>/gi, (full, attrs) => {
-    const a = String(attrs);
-    if (/\bonerror\s*=/i.test(a)) return full;
-    const inner = a.trim();
-    const sp = inner ? ` ${inner}` : "";
-    return `<img${sp} onerror="this.remove()">`;
+  return replaceAllOpenTagsByLocalName(html, "img", (full) => {
+    if (/\bonerror\s*=/i.test(full)) return full;
+    let body = full.replace(/^<img\b/i, "").trim();
+    if (body.endsWith("/>")) body = body.slice(0, -2).trim();
+    else if (body.endsWith(">")) body = body.slice(0, -1).trim();
+    return `<img${body ? ` ${body}` : ""} onerror="this.remove()">`;
   });
 }
 
@@ -1518,6 +1519,15 @@ export function sanitizeTailwindFragment(html: string): string {
       "style",
       "href",
       "src",
+      "srcset",
+      "sizes",
+      "loading",
+      "fetchpriority",
+      "decoding",
+      "crossorigin",
+      "referrerpolicy",
+      /** AI-hero inject (`lib/ai/ai-hero-image-postprocess.ts`); expliciet — ALLOW_DATA_ATTR is false. */
+      "data-gentrix-ai-hero-img",
       "alt",
       "target",
       "rel",

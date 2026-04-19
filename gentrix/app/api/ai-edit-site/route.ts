@@ -8,11 +8,29 @@ import { editSiteWithClaude } from "@/lib/ai/edit-site-with-claude";
 import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
 import { tailwindPageConfigSchema, tailwindSectionsArraySchema } from "@/lib/ai/tailwind-sections-schema";
 
-const bodySchema = z.object({
-  instruction: z.string().min(3, "Geef een duidelijke instructie.").max(8000),
-  sections: tailwindSectionsArraySchema,
-  config: tailwindPageConfigSchema.optional().nullable(),
-});
+const bodySchema = z
+  .object({
+    instruction: z.string().min(3, "Geef een duidelijke instructie.").max(8000),
+    sections: tailwindSectionsArraySchema,
+    config: tailwindPageConfigSchema.optional().nullable(),
+    /** Optioneel: alleen deze sectie-indices volledig meesturen + model mag alleen deze indices in sectionUpdates wijzigen. */
+    target_section_indices: z.array(z.number().int().min(0)).max(24).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const targets = data.target_section_indices;
+    if (!targets?.length) return;
+    const n = data.sections.length;
+    for (let i = 0; i < targets.length; i++) {
+      const idx = targets[i]!;
+      if (idx >= n) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `target_section_indices[${i}] is ${idx}, maar er zijn maar ${n} sectie(s) (0–${n - 1}).`,
+          path: ["target_section_indices", i],
+        });
+      }
+    }
+  });
 
 export async function POST(request: Request) {
   const auth = await requireAdminApiAuth();
@@ -40,6 +58,7 @@ export async function POST(request: Request) {
       parsed.data.instruction,
       parsed.data.sections,
       parsed.data.config ?? undefined,
+      parsed.data.target_section_indices,
     );
     if (!result.ok) {
       return NextResponse.json(

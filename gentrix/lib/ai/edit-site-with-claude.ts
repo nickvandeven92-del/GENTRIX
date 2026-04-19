@@ -39,20 +39,116 @@ export type EditSiteResult =
   | { ok: true; sections: TailwindSection[]; config: TailwindPageConfig | null | undefined }
   | { ok: false; error: string; rawText?: string };
 
+export type ResolveTargetSectionIndicesResult =
+  | { ok: true; indices: number[] | null }
+  | { ok: false; error: string };
+
+/**
+ * Unieke, gesorteerde indices binnen bereik; `indices: null` = geen scope (volledige HTML voor alle secties).
+ * Geeft fout terug bij een index buiten 0..sectionCount-1 of niet-geheel getal.
+ */
+export function resolveTargetSectionIndices(
+  targetIndices: number[] | undefined,
+  sectionCount: number,
+): ResolveTargetSectionIndicesResult {
+  if (targetIndices == null || targetIndices.length === 0) {
+    return { ok: true, indices: null };
+  }
+  const seen = new Set<number>();
+  for (const raw of targetIndices) {
+    if (!Number.isInteger(raw) || raw < 0 || raw >= sectionCount) {
+      return {
+        ok: false,
+        error: `Ongeldige target_section_indices: ${String(raw)} (geldig: 0 t/m ${Math.max(0, sectionCount - 1)}).`,
+      };
+    }
+    seen.add(raw);
+  }
+  return { ok: true, indices: [...seen].sort((a, b) => a - b) };
+}
+
+/**
+ * Optie A: afleiden welke secties bedoeld zijn als de instructie de sectienaam bevat (substring-match).
+ * Leeg array = geen match; caller laat dan `targetIndices` weg voor volledige context.
+ */
+export function inferTargetIndicesFromInstruction(
+  instruction: string,
+  sections: TailwindSection[],
+): number[] {
+  const lower = instruction.toLowerCase();
+  const out: number[] = [];
+  sections.forEach((s, i) => {
+    const name = (s.sectionName ?? "").trim().toLowerCase();
+    if (name.length >= 2 && lower.includes(name)) {
+      out.push(i);
+    }
+  });
+  return out;
+}
+
 function buildEditUserPrompt(
   instruction: string,
   sections: TailwindSection[],
   config: TailwindPageConfig | null | undefined,
+  scoped: number[] | null,
 ): string {
   const legacy = config != null && isLegacyTailwindPageConfig(config);
-  const currentPayload = {
-    config: config ?? null,
-    sections: sections.map((s, i) => ({
-      index: i,
-      sectionName: s.sectionName,
-      html: s.html,
-    })),
-  };
+
+  const sectionIndex = sections.map((s, i) => {
+    const row: {
+      index: number;
+      sectionName: string;
+      semanticRole?: string;
+    } = { index: i, sectionName: s.sectionName };
+    if (s.semanticRole != null) row.semanticRole = s.semanticRole;
+    return row;
+  });
+
+  const targetSections =
+    scoped != null
+      ? scoped.map((i) => {
+          const s = sections[i]!;
+          return {
+            index: i,
+            sectionName: s.sectionName,
+            html: s.html,
+            ...(s.semanticRole != null ? { semanticRole: s.semanticRole } : {}),
+            ...(s.copyIntent != null ? { copyIntent: s.copyIntent } : {}),
+          };
+        })
+      : sections.map((s, i) => ({
+          index: i,
+          sectionName: s.sectionName,
+          html: s.html,
+          ...(s.semanticRole != null ? { semanticRole: s.semanticRole } : {}),
+          ...(s.copyIntent != null ? { copyIntent: s.copyIntent } : {}),
+        }));
+
+  const currentPayload =
+    scoped != null
+      ? {
+          config: config ?? null,
+          sectionIndex,
+          targetSections,
+        }
+      : {
+          config: config ?? null,
+          sections: targetSections,
+        };
+
+  const scopeBlock =
+    scoped != null
+      ? `=== SECTIE-OVERZICHT (alle secties — alleen index, naam, optioneel semanticRole; geen HTML) ===
+${JSON.stringify(sectionIndex)}
+
+=== TE BEWERKEN SECTIES (volledige HTML — pas inhoudelijk alleen deze aan) ===
+${JSON.stringify(targetSections)}
+
+**Scope (strikt):** Gebruik in \`sectionUpdates\` **uitsluitend** \`index\`-waarden die in **targetSections** voorkomen (${scoped.join(", ")}). Wijzig **geen** andere secties, ook niet voor “kleine verbeteringen” of consistentie, tenzij de gebruiker dat expliciet vraagt — dan verwachten we een nieuwe beurt met ruimere scope.
+`
+      : `=== HUIDIGE SITE (JSON — alle secties met volledige HTML) ===
+${JSON.stringify(currentPayload)}
+`;
 
   const configRule = legacy
     ? `De huidige \`config\` is **legacy** (themeName, primaryColor, …). Je mag **geen** nieuwe \`config\` in je antwoord zetten — alleen \`sectionUpdates\` voor HTML-wijzigingen.`
@@ -87,8 +183,7 @@ Vorm:
 
 ${configRule}
 
-=== HUIDIGE SITE (JSON) ===
-${JSON.stringify(currentPayload)}
+${scopeBlock}
 
 === VERZOEK VAN DE GEBRUIKER ===
 ${instruction}`;
@@ -98,6 +193,7 @@ export async function editSiteWithClaude(
   instruction: string,
   sections: TailwindSection[],
   config: TailwindPageConfig | null | undefined,
+  targetIndices?: number[],
 ): Promise<EditSiteResult> {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) {
@@ -107,18 +203,26 @@ export async function editSiteWithClaude(
     };
   }
 
+  const resolved = resolveTargetSectionIndices(targetIndices, sections.length);
+  if (!resolved.ok) {
+    return { ok: false, error: resolved.error };
+  }
+  const scoped = resolved.indices;
+
   const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
   const client = new Anthropic({ apiKey });
 
   const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
   const system = [
     knowledge,
-    "Je bent een nauwkeurige front-end editor. Je wijzigt alleen wat gevraagd wordt; in JSON lever je minimaal sectionUpdates (alleen gewijzigde indices) en volgt het outputformaat exact.",
+    scoped != null
+      ? "Je bent een nauwkeurige front-end editor. Deze opdracht heeft een **beperkte scope**: wijzig alleen secties die in de prompt als target staan; geen andere indices in sectionUpdates."
+      : "Je bent een nauwkeurige front-end editor. Je wijzigt alleen wat gevraagd wordt; in JSON lever je minimaal sectionUpdates (alleen gewijzigde indices) en volgt het outputformaat exact.",
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const editBody = buildEditUserPrompt(instruction, sections, config);
+  const editBody = buildEditUserPrompt(instruction, sections, config, scoped);
   const userContent: string | ContentBlockParam[] =
     userPrefixBlocks.length > 0
       ? [
@@ -173,6 +277,17 @@ export async function editSiteWithClaude(
   }
 
   const updates = validated.data.sectionUpdates ?? [];
+  if (scoped != null && updates.length > 0) {
+    const allowed = new Set(scoped);
+    const bad = updates.find((u) => !allowed.has(u.index));
+    if (bad) {
+      return {
+        ok: false,
+        error: `Het model wijzigde sectie-index ${bad.index}, maar deze opdracht is beperkt tot: ${scoped.join(", ")}.`,
+        rawText: textBlock.text,
+      };
+    }
+  }
   const mergeResult = mergeTailwindSectionUpdates(sections, updates);
   if (!mergeResult.ok) {
     return { ok: false, error: mergeResult.error, rawText: textBlock.text };

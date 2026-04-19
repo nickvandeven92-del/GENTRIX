@@ -25,6 +25,8 @@ const refinementBase = `Studio: **conceptverfijning** (lichte tweede pass — **
 
 /**
  * Instructie voor \`editSiteWithClaude\` / \`/api/ai-edit-site\` — korte tweede pass na generatie.
+ * (API: optioneel \`target_section_indices\` om alleen bepaalde secties volledig mee te sturen; bij
+ * conceptverfijning meestal **weglaten** — richting raakt vaak hero + meerdere secties.)
  */
 export function buildConceptRefinementInstruction(
   direction: ConceptRefinementDirection,

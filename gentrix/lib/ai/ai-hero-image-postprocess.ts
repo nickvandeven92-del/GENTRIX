@@ -6,6 +6,7 @@ import type {
   MasterPromptPageConfig,
   TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
+import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
@@ -94,7 +95,7 @@ const SITE_CHAT_AI_HERO_STUB_MASTER_CONFIG: MasterPromptPageConfig = {
 
 /** Verwijdert alle `<img>` tags uit een HTML-fragment (voor geforceerde AI-hero). */
 function stripImgTagsFromHtml(html: string): string {
-  return html.replace(/<img\b[^>]*(?:\/>|>)/gi, "");
+  return replaceAllOpenTagsByLocalName(html, "img", () => "");
 }
 
 /** Geen letterlijke `bg-` + `[url` in één regex-bron: Tailwind content-scan maakt daar utilities van (Vercel/Turbopack). */
@@ -181,10 +182,15 @@ function heroHtmlHasVideo(html: string): boolean {
 }
 
 function heroHtmlHasRealImage(html: string): boolean {
-  const re = /<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+  const re = /<img\b/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
-    const src = (m[1] ?? "").trim();
+    const start = m.index;
+    const end = findHtmlOpenTagEnd(html, start);
+    const tag = html.slice(start, end);
+    const srcM = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+    const src = (srcM?.[1] ?? "").trim();
+    re.lastIndex = end;
     if (!src || src.startsWith(PLACEHOLDER_GIF_PREFIX)) continue;
     if (/^data:image\//i.test(src)) continue;
     if (/^javascript:/i.test(src)) return true;
