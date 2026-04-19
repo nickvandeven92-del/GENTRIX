@@ -183,9 +183,11 @@ export function ClientPortalModulesCard({
         <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
           <li>
             <strong className="text-zinc-800 dark:text-zinc-200">Nieuwe sites:</strong> de AI genereert{" "}
-            <strong className="text-zinc-800 dark:text-zinc-200">geen</strong> booking-sectie. Voeg het vaste blok toe
-            met de knop hieronder wanneer de klant online boeken wil; daarna bepaalt de schakelaar Afspraken of het
-            zichtbaar is op <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/site/…</code>.
+            <strong className="text-zinc-800 dark:text-zinc-200">geen</strong> booking-sectie. Voeg het vaste anker toe
+            met de knop hieronder (alleen een dunne lijn vóór de footer; de echte knop staat in de navigatie met{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">__STUDIO_BOOKING_PATH__</code>
+            ). De schakelaar Afspraken bepaalt of dat zichtbaar is op{" "}
+            <code className="rounded bg-zinc-100 px-0.5 text-[10px] dark:bg-zinc-800">/site/…</code>.
           </li>
           <li>
             Zet <strong className="text-zinc-800 dark:text-zinc-200">“Afspraken”</strong> aan om portaal + boekpagina +

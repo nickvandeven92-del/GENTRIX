@@ -128,7 +128,8 @@ export async function POST(request: Request, context: RouteContext) {
       {
         snapshotSource: "editor",
         snapshotLabel: merged.replaced ? "Booking-sectie vervangen (standaard)" : "Booking-sectie toegevoegd (standaard)",
-        snapshotNotes: "Zonder AI — vast sjabloon met __STUDIO_BOOKING_PATH__",
+        snapshotNotes:
+          "Zonder AI — minimaal canoniek booking-anker; primaire boek-CTA blijft in nav met __STUDIO_BOOKING_PATH__",
         siteIrHints: siteIrHintsFromTailwindParsed(siteParsed),
         moduleFlags: {
           appointmentsEnabled: Boolean(clientRow.appointments_enabled),
