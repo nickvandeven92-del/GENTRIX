@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appendPrebakedHeroImageToUserContent,
+  buildOpenAiHeroPrompt,
   heroSectionOpenTagHasInjectableHeroId,
   injectAiHeroImageIntoHeroSectionHtml,
   shouldAttemptAiHeroImageForHtml,
@@ -27,6 +28,23 @@ describe("ai-hero-image-postprocess", () => {
         "Genereer een close up afbeelding van een scheer apparaat voor mijn hero, ik wil de split hero behouden",
       ),
     ).toBe(true);
+  });
+
+  it("siteChatMessageSuggestsAiHeroRaster: klacht zonder woord «hero» (dezelfde afbeelding) triggert server-raster", () => {
+    expect(siteChatMessageSuggestsAiHeroRaster("Je hebt exact dezelfde afbeelding neergezet.")).toBe(true);
+    expect(siteChatMessageSuggestsAiHeroRaster("Dit is de identieke output als net, graag opnieuw genereren")).toBe(true);
+    expect(siteChatMessageSuggestsAiHeroRaster("Ik krijg geen nieuwe foto")).toBe(true);
+  });
+
+  it("siteChatMessageSuggestsAiHeroRaster: dezelfde afbeelding in footer-teamcontext triggert niet", () => {
+    expect(siteChatMessageSuggestsAiHeroRaster("Zet exact dezelfde afbeelding in de footer als bij team")).toBe(false);
+  });
+
+  it("buildOpenAiHeroPrompt: variationSeed voegt compositie-instructie toe", () => {
+    const p = buildOpenAiHeroPrompt("Salon", "Close-up schaar", null, { variationSeed: "deadbeef01" });
+    expect(p).toContain("deadbeef01");
+    expect(p).toContain("Composition variation id");
+    expect(p).toContain("Brief (primary creative direction");
   });
 
   it("stripHeroRasterPlaceholdersForSiteChatAiHero verwijdert img en background-url zodat AI-inject mag", () => {
@@ -68,6 +86,19 @@ describe("ai-hero-image-postprocess", () => {
     const firstDiv = out!.indexOf("<div");
     expect(firstImg).toBeLessThan(out!.indexOf("Copy"));
     expect(firstImg).toBeGreaterThan(firstDiv);
+  });
+
+  it("inject split-grid: Tailwind [&>svg] in eerste <div> lekt geen fragment (geen naïeve [^>] op div)", () => {
+    const html = `<section id="hero" class="grid min-h-screen grid-cols-1 md:grid-cols-2 text-white">
+<div class="relative z-10 min-h-[50vh] bg-gradient-to-br from-stone-500 to-stone-300 [&>svg]:size-6"></div>
+<div class="p-8">Copy</div>
+</section>`;
+    const out = injectAiHeroImageIntoHeroSectionHtml(html, "https://example.com/h.png");
+    expect(out).not.toBeNull();
+    expect(out).toContain("data-gentrix-ai-hero-img=");
+    expect(out).toContain("[&>svg]:size-6");
+    expect(out).not.toMatch(/>\s*\[&>svg]/);
+    expect(out!.indexOf("Copy")).toBeGreaterThan(0);
   });
 
   it("shouldAttemptAiHeroImageForHtml is false bij video", () => {

@@ -62,6 +62,23 @@ export function siteChatMessageSuggestsAiHeroRaster(message: string): boolean {
   if (removalOnly) return false;
 
   if (briefingWantsAiGeneratedHeroImage(message)) return true;
+
+  /**
+   * Opvolgberichten over de **server**-hero zonder het woord "hero" (veel voorkomend na inject).
+   * Let op: alleen als het niet duidelijk over footer/logo/galerij gaat.
+   */
+  const nonHeroImageScope = /\b(footer|team|logo|galerij|gallery|favicon|cookie|avatar)\b/i.test(lower);
+  const wantsFreshRaster =
+    /\b(opnieuw\s+genereren|opnieuw\s+laten\s+genereren|regenereer|opnieuw\s+een\s+(beeld|afbeelding|foto)|ververs\s+(de\s+)?(foto|afbeelding|preview))\b/i.test(
+      lower,
+    ) ||
+    /\b(nieuwe|andere|betere)\s+(generatie|variant|versie)\b/i.test(lower) ||
+    /\b(nieuwe|andere)\s+render\b/i.test(lower) ||
+    /\b(exact\s+)?dezelfde\s+(afbeelding|foto|beeld|image|picture|output|render)\b/i.test(lower) ||
+    /\b(identieke|zelfde)\s+(afbeelding|foto|render|output)\b/i.test(lower) ||
+    /\b(geen|niet)\s+(een\s+)?(nieuwe|andere)\s+(afbeelding|foto)\b/i.test(lower);
+  if (wantsFreshRaster && !nonHeroImageScope) return true;
+
   if (!/\bhero\b/.test(lower)) return false;
   if (/\b(another|different|new)\s+hero\b/i.test(message)) return true;
   if (/\b(impressive|stunning)\s+hero\b/i.test(message)) return true;
@@ -225,10 +242,19 @@ export function shouldAttemptAiHeroImageForHtml(heroHtml: string): boolean {
   return true;
 }
 
+export type BuildOpenAiHeroPromptOptions = {
+  /**
+   * Site-assistent / opvolgbeurt: unieke seed zodat Gemini niet telkens quasi-dezelfde compositie levert
+   * bij gelijkwaardige korte prompts.
+   */
+  variationSeed?: string;
+};
+
 export function buildOpenAiHeroPrompt(
   businessName: string,
   description: string,
   contract: DesignGenerationContract | null,
+  options?: BuildOpenAiHeroPromptOptions,
 ): string {
   const parts: string[] = [
     "Photorealistic documentary photograph for a commercial website hero — must read as a real photo, not an illustration or 3D render.",
@@ -252,7 +278,13 @@ export function buildOpenAiHeroPrompt(
     parts.push(`Palette: ${contract.referenceVisualAxes.paletteIntent.trim().slice(0, 200)}`);
   }
   const desc = description.trim().slice(0, 900);
-  if (desc) parts.push(`Brief: ${desc}`);
+  if (desc) parts.push(`Brief (primary creative direction — follow this literally for subject, props, and mood): ${desc}`);
+  const seed = options?.variationSeed?.trim();
+  if (seed) {
+    parts.push(
+      `Composition variation id: ${seed}. Use a clearly different camera angle, distance, and prop placement than a generic centered “AI product” shot; avoid repeating the same framing as typical barbershop or tool close-ups unless the Brief explicitly demands that exact layout.`,
+    );
+  }
   const p = parts.join(" ");
   return p.length > 3800 ? p.slice(0, 3800) : p;
 }
@@ -298,6 +330,10 @@ function studioHeroImageProviderMode(): "auto" | "google" | "openai" {
   return "auto";
 }
 
+function geminiHttpStatusRetryable(status: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
 async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroImageRasterPrefetch | null> {
   const apiKey = getGoogleAiStudioApiKey();
   if (!apiKey) return null;
@@ -306,50 +342,62 @@ async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroI
     /** Default: Gemini 2.5 Flash Image (“Nano Banana”); override in Vercel voor nieuwere previews. */
     "gemini-2.5-flash-image";
   const url = `${GEMINI_GENERATE_CONTENT_BASE}/${encodeURIComponent(model)}:generateContent`;
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 120_000);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseModalities: ["IMAGE"],
-          imageConfig: { aspectRatio: "16:9" },
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 120_000);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
         },
-      }),
-    });
-    const json = (await res.json()) as GeminiGenerateContentResponse;
-    if (!res.ok) {
-      console.warn("[ai-hero] Gemini generateContent error:", res.status, json?.error ?? json);
-      return null;
-    }
-    if (json.promptFeedback?.blockReason) {
-      console.warn("[ai-hero] Gemini promptFeedback block:", json.promptFeedback.blockReason);
-      return null;
-    }
-    const parts = json.candidates?.[0]?.content?.parts ?? [];
-    for (const p of parts) {
-      const mimeRaw = p.inlineData?.mimeType?.toLowerCase().trim();
-      const data = p.inlineData?.data;
-      if (!data || !mimeRaw) continue;
-      if (mimeRaw === "image/png" || mimeRaw === "image/jpeg" || mimeRaw === "image/webp") {
-        return { base64: data, mime: mimeRaw };
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ["IMAGE"],
+            imageConfig: { aspectRatio: "16:9" },
+          },
+        }),
+      });
+      const json = (await res.json()) as GeminiGenerateContentResponse;
+      if (!res.ok) {
+        console.warn("[ai-hero] Gemini generateContent error:", res.status, json?.error ?? json);
+        if (attempt < maxAttempts && geminiHttpStatusRetryable(res.status)) {
+          await new Promise((r) => setTimeout(r, 700 * attempt));
+          continue;
+        }
+        return null;
       }
+      if (json.promptFeedback?.blockReason) {
+        console.warn("[ai-hero] Gemini promptFeedback block:", json.promptFeedback.blockReason);
+        return null;
+      }
+      const parts = json.candidates?.[0]?.content?.parts ?? [];
+      for (const p of parts) {
+        const mimeRaw = p.inlineData?.mimeType?.toLowerCase().trim();
+        const data = p.inlineData?.data;
+        if (!data || !mimeRaw) continue;
+        if (mimeRaw === "image/png" || mimeRaw === "image/jpeg" || mimeRaw === "image/webp") {
+          return { base64: data, mime: mimeRaw };
+        }
+      }
+      console.warn("[ai-hero] Gemini response had no image inlineData in parts.");
+      return null;
+    } catch (e) {
+      console.warn("[ai-hero] Gemini request failed:", e instanceof Error ? e.message : e);
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 700 * attempt));
+        continue;
+      }
+      return null;
+    } finally {
+      clearTimeout(t);
     }
-    console.warn("[ai-hero] Gemini response had no image inlineData in parts.");
-    return null;
-  } catch (e) {
-    console.warn("[ai-hero] Gemini request failed:", e instanceof Error ? e.message : e);
-    return null;
-  } finally {
-    clearTimeout(t);
   }
+  return null;
 }
 
 type OpenAiImageGenResponse = {
@@ -578,19 +626,59 @@ function mutateFirstDivOpeningStripGradient(divOpen: string): string {
 }
 
 /**
+ * Eerste `<section …>` met `id`/`data-section` = hero. Alleen de **open-tag** (quote-aware), geen naïeve `[^>]`.
+ */
+function findInjectableHeroSectionOpen(html: string): { start: number; endExclusive: number; openTag: string } | null {
+  let i = 0;
+  while (i < html.length) {
+    const idx = html.toLowerCase().indexOf("<section", i);
+    if (idx === -1) return null;
+    const endExclusive = findHtmlOpenTagEnd(html, idx);
+    const openTag = html.slice(idx, endExclusive);
+    if (/\b(?:id|data-section)\s*=\s*["']hero["']/i.test(openTag)) {
+      return { start: idx, endExclusive, openTag };
+    }
+    i = endExclusive;
+  }
+  return null;
+}
+
+function sectionOpenTagEnsureRelative(openTag: string): string {
+  const m = openTag.match(/^<\s*section(\s[\s\S]*)>$/i);
+  if (!m) return openTag;
+  let attrs = m[1] ?? "";
+  if (/\bclass=["']/i.test(attrs)) {
+    attrs = attrs.replace(/\bclass=(["'])([^"']*)\1/i, (_full, q: string, cls: string) => {
+      if (/\brelative\b/i.test(cls)) return `class=${q}${cls}${q}`;
+      return `class=${q}relative ${cls}${q}`;
+    });
+  } else {
+    attrs = `${attrs} class="relative"`;
+  }
+  return `<section${attrs}>`;
+}
+
+/**
  * Split-hero (`grid` / `md:grid-cols-2` op de `<section>`): full-bleed-injectie op sectie-niveau
  * verdwijnt onder een linkerkolom met effen `bg-gradient-*`. Zet het raster in de eerste kolom en strip gradient-`bg-*`.
+ *
+ * Gebruikt {@link findHtmlOpenTagEnd} voor `<div>` — naïeve `[^>]*` breekt op `>` in Tailwind (bv. `[&>svg]:size-6`)
+ * en lekt fragmenten als `10">` als tekst op de pagina.
  */
 function tryInjectAiHeroIntoSplitGridFirstColumn(html: string, imgTag: string): string | null {
-  const out = html.replace(
-    /<section(\s[^>]*?\b(?:id|data-section)\s*=\s*["']hero["'][^>]*?)>(\s*)(<div)(\s[^>]*>)/i,
-    (full, secAttrs: string, ws: string, divLt: string, divRest: string) => {
-      if (!/\b(?:(?:md|lg):)?grid-cols-2\b/i.test(secAttrs)) return full;
-      const newDivOpen = mutateFirstDivOpeningStripGradient(`${divLt}${divRest}`);
-      return `<section${secAttrs}>${ws}${newDivOpen}${imgTag}`;
-    },
-  );
-  return out === html ? null : out;
+  const hero = findInjectableHeroSectionOpen(html);
+  if (!hero) return null;
+  const { start, endExclusive, openTag } = hero;
+  if (!/\b(?:(?:md|lg):)?grid-cols-2\b/i.test(openTag)) return null;
+
+  let p = endExclusive;
+  while (p < html.length && /\s/.test(html[p]!)) p++;
+  if (!/^<div\b/i.test(html.slice(p))) return null;
+  const divStart = p;
+  const divEndExclusive = findHtmlOpenTagEnd(html, divStart);
+  const divOpen = html.slice(divStart, divEndExclusive);
+  const newDivOpen = mutateFirstDivOpeningStripGradient(divOpen);
+  return `${html.slice(0, divStart)}${newDivOpen}${imgTag}${html.slice(divEndExclusive)}`;
 }
 
 /**
@@ -607,22 +695,10 @@ export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUr
   const splitFirst = tryInjectAiHeroIntoSplitGridFirstColumn(html, img);
   if (splitFirst != null) return splitFirst;
 
-  const out = html.replace(
-    /<section(\s[^>]*?\b(?:id|data-section)\s*=\s*["']hero["'][^>]*?)>/i,
-    (_full, attrs: string) => {
-      let nextAttrs = String(attrs);
-      if (/\bclass=["']/i.test(nextAttrs)) {
-        nextAttrs = nextAttrs.replace(/\bclass=(["'])([^"']*)\1/i, (_m, q: string, cls: string) => {
-          if (/\brelative\b/i.test(cls)) return `class=${q}${cls}${q}`;
-          return `class=${q}relative ${cls}${q}`;
-        });
-      } else {
-        nextAttrs = `${nextAttrs} class="relative"`;
-      }
-      return `<section${nextAttrs}>${img}`;
-    },
-  );
-  return out === html ? null : out;
+  const hero = findInjectableHeroSectionOpen(html);
+  if (!hero) return null;
+  const newOpen = sectionOpenTagEnsureRelative(hero.openTag);
+  return `${html.slice(0, hero.start)}${newOpen}${img}${html.slice(hero.endExclusive)}`;
 }
 
 export type ApplyAiHeroImageContext = {
@@ -685,7 +761,9 @@ export async function applyAiHeroImageToGeneratedPage(
     return data;
   }
 
-  const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
+  const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract, {
+    variationSeed: siteChatAi ? randomBytes(6).toString("hex") : undefined,
+  });
   let prefetch: StudioHeroImageRasterPrefetch | null =
     ctx.prefetchedHeroB64Promise != null ? await ctx.prefetchedHeroB64Promise : null;
   if (!prefetch) {
