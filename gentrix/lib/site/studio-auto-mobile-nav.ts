@@ -25,12 +25,8 @@ const BUTTON_CLASS_HAS_RESPONSIVE_HIDDEN_RE = /\b(?:sm|md|lg|xl|2xl):hidden\b/i;
 export function headerHasWiredAlpineMobileMenuToggle(fromHeader: string): boolean {
   if (!GENERIC_XDATA_RE.test(fromHeader)) return false;
 
-  // Check of drawer al x-show heeft met bekende nav toggle key — ook zonder @click op button
- const hasWiredDrawer = ALPINE_NAV_TOGGLE_KEYS.some((k) =>
-  new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(fromHeader) &&
-  new RegExp(`x-data\\s*=\\s*["'][^"']*\\b${k}\\b`).test(fromHeader),
-);
-  if (hasWiredDrawer) return true;
+  // Alleen een x-show-drawer + x-data telt niet als “bekabeld” zonder zichtbare menuknop met @click —
+  // veel AI-headers hebben wél een sheet, geen bruikbare hamburger (die blijft dan uit de DOM-qua zicht).
 
   const buttonRe = /<button\b[^>]{0,8000}>/gi;
   let m: RegExpExecArray | null;
@@ -182,13 +178,29 @@ export function replaceBrokenDrawerChromeWithAutoNavSource(bodyInnerHtml: string
   return bodyInnerHtml;
 }
 
+/**
+ * Typisch AI-patroon: `<nav class="hidden … lg:flex">` = links alleen op desktop; op mobiel geen menu
+ * tenzij er een knop met `sm|md|lg|…:hidden` (zichtbaar op kleine viewport) staat.
+ */
+function headerHasDesktopOnlyNavWithoutSmallScreenMenuButton(headerHtml: string): boolean {
+  const navOpen = headerHtml.match(/<nav\b[^>]*>/i)?.[0] ?? "";
+  const cls = navOpen.match(/\bclass\s*=\s*["']([^"']*)["']/i)?.[1] ?? "";
+  const desktopOnlyNav =
+    /\bhidden\b/.test(cls) &&
+    /\b(?:md|lg|xl|2xl):flex\b/.test(cls) &&
+    !/\b(?:sm|md|lg|xl|2xl):hidden\b/.test(cls);
+  if (!desktopOnlyNav) return false;
+  if (/<button\b[^>]*\bclass\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(headerHtml)) {
+    return false;
+  }
+  if (/<nav\b[^>]*\bclass\s*=\s*["'][^"']*\b(?:sm|md|lg|xl|2xl):hidden\b[^"']*["']/i.test(headerHtml)) {
+    return false;
+  }
+  return true;
+}
+
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
-  // Als er al x-show met bekende nav toggle key aanwezig is, niet injecteren
-  const hasAnyWiredXShow = ALPINE_NAV_TOGGLE_KEYS.some((k) =>
-    new RegExp(`x-show\\s*=\\s*["']${k}["']`).test(bodyInnerHtml),
-  );
-  if (hasAnyWiredXShow) return false;
   const win = sliceFirstHeaderHtml(bodyInnerHtml);
   if (!win) {
     const firstSection = sliceFirstSectionHtml(bodyInnerHtml);
@@ -200,7 +212,10 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (hasWiredMobileToggle) return false;
   const hasLikelyBrokenDrawer = headerHasLikelyBrokenMobileDrawer(win);
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
-  if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) return false;
+  if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) {
+    if (headerHasDesktopOnlyNavWithoutSmallScreenMenuButton(win)) return true;
+    return false;
+  }
   return true;
 }
 
