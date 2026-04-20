@@ -89,9 +89,15 @@ export function PublicPublishedTailwind({
   );
 
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
+  const [showSkeleton, setShowSkeleton] = useState<boolean>(embedded);
 
   useEffect(() => {
     let cancelled = false;
+    setShowSkeleton(embedded);
+    const skeletonDelayMs = embedded ? 0 : 320;
+    const skeletonTimer = window.setTimeout(() => {
+      if (!cancelled) setShowSkeleton(true);
+    }, skeletonDelayMs);
     /** Eén macrotask uitstellen zodat de browser eerst spinner/layout kan painten (zware sync `buildTailwindIframeSrcDoc` blokkeert anders meteen de main thread). */
     const t = window.setTimeout(() => {
       if (cancelled) return;
@@ -140,6 +146,7 @@ export function PublicPublishedTailwind({
     }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(skeletonTimer);
       window.clearTimeout(t);
     };
   }, [
@@ -157,6 +164,7 @@ export function PublicPublishedTailwind({
     draftPublicPreviewToken,
     navBrandLabel,
     iframeDocumentPathname,
+    embedded,
   ]);
 
   const iframeStyle: CSSProperties = embedded
@@ -178,7 +186,18 @@ export function PublicPublishedTailwind({
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
           <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
-          <PublicSitePageSkeleton embedded={embedded} />
+          {showSkeleton ? (
+            <PublicSitePageSkeleton embedded={embedded} />
+          ) : (
+            <div
+              className={cn("w-full bg-white", embedded ? "min-h-[min(72vh,720px)]" : "min-h-0 flex-1")}
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <span className="sr-only">Pagina wordt geladen</span>
+            </div>
+          )}
         </div>
       </PublishedTailwindNavBridge>
     );
