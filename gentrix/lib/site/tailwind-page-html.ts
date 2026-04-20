@@ -610,20 +610,9 @@ export function buildStudioHeaderNavAlpineClampScript(): string {
  * Hero + eerste secties: **keyframes** blijven voor een duidelijke load-animatie (zelfde timing als vroeger).
  */
 export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-preference) {
-  /* will-change op alle animatie-elementen: promoveert naar compositor layer vóór transitie start.
-     Voorkomt iOS/Android scroll-jank (browser hoeft geen layer te maken MID-scroll). */
-  [data-animation="fade-up"],
-  [data-animation="fade-in"],
-  [data-animation="slide-in-left"],
-  [data-animation="slide-in-right"],
-  [data-animation="scale-in"] {
-    will-change: opacity, transform;
-  }
-  [data-animation="fade-up"].studio-in-view,
-  [data-animation="fade-in"].studio-in-view,
-  [data-animation="slide-in-left"].studio-in-view,
-  [data-animation="slide-in-right"].studio-in-view,
-  [data-animation="scale-in"].studio-in-view {
+  /* will-change via JS gezet net vóór de IO triggert (zie STUDIO_SCROLL_REVEAL_SCRIPT);
+     hier alleen de reset: na de transitie geen actieve compositor layer meer nodig. */
+  [data-animation].studio-in-view {
     will-change: auto;
   }
   [data-animation="fade-up"] {
@@ -1009,6 +998,16 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
       var idx=Math.min(counts[k]-1,5);
       el.style.setProperty("--studio-stagger",(idx*50)+"ms");
     }
+    /* Pre-warm IO: promoveer compositor layers 25% vóór viewport zodat will-change
+       al klaar is als het element écht zichtbaar wordt. Doet alleen will-change, geen klasse. */
+    var preWarm=new IntersectionObserver(function(ents){
+      for(var p=0;p<ents.length;p++){
+        var pe=ents[p];
+        if(!pe.isIntersecting)continue;
+        try{pe.target.style.willChange='opacity,transform';}catch(_){}
+        preWarm.unobserve(pe.target);
+      }
+    },{root:null,rootMargin:"0px 0px 25% 0px",threshold:0.01});
     var io=new IntersectionObserver(function(ents){
       for(var j=0;j<ents.length;j++){
         var e=ents[j];
@@ -1017,7 +1016,7 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
         io.unobserve(e.target);
       }
     },{root:null,rootMargin:"0px 0px 8% 0px",threshold:0.01});
-    for(var n=0;n<nodes.length;n++)io.observe(nodes[n]);
+    for(var n=0;n<nodes.length;n++){io.observe(nodes[n]);preWarm.observe(nodes[n]);}
     for(var b=0;b<borders.length;b++)io.observe(borders[b]);
     /* IO in iframe/preview soms laat of nooit: transitie + fallback voorkomen eeuwig verborgen blokken */
     setTimeout(function(){
