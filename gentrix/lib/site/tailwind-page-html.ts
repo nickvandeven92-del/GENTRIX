@@ -1367,7 +1367,22 @@ export function buildStudioIosNavFixScript(): string {
 (function(){
   if(!/iP(?:hone|ad|od)/.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform)))return;
   var KEYS=[${keysLiteral}];
-  function iosl(on){try{document.documentElement.style.cssText=on?'overflow:hidden;position:fixed;width:100%':'';}catch(_){}}
+  var _savedY=0;
+  /* Scroll-lock: body position:fixed met top=-scrollY zodat de pagina visueel op dezelfde plek blijft.
+     Bij sluiten: stijl verwijderen + window.scrollTo herstelt exact de positie.
+     Zonder deze correctie springt iOS terug naar de bovenkant en triggert de IO voor elke sectie
+     die snel "gepasseerd" wordt, wat de "hangt elk stuk vast"-jank veroorzaakt. */
+  function iosl(on){
+    try{
+      if(on){
+        _savedY=window.scrollY||window.pageYOffset||document.documentElement.scrollTop||0;
+        document.body.style.cssText='overflow:hidden;position:fixed;top:-'+_savedY+'px;left:0;right:0;width:100%;';
+      }else{
+        document.body.style.cssText='';
+        try{window.scrollTo(0,_savedY);}catch(_r){}
+      }
+    }catch(_){}
+  }
   function scope(el){try{if(window.Alpine&&typeof Alpine.$data==='function')return Alpine.$data(el);}catch(_){}return el._x_dataStack&&el._x_dataStack[0];}
   document.addEventListener('alpine:initialized',function(){
     try{
@@ -2836,6 +2851,8 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     html { scroll-padding-top: ${isGentrixHomeSlug ? "0rem" : "5.5rem"}; }
     /* Geen browser-default marge rondom de preview: voorkomt een witte strook boven de vaste header. */
     html, body { margin: 0; padding: 0; }
+    /* iOS: expliciete scroll-richting → browser hoeft richting niet meer te detecteren → soepeler scroll. */
+    html { touch-action: pan-y; }
     /* Voorkom wazige rasterisatie op kleine tekst in footers (Chromium + transforms/filters in model-HTML). */
     footer, [role="contentinfo"] {
       -webkit-font-smoothing: antialiased;
