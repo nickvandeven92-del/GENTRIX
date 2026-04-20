@@ -61,6 +61,7 @@ import {
   displayStudioBrandNameForUi,
   isStudioUndecidedBrandName,
 } from "@/lib/studio/studio-brand-sentinel";
+import { STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 type StudioPanelLayout = "split" | "editor" | "preview";
 
 /** Laatste server-`stream_trace` (lokaal in `onSubmit`; TS volgt closure-mutaties niet → bij uitlezen expliciet verbreden). */
@@ -240,7 +241,10 @@ export function GeneratorForm({
 
   const streamingLivePreviewPayload = useMemo(() => {
     if (streamingSections.length === 0) return null;
-    const previewSections = postProcessTailwindSectionsForStreamingPreview(streamingSections, streamingConfig);
+    const gentrixScrollNav = (initialSubfolderSlug?.trim() ?? "") === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
+    const previewSections = postProcessTailwindSectionsForStreamingPreview(streamingSections, streamingConfig, {
+      gentrixScrollNav,
+    });
     const sectionIdsOrdered = previewSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
     return publishedPayloadFromParsed(
       {

@@ -1140,6 +1140,33 @@ header.studio-nav-tone-light button span[class*="bg-white"],
 nav.studio-nav-tone-light button span[class*="bg-white"] {
   background-color: var(--studio-nav-auto-fg) !important;
 }
+/*
+ * Alleen expliciet gemarkeerde GENTRIX primary nav:
+ * - top van pagina: transparant (geen witte balk over hero)
+ * - na scroll: subtiele frosted laag voor leesbaarheid
+ */
+header[data-gentrix-scroll-nav="1"],
+nav[data-gentrix-scroll-nav="1"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    backdrop-filter 220ms ease,
+    -webkit-backdrop-filter 220ms ease;
+}
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] {
+  background-color: color-mix(in srgb, white 82%, transparent) !important;
+  border-color: rgb(226 232 240 / 0.75) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(10px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+}
 `;
 
 export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
@@ -1192,8 +1219,15 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     return null;
   }
   var nav=null,ticking=false,THRESH=0.57,NAV_DARK_CAP=0.42;
+  function syncGentrixScrollNavState(){
+    if(!nav)return;
+    if(!(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")==="1"))return;
+    var sc=((window.pageYOffset||document.documentElement.scrollTop||document.body.scrollTop||0)>8);
+    nav.setAttribute("data-gentrix-scrolled",sc?"1":"0");
+  }
   function sync(){
     if(!nav)return;
+    syncGentrixScrollNavState();
     var r=nav.getBoundingClientRect();
     if(r.height<20||r.width<32)return;
     var navSelf=bgLum(nav);
@@ -1234,6 +1268,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
   function boot(){
     nav=pickNav();
     if(!nav)return;
+    syncGentrixScrollNavState();
     sync();
     addEventListener("scroll",onTick,{passive:true});
     addEventListener("resize",onTick,{passive:true});

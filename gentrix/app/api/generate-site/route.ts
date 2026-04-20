@@ -9,7 +9,7 @@ import { generateSiteRequestBodySchema } from "@/lib/api/generate-site-request-s
 import { resolveGenerateSiteModuleFlags } from "@/lib/api/resolve-generate-site-module-flags";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
-import { isValidSubfolderSlug } from "@/lib/slug";
+import { isValidSubfolderSlug, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 /** Keep in sync with `SITE_GENERATION_JOB_MAX_DURATION_SEC` in `@/lib/config/site-generation-job`. */
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     });
     const promptOpts: GenerateSitePromptOptions = {
       ...(slug && isValidSubfolderSlug(slug) ? { siteStorageSubfolderSlug: slug } : {}),
+      ...(slug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG ? { gentrixScrollNav: true } : {}),
       ...(parsed.data.clientImages?.length ? { clientImages: parsed.data.clientImages } : {}),
       ...(parsed.data.briefingReferenceImages?.length
         ? { briefingReferenceImages: parsed.data.briefingReferenceImages }

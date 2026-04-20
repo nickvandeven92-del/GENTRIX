@@ -20,7 +20,7 @@ import {
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { resolveGenerateSiteModuleFlags } from "@/lib/api/resolve-generate-site-module-flags";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
-import { isValidSubfolderSlug } from "@/lib/slug";
+import { isValidSubfolderSlug, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 
@@ -373,6 +373,7 @@ export async function runSiteGenerationJob(jobId: string): Promise<void> {
     ...(slugForStorage && isValidSubfolderSlug(slugForStorage)
       ? { siteStorageSubfolderSlug: slugForStorage }
       : {}),
+    ...(slugForStorage === STUDIO_HOMEPAGE_SUBFOLDER_SLUG ? { gentrixScrollNav: true } : {}),
     ...(clientImages.length > 0 ? { clientImages } : {}),
     ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),

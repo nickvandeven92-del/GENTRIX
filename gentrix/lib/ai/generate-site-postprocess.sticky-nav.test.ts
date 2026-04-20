@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   enforceStickyPrimaryTailwindChromeAcrossSections,
+  injectGentrixScrollNavMarkerOnceInHtml,
   injectStickyPrimaryChromeOnceInHtml,
   postProcessClaudeTailwindPage,
 } from "@/lib/ai/generate-site-postprocess";
@@ -78,5 +79,50 @@ describe("postProcessClaudeTailwindPage sticky nav", () => {
     };
     const out = postProcessClaudeTailwindPage(page);
     expect(out.sections[1]!.html).toMatch(/\bsticky\b/);
+  });
+});
+
+describe("injectGentrixScrollNavMarkerOnceInHtml", () => {
+  it("markeert eerste sticky top-nav voor gentrix scrollgedrag", () => {
+    const html = '<section><header class="sticky top-0 z-50 bg-white/90 border-b">x</header></section>';
+    const { html: out, applied } = injectGentrixScrollNavMarkerOnceInHtml(html);
+    expect(applied).toBe(true);
+    expect(out).toMatch(/data-gentrix-scroll-nav="1"/);
+    expect(out).toMatch(/data-gentrix-scrolled="0"/);
+  });
+
+  it("slaaat niet-sticky headers over", () => {
+    const html = '<section><header class="relative bg-white border-b">x</header></section>';
+    const { html: out, applied } = injectGentrixScrollNavMarkerOnceInHtml(html);
+    expect(applied).toBe(false);
+    expect(out).toBe(html);
+  });
+});
+
+describe("postProcessClaudeTailwindPage gentrixScrollNav flag", () => {
+  const basePage: ClaudeTailwindPageOutput = {
+    config: {
+      style: "tailwind",
+      theme: { primary: "#0f172a", accent: "#0d9488", secondary: "#64748b" },
+      font: "system-ui, sans-serif",
+    },
+    sections: [
+      {
+        id: "hero",
+        html: '<section id="hero"><header class="sticky top-0 z-50 bg-white/90 border-b">nav</header></section>',
+      },
+    ],
+  };
+
+  it("zet marker alleen als opt-in aanstaat", () => {
+    const withFlag = postProcessClaudeTailwindPage(basePage, { gentrixScrollNav: true });
+    expect(withFlag.sections[0]!.html).toMatch(/data-gentrix-scroll-nav="1"/);
+    expect(withFlag.sections[0]!.html).toMatch(/data-gentrix-scrolled="0"/);
+  });
+
+  it("laat standaard-gedrag ongemoeid zonder opt-in", () => {
+    const withoutFlag = postProcessClaudeTailwindPage(basePage);
+    expect(withoutFlag.sections[0]!.html).not.toMatch(/data-gentrix-scroll-nav="1"/);
+    expect(withoutFlag.sections[0]!.html).not.toMatch(/data-gentrix-scrolled="0"/);
   });
 });

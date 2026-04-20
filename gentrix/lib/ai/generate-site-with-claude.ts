@@ -82,6 +82,7 @@ import {
 import { STUDIO_SITE_GENERATION } from "@/lib/ai/studio-generation-fixed-config";
 import { SITE_GENERATION_JOB_MAX_DURATION_MS } from "@/lib/config/site-generation-job";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
+import { STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 
 /**
  * Placeholder in de site-generatie-userprompt: het Denklijn-contract wordt hier ingevoegd
@@ -1088,6 +1089,11 @@ export type GenerateSitePromptOptions = {
   appointmentsEnabled?: boolean;
   /** Wanneer `true`: idem voor `__STUDIO_SHOP_PATH__`. */
   webshopEnabled?: boolean;
+  /**
+   * Gentrix-home-specifieke nav-behandeling (transparant op top + subtiel glas bij scroll).
+   * Standaard uit; activeer alleen voor de eigen homepage-generator.
+   */
+  gentrixScrollNav?: boolean;
 };
 
 const UPGRADE_PROMPT_JSON_MAX = 150_000;
@@ -2129,6 +2135,12 @@ function applyStockUrlSanitizeToGeneratedPage(data: GeneratedTailwindPage): Gene
   return stripUnsplashUrlsFromGeneratedTailwindPage(data);
 }
 
+function shouldEnableGentrixScrollNav(promptOptions?: GenerateSitePromptOptions): boolean {
+  if (promptOptions?.gentrixScrollNav === true) return true;
+  const slug = promptOptions?.siteStorageSubfolderSlug?.trim().toLowerCase();
+  return slug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
+}
+
 function finalizeGenerateSiteFromClaudeText(
   textBody: string,
   stop_reason: string | null,
@@ -2136,6 +2148,7 @@ function finalizeGenerateSiteFromClaudeText(
     useMarketingMultiPage: boolean;
     strictLandingContract?: boolean;
     marketingPageSlugs?: readonly string[];
+    gentrixScrollNav?: boolean;
   },
 ): GenerateSiteResult {
   if (!textBody.trim()) {
@@ -2222,7 +2235,9 @@ function finalizeGenerateSiteFromClaudeText(
         rawText: textBody,
       };
     }
-    const processed = postProcessClaudeTailwindMarketingSite(validated.data);
+    const processed = postProcessClaudeTailwindMarketingSite(validated.data, {
+      gentrixScrollNav: options.gentrixScrollNav,
+    });
     const mapped = mapClaudeMarketingSiteOutputToSections(processed);
     const ruleErrors = validateMarketingSiteHardRules(
       mapped.sections,
@@ -2260,7 +2275,9 @@ function finalizeGenerateSiteFromClaudeText(
     };
   }
 
-  const processed = postProcessClaudeTailwindPage(validated.data);
+  const processed = postProcessClaudeTailwindPage(validated.data, {
+    gentrixScrollNav: options.gentrixScrollNav,
+  });
   const mapped = mapClaudeOutputToSections(processed);
   if (options.strictLandingContract) {
     const strictErrors = validateStrictLandingPageContract(mapped.sections);
@@ -2345,6 +2362,7 @@ export async function executeGenerateSitePhase2(
     useMarketingMultiPage: p.useMarketingMultiPage,
     strictLandingContract: p.strictLandingContract,
     marketingPageSlugs: p.marketingPageSlugs,
+    gentrixScrollNav: shouldEnableGentrixScrollNav(promptOptions),
   });
   if (!result.ok) {
     return result;
@@ -2360,6 +2378,7 @@ export async function executeGenerateSitePhase2(
     draft: data,
     homepagePlan: p.homepagePlan,
     preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+    gentrixScrollNav: shouldEnableGentrixScrollNav(promptOptions),
     pipelineInterpreted: p.pipelineFeedback.interpreted,
     designContract,
     referenceSiteSnapshot: p.referenceSiteSnapshot,
@@ -2842,6 +2861,7 @@ export function createGenerateSiteReadableStream(
           useMarketingMultiPage: p.useMarketingMultiPage,
           strictLandingContract: p.strictLandingContract,
           marketingPageSlugs: p.marketingPageSlugs,
+          gentrixScrollNav: shouldEnableGentrixScrollNav(promptOptions),
         });
         if (!result.ok) {
           trace("parse_failed", result.error.slice(0, 500));
@@ -2886,6 +2906,7 @@ export function createGenerateSiteReadableStream(
               draft: data,
               homepagePlan: p.homepagePlan,
               preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
+              gentrixScrollNav: shouldEnableGentrixScrollNav(promptOptions),
               pipelineInterpreted: p.pipelineFeedback.interpreted,
               designContract,
               referenceSiteSnapshot: p.referenceSiteSnapshot,
