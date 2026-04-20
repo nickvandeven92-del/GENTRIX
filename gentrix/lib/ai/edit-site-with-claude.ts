@@ -96,12 +96,48 @@ export function inferTargetIndicesFromInstruction(
   return [...seen].sort((a, b) => a - b);
 }
 
+/**
+ * Statisch deel van de edit-prompt: Alpine-regels + technische regels + output-formaat.
+ * Identiek voor elke edit-request — geschikt voor Anthropic prompt caching.
+ */
+function buildEditStaticBlock(): string {
+  return `Je past een **bestaande** landingspagina aan. De site bestaat uit HTML-fragmenten per sectie met Tailwind utility-classes (iframe-preview laadt Alpine.js voor micro-interacties).
+
+${getAlpineInteractivityPromptBlock()}
+
+=== TECHNISCHE REGELS ===
+- Geldige HTML in elk \`html\`-veld: geen \`<script>\` of \`<style>\` in het fragment, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links; Alpine-attributen (\`x-*\`, \`@\`, \`:\`) wel volgens het blok hierboven.
+- Afbeeldingen: alleen **https** (eigen of klant-URL's; geen generieke stock-services tenzij de briefing dat expliciet noemt).
+- Behoud **ankers en \`id\`'s** die naar andere secties linken (\`#features\`, \`#pricing\`, …) tenzij de gebruiker vraagt ze te wijzigen; houd ze dan consistent.
+- **Geen dubbele navbar:** maximaal **één** globale \`<header>\`/\`<nav>\` met de hoofdlinks; verwijder een tweede identieke menulijst als de gebruiker dat impliciet wil (rommel / dubbel).
+- Behoud **data-animation**, **data-aos** (AOS) en **data-lucide** waar zinvol; je mag ze toevoegen of aanpassen. **Niet** \`data-aos\` en \`data-animation\` op hetzelfde element. **GSAP:** shell laadt \`gsap\` + plugins; **geen** nieuwe \`<script>\` in sectie-HTML — alleen markup/selectors; gebruikers-GSAP hoort in **Eigen JS**. **Marquee/ticker (verboden):** verwijder \`studio-marquee\`, \`studio-marquee-track\` en \`<marquee>\`; toon logo's/trust **stilstaand** (grid of vaste rij). **Laser:** niet **nieuw** toevoegen tenzij de gebruiker **expliciet** om neon/cyber/scan vraagt; bestaande \`studio-laser-*\` mag je laten of verwijderen als het niet bij de opdracht past.
+- Mobiel: layouts moeten met Tailwind breakpoints (\`sm:\`, \`md:\`, \`lg:\`) bruikbaar blijven.
+
+=== OUTPUT (strikt) ===
+Lever **uitsluitend** één JSON-object. Geen markdown, geen code fences.
+
+**Belangrijk — kosten en snelheid:** zet **alleen** secties in \`sectionUpdates\` die je **echt** wijzigt. Voorbeeld: alleen navbar-dropdown → één object met die sectie-index; alleen footer-links → één object voor de footer-sectie. **Nooit** ongewijzigde secties opnieuw uitschrijven.
+
+Vorm:
+{
+  "sectionUpdates": [
+    { "index": 0, "html": "<section class=\\"...\\">...</section>", "sectionName": "optioneel als je het label wijzigt" }
+  ],
+  "config": { ... }  // optioneel; zie hieronder
+}`;
+}
+
+/**
+ * Bouwt de edit-prompt als twee ContentBlockParam's:
+ * 1. Statisch blok (Alpine + tech-regels + output-formaat) — cache_control voor hergebruik tussen requests.
+ * 2. Dynamisch blok (indices, config-regel, site-payload, gebruikersinstructie) — per request anders.
+ */
 function buildEditUserPrompt(
   instruction: string,
   sections: TailwindSection[],
   config: TailwindPageConfig | null | undefined,
   scoped: number[] | null,
-): string {
+): ContentBlockParam[] {
   const legacy = config != null && isLegacyTailwindPageConfig(config);
 
   const sectionIndex = sections.map((s, i) => {
@@ -154,7 +190,7 @@ ${JSON.stringify(sectionIndex)}
 === TE BEWERKEN SECTIES (volledige HTML — pas inhoudelijk alleen deze aan) ===
 ${JSON.stringify(targetSections)}
 
-**Scope (strikt):** Gebruik in \`sectionUpdates\` **uitsluitend** \`index\`-waarden die in **targetSections** voorkomen (${scoped.join(", ")}). Wijzig **geen** andere secties, ook niet voor “kleine verbeteringen” of consistentie, tenzij de gebruiker dat expliciet vraagt — dan verwachten we een nieuwe beurt met ruimere scope.
+**Scope (strikt):** Gebruik in \`sectionUpdates\` **uitsluitend** \`index\`-waarden die in **targetSections** voorkomen (${scoped.join(", ")}). Wijzig **geen** andere secties, ook niet voor "kleine verbeteringen" of consistentie, tenzij de gebruiker dat expliciet vraagt — dan verwachten we een nieuwe beurt met ruimere scope.
 `
       : `=== HUIDIGE SITE (JSON — alle secties met volledige HTML) ===
 ${JSON.stringify(currentPayload)}
@@ -164,32 +200,7 @@ ${JSON.stringify(currentPayload)}
     ? `De huidige \`config\` is **legacy** (themeName, primaryColor, …). Je mag **geen** nieuwe \`config\` in je antwoord zetten — alleen \`sectionUpdates\` voor HTML-wijzigingen.`
     : `Als de gebruiker **expliciet** kleuren, typografie of algemene stijl (\`config\`) wil wijzigen, mag je een volledig \`config\`-object meesturen (master-formaat: style, font, \`theme\` met minstens primary/accent en optioneel secondary, background, textColor, textMuted, vibe, typographyStyle, borderRadius, shadowScale, spacingScale, secundaire tinten). Anders laat je \`config\` weg.`;
 
-  return `Je past een **bestaande** landingspagina aan. De site bestaat uit HTML-fragmenten per sectie met Tailwind utility-classes (iframe-preview laadt Alpine.js voor micro-interacties).
-
-${getAlpineInteractivityPromptBlock()}
-
-=== TECHNISCHE REGELS ===
-- Geldige HTML in elk \`html\`-veld: geen \`<script>\` of \`<style>\` in het fragment, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links; Alpine-attributen (\`x-*\`, \`@\`, \`:\`) wel volgens het blok hierboven.
-- Afbeeldingen: alleen **https** (eigen of klant-URL's; geen generieke stock-services tenzij de briefing dat expliciet noemt).
-- Behoud **ankers en \`id\`’s** die naar andere secties linken (\`#features\`, \`#pricing\`, …) tenzij de gebruiker vraagt ze te wijzigen; houd ze dan consistent.
-- **Geen dubbele navbar:** maximaal **één** globale \`<header>\`/\`<nav>\` met de hoofdlinks; verwijder een tweede identieke menulijst als de gebruiker dat impliciet wil (rommel / dubbel).
-- Behoud **data-animation**, **data-aos** (AOS) en **data-lucide** waar zinvol; je mag ze toevoegen of aanpassen. **Niet** \`data-aos\` en \`data-animation\` op hetzelfde element. **GSAP:** shell laadt \`gsap\` + plugins; **geen** nieuwe \`<script>\` in sectie-HTML — alleen markup/selectors; gebruikers-GSAP hoort in **Eigen JS**. **Marquee/ticker (verboden):** verwijder \`studio-marquee\`, \`studio-marquee-track\` en \`<marquee>\`; toon logo's/trust **stilstaand** (grid of vaste rij). **Laser:** niet **nieuw** toevoegen tenzij de gebruiker **expliciet** om neon/cyber/scan vraagt; bestaande \`studio-laser-*\` mag je laten of verwijderen als het niet bij de opdracht past.
-- Mobiel: layouts moeten met Tailwind breakpoints (\`sm:\`, \`md:\`, \`lg:\`) bruikbaar blijven.
-
-=== OUTPUT (strikt) ===
-Lever **uitsluitend** één JSON-object. Geen markdown, geen code fences.
-
-**Belangrijk — kosten en snelheid:** zet **alleen** secties in \`sectionUpdates\` die je **echt** wijzigt. Voorbeeld: alleen navbar-dropdown → één object met die sectie-index; alleen footer-links → één object voor de footer-sectie. **Nooit** ongewijzigde secties opnieuw uitschrijven.
-
-Vorm:
-{
-  "sectionUpdates": [
-    { "index": 0, "html": "<section class=\\"...\\">...</section>", "sectionName": "optioneel als je het label wijzigt" }
-  ],
-  "config": { ... }  // optioneel; zie hieronder
-}
-
-**Indices:** secties in de JSON hierboven hebben \`index\` 0 t/m ${sections.length - 1}. Elk item in \`sectionUpdates\` heeft \`index\` (integer) + volledige nieuwe \`html\` voor **die ene** sectie. Meerdere secties wijzigen mag, maar **geen dubbele index** in \`sectionUpdates\`.
+  const dynamicText = `**Indices:** secties in de JSON hierboven hebben \`index\` 0 t/m ${sections.length - 1}. Elk item in \`sectionUpdates\` heeft \`index\` (integer) + volledige nieuwe \`html\` voor **die ene** sectie. Meerdere secties wijzigen mag, maar **geen dubbele index** in \`sectionUpdates\`.
 
 ${configRule}
 
@@ -197,6 +208,11 @@ ${scopeBlock}
 
 === VERZOEK VAN DE GEBRUIKER ===
 ${instruction}`;
+
+  return [
+    { type: "text", text: buildEditStaticBlock(), cache_control: { type: "ephemeral" } },
+    { type: "text", text: dynamicText },
+  ];
 }
 
 export async function editSiteWithClaude(
@@ -223,31 +239,32 @@ export async function editSiteWithClaude(
   const client = new Anthropic({ apiKey });
 
   const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
-  const system = [
-    knowledge,
+
+  const editorInstruction =
     scoped != null
       ? "Je bent een nauwkeurige front-end editor. Deze opdracht heeft een **beperkte scope**: wijzig alleen secties die in de prompt als target staan; geen andere indices in sectionUpdates."
-      : "Je bent een nauwkeurige front-end editor. Je wijzigt alleen wat gevraagd wordt; in JSON lever je minimaal sectionUpdates (alleen gewijzigde indices) en volgt het outputformaat exact.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+      : "Je bent een nauwkeurige front-end editor. Je wijzigt alleen wat gevraagd wordt; in JSON lever je minimaal sectionUpdates (alleen gewijzigde indices) en volgt het outputformaat exact.";
 
-  const editBody = buildEditUserPrompt(instruction, sections, config, scoped);
-  const userContent: string | ContentBlockParam[] =
+  const systemBlocks: TextBlockParam[] = [];
+  if (knowledge) {
+    systemBlocks.push({ type: "text", text: knowledge, cache_control: { type: "ephemeral" } });
+  }
+  systemBlocks.push({ type: "text", text: editorInstruction });
+
+  const editBlocks = buildEditUserPrompt(instruction, sections, config, scoped);
+  const userContent: ContentBlockParam[] =
     userPrefixBlocks.length > 0
       ? [
           ...userPrefixBlocks,
-          {
-            type: "text",
-            text: `\n\n=== OPDRACHT (site bewerken) ===\n\n${editBody}`,
-          },
+          { type: "text", text: "\n\n=== OPDRACHT (site bewerken) ===" },
+          ...editBlocks,
         ]
-      : editBody;
+      : editBlocks;
 
   const message = await client.messages.create({
     model,
     max_tokens: clampMaxTokensNonStreaming(model, 24_576),
-    system,
+    system: systemBlocks,
     messages: [
       {
         role: "user",

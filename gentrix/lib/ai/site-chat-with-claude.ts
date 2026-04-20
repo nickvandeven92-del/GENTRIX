@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ContentBlockParam, MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import type { ContentBlockParam, MessageParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import { z } from "zod";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import { clampMaxTokensNonStreaming } from "@/lib/ai/anthropic-nonstream-limits";
@@ -340,7 +340,7 @@ export async function finalizeSiteChatWithAiHeroPipeline(
 export type SiteChatClaudeRequest = {
   client: Anthropic;
   model: string;
-  system: string;
+  system: TextBlockParam[];
   messages: MessageParam[];
   sections: TailwindSection[];
   config: TailwindPageConfig | null | undefined;
@@ -371,7 +371,12 @@ export async function buildSiteChatClaudeRequest(
   const scopedIndices = resolveSiteChatTargetIndices(messages, sections, explicitTargetSectionIndices);
   const currentPayload = buildChatPayloadForModel(sections, config, scopedIndices);
   const { systemText: knowledge, userPrefixBlocks } = await getKnowledgeContextForClaude();
-  const system = [knowledge, buildChatSystemPrompt(legacy, studioModuleFlags)].filter(Boolean).join("\n\n---\n\n");
+  const chatSystemPrompt = buildChatSystemPrompt(legacy, studioModuleFlags);
+  const systemBlocks: TextBlockParam[] = [];
+  if (knowledge) {
+    systemBlocks.push({ type: "text", text: knowledge, cache_control: { type: "ephemeral" } });
+  }
+  systemBlocks.push({ type: "text", text: chatSystemPrompt, cache_control: { type: "ephemeral" } });
   const claudeMessages = buildClaudeMessages(
     messages,
     currentPayload,
@@ -382,7 +387,7 @@ export async function buildSiteChatClaudeRequest(
 
   return {
     ok: true,
-    req: { client, model, system, messages: claudeMessages, sections, config, allowedSectionIndices: scopedIndices },
+    req: { client, model, system: systemBlocks, messages: claudeMessages, sections, config, allowedSectionIndices: scopedIndices },
   };
 }
 
