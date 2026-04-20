@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { MfaEnrollSection } from "@/components/auth/mfa-enroll-section";
 
 export const metadata: Metadata = {
   title: "Instellingen",
@@ -39,14 +41,14 @@ export default function AdminSettingsPage() {
 
       <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Twee-stapsverificatie (MFA)</h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Authenticator-app MFA is verplicht voor toegang tot{" "}
-          <code className="rounded bg-zinc-100 px-1 text-xs dark:bg-zinc-800">/admin</code> en{" "}
-          <code className="rounded bg-zinc-100 px-1 text-xs dark:bg-zinc-800">/portal/…</code> (zakelijk klantportaal)
-          zodra je een TOTP-factor hebt geregistreerd in Supabase Auth. Schakel MFA in via het Supabase-dashboard (
-          <strong>Authentication → Users → [user] → Enable MFA</strong>) of gebruik de Auth API om een factor te
-          enrollen. Na inschrijving volgt bij login een code uit je app (standaard Supabase-flow).
+        <p className="mt-2 mb-5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          Koppel een authenticator-app (Google Authenticator, Authy, 1Password, …). Na activatie vraagt het CRM bij
+          elke login om een 6-cijferige code. Verplicht voor toegang tot{" "}
+          <code className="rounded bg-zinc-100 px-1 text-xs dark:bg-zinc-800">/admin</code>.
         </p>
+        <Suspense fallback={<p className="text-sm text-zinc-500">Laden…</p>}>
+          <MfaEnrollSection />
+        </Suspense>
       </section>
     </div>
   );
