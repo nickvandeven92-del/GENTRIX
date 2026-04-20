@@ -58,7 +58,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
       <a href="#top" id="top" className="sr-only">
         Top
       </a>
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
+      <div className="relative z-50 mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
         <a
           href={logoHomeHref}
           className="group flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--site-bg)]"
@@ -115,10 +115,18 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           {open ? <X className="size-6" strokeWidth={2} /> : <Menu className="size-6" strokeWidth={2} />}
         </button>
       </div>
+      {open && (
+        <button
+          type="button"
+          aria-label="Menu sluiten"
+          className="fixed inset-0 z-40 bg-transparent lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
 
       <div
         className={cn(
-          "border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] px-4 py-4 lg:hidden",
+          "relative z-50 border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] px-4 py-4 lg:hidden",
           open ? "block" : "hidden",
         )}
       >
@@ -127,7 +135,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             <a
               key={link.label + link.href}
               href={link.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--site-fg)]"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--site-fg)] hover:bg-transparent hover:text-[var(--site-fg)] active:bg-transparent"
               onClick={() => setOpen(false)}
             >
               {link.label}
@@ -136,7 +144,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           {nav.ctaLabel && nav.ctaHref && (
             <a
               href={nav.ctaHref}
-              className="mt-2 rounded-md bg-[var(--site-primary)] px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.12em] text-zinc-950"
+              className="mt-2 rounded-md bg-[var(--site-primary)] px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.12em] text-zinc-950 hover:bg-[var(--site-primary)] active:bg-[var(--site-primary)]"
               onClick={() => setOpen(false)}
             >
               {nav.ctaLabel}
