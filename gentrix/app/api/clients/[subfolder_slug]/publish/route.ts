@@ -42,8 +42,8 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
   }
 
-  revalidateTag(publishedSiteTag(subfolder_slug), "default");
-  revalidateTag("published-site", "default");
+  revalidateTag(publishedSiteTag(subfolder_slug), { expire: 0 });
+  revalidateTag("published-site", { expire: 0 });
   revalidatePath(`/site/${subfolder_slug}`);
 
   return NextResponse.json({

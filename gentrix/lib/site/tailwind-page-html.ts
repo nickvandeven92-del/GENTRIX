@@ -1534,6 +1534,9 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(fb)nav=fb;
     }
     if(!nav)return;
+    var alreadyMark=nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")==="1";
+    var fbActive=document.documentElement.getAttribute&&document.documentElement.getAttribute("data-gentrix-scroll-nav-fallback")==="1";
+    if(!alreadyMark&&!fbActive)return;
     if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-overlay")!=="1"){
       nav.setAttribute("data-gentrix-scroll-overlay","1");
     }

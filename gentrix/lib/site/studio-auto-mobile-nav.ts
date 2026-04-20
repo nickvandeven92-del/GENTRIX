@@ -239,6 +239,17 @@ function headerHasDesktopOnlyNavWithoutSmallScreenMenuButton(headerHtml: string)
 
 export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean {
   if (/data-gentrix-auto-mobile-nav\s*=\s*/i.test(bodyInnerHtml)) return false;
+
+  // Vroege exit: body heeft zowel een nav-key in x-data als een @click die die key bedient.
+  // Dit vangt alle patronen op, ook als de knop geen lg:hidden of menu-aria-label heeft.
+  for (const key of ALPINE_NAV_TOGGLE_KEYS) {
+    if (new RegExp(`\\b${key}\\s*:`).test(bodyInnerHtml)) {
+      if (new RegExp(`(?:@click|x-on:click)\\s*=\\s*["'][^"]+\\b${key}\\b`).test(bodyInnerHtml)) {
+        return false;
+      }
+    }
+  }
+
   const win = sliceFirstHeaderHtml(bodyInnerHtml);
   if (!win) {
     const firstSection = sliceFirstSectionHtml(bodyInnerHtml);
