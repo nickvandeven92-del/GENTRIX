@@ -1148,6 +1148,12 @@ nav.studio-nav-tone-light button span[class*="bg-white"] {
  */
 header[data-gentrix-scroll-nav="1"],
 nav[data-gentrix-scroll-nav="1"] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 90 !important;
   background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
@@ -1164,6 +1170,28 @@ html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0
 html[data-gentrix-scroll-nav-fallback="1"] header[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]),
 html[data-gentrix-scroll-nav-fallback="1"] nav[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]),
 html[data-gentrix-scroll-nav-fallback="1"] nav[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]) {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 90 !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] body > nav:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > nav:first-of-type {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 90 !important;
   background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
@@ -1180,18 +1208,18 @@ nav[data-gentrix-scroll-nav="1"] > .mx-auto {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] {
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"],
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] {
   background-color: color-mix(in srgb, rgb(255 255 255 / 0.9) 78%, transparent) !important;
   border-color: rgb(226 232 240 / 0.9) !important;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
   backdrop-filter: blur(10px) saturate(140%) !important;
   -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto {
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto {
   background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
@@ -1267,9 +1295,13 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(el.getAttribute&&el.getAttribute("data-gentrix-auto-mobile-nav")==="1")continue;
       var st=getComputedStyle(el);
       if(st.position!=="fixed"&&st.position!=="sticky")continue;
+      if(st.display==="none"||st.visibility==="hidden")continue;
+      var op=parseFloat(st.opacity||"1");
+      if(!isNaN(op)&&op<0.06)continue;
       var r=el.getBoundingClientRect();
       if(r.top>innerHeight*0.42)continue;
       if(r.height>innerHeight*0.55)continue;
+      if(r.width<Math.max(240,innerWidth*0.45))continue;
       return el;
     }
     return null;
@@ -1287,11 +1319,12 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     if(!roleOk)return false;
     var st=getComputedStyle(el);
     if(st.position!=="sticky"&&st.position!=="fixed")return false;
+    if(st.display==="none"||st.visibility==="hidden")return false;
+    var op=parseFloat(st.opacity||"1");
+    if(!isNaN(op)&&op<0.06)return false;
     var r=el.getBoundingClientRect();
-    if(r.top>8||r.height<28||r.height>220)return false;
-    var c=(el.className||"").toString().toLowerCase();
-    if(c.indexOf("sticky")<0&&c.indexOf("fixed")<0)return false;
-    if(c.indexOf("top-0")<0&&c.indexOf("top:0")<0)return false;
+    if(r.top<-12||r.top>20||r.height<28||r.height>220)return false;
+    if(r.width<Math.max(240,innerWidth*0.45))return false;
     return true;
   }
   function fallbackGentrixNavCandidate(){
@@ -1305,15 +1338,28 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     }
     return null;
   }
-  var nav=null,ticking=false,THRESH=0.57,NAV_DARK_CAP=0.42;
+  var nav=null,ticking=false,THRESH=0.57,NAV_DARK_CAP=0.42,scrollIdleTimer=0;
+  function setGentrixScrolling(active){
+    if(!nav||!shouldTreatAsGentrixScrollNavTarget(nav))return;
+    nav.setAttribute("data-gentrix-scrolling",active?"1":"0");
+  }
+  function touchGentrixScrolling(){
+    setGentrixScrolling(true);
+    if(scrollIdleTimer)clearTimeout(scrollIdleTimer);
+    scrollIdleTimer=setTimeout(function(){setGentrixScrolling(false);},220);
+  }
   function syncGentrixScrollNavState(){
     if(!nav)return;
     if(!shouldTreatAsGentrixScrollNavTarget(nav))return;
     if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")!=="1"){
       nav.setAttribute("data-gentrix-scroll-nav","1");
     }
+    if(nav.getAttribute&&nav.getAttribute("data-gentrix-scrolling")==null){
+      nav.setAttribute("data-gentrix-scrolling","0");
+    }
     var sc=((window.pageYOffset||document.documentElement.scrollTop||document.body.scrollTop||0)>8);
     nav.setAttribute("data-gentrix-scrolled",sc?"1":"0");
+    if(!sc)setGentrixScrolling(false);
   }
   function sync(){
     if(!nav)return;
@@ -1348,6 +1394,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     nav.classList.toggle("studio-nav-tone-light",useLightChrome);
   }
   function onTick(){
+    touchGentrixScrolling();
     if(ticking)return;
     ticking=true;
     requestAnimationFrame(function(){

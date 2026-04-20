@@ -33,4 +33,11 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     expect(doc).toContain('html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]');
     expect(doc).toContain("background-color: transparent !important;");
   });
+
+  it("includes idle timeout logic so scrolled chrome clears after scrolling stops", () => {
+    const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
+    expect(doc).toContain("scrollIdleTimer=0");
+    expect(doc).toContain("touchGentrixScrolling()");
+    expect(doc).toContain("setGentrixScrolling(false)");
+  });
 });
