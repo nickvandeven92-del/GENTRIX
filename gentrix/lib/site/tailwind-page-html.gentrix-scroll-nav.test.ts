@@ -39,5 +39,6 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     expect(doc).toContain("scrollIdleTimer=0");
     expect(doc).toContain("touchGentrixScrolling()");
     expect(doc).toContain("setGentrixScrolling(false)");
+    expect(doc).toContain("nav.classList.remove(\"studio-nav-tone-light\")");
   });
 });
