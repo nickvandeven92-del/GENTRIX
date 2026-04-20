@@ -11,11 +11,29 @@ import {
   contactNavCaptureFragmentId,
   hasResolvedPublicContactRoute,
   landingSectionIdsForPublicSubpageNav,
+  publicSiteIframeDocumentPathname,
   resolvePublicTailwindContactPlan,
   selectTailwindSectionsForPublicView,
+  type ContactSubpageNavScriptInput,
 } from "@/lib/site/tailwind-contact-subpage";
+import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
+import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
 import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
+
+/**
+ * Geeft de site-origin terug voor server-side srcDoc opbouw:
+ * - `NEXT_PUBLIC_SITE_URL` (aanbevolen; zet dit in .env.local / Vercel-env)
+ * - `VERCEL_URL` als fallback (automatisch gezet door Vercel; niet altijd het custom-domein)
+ * - Lege string als niets beschikbaar (client bouwt als fallback)
+ */
+function deriveSSROrigin(): string {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    ""
+  );
+}
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -124,6 +142,74 @@ export function PublishedSiteView({
         : publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)
           ? `${docTitle} · Contact`
           : docTitle;
+
+    /** Contact-subpage nav — gedeeld door SSR-build en client-prop. */
+    const contactNavBase: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null =
+      publishedSlug?.trim() &&
+      visibility === "public" &&
+      (hasResolvedPublicContactRoute(contactPlan) || marketingKeys.length > 0)
+        ? {
+            slug: publishedSlug.trim(),
+            view:
+              marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
+                ? "marketing"
+                : publicSiteTailwindPath === "contact"
+                  ? "contact"
+                  : "landing",
+            activeMarketingSlug:
+              marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
+                ? marketingKey
+                : undefined,
+            contactSectionId: contactNavCaptureFragmentId(contactPlan),
+            landingSectionIds: landingSectionIdsForPublicSubpageNav(sections, contactPlan),
+            marketingSlugs: marketingKeys,
+          }
+        : null;
+
+    /**
+     * Server-side srcDoc — bouwt de volledige iframe-HTML op de Vercel-server (ISR) i.p.v. in de browser.
+     * Voordelen: iframe verschijnt direct bij eerste paint; CDN-scripts worden via eigen proxy geladen.
+     * Vereist `NEXT_PUBLIC_SITE_URL` (of `VERCEL_URL`) — zonder origin valt de client terug op client-build.
+     */
+    let ssrSrcDoc: string | null = null;
+    if (visibility === "public") {
+      try {
+        const ssrOrigin = deriveSSROrigin();
+        const iframeDocPathname = publicSiteIframeDocumentPathname(
+          publishedSlug,
+          contactNavBase ?? undefined,
+        );
+        const contactSubpageNav =
+          contactNavBase && ssrOrigin
+            ? { ...contactNavBase, pageOrigin: ssrOrigin }
+            : undefined;
+
+        let doc = buildTailwindIframeSrcDoc(twSections, payload.config, {
+          previewPostMessageBridge: false,
+          userCss: payload.customCss,
+          userJs: payload.customJs,
+          logoSet: payload.logoSet,
+          publishedSlug: publishedSlug?.trim(),
+          draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
+          appointmentsEnabled,
+          webshopEnabled,
+          compiledTailwindCss: payload.tailwindCompiledCss?.trim() || undefined,
+          previewScriptOrigin: ssrOrigin || undefined,
+          navBrandLabel: docTitle,
+          iframeDocumentPathname: iframeDocPathname,
+          ...(contactSubpageNav ? { contactSubpageNav } : {}),
+        });
+        if (ssrOrigin) {
+          doc = rewriteStudioDevOriginsInHtml(doc, ssrOrigin);
+        }
+        if (doc.length <= 3_500_000) {
+          ssrSrcDoc = doc;
+        }
+      } catch {
+        /* Server-build mislukt: client bouwt als fallback */
+      }
+    }
+
     return (
       <div
         className={cn(
@@ -147,28 +233,8 @@ export function PublishedSiteView({
           embedded={visibility === "portal"}
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
-          contactSubpageNavBase={
-            publishedSlug?.trim() &&
-            visibility === "public" &&
-            (hasResolvedPublicContactRoute(contactPlan) || marketingKeys.length > 0)
-              ? {
-                  slug: publishedSlug.trim(),
-                  view:
-                    marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
-                      ? "marketing"
-                      : publicSiteTailwindPath === "contact"
-                        ? "contact"
-                        : "landing",
-                  activeMarketingSlug:
-                    marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
-                      ? marketingKey
-                      : undefined,
-                  contactSectionId: contactNavCaptureFragmentId(contactPlan),
-                  landingSectionIds: landingSectionIdsForPublicSubpageNav(sections, contactPlan),
-                  marketingSlugs: marketingKeys,
-                }
-              : null
-          }
+          ssrSrcDoc={ssrSrcDoc}
+          contactSubpageNavBase={contactNavBase}
         />
       </div>
     );

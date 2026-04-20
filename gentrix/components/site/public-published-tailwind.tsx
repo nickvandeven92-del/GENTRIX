@@ -45,6 +45,13 @@ type PublicPublishedTailwindProps = {
   contactSubpageNavBase?: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null;
   /** Korte merknaam voor de auto-topnavbar (klantnaam); niet `documentTitle` met subpagina-suffix. */
   navBrandLabel?: string | null;
+  /**
+   * Server-side pre-computed srcDoc (RSC via `NEXT_PUBLIC_SITE_URL`).
+   * Als gezet: iframe verschijnt direct bij eerste paint zonder client-side JS-build.
+   * CDN-scripts zijn dan ook al herschreven naar de eigen proxy (`/api/public/studio-preview-lib`).
+   * Fallback naar client-build als `null`.
+   */
+  ssrSrcDoc?: string | null;
 };
 
 function fallbackSrcDoc(documentTitle: string, body: string): string {
@@ -74,6 +81,7 @@ export function PublicPublishedTailwind({
   webshopEnabled = true,
   contactSubpageNavBase = null,
   navBrandLabel = null,
+  ssrSrcDoc = null,
 }: PublicPublishedTailwindProps) {
   const filtered = useMemo(
     () =>
@@ -88,11 +96,14 @@ export function PublicPublishedTailwind({
     [publishedSlug, contactSubpageNavBase],
   );
 
-  const [srcDoc, setSrcDoc] = useState<string | null>(null);
-  /** Direct `true`: skeleton is al zichtbaar vanuit SSR-render; geen extra client-side timeout nodig. */
-  const [showSkeleton] = useState<boolean>(true);
+  /** Server-side pre-computed srcDoc als initiële waarde — geen client-side build nodig als gezet. */
+  const [srcDoc, setSrcDoc] = useState<string | null>(ssrSrcDoc ?? null);
+  /** Skeleton alleen tonen als we geen SSR srcDoc hebben; anders direct iframe. */
+  const [showSkeleton] = useState<boolean>(ssrSrcDoc == null);
 
   useEffect(() => {
+    /** SSR heeft de srcDoc al berekend — niets te doen op de client. */
+    if (srcDoc !== null) return;
     let cancelled = false;
     /** Eén macrotask uitstellen zodat de browser eerst skeleton kan painten (zware sync `buildTailwindIframeSrcDoc` blokkeert anders meteen de main thread). */
     const t = window.setTimeout(() => {
