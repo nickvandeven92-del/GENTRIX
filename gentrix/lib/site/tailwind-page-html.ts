@@ -1340,6 +1340,29 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scr
 }
 `;
 
+/**
+ * iOS Safari iframe position:fixed fix — zonder dit verschijnt het mobiele nav-overlay als een klein kaartje
+ * i.p.v. volledig scherm te bedekken. Oplossing: scroll-lock op <html> wanneer navOpen=true, zodat
+ * position:fixed elementen relatief aan het viewport renderen in plaats van de iframe-scrollcontainer.
+ * Patcht alle Alpine x-data elementen met `navOpen` die nog geen eigen _il() iOS-lock hebben.
+ */
+export const STUDIO_IOS_NAV_FIX_SCRIPT = `<script>
+(function(){
+  if(!/iP(?:hone|ad|od)/.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform)))return;
+  function iosl(on){try{document.documentElement.style.cssText=on?'overflow:hidden;position:fixed;width:100%':'';}catch(_){}}
+  document.addEventListener('alpine:initialized',function(){
+    try{
+      document.querySelectorAll('[x-data]').forEach(function(el){
+        if(!el._x_dataStack)return;
+        var d=el._x_dataStack[0];
+        if(typeof d.navOpen==='undefined'||typeof d._il==='function')return;
+        Alpine.effect(function(){iosl(!!d.navOpen);});
+      });
+    }catch(_){}
+  });
+})();
+</script>`;
+
 export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
 (function(){
   function lin(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
@@ -2824,6 +2847,7 @@ ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptB
 })();
 </script>
 <script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
+${STUDIO_IOS_NAV_FIX_SCRIPT}
 ${buildAlpineMobileHeaderScopeRepairScript()}
 ${buildStudioHeaderNavAlpineClampScript()}
 ${buildStudioIframeNavResetOnDesktopViewportScript()}

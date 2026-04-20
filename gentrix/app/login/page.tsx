@@ -58,6 +58,10 @@ export default function LoginPage() {
           </ol>
         </details>
         <p className="mt-6 text-center text-xs text-slate-500">
+          <Link href="/wachtwoord-vergeten" className="text-blue-800 hover:underline">
+            Wachtwoord vergeten?
+          </Link>
+          {" · "}
           <Link href="/" className="text-blue-800 hover:underline">
             Terug naar website
           </Link>

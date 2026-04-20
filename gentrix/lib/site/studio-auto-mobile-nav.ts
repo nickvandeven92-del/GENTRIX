@@ -419,7 +419,7 @@ export function buildStudioAutoMobileNavHeaderHtml(
       <a href="${STUDIO_CONTACT_PATH_PLACEHOLDER}" class="rounded-full bg-white px-4 py-3.5 text-center text-sm font-semibold text-slate-900 shadow-md transition hover:bg-white/95" @click="navOpen = false">Contact</a>
     </nav>`;
 
-  return `<header id="gentrix-auto-site-header" ${AUTO_NAV_ATTR} data-studio-skip-nav-tone class="fixed inset-x-0 top-0 z-[80] border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false }" @keydown.escape.window="navOpen = false">
+  return `<header id="gentrix-auto-site-header" ${AUTO_NAV_ATTR} data-studio-skip-nav-tone class="fixed inset-x-0 top-0 z-[80] border-b border-white/10 bg-slate-950/90 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md" x-data="{ navOpen: false, _il(v){try{var io=/iP/.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));if(io)document.documentElement.style.cssText=v?'overflow:hidden;position:fixed;width:100%':''}catch(_){}}, init(){this.$watch('navOpen',v=>this._il(v))} }" @keydown.escape.window="navOpen = false">
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 md:gap-4 md:px-6">
     ${brandBlock}
     ${desktopNavBlock}
