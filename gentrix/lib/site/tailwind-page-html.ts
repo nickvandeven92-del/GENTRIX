@@ -1209,7 +1209,9 @@ nav[data-gentrix-scroll-nav="1"] > .mx-auto {
   -webkit-backdrop-filter: none !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"],
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] {
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"],
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"],
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] {
   background-color: rgb(8 16 34 / 0.72) !important;
   border-color: rgb(148 163 184 / 0.28) !important;
   box-shadow: 0 10px 26px rgba(2, 6, 23, 0.36) !important;
@@ -1219,12 +1221,18 @@ nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolli
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto {
-  background-color: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto {
+  background-color: rgb(8 16 34 / 0.72) !important;
+  border-color: rgb(148 163 184 / 0.26) !important;
+  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.3) !important;
+  backdrop-filter: blur(10px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] a,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] span,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] li,
@@ -1235,20 +1243,38 @@ nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolli
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] span,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] li,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] label,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg {
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] a,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] span,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] li,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] label,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] a,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] span,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] li,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] label,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg {
   color: rgb(241 245 249) !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg {
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg {
   fill: currentColor !important;
   stroke: currentColor !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"],
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"] {
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"],
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"],
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"] {
   border-color: rgba(241, 245, 249, 0.28) !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"],
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"] {
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"],
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"],
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"] {
   background-color: rgb(241 245 249) !important;
 }
 `;
@@ -1313,6 +1339,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
   function shouldTreatAsGentrixScrollNavTarget(el){
     if(!el)return false;
     if(el.getAttribute&&el.getAttribute("data-gentrix-scroll-nav")==="1")return true;
+    if(el.getAttribute&&el.getAttribute("data-gentrix-scroll-overlay")==="1")return true;
     var root=document.documentElement;
     if(!(root&&root.getAttribute&&root.getAttribute("data-gentrix-scroll-nav-fallback")==="1"))return false;
     var roleOk=(el.tagName==="HEADER"||el.tagName==="NAV");
@@ -1323,7 +1350,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     var op=parseFloat(st.opacity||"1");
     if(!isNaN(op)&&op<0.06)return false;
     var r=el.getBoundingClientRect();
-    if(r.top<-12||r.top>20||r.height<28||r.height>220)return false;
+    if(r.top<-24||r.top>Math.max(20,innerHeight*0.2)||r.height<28||r.height>Math.max(220,innerHeight*0.65))return false;
     if(r.width<Math.max(240,innerWidth*0.45))return false;
     return true;
   }
@@ -1357,6 +1384,9 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     if(!shouldTreatAsGentrixScrollNavTarget(nav))return;
     if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")!=="1"){
       nav.setAttribute("data-gentrix-scroll-nav","1");
+    }
+    if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-overlay")!=="1"){
+      nav.setAttribute("data-gentrix-scroll-overlay","1");
     }
     if(nav.getAttribute&&nav.getAttribute("data-gentrix-scrolling")==null){
       nav.setAttribute("data-gentrix-scrolling","0");
@@ -1413,6 +1443,9 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(fb)nav=fb;
     }
     if(!nav)return;
+    if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-overlay")!=="1"){
+      nav.setAttribute("data-gentrix-scroll-overlay","1");
+    }
     syncGentrixScrollNavState();
     sync();
     addEventListener("scroll",onTick,{passive:true});
