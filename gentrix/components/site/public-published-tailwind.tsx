@@ -89,11 +89,10 @@ export function PublicPublishedTailwind({
   );
 
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
-  const [showSkeleton, setShowSkeleton] = useState<boolean>(embedded);
+  const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
-    setShowSkeleton(embedded);
     const skeletonDelayMs = embedded ? 0 : 320;
     const skeletonTimer = window.setTimeout(() => {
       if (!cancelled) setShowSkeleton(true);
@@ -177,6 +176,7 @@ export function PublicPublishedTailwind({
         overflow: "auto",
       }
     : { width: "100%", height: "100%", border: "none", background: "white", display: "block", overflow: "auto" };
+  const shouldShowSkeleton = embedded || showSkeleton;
 
   if (srcDoc === null) {
     return (
@@ -186,7 +186,7 @@ export function PublicPublishedTailwind({
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
           <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
-          {showSkeleton ? (
+          {shouldShowSkeleton ? (
             <PublicSitePageSkeleton embedded={embedded} />
           ) : (
             <div
