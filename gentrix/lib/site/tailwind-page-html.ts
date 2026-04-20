@@ -1342,26 +1342,33 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"][data-gentrix-scr
 
 /**
  * iOS Safari iframe position:fixed fix — zonder dit verschijnt het mobiele nav-overlay als een klein kaartje
- * i.p.v. volledig scherm te bedekken. Oplossing: scroll-lock op <html> wanneer navOpen=true, zodat
+ * i.p.v. volledig scherm te bedekken. Scroll-lock op <html> wanneer een nav-toggle truthy wordt, zodat
  * position:fixed elementen relatief aan het viewport renderen in plaats van de iframe-scrollcontainer.
- * Patcht alle Alpine x-data elementen met `navOpen` die nog geen eigen _il() iOS-lock hebben.
+ * Checkt alle Alpine nav-toggle sleutels (ALPINE_NAV_TOGGLE_KEYS) op elk x-data element.
  */
-export const STUDIO_IOS_NAV_FIX_SCRIPT = `<script>
+export function buildStudioIosNavFixScript(): string {
+  const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
+  return `<script>
 (function(){
   if(!/iP(?:hone|ad|od)/.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform)))return;
+  var KEYS=[${keysLiteral}];
   function iosl(on){try{document.documentElement.style.cssText=on?'overflow:hidden;position:fixed;width:100%':'';}catch(_){}}
+  function scope(el){try{if(window.Alpine&&typeof Alpine.$data==='function')return Alpine.$data(el);}catch(_){}return el._x_dataStack&&el._x_dataStack[0];}
   document.addEventListener('alpine:initialized',function(){
     try{
       document.querySelectorAll('[x-data]').forEach(function(el){
-        if(!el._x_dataStack)return;
-        var d=el._x_dataStack[0];
-        if(typeof d.navOpen==='undefined'||typeof d._il==='function')return;
-        Alpine.effect(function(){iosl(!!d.navOpen);});
+        var d=scope(el);
+        if(!d)return;
+        if(typeof d._il==='function')return;
+        var k=KEYS.find(function(k){return typeof d[k]!=='undefined';});
+        if(!k)return;
+        Alpine.effect(function(){iosl(!!scope(el)[k]);});
       });
     }catch(_){}
   });
 })();
 </script>`;
+}
 
 export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
 (function(){
@@ -2847,7 +2854,7 @@ ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptB
 })();
 </script>
 <script defer src="${STUDIO_ALPINE_CDN_SRC}"></script>
-${STUDIO_IOS_NAV_FIX_SCRIPT}
+${buildStudioIosNavFixScript()}
 ${buildAlpineMobileHeaderScopeRepairScript()}
 ${buildStudioHeaderNavAlpineClampScript()}
 ${buildStudioIframeNavResetOnDesktopViewportScript()}

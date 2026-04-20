@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SalesSidebar, SalesSidebarContent } from "@/components/sales-os/sidebar";
 import { SalesTopbar } from "@/components/sales-os/topbar";
+import { IdleTimeoutGuard } from "@/components/auth/idle-timeout-guard";
 import { SALES_OS_GUTTER_X_CLASS, SALES_OS_MAIN_MAX_CLASS } from "@/lib/sales-os/layout-shell";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +81,7 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
 
   return (
     <div className="sales-os min-h-screen bg-[#fafafa] font-sans text-[13px] leading-normal text-neutral-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+      <IdleTimeoutGuard />
       <SalesSidebar
         collapsed={collapsed}
         onToggleCollapse={onToggleCollapse}
