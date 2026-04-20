@@ -44,6 +44,7 @@ import {
   STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
   STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS,
 } from "@/lib/site/studio-auto-mobile-nav";
+import { STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 export { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
@@ -1218,10 +1219,33 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     }
     return null;
   }
+  /**
+   * Bestaande / oudere home-output heeft nog geen expliciete marker.
+   * Op Gentrix-home staan we dit toe als fallback zodat gedrag meteen zichtbaar is zonder hergeneratie.
+   */
+  function shouldTreatAsGentrixScrollNavTarget(el){
+    if(!el)return false;
+    if(el.getAttribute&&el.getAttribute("data-gentrix-scroll-nav")==="1")return true;
+    var root=document.documentElement;
+    if(!(root&&root.getAttribute&&root.getAttribute("data-gentrix-scroll-nav-fallback")==="1"))return false;
+    var roleOk=(el.tagName==="HEADER"||el.tagName==="NAV");
+    if(!roleOk)return false;
+    var st=getComputedStyle(el);
+    if(st.position!=="sticky"&&st.position!=="fixed")return false;
+    var r=el.getBoundingClientRect();
+    if(r.top>8||r.height<28||r.height>220)return false;
+    var c=(el.className||"").toString().toLowerCase();
+    if(c.indexOf("sticky")<0&&c.indexOf("fixed")<0)return false;
+    if(c.indexOf("top-0")<0&&c.indexOf("top:0")<0)return false;
+    return true;
+  }
   var nav=null,ticking=false,THRESH=0.57,NAV_DARK_CAP=0.42;
   function syncGentrixScrollNavState(){
     if(!nav)return;
-    if(!(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")==="1"))return;
+    if(!shouldTreatAsGentrixScrollNavTarget(nav))return;
+    if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")!=="1"){
+      nav.setAttribute("data-gentrix-scroll-nav","1");
+    }
     var sc=((window.pageYOffset||document.documentElement.scrollTop||document.body.scrollTop||0)>8);
     nav.setAttribute("data-gentrix-scrolled",sc?"1":"0");
   }
@@ -2403,6 +2427,7 @@ export function buildTailwindIframeSrcDoc(
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();
+  const isGentrixHomeSlug = (slug?.toLowerCase() ?? "") === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
   const siteCreditVariant = pickStudioSiteCreditVariant(slug || options?.navBrandLabel?.trim() || "");
   if (slug) {
     const previewTok = options?.draftPublicPreviewToken?.trim();
@@ -2530,7 +2555,7 @@ export function buildTailwindIframeSrcDoc(
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   let out = `<!DOCTYPE html>
-<html lang="nl"${iframeShellAttr}${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}${studioMobileAttr}${staticScrollBorderAttr}>
+<html lang="nl"${iframeShellAttr}${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}${studioMobileAttr}${staticScrollBorderAttr}${isGentrixHomeSlug ? ` data-gentrix-scroll-nav-fallback="1"` : ""}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
