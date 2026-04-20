@@ -21,7 +21,15 @@ describe("buildTailwindIframeSrcDoc mobile horizontal lock", () => {
 
   it("does not inject mobile x-lock when studio mobile editor flag is off", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { studioMobileEditorFrame: false });
-    expect(doc).not.toContain("overflow-x: clip !important;");
-    expect(doc).not.toContain("touch-action: pan-y !important;");
+    expect(doc).not.toContain('html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"]');
+    expect(doc).not.toContain('html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] body');
+  });
+
+  it("injects published home mobile x-lock to prevent sideways panning", () => {
+    const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
+    expect(doc).toContain('html[data-gentrix-scroll-nav-fallback="1"]');
+    expect(doc).toContain("overflow-x: clip !important;");
+    expect(doc).toContain("overflow-x: hidden !important;");
+    expect(doc).toContain("touch-action: pan-y !important;");
   });
 });

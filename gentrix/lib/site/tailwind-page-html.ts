@@ -1166,6 +1166,35 @@ nav.studio-nav-tone-light button span[class*="bg-white"] {
  * - top van pagina: transparant (geen witte balk over hero)
  * - na scroll: subtiele frosted laag voor leesbaarheid
  */
+html[data-gentrix-scroll-nav-fallback="1"] {
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+}
+html[data-gentrix-scroll-nav-fallback="1"] body {
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  touch-action: pan-y !important;
+}
+/*
+ * Gentrix-home mobiele hero: sommige AI-runs zetten een halve gradient-overlay
+ * over de achtergrond. Dat geeft een harde verticale lijn en kan horizontaal pannen triggeren.
+ * Forceer die overlays full-bleed op de eerste hero-zone.
+ */
+html[data-gentrix-scroll-nav-fallback="1"] section#hero [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
+html[data-gentrix-scroll-nav-fallback="1"] #hero [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type [class*="absolute"][class*="bg-gradient"][class*="w-1/2"] {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+html[data-gentrix-scroll-nav-fallback="1"] section#hero,
+html[data-gentrix-scroll-nav-fallback="1"] #hero,
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type {
+  overflow-x: clip !important;
+}
 header[data-gentrix-scroll-nav="1"],
 nav[data-gentrix-scroll-nav="1"] {
   position: fixed !important;
