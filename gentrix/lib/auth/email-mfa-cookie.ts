@@ -16,13 +16,13 @@ function b64url(buf: ArrayBuffer): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-function b64urlDecode(s: string): Uint8Array {
+function b64urlDecode(s: string): ArrayBuffer {
   const padded = s.replace(/-/g, "+").replace(/_/g, "/");
   const pad = (4 - (padded.length % 4)) % 4;
   const decoded = atob(padded + "=".repeat(pad));
   const arr = new Uint8Array(decoded.length);
   for (let i = 0; i < decoded.length; i++) arr[i] = decoded.charCodeAt(i);
-  return arr;
+  return arr.buffer as ArrayBuffer;
 }
 
 async function getKey(): Promise<CryptoKey> {
