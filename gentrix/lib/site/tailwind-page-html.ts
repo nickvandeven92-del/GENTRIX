@@ -301,6 +301,26 @@ export const STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS = `@media (max-width: 1023px) {
 }`;
 
 /**
+ * Mobiele editor-iframe mag niet horizontaal "wegschuiven"/pannen.
+ * Scope strikt op `data-gentrix-studio-mobile` + iframe-flag zodat live site en desktop-preview onaangetast blijven.
+ */
+export const STUDIO_IFRAME_MOBILE_X_LOCK_CSS = `@media (max-width: 1023px) {
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+    overscroll-behavior-x: none !important;
+  }
+  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+  }
+}`;
+
+/**
  * iframe-preview: stacking t.o.v. volscherm-menu-backdrops.
  *
  * **Mobiel (≤1023px):** `STUDIO_MOBILE_MENU_STACKING_FIX_CSS` tilt menu-backdrops naar **≤261** binnen
@@ -2699,7 +2719,7 @@ export function buildTailwindIframeSrcDoc(
   const studioMobileAttr = options?.studioMobileEditorFrame ? ` data-gentrix-studio-mobile="1"` : "";
   const staticScrollBorderAttr = motionDisabled ? ` data-gentrix-static-scroll-border="1"` : "";
   const studioMobileCss = options?.studioMobileEditorFrame
-    ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
+    ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_X_LOCK_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
     : "";
   const iframeShellAttr = ` data-gentrix-studio-iframe="1" data-gentrix-site-credit-variant="${siteCreditVariant}"`;
   const autoNavDupCss = studioAutoMobileNavInjected
