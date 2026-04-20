@@ -116,6 +116,18 @@ export function getStudioGsapHtmlFragments(disabled: boolean): { bodyScripts: st
   };
 }
 
+function htmlUsesAosAttributes(html: string): boolean {
+  return /\sdata-aos(?:-[a-z0-9-]+)?\s*=\s*(["'])[^"']*\1/i.test(html);
+}
+
+function scriptUsesAosRuntime(userJs: string): boolean {
+  return /\bAOS\b/.test(userJs);
+}
+
+function scriptUsesGsapRuntime(userJs: string): boolean {
+  return /\b(?:gsap|ScrollTrigger|MotionPathPlugin|Flip|Observer)\b/.test(userJs);
+}
+
 /**
  * Doel-URL achter **GENTRIX** in de hoek-credit. Override: `NEXT_PUBLIC_GENTRIX_CREDIT_URL` (Next bundelt naar client).
  */
@@ -2671,8 +2683,12 @@ export function buildTailwindIframeSrcDoc(
   const scrollRevealScript = options?.disableScrollRevealAnimations ? "" : STUDIO_SCROLL_REVEAL_SCRIPT;
   const motionDisabled = Boolean(options?.disableScrollRevealAnimations);
   const scrollBorderScript = STUDIO_SCROLL_BORDER_SCRIPT;
-  const { headLink: aosHeadLink, bodyScripts: aosBodyScripts } = getStudioAosHtmlFragments(motionDisabled);
-  const { bodyScripts: gsapBodyScripts } = getStudioGsapHtmlFragments(motionDisabled);
+  const shouldLoadAos = htmlUsesAosAttributes(body) || scriptUsesAosRuntime(userJsRaw);
+  const shouldLoadGsap = scriptUsesGsapRuntime(userJsRaw);
+  const { headLink: aosHeadLink, bodyScripts: aosBodyScripts } = getStudioAosHtmlFragments(
+    motionDisabled || !shouldLoadAos,
+  );
+  const { bodyScripts: gsapBodyScripts } = getStudioGsapHtmlFragments(motionDisabled || !shouldLoadGsap);
   const faviconLink = buildFaviconLinkTagForLogoSet(options?.logoSet);
   const headMetaExtras = [faviconLink && `  ${faviconLink}`, themeMeta && `  ${themeMeta}`]
     .filter(Boolean)

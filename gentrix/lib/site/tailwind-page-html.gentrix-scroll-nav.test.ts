@@ -11,6 +11,33 @@ const simpleSections: TailwindSection[] = [
 ];
 
 describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
+  it("skips AOS/GSAP libraries when output does not use them", () => {
+    const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
+    expect(doc).not.toContain("unpkg.com/aos@2.3.4/dist/aos.css");
+    expect(doc).not.toContain("unpkg.com/aos@2.3.4/dist/aos.js");
+    expect(doc).not.toContain("cdn.jsdelivr.net/npm/gsap@");
+  });
+
+  it("keeps AOS/GSAP runtime when page markup or user JS references them", () => {
+    const withAosSection: TailwindSection[] = [
+      {
+        id: "hero",
+        sectionName: "Hero",
+        html: `<section id="hero"><div data-aos="fade-up">Hero</div></section>`,
+      },
+    ];
+    const withAos = buildTailwindIframeSrcDoc(withAosSection, null, { publishedSlug: "home" });
+    expect(withAos).toContain("unpkg.com/aos@2.3.4/dist/aos.css");
+    expect(withAos).toContain("unpkg.com/aos@2.3.4/dist/aos.js");
+
+    const withGsap = buildTailwindIframeSrcDoc(simpleSections, null, {
+      publishedSlug: "home",
+      userJs: "gsap.to('.hero', { y: 10 });",
+    });
+    expect(withGsap).toContain("cdn.jsdelivr.net/npm/gsap@");
+    expect(withGsap).toContain("ScrollTrigger.min.js");
+  });
+
   it("enables gentrix scroll-nav fallback for home slug", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toMatch(/<html[^>]*\bdata-gentrix-scroll-nav-fallback="1"/);
