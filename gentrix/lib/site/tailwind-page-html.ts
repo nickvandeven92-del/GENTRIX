@@ -1336,6 +1336,10 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(!shouldTreatAsGentrixScrollNavTarget(el))continue;
       return el;
     }
+    var hard=document.querySelector("body > header:first-of-type, body > nav:first-of-type, body > section:first-of-type > header:first-of-type, body > section:first-of-type > nav:first-of-type");
+    if(hard&&hard.tagName){
+      return hard;
+    }
     return null;
   }
   var nav=null,ticking=false,THRESH=0.57,NAV_DARK_CAP=0.42,scrollIdleTimer=0;
@@ -1346,7 +1350,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
   function touchGentrixScrolling(){
     setGentrixScrolling(true);
     if(scrollIdleTimer)clearTimeout(scrollIdleTimer);
-    scrollIdleTimer=setTimeout(function(){setGentrixScrolling(false);},220);
+    scrollIdleTimer=setTimeout(function(){setGentrixScrolling(false);},520);
   }
   function syncGentrixScrollNavState(){
     if(!nav)return;
