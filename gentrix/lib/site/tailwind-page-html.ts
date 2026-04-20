@@ -1160,13 +1160,58 @@ nav[data-gentrix-scroll-nav="1"] {
     backdrop-filter 220ms ease,
     -webkit-backdrop-filter 220ms ease;
 }
+header[data-gentrix-scroll-nav="1"] .mx-auto,
+header[data-gentrix-scroll-nav="1"] > .mx-auto,
+nav[data-gentrix-scroll-nav="1"] .mx-auto,
+nav[data-gentrix-scroll-nav="1"] > .mx-auto {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] {
-  background-color: color-mix(in srgb, white 82%, transparent) !important;
-  border-color: rgb(226 232 240 / 0.75) !important;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08) !important;
+  background-color: color-mix(in srgb, rgb(255 255 255 / 0.9) 78%, transparent) !important;
+  border-color: rgb(226 232 240 / 0.9) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
   backdrop-filter: blur(10px) saturate(140%) !important;
   -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+}
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] span,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] li,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] label,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] span,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] li,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] label,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg {
+  color: rgb(15 23 42) !important;
+}
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] [class*="border-white"],
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] [class*="border-white"] {
+  border-color: rgba(15, 23, 42, 0.18) !important;
+}
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"],
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"] {
+  background-color: rgb(15 23 42) !important;
 }
 `;
 
@@ -2566,7 +2611,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_ALPINE_X_CLOAK_CSS}
     ${STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS}
     /* Vaste top-nav (fixed) + hash-scroll: zonder padding komen koppen onder de balk (afgeknipt, "overlap"). */
-    html { scroll-padding-top: 5.5rem; }
+    html { scroll-padding-top: ${isGentrixHomeSlug ? "0rem" : "5.5rem"}; }
     /* Geen browser-default marge rondom de preview: voorkomt een witte strook boven de vaste header. */
     html, body { margin: 0; padding: 0; }
     /* Voorkom wazige rasterisatie op kleine tekst in footers (Chromium + transforms/filters in model-HTML). */

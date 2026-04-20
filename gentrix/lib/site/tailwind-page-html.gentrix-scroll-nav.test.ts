@@ -15,10 +15,16 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toMatch(/<html[^>]*\bdata-gentrix-scroll-nav-fallback="1"/);
     expect(doc).toMatch(/data-gentrix-scroll-nav/);
+    expect(doc).toMatch(/color:\s*rgb\(15 23 42\)\s*!important/);
   });
 
   it("does not enable gentrix scroll-nav fallback for non-home slugs", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "acme-demo" });
     expect(doc).not.toMatch(/<html[^>]*\bdata-gentrix-scroll-nav-fallback="1"/);
+  });
+
+  it("keeps fixed nav from pushing hero down for home slug", () => {
+    const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
+    expect(doc).toMatch(/html\s*\{\s*scroll-padding-top:\s*0(?:rem)?;/);
   });
 });
