@@ -89,15 +89,12 @@ export function PublicPublishedTailwind({
   );
 
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
-  const [showSkeleton, setShowSkeleton] = useState<boolean>(false);
+  /** Direct `true`: skeleton is al zichtbaar vanuit SSR-render; geen extra client-side timeout nodig. */
+  const [showSkeleton] = useState<boolean>(true);
 
   useEffect(() => {
     let cancelled = false;
-    const skeletonDelayMs = 0;
-    const skeletonTimer = window.setTimeout(() => {
-      if (!cancelled) setShowSkeleton(true);
-    }, skeletonDelayMs);
-    /** Eén macrotask uitstellen zodat de browser eerst spinner/layout kan painten (zware sync `buildTailwindIframeSrcDoc` blokkeert anders meteen de main thread). */
+    /** Eén macrotask uitstellen zodat de browser eerst skeleton kan painten (zware sync `buildTailwindIframeSrcDoc` blokkeert anders meteen de main thread). */
     const t = window.setTimeout(() => {
       if (cancelled) return;
       try {
@@ -145,7 +142,6 @@ export function PublicPublishedTailwind({
     }, 0);
     return () => {
       cancelled = true;
-      window.clearTimeout(skeletonTimer);
       window.clearTimeout(t);
     };
   }, [
