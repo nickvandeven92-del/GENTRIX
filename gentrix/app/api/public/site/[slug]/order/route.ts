@@ -28,7 +28,14 @@ const bodySchema = z.object({
   iban: z.string().trim().min(8).max(42),
   accountHolder: z.string().trim().min(2).max(200),
   notes: z.string().trim().max(5000).optional().or(z.literal("")),
+  /** Geselecteerde add-on modules (bijv. ["booking", "webshop"]). */
+  selectedModules: z.array(z.string().max(40)).max(10).optional().default([]),
+  /** Akkoord algemene voorwaarden + privacy. */
   acceptTerms: z.literal(true),
+  /** SEPA-incassomachtiging gegeven. */
+  acceptSepa: z.literal(true),
+  /** Afstand herroepingsrecht: dienst start direct. */
+  acceptWithdrawal: z.literal(true),
 });
 
 type RouteCtx = { params: Promise<{ slug: string }> };
@@ -87,6 +94,10 @@ export async function POST(request: Request, context: RouteCtx) {
     iban,
     accountHolder: body.accountHolder,
     notes: body.notes || null,
+    selectedModules: body.selectedModules ?? [],
+    consentVersion: "v1",
+    acceptSepa: true,
+    acceptWithdrawal: true,
     submittedAt: new Date().toISOString(),
   };
 
