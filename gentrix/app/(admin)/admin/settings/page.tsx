@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { MfaEnrollSection } from "@/components/auth/mfa-enroll-section";
+import { EmailMfaSection } from "@/components/auth/email-mfa-section";
 
 export const metadata: Metadata = {
   title: "Instellingen",
@@ -42,12 +42,10 @@ export default function AdminSettingsPage() {
       <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Twee-stapsverificatie (MFA)</h2>
         <p className="mt-2 mb-5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Koppel een authenticator-app (Google Authenticator, Authy, 1Password, …). Na activatie vraagt het CRM bij
-          elke login om een 6-cijferige code. Verplicht voor toegang tot{" "}
-          <code className="rounded bg-zinc-100 px-1 text-xs dark:bg-zinc-800">/admin</code>.
+          Na activatie ontvang je bij elke login een 6-cijferige code op je e-mailadres. Geen app nodig.
         </p>
         <Suspense fallback={<p className="text-sm text-zinc-500">Laden…</p>}>
-          <MfaEnrollSection />
+          <EmailMfaSection />
         </Suspense>
       </section>
     </div>

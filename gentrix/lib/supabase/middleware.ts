@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { safePostAuthRedirectPath } from "@/lib/auth/safe-same-origin-next-path";
+import { EMAIL_MFA_COOKIE_NAME, verifyEmailMfaCookie } from "@/lib/auth/email-mfa-cookie";
 
 function isLoginPath(pathname: string) {
   return pathname === "/login" || pathname.startsWith("/login/");
@@ -47,7 +48,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  if (pathname === "/login/mfa" && !user) {
+  if ((pathname === "/login/mfa" || pathname === "/login/mfa-email") && !user) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
@@ -66,28 +67,67 @@ export async function updateSession(request: NextRequest) {
     }
 
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    const needsMfa =
+    const needsTotp =
       aalData?.nextLevel === "aal2" && aalData?.currentLevel !== "aal2";
 
-    if (needsMfa && !pathname.startsWith("/login")) {
+    if (needsTotp && !pathname.startsWith("/login")) {
       const mfaUrl = new URL("/login/mfa", request.url);
       mfaUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(mfaUrl);
+    }
+
+    // Email MFA check — alleen als TOTP niet al vereist is
+    if (!needsTotp) {
+      const { data: emailMfaRow } = await supabase
+        .from("admin_email_mfa")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (emailMfaRow) {
+        const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
+        const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
+        if (!valid && !pathname.startsWith("/login")) {
+          const mfaEmailUrl = new URL("/login/mfa-email", request.url);
+          mfaEmailUrl.searchParams.set("next", pathname);
+          return NextResponse.redirect(mfaEmailUrl);
+        }
+      }
     }
   }
 
   if (isLoginPath(pathname) && user) {
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    const needsMfa =
+    const needsTotp =
       aalData?.nextLevel === "aal2" && aalData?.currentLevel !== "aal2";
 
-    if (pathname === "/login" && needsMfa) {
+    if (pathname === "/login" && needsTotp) {
       const mfaUrl = new URL("/login/mfa", request.url);
       mfaUrl.searchParams.set("next", request.nextUrl.searchParams.get("next") ?? "/home");
       return NextResponse.redirect(mfaUrl);
     }
 
-    if (!needsMfa && pathname === "/login") {
+    if (!needsTotp && pathname === "/login") {
+      // Controleer of email MFA vereist is
+      const { data: emailMfaRow } = await supabase
+        .from("admin_email_mfa")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (emailMfaRow) {
+        const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
+        const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
+        if (!valid) {
+          const mfaEmailUrl = new URL("/login/mfa-email", request.url);
+          mfaEmailUrl.searchParams.set(
+            "next",
+            request.nextUrl.searchParams.get("next") ?? "/home",
+          );
+          return NextResponse.redirect(mfaEmailUrl);
+        }
+      }
+
       const rawNext = request.nextUrl.searchParams.get("next");
       if (rawNext !== null && rawNext.trim() === "") {
         return supabaseResponse;
@@ -99,7 +139,7 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL(next, request.url));
     }
 
-    if (!needsMfa && pathname === "/login/mfa") {
+    if (!needsTotp && (pathname === "/login/mfa" || pathname === "/login/mfa-email")) {
       const rawNext = request.nextUrl.searchParams.get("next");
       if (rawNext !== null && rawNext.trim() === "") {
         return supabaseResponse;
