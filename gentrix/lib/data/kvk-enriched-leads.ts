@@ -72,5 +72,5 @@ export async function listKvkEnrichedLeads(limit = 50): Promise<KvkEnrichedLeadR
     console.error("[kvk_enriched_leads] list error", error.message);
     return [];
   }
-  return (data ?? []) as KvkEnrichedLeadRow[];
+  return (data ?? []) as unknown as KvkEnrichedLeadRow[];
 }

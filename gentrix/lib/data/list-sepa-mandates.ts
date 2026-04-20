@@ -36,5 +36,5 @@ export async function listSepaMandates(clientId: string): Promise<SepaMandateRow
     console.error("[listSepaMandates]", error.message);
     return [];
   }
-  return (data ?? []) as SepaMandateRow[];
+  return (data ?? []) as unknown as SepaMandateRow[];
 }

@@ -58,7 +58,7 @@ export async function createDraftInvoiceFromQuote(
   if (iErr) {
     throw new Error(iErr.message);
   }
-  const items = (rawItems ?? []) as QuoteItemRow[];
+  const items = (rawItems ?? []) as unknown as QuoteItemRow[];
   if (items.length === 0) {
     throw new Error("Offerte heeft geen regels; voeg regels toe vóór acceptatie.");
   }

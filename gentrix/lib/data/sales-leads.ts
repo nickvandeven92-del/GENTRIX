@@ -33,7 +33,7 @@ export async function listSalesLeads(): Promise<SalesLeadRow[]> {
     logSupabaseReadError("[listSalesLeads]", error.message, { salesOsMigrationHint: true });
     return [];
   }
-  return (data ?? []) as SalesLeadRow[];
+  return (data ?? []) as unknown as SalesLeadRow[];
 }
 
 export async function getSalesLeadById(id: string): Promise<SalesLeadRow | null> {

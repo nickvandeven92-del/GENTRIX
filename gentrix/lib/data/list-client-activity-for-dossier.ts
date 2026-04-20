@@ -154,7 +154,7 @@ export async function listClientActivityForDossier(
       .order("created_at", { ascending: false })
       .limit(120);
 
-    for (const row of (audits ?? []) as AuditRow[]) {
+    for (const row of (audits ?? []) as unknown as AuditRow[]) {
       items.push(formatAuditEvent(row, numberById.get(row.entity_id) ?? null));
     }
   }

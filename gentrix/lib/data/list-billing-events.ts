@@ -28,5 +28,5 @@ export async function listBillingEvents(clientId: string): Promise<BillingEventR
     console.error("[listBillingEvents]", error.message);
     return [];
   }
-  return (data ?? []) as BillingEventRow[];
+  return (data ?? []) as unknown as BillingEventRow[];
 }

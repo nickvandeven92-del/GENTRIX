@@ -63,7 +63,7 @@ export async function trySendPortalAppointmentPushNotifications(params: {
     return;
   }
 
-  const rows = (subs ?? []) as SubRow[];
+  const rows = (subs ?? []) as unknown as SubRow[];
   if (rows.length === 0) return;
 
   const { data: clientRow } = await supabase

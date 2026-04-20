@@ -31,5 +31,5 @@ export async function listPortalClientsLinkedToUser(): Promise<PortalClientLink[
     return [];
   }
 
-  return (data ?? []) as PortalClientLink[];
+  return (data ?? []) as unknown as PortalClientLink[];
 }

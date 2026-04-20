@@ -32,5 +32,5 @@ export async function listPaymentAttempts(clientId: string): Promise<PaymentAtte
     console.error("[listPaymentAttempts]", error.message);
     return [];
   }
-  return (data ?? []) as PaymentAttemptRow[];
+  return (data ?? []) as unknown as PaymentAttemptRow[];
 }

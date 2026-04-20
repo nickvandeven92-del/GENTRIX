@@ -26,5 +26,5 @@ export async function listClientDossierNotes(clientId: string): Promise<ClientDo
     return [];
   }
 
-  return (data ?? []) as ClientDossierNoteRow[];
+  return (data ?? []) as unknown as ClientDossierNoteRow[];
 }

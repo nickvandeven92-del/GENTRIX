@@ -47,7 +47,7 @@ export async function listSalesTasks(): Promise<SalesTaskRow[]> {
     logSupabaseReadError("[listSalesTasks]", error.message, { salesOsMigrationHint: true });
     return [];
   }
-  return sortTasks((data ?? []) as SalesTaskRow[]);
+  return sortTasks((data ?? []) as unknown as SalesTaskRow[]);
 }
 
 export async function listOpenSalesTasksForOverview(limit = 12): Promise<SalesTaskRow[]> {
@@ -70,5 +70,5 @@ export async function listSalesTasksForLinked(
     logSupabaseReadError("[listSalesTasksForLinked]", error.message, { salesOsMigrationHint: true });
     return [];
   }
-  return sortTasks((data ?? []) as SalesTaskRow[]);
+  return sortTasks((data ?? []) as unknown as SalesTaskRow[]);
 }

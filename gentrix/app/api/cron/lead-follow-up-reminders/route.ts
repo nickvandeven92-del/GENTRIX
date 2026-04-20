@@ -41,9 +41,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const rows = (rawRows ?? []).filter(
+  const rows = ((rawRows ?? []).filter(
     (r) => !["lost", "converted"].includes((r as LeadRow).status),
-  ) as LeadRow[];
+  )) as unknown as LeadRow[];
   let updated = 0;
 
   for (const lead of rows) {

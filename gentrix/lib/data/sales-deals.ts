@@ -44,7 +44,7 @@ export async function listSalesDeals(): Promise<SalesDealRow[]> {
     logSupabaseReadError("[listSalesDeals]", error.message, { salesOsMigrationHint: true });
     return [];
   }
-  return (data ?? []) as SalesDealRow[];
+  return (data ?? []) as unknown as SalesDealRow[];
 }
 
 export async function getSalesDealById(id: string): Promise<SalesDealRow | null> {
@@ -68,5 +68,5 @@ export async function listSalesDealsForClient(clientId: string): Promise<SalesDe
     logSupabaseReadError("[listSalesDealsForClient]", error.message, { salesOsMigrationHint: true });
     return [];
   }
-  return (data ?? []) as SalesDealRow[];
+  return (data ?? []) as unknown as SalesDealRow[];
 }
