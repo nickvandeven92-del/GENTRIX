@@ -27,4 +27,10 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toMatch(/html\s*\{\s*scroll-padding-top:\s*0(?:rem)?;/);
   });
+
+  it("adds immediate top-state transparency fallback rule for home slug", () => {
+    const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
+    expect(doc).toContain('html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]');
+    expect(doc).toContain("background-color: transparent !important;");
+  });
 });
