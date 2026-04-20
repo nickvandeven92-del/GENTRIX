@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
+import type { ContentBlockParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import { z } from "zod";
 import { ANTHROPIC_KEY_MISSING_USER_HINT, getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import { clampMaxTokensNonStreaming } from "@/lib/ai/anthropic-nonstream-limits";
