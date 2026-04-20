@@ -423,7 +423,7 @@ export function buildStudioAutoMobileNavHeaderHtml(
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 md:gap-4 md:px-6">
     ${brandBlock}
     ${desktopNavBlock}
-    <button type="button" class="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white ring-1 ring-white/15 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden" @click="navOpen = !navOpen" :aria-expanded="navOpen.toString()" aria-controls="gentrix-site-mobile-sheet">
+    <button type="button" class="relative inline-flex h-11 w-11 shrink-0 appearance-none items-center justify-center rounded-xl text-white ring-1 ring-white/15 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden" @click="navOpen = !navOpen" :aria-expanded="navOpen.toString()" aria-controls="gentrix-site-mobile-sheet">
       <span class="sr-only">Menu</span>
       <span class="relative block h-5 w-5 shrink-0" aria-hidden="true">
         <span x-show="!navOpen" x-transition.opacity.duration.150ms class="absolute inset-0 flex flex-col justify-center gap-[5px]">
@@ -439,8 +439,10 @@ export function buildStudioAutoMobileNavHeaderHtml(
     </button>
   </div>
   <div class="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-md lg:hidden" x-show="navOpen" x-cloak x-transition.opacity @click="navOpen = false" aria-hidden="true"></div>
-  <div id="gentrix-site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4 pb-8 pt-5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/10 lg:hidden" x-show="navOpen" x-cloak x-transition @click.stop>
-    ${mobileSheetNavBlock}
+  <div id="gentrix-site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] overflow-hidden border-t border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/10 lg:hidden" x-show="navOpen" x-cloak x-transition @click.stop>
+    <div class="overflow-y-auto max-h-[calc(100svh-4rem)] px-4 pb-8 pt-5">
+      ${mobileSheetNavBlock}
+    </div>
   </div>
 </header>`;
 }

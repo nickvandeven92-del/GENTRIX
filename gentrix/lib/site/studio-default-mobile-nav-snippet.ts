@@ -21,7 +21,7 @@ export const STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET = `<header id="site-he
       <a href="__STUDIO_SITE_BASE__/faq" class="text-white/90 transition-colors hover:text-white">FAQ</a>
       <a href="__STUDIO_CONTACT_PATH__" class="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-white/90">Contact</a>
     </nav>
-    <button type="button" class="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white ring-1 ring-white/15 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden" @click="navOpen = !navOpen" :aria-expanded="navOpen.toString()" aria-controls="site-mobile-sheet">
+    <button type="button" class="relative inline-flex h-11 w-11 shrink-0 appearance-none items-center justify-center rounded-xl text-white ring-1 ring-white/15 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 lg:hidden" @click="navOpen = !navOpen" :aria-expanded="navOpen.toString()" aria-controls="site-mobile-sheet">
       <span class="sr-only">Menu</span>
       <span class="relative block h-5 w-5 shrink-0" aria-hidden="true">
         <span x-show="!navOpen" x-transition.opacity.duration.150ms class="absolute inset-0 flex flex-col justify-center gap-[5px]">
@@ -37,12 +37,14 @@ export const STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET = `<header id="site-he
     </button>
   </div>
   <div class="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-md lg:hidden" x-show="navOpen" x-cloak @click="navOpen = false" aria-hidden="true"></div>
-  <div id="site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4 pb-8 pt-5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/10 lg:hidden" x-show="navOpen" x-cloak @click.stop>
+  <div id="site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] overflow-hidden border-t border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/10 lg:hidden" x-show="navOpen" x-cloak @click.stop>
+    <div class="overflow-y-auto max-h-[calc(100svh-4rem)] px-4 pb-8 pt-5">
     <nav class="flex flex-col gap-0.5" aria-label="Mobiel menu">
       <a href="#features" class="block w-full rounded-xl px-4 py-3.5 text-left text-[15px] font-medium tracking-tight text-white transition-colors hover:bg-white/10 active:bg-white/15" @click="navOpen = false">Diensten</a>
       <a href="__STUDIO_SITE_BASE__/over-ons" class="block w-full rounded-xl px-4 py-3.5 text-left text-[15px] font-medium tracking-tight text-white transition-colors hover:bg-white/10 active:bg-white/15" @click="navOpen = false">Over ons</a>
       <a href="__STUDIO_SITE_BASE__/faq" class="block w-full rounded-xl px-4 py-3.5 text-left text-[15px] font-medium tracking-tight text-white transition-colors hover:bg-white/10 active:bg-white/15" @click="navOpen = false">FAQ</a>
       <a href="__STUDIO_CONTACT_PATH__" class="mt-3 rounded-full bg-white px-4 py-3.5 text-center text-sm font-semibold text-slate-900 shadow-md transition hover:bg-white/95" @click="navOpen = false">Contact</a>
     </nav>
+    </div>
   </div>
 </header>`;
