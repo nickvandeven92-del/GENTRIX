@@ -1210,11 +1210,11 @@ nav[data-gentrix-scroll-nav="1"] > .mx-auto {
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"],
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] {
-  background-color: color-mix(in srgb, rgb(255 255 255 / 0.9) 78%, transparent) !important;
-  border-color: rgb(226 232 240 / 0.9) !important;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
-  backdrop-filter: blur(10px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+  background-color: rgb(8 16 34 / 0.72) !important;
+  border-color: rgb(148 163 184 / 0.28) !important;
+  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.36) !important;
+  backdrop-filter: blur(10px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] .mx-auto,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] > .mx-auto,
@@ -1225,31 +1225,31 @@ nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolli
   box-shadow: none !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] span,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] li,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] label,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] span,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] li,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] label,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg {
-  color: rgb(15 23 42) !important;
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] span,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] li,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] label,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] a,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] span,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] li,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] label,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg {
+  color: rgb(241 245 249) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg {
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] svg {
   fill: currentColor !important;
   stroke: currentColor !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] [class*="border-white"],
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] [class*="border-white"] {
-  border-color: rgba(15, 23, 42, 0.18) !important;
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"],
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] [class*="border-white"] {
+  border-color: rgba(241, 245, 249, 0.28) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"],
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"] {
-  background-color: rgb(15 23 42) !important;
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"],
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"][data-gentrix-scrolling="1"] button span[class*="bg-white"] {
+  background-color: rgb(241 245 249) !important;
 }
 `;
 
