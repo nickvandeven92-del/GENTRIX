@@ -76,22 +76,14 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(mfaUrl);
     }
 
-    // Email MFA check — alleen als TOTP niet al vereist is
+    // E-mail MFA is verplicht voor alle accounts — geen opt-out
     if (!needsTotp) {
-      const { data: emailMfaRow } = await supabase
-        .from("admin_email_mfa")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (emailMfaRow) {
-        const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
-        const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
-        if (!valid && !pathname.startsWith("/login")) {
-          const mfaEmailUrl = new URL("/login/mfa-email", request.url);
-          mfaEmailUrl.searchParams.set("next", pathname);
-          return NextResponse.redirect(mfaEmailUrl);
-        }
+      const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
+      const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
+      if (!valid && !pathname.startsWith("/login")) {
+        const mfaEmailUrl = new URL("/login/mfa-email", request.url);
+        mfaEmailUrl.searchParams.set("next", pathname);
+        return NextResponse.redirect(mfaEmailUrl);
       }
     }
   }
@@ -108,24 +100,16 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!needsTotp && pathname === "/login") {
-      // Controleer of email MFA vereist is
-      const { data: emailMfaRow } = await supabase
-        .from("admin_email_mfa")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (emailMfaRow) {
-        const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
-        const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
-        if (!valid) {
-          const mfaEmailUrl = new URL("/login/mfa-email", request.url);
-          mfaEmailUrl.searchParams.set(
-            "next",
-            request.nextUrl.searchParams.get("next") ?? "/home",
-          );
-          return NextResponse.redirect(mfaEmailUrl);
-        }
+      // E-mail MFA verplicht voor alle accounts
+      const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
+      const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
+      if (!valid) {
+        const mfaEmailUrl = new URL("/login/mfa-email", request.url);
+        mfaEmailUrl.searchParams.set(
+          "next",
+          request.nextUrl.searchParams.get("next") ?? "/home",
+        );
+        return NextResponse.redirect(mfaEmailUrl);
       }
 
       const rawNext = request.nextUrl.searchParams.get("next");

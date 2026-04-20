@@ -79,7 +79,7 @@ export const STUDIO_AOS_CSS_CDN_SRC = "https://unpkg.com/aos@2.3.4/dist/aos.css"
 export const STUDIO_AOS_JS_CDN_SRC = "https://unpkg.com/aos@2.3.4/dist/aos.js";
 
 /** Inline boot: draait na `defer` AOS-bundle op DOMContentLoaded (defer-scripts zijn dan geladen). */
-const STUDIO_AOS_INLINE_INIT = `(function(){function b(){if(!window.AOS)return;try{AOS.init({duration:720,once:true,offset:20,easing:"ease-out-cubic",disable:window.matchMedia("(prefers-reduced-motion: reduce)").matches});}catch(_){}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",b);else b();})();`;
+const STUDIO_AOS_INLINE_INIT = `(function(){function b(){if(!window.AOS)return;try{AOS.init({duration:600,once:true,offset:80,easing:"ease-out-cubic",throttleDelay:200,disable:window.matchMedia("(prefers-reduced-motion: reduce)").matches});}catch(_){}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",b);else b();})();`;
 
 export function getStudioAosHtmlFragments(disabled: boolean): { headLink: string; bodyScripts: string } {
   if (disabled) return { headLink: "", bodyScripts: "" };
@@ -610,6 +610,22 @@ export function buildStudioHeaderNavAlpineClampScript(): string {
  * Hero + eerste secties: **keyframes** blijven voor een duidelijke load-animatie (zelfde timing als vroeger).
  */
 export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-preference) {
+  /* will-change op alle animatie-elementen: promoveert naar compositor layer vóór transitie start.
+     Voorkomt iOS/Android scroll-jank (browser hoeft geen layer te maken MID-scroll). */
+  [data-animation="fade-up"],
+  [data-animation="fade-in"],
+  [data-animation="slide-in-left"],
+  [data-animation="slide-in-right"],
+  [data-animation="scale-in"] {
+    will-change: opacity, transform;
+  }
+  [data-animation="fade-up"].studio-in-view,
+  [data-animation="fade-in"].studio-in-view,
+  [data-animation="slide-in-left"].studio-in-view,
+  [data-animation="slide-in-right"].studio-in-view,
+  [data-animation="scale-in"].studio-in-view {
+    will-change: auto;
+  }
   [data-animation="fade-up"] {
     opacity: 0;
     transform: translateY(28px);
@@ -990,8 +1006,8 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
       var el=nodes[i];
       var k=staggerKey(el);
       counts[k]=(counts[k]||0)+1;
-      var idx=(counts[k]-1);
-      el.style.setProperty("--studio-stagger",(idx*100)+"ms");
+      var idx=Math.min(counts[k]-1,5);
+      el.style.setProperty("--studio-stagger",(idx*50)+"ms");
     }
     var io=new IntersectionObserver(function(ents){
       for(var j=0;j<ents.length;j++){
@@ -1000,7 +1016,7 @@ export const STUDIO_SCROLL_REVEAL_SCRIPT = `<script>
         e.target.classList.add("studio-in-view");
         io.unobserve(e.target);
       }
-    },{root:null,rootMargin:"0px 0px 22% 0px",threshold:0.01});
+    },{root:null,rootMargin:"0px 0px 8% 0px",threshold:0.01});
     for(var n=0;n<nodes.length;n++)io.observe(nodes[n]);
     for(var b=0;b<borders.length;b++)io.observe(borders[b]);
     /* IO in iframe/preview soms laat of nooit: transitie + fallback voorkomen eeuwig verborgen blokken */
