@@ -66,6 +66,31 @@ export type Database = {
           flyer_studio_json: Json | null;
           /** Gezet wanneer commercieel dossier is losgekoppeld; site-tenant blijft bestaan. */
           commercial_unlinked_at: string | null;
+          /** Uitgebreide billing-status voor incasso-opvolging. */
+          billing_status: string;
+          /** Mollie klant-ID: cst_xxx */
+          mollie_customer_id: string | null;
+          /** Actief Mollie abonnement-ID: sub_xxx */
+          mollie_subscription_id: string | null;
+          subscription_start_date: string | null;
+          /** monthly | quarterly | yearly | one_time */
+          billing_interval: string | null;
+          prenotification_agreement: string | null;
+          failed_collection_count: number;
+          last_reminder_sent_at: string | null;
+          next_retry_at: string | null;
+          manual_payment_link_sent: boolean;
+          debt_collection_transferred: boolean;
+          billing_exception_granted: boolean;
+          service_suspended: boolean;
+          service_suspension_reason: string | null;
+          domain_paused: boolean;
+          email_addon_paused: boolean;
+          booking_paused: boolean;
+          shop_paused: boolean;
+          checkout_consent_text_version: string | null;
+          checkout_consent_ip: string | null;
+          checkout_confirmation_email_sent: boolean;
         };
         Insert: {
           id?: string;
@@ -113,6 +138,27 @@ export type Database = {
           flyer_public_token?: string | null;
           flyer_studio_json?: Json | null;
           commercial_unlinked_at?: string | null;
+          billing_status?: string;
+          mollie_customer_id?: string | null;
+          mollie_subscription_id?: string | null;
+          subscription_start_date?: string | null;
+          billing_interval?: string | null;
+          prenotification_agreement?: string | null;
+          failed_collection_count?: number;
+          last_reminder_sent_at?: string | null;
+          next_retry_at?: string | null;
+          manual_payment_link_sent?: boolean;
+          debt_collection_transferred?: boolean;
+          billing_exception_granted?: boolean;
+          service_suspended?: boolean;
+          service_suspension_reason?: string | null;
+          domain_paused?: boolean;
+          email_addon_paused?: boolean;
+          booking_paused?: boolean;
+          shop_paused?: boolean;
+          checkout_consent_text_version?: string | null;
+          checkout_consent_ip?: string | null;
+          checkout_confirmation_email_sent?: boolean;
         };
         Update: {
           id?: string;
@@ -159,6 +205,27 @@ export type Database = {
           flyer_public_token?: string | null;
           flyer_studio_json?: Json | null;
           commercial_unlinked_at?: string | null;
+          billing_status?: string;
+          mollie_customer_id?: string | null;
+          mollie_subscription_id?: string | null;
+          subscription_start_date?: string | null;
+          billing_interval?: string | null;
+          prenotification_agreement?: string | null;
+          failed_collection_count?: number;
+          last_reminder_sent_at?: string | null;
+          next_retry_at?: string | null;
+          manual_payment_link_sent?: boolean;
+          debt_collection_transferred?: boolean;
+          billing_exception_granted?: boolean;
+          service_suspended?: boolean;
+          service_suspension_reason?: string | null;
+          domain_paused?: boolean;
+          email_addon_paused?: boolean;
+          booking_paused?: boolean;
+          shop_paused?: boolean;
+          checkout_consent_text_version?: string | null;
+          checkout_consent_ip?: string | null;
+          checkout_confirmation_email_sent?: boolean;
         };
         Relationships: [];
       };
@@ -818,6 +885,154 @@ export type Database = {
           unit_price?: number | string;
           line_total?: number | string;
           position?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      sepa_mandates: {
+        Row: {
+          id: string;
+          client_id: string;
+          mollie_mandate_id: string | null;
+          mandate_reference: string;
+          mandate_date: string;
+          iban_last4: string;
+          account_holder: string | null;
+          bank_name: string | null;
+          /** valid | pending | invalid | revoked */
+          status: string;
+          prenotification_agreement: string | null;
+          consent_text_version: string | null;
+          consent_at: string | null;
+          consent_ip: string | null;
+          confirmation_email_sent: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          mollie_mandate_id?: string | null;
+          mandate_reference: string;
+          mandate_date: string;
+          iban_last4: string;
+          account_holder?: string | null;
+          bank_name?: string | null;
+          status?: string;
+          prenotification_agreement?: string | null;
+          consent_text_version?: string | null;
+          consent_at?: string | null;
+          consent_ip?: string | null;
+          confirmation_email_sent?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          mollie_mandate_id?: string | null;
+          mandate_reference?: string;
+          mandate_date?: string;
+          iban_last4?: string;
+          account_holder?: string | null;
+          bank_name?: string | null;
+          status?: string;
+          prenotification_agreement?: string | null;
+          consent_text_version?: string | null;
+          consent_at?: string | null;
+          consent_ip?: string | null;
+          confirmation_email_sent?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      payment_attempts: {
+        Row: {
+          id: string;
+          client_id: string;
+          attempted_at: string;
+          amount: string;
+          currency: string;
+          period_label: string | null;
+          mollie_payment_id: string | null;
+          mollie_subscription_id: string | null;
+          /** paid | failed | pending | open | chargeback | refunded */
+          status: string;
+          failure_reason: string | null;
+          webhook_received_at: string | null;
+          manual_note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          attempted_at?: string;
+          amount: number | string;
+          currency?: string;
+          period_label?: string | null;
+          mollie_payment_id?: string | null;
+          mollie_subscription_id?: string | null;
+          status: string;
+          failure_reason?: string | null;
+          webhook_received_at?: string | null;
+          manual_note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          attempted_at?: string;
+          amount?: number | string;
+          currency?: string;
+          period_label?: string | null;
+          mollie_payment_id?: string | null;
+          mollie_subscription_id?: string | null;
+          status?: string;
+          failure_reason?: string | null;
+          webhook_received_at?: string | null;
+          manual_note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      billing_events: {
+        Row: {
+          id: string;
+          client_id: string;
+          /** payment_paid | payment_failed | retry_scheduled | chargeback_received | service_suspended | service_reactivated | manual_payment_received | mandate_created | mandate_revoked | subscription_cancelled | billing_exception_granted */
+          event_type: string;
+          occurred_at: string;
+          /** "system" | "mollie_webhook" | "admin" of admin-UUID */
+          actor: string;
+          payment_attempt_id: string | null;
+          amount: string | null;
+          metadata: Json;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          event_type: string;
+          occurred_at?: string;
+          actor?: string;
+          payment_attempt_id?: string | null;
+          amount?: number | string | null;
+          metadata?: Json;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          event_type?: string;
+          occurred_at?: string;
+          actor?: string;
+          payment_attempt_id?: string | null;
+          amount?: number | string | null;
+          metadata?: Json;
+          note?: string | null;
           created_at?: string;
         };
         Relationships: [];

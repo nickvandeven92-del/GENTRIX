@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Briefcase,
+  CreditCard,
   ExternalLink,
   Eye,
   FileText,
@@ -14,6 +15,7 @@ import {
   QrCode,
   Receipt,
   ScrollText,
+  ShieldCheck,
   SquareUserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,18 @@ export function ClientDossierShell({
     { href: `${base}/invoices`, label: "Facturen", icon: Receipt, match: (p: string) => p.startsWith(`${base}/invoices`) },
     { href: `${base}/quotes`, label: "Offertes", icon: ScrollText, match: (p: string) => p.startsWith(`${base}/quotes`) },
     { href: `${base}/deals`, label: "Deals", icon: Briefcase, match: (p: string) => p.startsWith(`${base}/deals`) },
+    {
+      href: `${base}/abonnement`,
+      label: "Abonnement",
+      icon: ShieldCheck,
+      match: (p: string) => p.startsWith(`${base}/abonnement`),
+    },
+    {
+      href: `${base}/betalingen`,
+      label: "Betalingen",
+      icon: CreditCard,
+      match: (p: string) => p.startsWith(`${base}/betalingen`),
+    },
     { href: `${base}/websites`, label: "Websites", icon: Globe, match: (p: string) => p.startsWith(`${base}/websites`) },
     {
       href: `/admin/flyers/${enc}`,
