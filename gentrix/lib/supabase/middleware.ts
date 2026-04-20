@@ -123,7 +123,8 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL(next, request.url));
     }
 
-    if (!needsTotp && (pathname === "/login/mfa" || pathname === "/login/mfa-email")) {
+    if (!needsTotp && pathname === "/login/mfa") {
+      // TOTP niet nodig en gebruiker is al ingelogd — doorsturen naar bestemming
       const rawNext = request.nextUrl.searchParams.get("next");
       if (rawNext !== null && rawNext.trim() === "") {
         return supabaseResponse;
@@ -133,6 +134,25 @@ export async function updateSession(request: NextRequest) {
       }
       const next = safePostAuthRedirectPath(rawNext, request.url);
       return NextResponse.redirect(new URL(next, request.url));
+    }
+
+    if (!needsTotp && pathname === "/login/mfa-email") {
+      // Alleen doorsturen als de e-mail MFA cookie al geldig is
+      const mfaCookie = request.cookies.get(EMAIL_MFA_COOKIE_NAME)?.value ?? "";
+      const valid = mfaCookie ? await verifyEmailMfaCookie(mfaCookie, user.id) : false;
+      if (valid) {
+        const rawNext = request.nextUrl.searchParams.get("next");
+        if (rawNext !== null && rawNext.trim() === "") {
+          return supabaseResponse;
+        }
+        if (rawNext != null && rawNext.trim() !== "" && !rawNext.trim().startsWith("/")) {
+          return supabaseResponse;
+        }
+        const next = safePostAuthRedirectPath(rawNext, request.url);
+        return NextResponse.redirect(new URL(next, request.url));
+      }
+      // Cookie niet geldig → pagina tonen zodat gebruiker de code kan invoeren
+      return supabaseResponse;
     }
   }
 
