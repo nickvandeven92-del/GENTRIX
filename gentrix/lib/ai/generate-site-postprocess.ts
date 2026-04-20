@@ -835,6 +835,50 @@ export function enforceStickyPrimaryTailwindChromeAcrossSections(sections: Secti
   });
 }
 
+function injectGentrixScrollNavMarkerIntoChromeOpenTag(tag: string, attrs: string): string {
+  const hasMarker = /\bdata-gentrix-scroll-nav\s*=\s*["']1["']/i.test(attrs);
+  const hasScrolledFlag = /\bdata-gentrix-scrolled\s*=/i.test(attrs);
+  const markerAttrs = [
+    hasMarker ? "" : ' data-gentrix-scroll-nav="1"',
+    hasScrolledFlag ? "" : ' data-gentrix-scrolled="0"',
+  ]
+    .join("")
+    .trim();
+  if (!markerAttrs) return `<${tag}${attrs}>`;
+  return `<${tag}${attrs} ${markerAttrs}>`;
+}
+
+/**
+ * Markeert de primaire sticky/fixed chrome voor Gentrix-home-nav behavior
+ * (transparant op top, semi-transparant bij scroll) zonder andere sites te raken.
+ */
+export function injectGentrixScrollNavMarkerOnceInHtml(html: string): { html: string; applied: boolean } {
+  if (!html) return { html, applied: false };
+  let applied = false;
+  const out = html.replace(/<(header|nav)\b([^>]*)>/gi, (full, tag: string, inner: string) => {
+    if (applied) return full;
+    const t = tag.toLowerCase();
+    const cls =
+      inner.match(/\bclass\s*=\s*"([^"]*)"/i)?.[1] ?? inner.match(/\bclass\s*=\s*'([^']*)'/i)?.[1] ?? "";
+    const clsTrim = cls.trim();
+    if (shouldSkipChromeTagForStickyInjection(t, clsTrim)) return full;
+    if (!/\b(sticky|fixed)\b/i.test(clsTrim) || !/\btop-0\b/.test(clsTrim)) return full;
+    applied = true;
+    return injectGentrixScrollNavMarkerIntoChromeOpenTag(tag, inner);
+  });
+  return { html: out, applied };
+}
+
+export function enforceGentrixScrollNavMarkerAcrossSections(sections: SectionRow[]): SectionRow[] {
+  let done = false;
+  return sections.map((row) => {
+    if (done) return row;
+    const { html, applied } = injectGentrixScrollNavMarkerOnceInHtml(row.html);
+    if (applied) done = true;
+    return applied ? { ...row, html } : row;
+  });
+}
+
 function pickFallbackFragment(validIds: Set<string>): string {
   for (const k of ["footer", "contact", "hero", "features", "faq"]) {
     if (validIds.has(k)) return k;
@@ -1155,6 +1199,7 @@ export function ensureHeroRootMinViewportClass(html: string): string {
  */
 export function postProcessClaudeTailwindMarketingSite(
   page: ClaudeTailwindMarketingSiteOutput,
+  options?: PostProcessClaudeTailwindPageOptions,
 ): ClaudeTailwindMarketingSiteOutput {
   const marketingPagesRaw = page.marketingPages;
   const marketingKeys =
@@ -1166,17 +1211,23 @@ export function postProcessClaudeTailwindMarketingSite(
       ? { marketingPageKeys: marketingKeys, contactOnDedicatedSubpage: true }
       : undefined;
 
-  const landing = postProcessClaudeTailwindPage({ config: page.config, sections: page.sections }, { crossPage });
+  const landing = postProcessClaudeTailwindPage(
+    { config: page.config, sections: page.sections },
+    { crossPage, gentrixScrollNav: options?.gentrixScrollNav },
+  );
   const contact = postProcessClaudeTailwindPage(
     { config: page.config, sections: page.contactSections },
-    { crossPage },
+    { crossPage, gentrixScrollNav: options?.gentrixScrollNav },
   );
   const marketingPages =
     marketingPagesRaw != null && Object.keys(marketingPagesRaw).length > 0
       ? Object.fromEntries(
           Object.entries(marketingPagesRaw).map(([k, secs]) => [
             k,
-            postProcessClaudeTailwindPage({ config: page.config, sections: secs }, { crossPage }).sections,
+            postProcessClaudeTailwindPage(
+              { config: page.config, sections: secs },
+              { crossPage, gentrixScrollNav: options?.gentrixScrollNav },
+            ).sections,
           ]),
         )
       : undefined;
@@ -1190,6 +1241,11 @@ export function postProcessClaudeTailwindMarketingSite(
 
 export type PostProcessClaudeTailwindPageOptions = {
   crossPage?: MarketingCrossPageLinkContext;
+  /**
+   * Alleen voor Gentrix-home generatie: markeer primaire sticky nav voor
+   * transparant-op-top + subtiel glas bij scroll.
+   */
+  gentrixScrollNav?: boolean;
 };
 
 /**
@@ -1354,8 +1410,11 @@ export function postProcessClaudeTailwindPage(
 
   const sectionsDeduped = dedupeExcessTelAndWhatsAppAnchorsAcrossSections(sectionsLinked);
   const sectionsSticky = enforceStickyPrimaryTailwindChromeAcrossSections(sectionsDeduped);
+  const sectionsGentrixNav = options?.gentrixScrollNav
+    ? enforceGentrixScrollNavMarkerAcrossSections(sectionsSticky)
+    : sectionsSticky;
 
-  return { ...page, sections: sectionsSticky };
+  return { ...page, sections: sectionsGentrixNav };
 }
 
 const STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG: MasterPromptPageConfig = {
@@ -1375,6 +1434,7 @@ const STREAMING_PREVIEW_PLACEHOLDER_MASTER_CONFIG: MasterPromptPageConfig = {
 export function postProcessTailwindSectionsForStreamingPreview(
   sections: readonly TailwindSection[],
   config: TailwindPageConfig | null,
+  options?: Pick<PostProcessClaudeTailwindPageOptions, "gentrixScrollNav">,
 ): TailwindSection[] {
   if (sections.length === 0) return [];
   const masterConfig: MasterPromptPageConfig =
@@ -1387,7 +1447,7 @@ export function postProcessTailwindSectionsForStreamingPreview(
       name: s.sectionName.trim() || undefined,
     })),
   };
-  const out = postProcessClaudeTailwindPage(page);
+  const out = postProcessClaudeTailwindPage(page, options);
   return out.sections.map((row, i) => ({
     id: row.id,
     sectionName: row.name?.trim() || sections[i]?.sectionName?.trim() || row.id,

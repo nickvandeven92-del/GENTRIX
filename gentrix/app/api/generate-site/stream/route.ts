@@ -12,7 +12,7 @@ import { resolveGenerateSiteModuleFlags } from "@/lib/api/resolve-generate-site-
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { getRecentClientNamesForPrompt } from "@/lib/data/recent-clients-for-prompt";
-import { isValidSubfolderSlug } from "@/lib/slug";
+import { isValidSubfolderSlug, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { deriveStudioBusinessNameFromBriefing } from "@/lib/studio/derive-studio-business-name";
 import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 /** Pro: 800s (Vercel fluid max). Sync met `SITE_GENERATION_JOB_MAX_DURATION_SEC` — op Hobby 300. */
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   });
   const promptOpts: GenerateSitePromptOptions = {
     ...(slug && isValidSubfolderSlug(slug) ? { siteStorageSubfolderSlug: slug } : {}),
+    ...(slug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG ? { gentrixScrollNav: true } : {}),
     ...(clientImages.length > 0 ? { clientImages } : {}),
     ...(briefingReferenceImages.length > 0 ? { briefingReferenceImages } : {}),
     ...(referenceStyleUrl ? { referenceStyleUrl } : {}),

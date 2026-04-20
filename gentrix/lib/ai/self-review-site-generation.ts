@@ -315,6 +315,8 @@ export async function applySelfReviewToGeneratedPage(options: {
   designContract?: DesignGenerationContract | null;
   /** Zelfde excerpt als pass 1 wanneer referentie-URL is ingelezen. */
   referenceSiteSnapshot?: { url: string; excerpt: string };
+  /** Alleen voor Gentrix-home: nav marker voor transparant-op-top + scroll-frosted gedrag. */
+  gentrixScrollNav?: boolean;
 }): Promise<{ data: GeneratedTailwindPage; ran: boolean; usedRefined: boolean }> {
   const {
     client,
@@ -327,6 +329,7 @@ export async function applySelfReviewToGeneratedPage(options: {
     pipelineInterpreted,
     designContract,
     referenceSiteSnapshot,
+    gentrixScrollNav,
   } = options;
   void designContract;
   void referenceSiteSnapshot;
@@ -428,7 +431,7 @@ export async function applySelfReviewToGeneratedPage(options: {
       console.warn("[self-review] schema mismatch; concept behouden:", validated.error.message);
       return { data: draft, ran: true, usedRefined: false };
     }
-    const processed = postProcessClaudeTailwindMarketingSite(validated.data);
+    const processed = postProcessClaudeTailwindMarketingSite(validated.data, { gentrixScrollNav });
     const mapped = mapClaudeMarketingSiteOutputToSections(processed);
     if (
       mapped.sections.length !== draft.sections.length ||
@@ -536,7 +539,7 @@ export async function applySelfReviewToGeneratedPage(options: {
     return { data: draft, ran: true, usedRefined: false };
   }
 
-  const processed = postProcessClaudeTailwindPage(validated.data);
+  const processed = postProcessClaudeTailwindPage(validated.data, { gentrixScrollNav });
   const mapped = mapClaudeOutputToSections(processed);
 
   if (mapped.sections.length !== draft.sections.length) {
