@@ -852,6 +852,13 @@ export function GeneratorForm({
           void runConceptRefinement("meer_beweging");
         },
       },
+      {
+        id: "transparante_navbar",
+        label: "Transparante navbar",
+        onClick: () => {
+          void runConceptRefinement("transparante_navbar");
+        },
+      },
     ];
   }, [generatedTailwind, loading, conceptRefineLoading, runConceptRefinement]);
 
@@ -1248,6 +1255,14 @@ export function GeneratorForm({
                         className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
                       >
                         Meer beweging
+                      </button>
+                      <button
+                        type="button"
+                        disabled={conceptRefineLoading || loading}
+                        onClick={() => void runConceptRefinement("transparante_navbar")}
+                        className="inline-flex items-center justify-center rounded-lg border border-indigo-200/90 bg-white px-2.5 py-1.5 text-[11px] font-medium text-indigo-950 shadow-sm hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-100 dark:hover:bg-indigo-900/80"
+                      >
+                        Transparante navbar
                       </button>
                     </div>
                   </div>

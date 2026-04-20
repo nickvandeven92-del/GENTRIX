@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { createAnonServerClient } from "@/lib/supabase/anon-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
@@ -513,6 +514,24 @@ async function fetchActiveClientRow(
   }
 }
 
+/** Cache-tag voor targeted invalidatie bij publiceren: `revalidateTag(publishedSiteTag(slug))`. */
+export function publishedSiteTag(slug: string): string {
+  return `published-site:${slug}`;
+}
+
+/**
+ * Gecachede variant van `fetchActiveClientRow` — Vercel Data Cache, 60 seconden.
+ * Alleen voor live sites (geen preview-token). Elke unieke slug heeft zijn eigen cache-entry.
+ */
+const fetchActiveClientRowCached = unstable_cache(
+  (slug: string) => fetchActiveClientRow(slug),
+  ["active-client-row"],
+  {
+    revalidate: 60,
+    tags: ["published-site"],
+  },
+);
+
 /**
  * Publieke site (`status = active`) óf **concept/gepauzeerd** met geldige `?token=` (zelfde routes als live, niet indexeerbaar).
  * Server-side met service role; fallback anon als key ontbreekt.
@@ -535,7 +554,8 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
   previewToken?: string | null,
 ): Promise<PublishedSiteBundle | null> {
   try {
-    const activeRow = await fetchActiveClientRow(slug);
+    const isPreview = Boolean(previewToken?.trim());
+    const activeRow = isPreview ? await fetchActiveClientRow(slug) : await fetchActiveClientRowCached(slug);
     let data = activeRow.data;
     const { error } = activeRow;
 

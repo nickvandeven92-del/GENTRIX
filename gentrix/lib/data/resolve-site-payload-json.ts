@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 export type ClientPayloadPointersRow = {
   site_data_json: unknown;
@@ -5,8 +6,7 @@ export type ClientPayloadPointersRow = {
   published_snapshot_id: string | null;
 };
 
-/** O.a. live-site merge: concept-snapshot kan nieuwere `marketingPages` hebben dan `published_snapshot_id`. */
-export async function fetchSiteSnapshotPayloadJson(snapshotId: string): Promise<unknown | null> {
+async function _fetchSiteSnapshotPayloadJson(snapshotId: string): Promise<unknown | null> {
   try {
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase
@@ -22,6 +22,16 @@ export async function fetchSiteSnapshotPayloadJson(snapshotId: string): Promise<
     return null;
   }
 }
+
+/**
+ * Snapshots zijn immutable na publicatie. Cache 1 uur — bij nieuwe publish ontstaat een nieuw ID.
+ * O.a. live-site merge: concept-snapshot kan nieuwere `marketingPages` hebben dan `published_snapshot_id`.
+ */
+export const fetchSiteSnapshotPayloadJson = unstable_cache(
+  _fetchSiteSnapshotPayloadJson,
+  ["site-snapshot"],
+  { revalidate: 3600, tags: ["site-snapshot"] },
+);
 
 /**
  * Werkversie voor editor / export / generator-upgrade: draft-snapshot, anders kolom `site_data_json`.

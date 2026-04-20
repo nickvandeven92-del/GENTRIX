@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-access";
 import { publishClientSnapshotForSlug } from "@/lib/data/publish-client-snapshot";
+import { publishedSiteTag } from "@/lib/data/get-published-site";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
 const bodySchema = z.object({ snapshot_id: z.string().uuid().optional() }).optional();
@@ -36,6 +38,10 @@ export async function POST(request: Request, context: RouteContext) {
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
   }
+
+  revalidateTag(publishedSiteTag(slug));
+  revalidateTag("published-site");
+  revalidatePath(`/site/${slug}`);
 
   return NextResponse.json({
     ok: true,

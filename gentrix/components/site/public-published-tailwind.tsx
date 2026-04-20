@@ -93,7 +93,7 @@ export function PublicPublishedTailwind({
 
   useEffect(() => {
     let cancelled = false;
-    const skeletonDelayMs = embedded ? 0 : 320;
+    const skeletonDelayMs = 0;
     const skeletonTimer = window.setTimeout(() => {
       if (!cancelled) setShowSkeleton(true);
     }, skeletonDelayMs);
