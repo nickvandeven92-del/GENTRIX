@@ -20,7 +20,9 @@ function b64urlDecode(s: string): Uint8Array {
   const padded = s.replace(/-/g, "+").replace(/_/g, "/");
   const pad = (4 - (padded.length % 4)) % 4;
   const decoded = atob(padded + "=".repeat(pad));
-  return Uint8Array.from(decoded, (c) => c.charCodeAt(0));
+  const arr = new Uint8Array(decoded.length);
+  for (let i = 0; i < decoded.length; i++) arr[i] = decoded.charCodeAt(i);
+  return arr;
 }
 
 async function getKey(): Promise<CryptoKey> {
