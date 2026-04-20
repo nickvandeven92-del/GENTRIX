@@ -39,8 +39,8 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
   }
 
-  revalidateTag(publishedSiteTag(slug));
-  revalidateTag("published-site");
+  revalidateTag(publishedSiteTag(slug), "default");
+  revalidateTag("published-site", "default");
   revalidatePath(`/site/${slug}`);
 
   return NextResponse.json({
