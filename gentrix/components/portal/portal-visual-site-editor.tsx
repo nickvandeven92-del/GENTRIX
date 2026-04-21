@@ -563,6 +563,7 @@ export function PortalVisualSiteEditor({
 
     // Enkele klik → afbeelding vervangen of tekst bewerken
     const handleClick = (event: Event) => {
+      console.log("[portal-editor] handleClick", event.target);
       const target = event.target;
       if (!(target instanceof Element)) return;
       // Al in een actieve contenteditable → niets doen
@@ -746,18 +747,22 @@ export function PortalVisualSiteEditor({
 
   const onIframeLoad = useCallback(() => {
     const win = iframeRef.current?.contentWindow;
-    bindIframeEditor();
-    if (win) {
-      const tryMark = (attempts = 0) => {
-        const doc = iframeRef.current?.contentDocument;
-        if (!doc) return;
-        const stats = markIframeEditables(doc);
-        if (stats.text === 0 && attempts < 20) {
-          win.setTimeout(() => tryMark(attempts + 1), 200);
-        }
-      };
-      win.setTimeout(tryMark, 300);
-    }
+    // Wacht 500 ms zodat Alpine.js en andere iframe-scripts volledig geïnitialiseerd zijn
+    // voordat we de editor binden en markeren.
+    setTimeout(() => {
+      bindIframeEditor();
+      if (win) {
+        const tryMark = (attempts = 0) => {
+          const doc = iframeRef.current?.contentDocument;
+          if (!doc) return;
+          const stats = markIframeEditables(doc);
+          if (stats.text === 0 && attempts < 20) {
+            win.setTimeout(() => tryMark(attempts + 1), 200);
+          }
+        };
+        win.setTimeout(tryMark, 300);
+      }
+    }, 500);
   }, [bindIframeEditor, markIframeEditables]);
 
   return (
