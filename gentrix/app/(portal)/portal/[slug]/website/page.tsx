@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PortalDraftSectionsEditor } from "@/components/portal/portal-draft-sections-editor";
+import { PortalVisualSiteEditor } from "@/components/portal/portal-visual-site-editor";
 import { PortalWebsitePanel } from "@/components/portal/portal-website-panel";
+import { getDraftPublishedSitePayloadBySlug, getDraftSiteJsonBySlug } from "@/lib/data/client-draft-site";
 import { getActivePortalClient } from "@/lib/data/get-portal-client";
+import { loadTailwindPayloadFromDraftJson } from "@/lib/portal/portal-draft-section-mutate";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -23,6 +25,10 @@ export default async function PortalWebsitePage({ params }: Props) {
   const client = await getActivePortalClient(decoded);
   if (!client) notFound();
 
+  const draftJson = await getDraftSiteJsonBySlug(decoded);
+  const loadedDraft = draftJson ? loadTailwindPayloadFromDraftJson(draftJson) : { ok: false as const, error: "Geen concept-data." };
+  const draftPayload = await getDraftPublishedSitePayloadBySlug(decoded);
+
   const origin = await getRequestOrigin();
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${encodeURIComponent(decoded)}` : `/site/${encodeURIComponent(decoded)}`;
 
@@ -36,7 +42,28 @@ export default async function PortalWebsitePage({ params }: Props) {
         </p>
       </div>
 
-      <PortalDraftSectionsEditor slug={slug} />
+      {loadedDraft.ok && draftPayload?.kind === "tailwind" ? (
+        <PortalVisualSiteEditor
+          slug={slug}
+          clientName={client.name}
+          documentTitle={loadedDraft.documentTitle ?? client.name}
+          sections={loadedDraft.payload.sections.map((section, index) => ({
+            key: `main:${index}`,
+            sectionName: section.sectionName,
+            section,
+          }))}
+          pageConfig={draftPayload.config}
+          userCss={draftPayload.customCss}
+          userJs={draftPayload.customJs}
+          logoSet={draftPayload.logoSet}
+          compiledTailwindCss={draftPayload.tailwindCompiledCss}
+        />
+      ) : (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+          Deze klant-editor werkt alleen voor Tailwind-sites met een modern project-snapshot. Legacy-sites of oudere
+          concepten moeten eerst door de studio worden gemigreerd.
+        </section>
+      )}
 
       <div className="mt-10">
         <PortalWebsitePanel

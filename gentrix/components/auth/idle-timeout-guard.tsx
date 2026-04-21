@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import {
+  SALES_OS_IDLE_LOGOUT_MINUTES,
+  SALES_OS_IDLE_LOGOUT_MS,
+  SALES_OS_IDLE_WARNING_LEAD_MINUTES,
+  SALES_OS_IDLE_WARNING_MS,
+} from "@/lib/config/idle-timeout";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-/** Inactiviteitsdrempels in milliseconden */
-const IDLE_WARNING_MS = 4 * 60 * 1000; // 4 minuten → toon waarschuwing
-const IDLE_LOGOUT_MS = 5 * 60 * 1000;  // 5 minuten → automatisch uitloggen
-const TICK_INTERVAL_MS = 10_000;        // elke 10 seconden controleren
+const TICK_INTERVAL_MS = 10_000; // elke 10 seconden controleren
 
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   "mousemove",
@@ -21,14 +24,14 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
 
 /**
  * Bewaakt inactiviteit in de admin/CRM-omgeving.
- * Waarschuwing na 4 minuten, automatisch uitloggen na 5 minuten.
+ * Waarschuwing na 9 minuten, automatisch uitloggen na 10 minuten.
  * Mounts niet-zichtbaar; toont alleen een overlay bij inactiviteit.
  */
 export function IdleTimeoutGuard() {
   const router = useRouter();
   const lastActivityRef = useRef<number>(Date.now());
   const [showWarning, setShowWarning] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [secondsLeft, setSecondsLeft] = useState(SALES_OS_IDLE_WARNING_LEAD_MINUTES * 60);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const resetActivity = useCallback(() => {
@@ -63,12 +66,12 @@ export function IdleTimeoutGuard() {
   useEffect(() => {
     const interval = setInterval(() => {
       const idle = Date.now() - lastActivityRef.current;
-      if (idle >= IDLE_LOGOUT_MS) {
+      if (idle >= SALES_OS_IDLE_LOGOUT_MS) {
         clearInterval(interval);
         void doSignOut();
-      } else if (idle >= IDLE_WARNING_MS && !showWarning) {
+      } else if (idle >= SALES_OS_IDLE_WARNING_MS && !showWarning) {
         setShowWarning(true);
-        setSecondsLeft(Math.ceil((IDLE_LOGOUT_MS - idle) / 1000));
+        setSecondsLeft(Math.ceil((SALES_OS_IDLE_LOGOUT_MS - idle) / 1000));
       }
     }, TICK_INTERVAL_MS);
 
@@ -81,7 +84,7 @@ export function IdleTimeoutGuard() {
 
     countdownRef.current = setInterval(() => {
       const idle = Date.now() - lastActivityRef.current;
-      const remaining = Math.max(0, Math.ceil((IDLE_LOGOUT_MS - idle) / 1000));
+      const remaining = Math.max(0, Math.ceil((SALES_OS_IDLE_LOGOUT_MS - idle) / 1000));
       setSecondsLeft(remaining);
       if (remaining <= 0) {
         if (countdownRef.current) clearInterval(countdownRef.current);
@@ -119,8 +122,8 @@ export function IdleTimeoutGuard() {
         </div>
 
         <p id="idle-warning-desc" className="mb-5 text-sm text-neutral-600 dark:text-zinc-400">
-          Je bent langer dan 4 minuten inactief. Vanwege vertrouwelijke informatie word je
-          automatisch uitgelogd over{" "}
+          Je bent langer dan {SALES_OS_IDLE_LOGOUT_MINUTES - SALES_OS_IDLE_WARNING_LEAD_MINUTES} minuten inactief.
+          Vanwege vertrouwelijke informatie word je automatisch uitgelogd over{" "}
           <span className="font-semibold tabular-nums text-neutral-900 dark:text-zinc-100">
             {secondsLeft}
           </span>{" "}
