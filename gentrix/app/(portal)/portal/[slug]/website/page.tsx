@@ -7,6 +7,14 @@ import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { loadTailwindPayloadFromDraftJson } from "@/lib/portal/portal-draft-section-mutate";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 
+function labelForMarketingPage(pageKey: string): string {
+  return pageKey
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -28,6 +36,41 @@ export default async function PortalWebsitePage({ params }: Props) {
   const draftJson = await getDraftSiteJsonBySlug(decoded);
   const loadedDraft = draftJson ? loadTailwindPayloadFromDraftJson(draftJson) : { ok: false as const, error: "Geen concept-data." };
   const draftPayload = await getDraftPublishedSitePayloadBySlug(decoded);
+  const editorPages = loadedDraft.ok
+    ? [
+        {
+          id: "main",
+          label: "Home",
+          sections: loadedDraft.payload.sections.map((section, index) => ({
+            key: `main:${index}`,
+            sectionName: section.sectionName,
+            section,
+          })),
+        },
+        ...((loadedDraft.payload.contactSections?.length ?? 0) > 0
+          ? [
+              {
+                id: "contact",
+                label: "Contact",
+                sections: (loadedDraft.payload.contactSections ?? []).map((section, index) => ({
+                  key: `contact:${index}`,
+                  sectionName: section.sectionName,
+                  section,
+                })),
+              },
+            ]
+          : []),
+        ...Object.entries(loadedDraft.payload.marketingPages ?? {}).map(([pageKey, sections]) => ({
+          id: `marketing:${pageKey}`,
+          label: labelForMarketingPage(pageKey),
+          sections: sections.map((section, index) => ({
+            key: `marketing:${pageKey}:${index}`,
+            sectionName: section.sectionName,
+            section,
+          })),
+        })),
+      ]
+    : [];
 
   const origin = await getRequestOrigin();
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${encodeURIComponent(decoded)}` : `/site/${encodeURIComponent(decoded)}`;
@@ -47,11 +90,7 @@ export default async function PortalWebsitePage({ params }: Props) {
           slug={slug}
           clientName={client.name}
           documentTitle={loadedDraft.documentTitle ?? client.name}
-          sections={loadedDraft.payload.sections.map((section, index) => ({
-            key: `main:${index}`,
-            sectionName: section.sectionName,
-            section,
-          }))}
+          pages={editorPages}
           pageConfig={draftPayload.config}
           userCss={draftPayload.customCss}
           userJs={draftPayload.customJs}

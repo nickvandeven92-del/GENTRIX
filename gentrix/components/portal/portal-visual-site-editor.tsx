@@ -1,15 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, Loader2, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Check, ImagePlus, Loader2, Paintbrush, Save } from "lucide-react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
+import { buildPortalThemePresets } from "@/lib/portal/portal-theme-presets";
 
 type EditableSection = {
   key: string;
   sectionName: string;
   section: TailwindSection;
+};
+
+export type PortalEditorPage = {
+  id: string;
+  label: string;
+  sections: EditableSection[];
 };
 
 type SnapshotSection = {
@@ -37,7 +44,7 @@ type Props = {
   slug: string;
   clientName: string;
   documentTitle: string;
-  sections: EditableSection[];
+  pages: PortalEditorPage[];
   pageConfig?: TailwindPageConfig | null;
   userCss?: string;
   userJs?: string;
@@ -300,7 +307,7 @@ export function PortalVisualSiteEditor({
   slug,
   clientName,
   documentTitle,
-  sections,
+  pages,
   pageConfig,
   userCss,
   userJs,
@@ -310,10 +317,18 @@ export function PortalVisualSiteEditor({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const snapshotResolverRef = useRef<((sections: SnapshotSection[]) => void) | null>(null);
+  const basePageConfigRef = useRef<TailwindPageConfig | null>(pageConfig ?? null);
   const [titleValue, setTitleValue] = useState(documentTitle);
   const [savedTitleValue, setSavedTitleValue] = useState(documentTitle);
+  const [pageConfigValue, setPageConfigValue] = useState<TailwindPageConfig | null>(pageConfig ?? null);
+  const [savedPageConfigValue, setSavedPageConfigValue] = useState<TailwindPageConfig | null>(pageConfig ?? null);
+  const [pageStates, setPageStates] = useState<Record<string, EditableSection[]>>(() =>
+    Object.fromEntries(pages.map((page) => [page.id, page.sections])),
+  );
+  const [selectedPageId, setSelectedPageId] = useState<string>(pages[0]?.id ?? "main");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [switchingPage, setSwitchingPage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -325,18 +340,29 @@ export function PortalVisualSiteEditor({
   } | null>(null);
 
   const enc = encodeURIComponent(decodeURIComponent(slug));
+  const currentPage = pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
+  const currentSections = currentPage ? pageStates[currentPage.id] ?? currentPage.sections : [];
+  const themePresets = useMemo(
+    () => buildPortalThemePresets(basePageConfigRef.current),
+    [],
+  );
+  const activePresetId = useMemo(() => {
+    const current = JSON.stringify(pageConfigValue ?? null);
+    const preset = themePresets.find((item) => JSON.stringify(item.pageConfig) === current);
+    return preset?.id ?? null;
+  }, [pageConfigValue, themePresets]);
 
   const previewSections = useMemo(
     () =>
-      sections.map(({ key, sectionName, section }) => ({
+      currentSections.map(({ key, sectionName, section }) => ({
         ...section,
         html: wrapSectionHtml(section.html, key, sectionName),
       })),
-    [sections],
+    [currentSections],
   );
 
   const srcDoc = useMemo(() => {
-    const base = buildTailwindIframeSrcDoc(previewSections, pageConfig, {
+    const base = buildTailwindIframeSrcDoc(previewSections, pageConfigValue, {
       previewPostMessageBridge: false,
       userCss,
       userJs,
@@ -346,7 +372,16 @@ export function PortalVisualSiteEditor({
       navBrandLabel: clientName,
     });
     return injectPortalEditorIntoSrcDoc(base);
-  }, [clientName, compiledTailwindCss, logoSet, pageConfig, previewSections, slug, userCss, userJs]);
+  }, [clientName, compiledTailwindCss, currentPage, logoSet, pageConfigValue, previewSections, slug, userCss, userJs]);
+
+  const mergeSnapshotIntoSections = useCallback((baseSections: EditableSection[], snapshot: SnapshotSection[]) => {
+    const htmlByKey = new Map(snapshot.map((item) => [item.key, item.html]));
+    return baseSections.map((item) =>
+      htmlByKey.has(item.key)
+        ? { ...item, section: { ...item.section, html: htmlByKey.get(item.key) ?? item.section.html } }
+        : item,
+    );
+  }, []);
 
   const requestSnapshot = useCallback(() => {
     const target = iframeRef.current?.contentWindow;
@@ -366,6 +401,17 @@ export function PortalVisualSiteEditor({
       }, 3000);
     });
   }, []);
+
+  const flushCurrentPageSnapshot = useCallback(async () => {
+    if (!currentPage) return pageStates;
+    const snapshot = await requestSnapshot();
+    const nextPageStates = {
+      ...pageStates,
+      [currentPage.id]: mergeSnapshotIntoSections(pageStates[currentPage.id] ?? currentPage.sections, snapshot),
+    };
+    setPageStates(nextPageStates);
+    return nextPageStates;
+  }, [currentPage, mergeSnapshotIntoSections, pageStates, requestSnapshot]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -400,20 +446,43 @@ export function PortalVisualSiteEditor({
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const hasUnsavedChanges = dirty || titleValue.trim() !== savedTitleValue.trim();
+  const hasUnsavedChanges =
+    dirty ||
+    titleValue.trim() !== savedTitleValue.trim() ||
+    JSON.stringify(pageConfigValue ?? null) !== JSON.stringify(savedPageConfigValue ?? null);
+
+  const onSelectPage = useCallback(
+    async (pageId: string) => {
+      if (pageId === selectedPageId) return;
+      setSwitchingPage(true);
+      setSaveErr(null);
+      try {
+        await flushCurrentPageSnapshot();
+        setSelectedPageId(pageId);
+      } catch (error) {
+        setSaveErr(error instanceof Error ? error.message : "Pagina wisselen mislukt.");
+      } finally {
+        setSwitchingPage(false);
+      }
+    },
+    [flushCurrentPageSnapshot, selectedPageId],
+  );
 
   const onSave = useCallback(async () => {
     setSaving(true);
     setSaveErr(null);
     setSaveMsg(null);
     try {
-      const snapshot = await requestSnapshot();
+      const nextPageStates = await flushCurrentPageSnapshot();
       const res = await fetch(`/api/portal/clients/${enc}/draft-sections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentTitle: titleValue.trim() || undefined,
-          patches: snapshot,
+          pageConfig: pageConfigValue ?? undefined,
+          patches: pages.flatMap((page) =>
+            (nextPageStates[page.id] ?? []).map((section) => ({ key: section.key, html: section.section.html })),
+          ),
         }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
@@ -423,15 +492,16 @@ export function PortalVisualSiteEditor({
       }
       setDirty(false);
       setSavedTitleValue(titleValue);
+      setSavedPageConfigValue(pageConfigValue ?? null);
       setSaveMsg("Concept opgeslagen. Publiceer hieronder wanneer de klantversie live mag.");
     } catch (error) {
       setSaveErr(error instanceof Error ? error.message : "Opslaan mislukt.");
     } finally {
       setSaving(false);
     }
-  }, [enc, requestSnapshot, titleValue]);
+  }, [enc, flushCurrentPageSnapshot, pageConfigValue, pages, titleValue]);
 
-  const onImageFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onImageFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !pendingImageTarget) return;
     setUploadingImage(true);
@@ -476,12 +546,13 @@ export function PortalVisualSiteEditor({
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Visuele website-editor</h2>
           <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
             Dit is alleen voor de klant in het portaal. Klik direct op tekst in de preview om te typen,
-            of klik op een afbeelding om die te vervangen. De indeling van de site blijft vast staan.
+            of klik op een afbeelding om die te vervangen. De indeling van de site blijft vast staan, ook op contact-
+            en marketingpagina’s.
           </p>
         </div>
         <button
           type="button"
-          disabled={saving || uploadingImage || !hasUnsavedChanges}
+          disabled={saving || switchingPage || uploadingImage || !hasUnsavedChanges}
           onClick={() => void onSave()}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
         >
@@ -492,6 +563,30 @@ export function PortalVisualSiteEditor({
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+          <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+            {pages.map((page) => {
+              const active = page.id === selectedPageId;
+              return (
+                <button
+                  key={page.id}
+                  type="button"
+                  disabled={switchingPage || saving}
+                  onClick={() => void onSelectPage(page.id)}
+                  className={[
+                    "rounded-full border px-3 py-1.5 text-sm font-medium transition",
+                    active
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                  ].join(" ")}
+                >
+                  {page.label}
+                </button>
+              );
+            })}
+            <div className="ml-auto text-xs text-zinc-500 dark:text-zinc-400">
+              {currentPage ? `Je bewerkt nu: ${currentPage.label}` : "Geen pagina geselecteerd"}
+            </div>
+          </div>
           <iframe
             ref={iframeRef}
             title="Klant website editor"
@@ -510,10 +605,62 @@ export function PortalVisualSiteEditor({
             placeholder="Naam in de browsertab"
           />
 
+          <div className="mt-4">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <Paintbrush className="size-3.5" aria-hidden />
+              Thema
+            </div>
+            <div className="mt-2 space-y-2">
+              {themePresets.length > 0 ? (
+                themePresets.map((preset) => {
+                  const active = activePresetId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        setPageConfigValue(preset.pageConfig);
+                        setDirty(true);
+                        setSaveMsg(null);
+                      }}
+                      className={[
+                        "w-full rounded-xl border p-3 text-left transition",
+                        active
+                          ? "border-zinc-900 bg-white shadow-sm dark:border-zinc-100 dark:bg-zinc-900"
+                          : "border-zinc-200 bg-white/80 hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/70 dark:hover:bg-zinc-900",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{preset.label}</p>
+                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{preset.description}</p>
+                        </div>
+                        {active ? <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        {preset.swatches.map((swatch) => (
+                          <span
+                            key={swatch}
+                            className="size-6 rounded-full border border-black/10 dark:border-white/10"
+                            style={{ backgroundColor: swatch }}
+                          />
+                        ))}
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="rounded-xl border border-dashed border-zinc-300 bg-white/80 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400">
+                  Thema-varianten zijn alleen beschikbaar voor moderne Tailwind-stijlen.
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
             <p>Klik op een kop, paragraaf of lijstregel in de preview en typ direct je nieuwe tekst.</p>
             <p>Klik op een foto om een nieuwe afbeelding te uploaden. De verhoudingen van de site blijven staan.</p>
-            <p>Openingstijden kunnen in deze eerste versie als gewone tekst op de site worden aangepast.</p>
+            <p>Je kunt schakelen tussen home, contact en marketingpagina’s zonder een losse tweede editor te openen.</p>
           </div>
 
           <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-white/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/70">

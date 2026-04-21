@@ -4,12 +4,12 @@ import { checkPortalRateLimit } from "@/lib/api/portal-rate-limit";
 import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-access";
 import { getDraftSiteJsonBySlug } from "@/lib/data/client-draft-site";
 import { persistTailwindDraftForExistingClient } from "@/lib/data/persist-tailwind-client-draft";
+import { tailwindPageConfigSchema, tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
 import {
   applyPortalSectionPatches,
   listPortalDraftSectionRows,
   loadTailwindPayloadFromDraftJson,
 } from "@/lib/portal/portal-draft-section-mutate";
-import { tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
@@ -17,6 +17,7 @@ import { SNAPSHOT_DOCUMENT_TITLE_MAX } from "@/lib/site/project-snapshot-constan
 
 const patchBodySchema = z.object({
   documentTitle: z.string().min(1).max(SNAPSHOT_DOCUMENT_TITLE_MAX).optional(),
+  pageConfig: z.unknown().optional(),
   patches: z
     .array(
       z.object({
@@ -115,9 +116,18 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: false, error: applied.error }, { status: 400 });
   }
 
+  let nextPayload = applied.nextPayload;
+  if (parsed.data.pageConfig !== undefined) {
+    const configParsed = tailwindPageConfigSchema.safeParse(parsed.data.pageConfig);
+    if (!configParsed.success) {
+      return NextResponse.json({ ok: false, error: "Ongeldige themaconfiguratie." }, { status: 400 });
+    }
+    nextPayload = { ...nextPayload, config: configParsed.data };
+  }
+
   let strictPayload;
   try {
-    strictPayload = tailwindSectionsPayloadSchema.parse(applied.nextPayload);
+    strictPayload = tailwindSectionsPayloadSchema.parse(nextPayload);
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Payload-validatie mislukt." },
