@@ -556,8 +556,9 @@ export function PortalVisualSiteEditor({
   }, [enc, pendingImageTarget]);
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
+      <section className="overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:rounded-2xl sm:border">
+      <div className="flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-start lg:justify-between lg:px-6">
         <div>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Visuele website-editor</h2>
           <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
@@ -577,7 +578,7 @@ export function PortalVisualSiteEditor({
         </button>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-4 border-t border-zinc-200 px-2 pb-2 pt-4 dark:border-zinc-800 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-3 lg:pb-3">
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
           <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
             {pages.map((page) => {
@@ -606,13 +607,13 @@ export function PortalVisualSiteEditor({
           <iframe
             ref={iframeRef}
             title="Klant website editor"
-            className="h-[75vh] w-full border-0 bg-white"
+            className="h-[68dvh] min-h-[560px] w-full border-0 bg-white lg:h-[calc(100dvh-16rem)] lg:min-h-[760px]"
             sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
             srcDoc={srcDoc}
           />
         </div>
 
-        <aside className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/70">
+        <aside className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/70 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-11rem)] lg:overflow-auto">
           <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">Browsertitel</label>
           <input
             value={titleValue}
@@ -707,6 +708,7 @@ export function PortalVisualSiteEditor({
           </p>
         </aside>
       </div>
+      </section>
 
       <input
         ref={fileInputRef}
@@ -715,6 +717,6 @@ export function PortalVisualSiteEditor({
         className="hidden"
         onChange={(event) => void onImageFileChange(event)}
       />
-    </section>
+    </div>
   );
 }
