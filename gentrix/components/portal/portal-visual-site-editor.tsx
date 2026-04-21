@@ -206,18 +206,12 @@ export function PortalVisualSiteEditor({
   const isTextCandidate = useCallback(
     (el: Element) => {
       if (!(el instanceof HTMLElement)) return false;
-      if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,div")) return false;
-      if (el.closest("script,style,noscript")) return false;
+      if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption")) return false;
       if (el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
-      if (el.matches("div") && el.querySelector("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,div")) return false;
-      for (const child of Array.from(el.children)) {
-        if (!(child instanceof HTMLElement)) return false;
-        if (!child.matches("abbr,b,br,cite,code,em,i,mark,small,span,strong,sub,sup,u")) return false;
-        if (child.tagName === "A" || child.closest("a,button")) return false;
-      }
-      return normalizeEditableText(el.textContent ?? "").length > 0;
+      const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+      return text.length > 0;
     },
-    [normalizeEditableText],
+    [],
   );
 
   const markIframeEditables = useCallback(
@@ -486,8 +480,20 @@ export function PortalVisualSiteEditor({
   );
 
   const onIframeLoad = useCallback(() => {
+    const win = iframeRef.current?.contentWindow;
     bindIframeEditor();
-  }, [bindIframeEditor]);
+    if (win) {
+      const tryMark = (attempts = 0) => {
+        const doc = iframeRef.current?.contentDocument;
+        if (!doc) return;
+        const stats = markIframeEditables(doc);
+        if (stats.text === 0 && attempts < 20) {
+          win.setTimeout(() => tryMark(attempts + 1), 200);
+        }
+      };
+      win.setTimeout(tryMark, 300);
+    }
+  }, [bindIframeEditor, markIframeEditables]);
 
   return (
     <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
