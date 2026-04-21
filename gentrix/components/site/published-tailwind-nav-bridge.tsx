@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { publicBookingIframeSrcFromNavHref } from "@/lib/site/public-booking-modal-url";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
@@ -8,11 +9,33 @@ import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-m
 /**
  * Ontvangt navigatie uit de sandboxed marketing-iframe wanneer scripts geen `top.location` mogen zetten.
  * Boek-flow opent in een **modal** op deze pagina (geen volledige tab / geen full-screen weg van de site).
+ *
+ * Navigatie via `router.push` i.p.v. `window.location.assign`:
+ * – Geen volledige browser-reload → JS-bundle blijft in geheugen
+ * – `loading.tsx` skeleton verschijnt direct
+ * – RSC streamt in → naadloze overgang
  */
 export function PublishedTailwindNavBridge({ children }: { children: ReactNode }) {
   const [bookingModalSrc, setBookingModalSrc] = useState<string | null>(null);
+  const router = useRouter();
 
   const closeBookingModal = useCallback(() => setBookingModalSrc(null), []);
+
+  /** Soft-navigeer met optionele View Transitions fade. */
+  const softNavigate = useCallback(
+    (href: string) => {
+      const pathname = new URL(href).pathname + new URL(href).search + new URL(href).hash;
+      if (typeof document !== "undefined" && "startViewTransition" in document) {
+        // @ts-expect-error — View Transitions API (breed ondersteund, geen TS-type in oudere @types/dom)
+        document.startViewTransition(() => {
+          router.push(pathname);
+        });
+      } else {
+        router.push(pathname);
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
@@ -27,14 +50,14 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
         }
         const u = new URL(d.href);
         if (u.origin !== window.location.origin) return;
-        window.location.assign(d.href);
+        softNavigate(d.href);
       } catch {
         /* ignore */
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [softNavigate]);
 
   useEffect(() => {
     if (!bookingModalSrc) return;

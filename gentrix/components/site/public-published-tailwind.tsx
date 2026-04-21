@@ -220,7 +220,7 @@ export function PublicPublishedTailwind({
         <iframe
           title={documentTitle}
           style={iframeStyle}
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           srcDoc={srcDoc}
         />
       </div>

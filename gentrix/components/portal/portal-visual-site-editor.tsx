@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Check, ImagePlus, Loader2, Paintbrush, Save } from "lucide-react";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import { Check, ExternalLink, ImagePlus, Loader2, Paintbrush, Rocket, Save } from "lucide-react";
+import { isLegacyTailwindPageConfig, type TailwindPageConfig, type TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
 import { buildPortalThemePresets } from "@/lib/portal/portal-theme-presets";
@@ -40,7 +40,47 @@ type Props = {
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
   compiledTailwindCss?: string | null;
+  /** Publieke URL voor de "Open site" link en terugkoppeling na publiceren. */
+  publicSiteUrl?: string | null;
 };
+
+/**
+ * Probeert een nav-link href te matchen aan een pagina-ID uit de editor.
+ * Geeft null terug als de link niet naar een bekende pagina wijst.
+ */
+function resolveNavHrefToPageId(href: string, pages: PortalEditorPage[]): string | null {
+  let path = href.trim();
+  try {
+    if (/^https?:\/\//i.test(path)) path = new URL(path).pathname;
+  } catch {
+    /* ignore */
+  }
+  path = (path.split("?")[0] ?? "").split("#")[0] ?? "";
+
+  if (!path || path === "/") {
+    return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
+  }
+
+  const seg = (path.split("/").filter(Boolean)[0] ?? "").toLowerCase();
+  if (!seg) return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
+
+  if (seg === "contact") {
+    return pages.find((p) => p.id.startsWith("contact:") || p.id === "contact")?.id ?? null;
+  }
+
+  const slugify = (s: string) =>
+    s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  return (
+    pages.find((p) => {
+      if (p.id.startsWith("marketing:")) {
+        const key = (p.id.split(":")[1] ?? "").toLowerCase();
+        return key === seg || slugify(p.label) === seg;
+      }
+      return slugify(p.label) === seg;
+    })?.id ?? null
+  );
+}
 
 function escapeAttr(value: string): string {
   return value
@@ -170,11 +210,14 @@ export function PortalVisualSiteEditor({
   userJs,
   logoSet,
   compiledTailwindCss,
+  publicSiteUrl,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const iframeCleanupRef = useRef<(() => void) | null>(null);
   const basePageConfigRef = useRef<TailwindPageConfig | null>(pageConfig ?? null);
+  // Ref zodat bindIframeEditor altijd de laatste onSelectPage aanroept zonder circulaire deps
+  const onSelectPageRef = useRef<((pageId: string) => Promise<void>) | null>(null);
 
   const [titleValue, setTitleValue] = useState(documentTitle);
   const [savedTitleValue, setSavedTitleValue] = useState(documentTitle);
@@ -186,6 +229,7 @@ export function PortalVisualSiteEditor({
   const [selectedPageId, setSelectedPageId] = useState<string>(pages[0]?.id ?? "main");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [switchingPage, setSwitchingPage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -585,6 +629,21 @@ export function PortalVisualSiteEditor({
       // Al in een actieve contenteditable → niets doen
       if (target.closest('[contenteditable="true"]')) return;
 
+      // Nav-link → wissel van pagina in de editor
+      const navLink = target.closest("nav a[href], header a[href], [role='navigation'] a[href]") as HTMLAnchorElement | null;
+      if (navLink) {
+        const href = navLink.getAttribute("href") ?? "";
+        if (href && !/^(mailto:|tel:|javascript:|#)/i.test(href)) {
+          const targetPageId = resolveNavHrefToPageId(href, pages);
+          if (targetPageId && targetPageId !== selectedPageId) {
+            event.preventDefault();
+            event.stopPropagation();
+            void onSelectPageRef.current?.(targetPageId);
+            return;
+          }
+        }
+      }
+
       // Afbeelding: closest() is voldoende want img heeft geen kinderen
       const image = target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
       if (image) {
@@ -648,7 +707,7 @@ export function PortalVisualSiteEditor({
       removeCameraFloat();
       for (const t of timeouts) window.clearTimeout(t);
     };
-  }, [activateInlineEdit, markIframeEditables]);
+  }, [activateInlineEdit, markIframeEditables, pages, selectedPageId]);
 
   const requestSnapshot = useCallback(() => {
     const directDoc = iframeRef.current?.contentDocument;
@@ -691,6 +750,19 @@ export function PortalVisualSiteEditor({
     },
     [flushCurrentPageSnapshot, selectedPageId],
   );
+  onSelectPageRef.current = onSelectPage;
+
+  const updateThemeColor = useCallback(
+    (key: "primary" | "accent" | "background" | "textColor", value: string) => {
+      setPageConfigValue((prev) => {
+        if (!prev || isLegacyTailwindPageConfig(prev)) return prev;
+        return { ...prev, theme: { ...prev.theme, [key]: value } };
+      });
+      setDirty(true);
+      setSaveMsg(null);
+    },
+    [],
+  );
 
   const onSave = useCallback(async () => {
     setSaving(true);
@@ -721,11 +793,59 @@ export function PortalVisualSiteEditor({
       setDirty(false);
       setSavedTitleValue(titleValue);
       setSavedPageConfigValue(pageConfigValue ?? null);
-      setSaveMsg("Concept opgeslagen. Publiceer hieronder wanneer de klantversie live mag.");
+      setSaveMsg("Concept opgeslagen.");
     } catch (error) {
       setSaveErr(error instanceof Error ? error.message : "Opslaan mislukt.");
     } finally {
       setSaving(false);
+    }
+  }, [enc, flushCurrentPageSnapshot, pageConfigValue, pages, titleValue]);
+
+  const onPublishLive = useCallback(async () => {
+    setPublishing(true);
+    setSaveErr(null);
+    setSaveMsg(null);
+    try {
+      // Sla eerst als concept op (ook als er geen wijzigingen zijn, zodat de laatste state zeker staat)
+      const nextPageStates = await flushCurrentPageSnapshot();
+      const saveRes = await fetch(`/api/portal/clients/${enc}/draft-sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentTitle: titleValue.trim() || undefined,
+          pageConfig: pageConfigValue ?? undefined,
+          patches: pages.flatMap((page) =>
+            (nextPageStates[page.id] ?? [])
+              .filter(({ section }) => !/^<(header|footer|nav)\b/i.test(section.html.trimStart()))
+              .map((section) => ({ key: section.key, html: section.section.html })),
+          ),
+        }),
+      });
+      const saveJson = (await saveRes.json()) as { ok?: boolean; error?: string };
+      if (!saveRes.ok || !saveJson.ok) {
+        setSaveErr(saveJson.error ?? "Opslaan mislukt.");
+        return;
+      }
+      setDirty(false);
+      setSavedTitleValue(titleValue);
+      setSavedPageConfigValue(pageConfigValue ?? null);
+
+      // Publiceer het concept direct live
+      const pubRes = await fetch(`/api/portal/clients/${enc}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const pubJson = (await pubRes.json()) as { ok?: boolean; error?: string };
+      if (!pubRes.ok || !pubJson.ok) {
+        setSaveErr(pubJson.error ?? "Publiceren mislukt.");
+        return;
+      }
+      setSaveMsg("✓ Live gezet! Bezoekers zien de wijzigingen nu op je publieke site.");
+    } catch (error) {
+      setSaveErr(error instanceof Error ? error.message : "Publiceren mislukt.");
+    } finally {
+      setPublishing(false);
     }
   }, [enc, flushCurrentPageSnapshot, pageConfigValue, pages, titleValue]);
 
@@ -793,7 +913,7 @@ export function PortalVisualSiteEditor({
     <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
       <section className="overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:rounded-2xl sm:border">
 
-        {/* ── Header: titel + opslaan ── */}
+        {/* ── Header: titel + knoppen ── */}
         <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
             <label className="shrink-0 text-xs font-medium uppercase tracking-wide text-zinc-500">Browsertitel</label>
@@ -804,18 +924,43 @@ export function PortalVisualSiteEditor({
               placeholder="Naam in de browsertab"
             />
           </div>
-          <button
-            type="button"
-            disabled={saving || switchingPage || uploadingImage || !hasUnsavedChanges}
-            onClick={() => void onSave()}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-          >
-            {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
-            {saving ? "Bezig…" : "Opslaan als concept"}
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* Open publieke site */}
+            {publicSiteUrl ? (
+              <a
+                href={publicSiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                <ExternalLink className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Publieke site</span>
+              </a>
+            ) : null}
+            {/* Opslaan als concept */}
+            <button
+              type="button"
+              disabled={saving || publishing || switchingPage || uploadingImage || !hasUnsavedChanges}
+              onClick={() => void onSave()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
+              {saving ? "Bezig…" : "Concept"}
+            </button>
+            {/* Publiceer live */}
+            <button
+              type="button"
+              disabled={saving || publishing || switchingPage || uploadingImage}
+              onClick={() => void onPublishLive()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+            >
+              {publishing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Rocket className="size-4" aria-hidden />}
+              {publishing ? "Publiceren…" : "Publiceer live"}
+            </button>
+          </div>
         </div>
 
-        {/* ── Thema-presets: horizontale scroll-rij ── */}
+        {/* ── Thema-presets: horizontale scroll-rij + individuele kleuren ── */}
         {themePresets.length > 0 ? (
           <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:px-6">
             <div className="flex items-center gap-2 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -859,6 +1004,34 @@ export function PortalVisualSiteEditor({
                 );
               })}
             </div>
+
+            {/* Individuele kleurpickers (alleen voor niet-legacy config) */}
+            {pageConfigValue && !isLegacyTailwindPageConfig(pageConfigValue) ? (
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">Aanpassen:</span>
+                {(
+                  [
+                    { key: "primary", label: "Primair" },
+                    { key: "accent", label: "Accent" },
+                    { key: "background", label: "Achtergrond" },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"
+                  >
+                    <input
+                      type="color"
+                      value={pageConfigValue.theme[key] ?? "#000000"}
+                      onChange={(e) => updateThemeColor(key, e.target.value)}
+                      className="size-6 cursor-pointer rounded-md border border-black/10 p-0.5 dark:border-white/10"
+                      title={label}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

@@ -17,7 +17,27 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
   return (
     <>
       {/* Inline override: voorkomt donkere body-achtergrond op apparaten met dark mode */}
-      <style>{`body{background:#fff!important;color:#171717!important}`}</style>
+      <style>{`
+        body{background:#fff!important;color:#171717!important}
+
+        /* View Transitions API — naadloze fade bij paginawissels (Chrome/Edge/Safari 18+) */
+        @supports (view-transition-name: none) {
+          ::view-transition-old(root) {
+            animation: __site-fade-out 0.10s ease forwards;
+          }
+          ::view-transition-new(root) {
+            animation: __site-fade-in 0.18s ease forwards;
+          }
+          @keyframes __site-fade-out {
+            from { opacity: 1; }
+            to   { opacity: 0; }
+          }
+          @keyframes __site-fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+        }
+      `}</style>
       {children}
     </>
   );

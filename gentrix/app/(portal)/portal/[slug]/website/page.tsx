@@ -98,6 +98,7 @@ export default async function PortalWebsitePage({ params }: Props) {
           userJs={draftPayload.customJs}
           logoSet={draftPayload.logoSet}
           compiledTailwindCss={draftPayload.tailwindCompiledCss}
+          publicSiteUrl={publicSiteAbsoluteUrl}
         />
       ) : (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
@@ -109,12 +110,9 @@ export default async function PortalWebsitePage({ params }: Props) {
       <div className="mt-10">
         <PortalWebsitePanel
           slug={slug}
-          draftSnapshotId={client.draft_snapshot_id}
-          publishedSnapshotId={client.published_snapshot_id}
           customDomain={client.custom_domain}
           domainVerified={client.domain_verified}
           domainDnsTarget={client.domain_dns_target}
-          publicSiteAbsoluteUrl={publicSiteAbsoluteUrl}
         />
       </div>
     </main>

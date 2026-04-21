@@ -5,7 +5,7 @@ import {
 } from "@/lib/ai/tailwind-sections-schema";
 
 export type PortalThemePreset = {
-  id: "light" | "dark" | "warm";
+  id: "original" | "light" | "dark" | "warm";
   label: string;
   description: string;
   swatches: [string, string, string];
@@ -58,29 +58,41 @@ function mixHex(a: string, b: string, amount: number): string {
   });
 }
 
+/**
+ * Volgorde: [achtergrond, primair, accent] — achtergrond staat vooraan zodat de
+ * klant direct het grootste kleurverschil tussen de thema's ziet.
+ */
 function themeSwatches(config: MasterPromptPageConfig): [string, string, string] {
+  const background = normalizeHex(config.theme.background, "#ffffff");
   const primary = normalizeHex(config.theme.primary, "#1f2937");
   const accent = normalizeHex(config.theme.accent, "#c08a4a");
-  const background = normalizeHex(config.theme.background, "#ffffff");
-  return [primary, accent, background];
+  return [background, primary, accent];
 }
 
 function withMutedText(textColor: string, background: string): string {
   return mixHex(textColor, background, 0.42);
 }
 
+/**
+ * Licht: altijd een heldere, bijna-witte achtergrond — ongeacht de originele achtergrond.
+ * Primary en accent blijven herkenbaar maar worden zo nodig licht verdonkerd voor contrast.
+ */
 function buildLightPreset(base: MasterPromptPageConfig): MasterPromptPageConfig {
-  const primary = normalizeHex(base.theme.primary, "#1f2937");
-  const accent = normalizeHex(base.theme.accent, "#c08a4a");
-  const background = mixHex(normalizeHex(base.theme.background, "#ffffff"), "#fff8f0", 0.55);
-  const textColor = mixHex(normalizeHex(base.theme.textColor, primary), "#111827", 0.4);
+  const origPrimary = normalizeHex(base.theme.primary, "#1f2937");
+  const origAccent = normalizeHex(base.theme.accent, "#c08a4a");
+  // Achtergrond altijd sterk naar wit trekken (85%), ongeacht de originele kleur
+  const background = mixHex(normalizeHex(base.theme.background, "#ffffff"), "#f8f5f0", 0.85);
+  // Primary donker houden (goed contrast op witte achtergrond)
+  const primary = mixHex(origPrimary, "#111827", 0.3);
+  const accent = origAccent;
+  const textColor = mixHex(origPrimary, "#111827", 0.5);
   return {
     ...base,
     theme: {
       ...base.theme,
       primary,
       accent,
-      secondary: normalizeHex(base.theme.secondary, mixHex(primary, "#7c8aa0", 0.38)),
+      secondary: mixHex(primary, "#6b7280", 0.4),
       background,
       textColor,
       textMuted: withMutedText(textColor, background),
@@ -89,18 +101,27 @@ function buildLightPreset(base: MasterPromptPageConfig): MasterPromptPageConfig 
   };
 }
 
+/**
+ * Donker: altijd een diepe, donkere achtergrond — primary wordt sterk verlicht
+ * zodat tekst en knoppen leesbaar blijven op de donkere achtergrond.
+ */
 function buildDarkPreset(base: MasterPromptPageConfig): MasterPromptPageConfig {
-  const primary = mixHex(normalizeHex(base.theme.primary, "#1f2937"), "#dbe4f0", 0.16);
-  const accent = mixHex(normalizeHex(base.theme.accent, "#c08a4a"), "#f7efe3", 0.12);
-  const background = mixHex(normalizeHex(base.theme.primary, "#0f172a"), "#090b12", 0.72);
-  const textColor = "#f8fafc";
+  const origPrimary = normalizeHex(base.theme.primary, "#1f2937");
+  const origAccent = normalizeHex(base.theme.accent, "#c08a4a");
+  // Achtergrond: altijd erg donker — mix van primary (tint behouden) met bijna-zwart
+  const background = mixHex(origPrimary, "#080a0f", 0.82);
+  // Primary: flink oplichten zodat knoppen/accenten zichtbaar zijn op donkere achtergrond
+  const primary = mixHex(origPrimary, "#c8dce8", 0.52);
+  // Accent: iets oplichten voor leesbaarheid
+  const accent = mixHex(origAccent, "#f5e8cc", 0.25);
+  const textColor = "#f0f4f8";
   return {
     ...base,
     theme: {
       ...base.theme,
       primary,
       accent,
-      secondary: normalizeHex(base.theme.secondary, mixHex(primary, "#94a3b8", 0.4)),
+      secondary: mixHex(primary, "#94a3b8", 0.4),
       background,
       textColor,
       textMuted: withMutedText(textColor, background),
@@ -109,18 +130,27 @@ function buildDarkPreset(base: MasterPromptPageConfig): MasterPromptPageConfig {
   };
 }
 
+/**
+ * Warm: warme crème/amber achtergrond — altijd merkbaar warm, ongeacht de originele kleuren.
+ * Primary wordt getint met warm bruin, accent rijker/amberkleuriger.
+ */
 function buildWarmPreset(base: MasterPromptPageConfig): MasterPromptPageConfig {
-  const primary = mixHex(normalizeHex(base.theme.primary, "#2b2f36"), "#4a3524", 0.24);
-  const accent = mixHex(normalizeHex(base.theme.accent, "#c08a4a"), "#d7a969", 0.28);
-  const background = mixHex(normalizeHex(base.theme.background, "#fffaf4"), "#efe2d2", 0.58);
-  const textColor = mixHex(normalizeHex(base.theme.textColor, primary), "#2f241b", 0.5);
+  const origPrimary = normalizeHex(base.theme.primary, "#2b2f36");
+  const origAccent = normalizeHex(base.theme.accent, "#c08a4a");
+  // Achtergrond: altijd warm crème, sterk getrokken naar amber-beige
+  const background = mixHex(normalizeHex(base.theme.background, "#fffaf4"), "#f2e0c0", 0.78);
+  // Primary: warm bruin tint
+  const primary = mixHex(origPrimary, "#3d2512", 0.35);
+  // Accent: rijker/amberkleuriger
+  const accent = mixHex(origAccent, "#c4831c", 0.35);
+  const textColor = mixHex(primary, "#1a0f08", 0.4);
   return {
     ...base,
     theme: {
       ...base.theme,
       primary,
       accent,
-      secondary: normalizeHex(base.theme.secondary, mixHex(primary, "#9c8166", 0.42)),
+      secondary: mixHex(primary, "#8c6040", 0.42),
       background,
       textColor,
       textMuted: withMutedText(textColor, background),
@@ -137,6 +167,13 @@ export function buildPortalThemePresets(pageConfig?: TailwindPageConfig | null):
   const warm = buildWarmPreset(pageConfig);
 
   return [
+    {
+      id: "original",
+      label: "Origineel",
+      description: "De merkkleuren zoals gegenereerd voor deze website.",
+      swatches: themeSwatches(pageConfig),
+      pageConfig,
+    },
     {
       id: "light",
       label: "Licht",
