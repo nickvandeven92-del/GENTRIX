@@ -442,10 +442,10 @@ export function PortalVisualSiteEditor({
       return;
     }
 
-    // Gebruik de iframe-eigen HTMLElement klasse voor instanceof-checks.
-    // Cross-frame `instanceof Element` faalt altijd: elke frame heeft een eigen constructor.
-    const IframeHTMLElement = doc.defaultView?.HTMLElement ?? HTMLElement;
-    const isEl = (n: unknown): n is HTMLElement => n instanceof IframeHTMLElement;
+    // Duck-type check: werkt cross-frame zonder instanceof.
+    // Elk HTMLElement heeft getAttribute — text-nodes en null niet.
+    const isEl = (n: unknown): n is HTMLElement =>
+      !!n && typeof (n as HTMLElement).getAttribute === "function";
 
     const timeouts: number[] = [];
 
@@ -564,7 +564,7 @@ export function PortalVisualSiteEditor({
 
     const handleMouseOut = (event: Event) => {
       const related = (event as MouseEvent).relatedTarget;
-      if (related instanceof doc.defaultView!.Node && (cameraFloatBtn?.contains(related as Node) || cameraFloatBtn === related)) return;
+      if (related && (cameraFloatBtn?.contains(related as Node) || cameraFloatBtn === related)) return;
       if (!isEl(event.target)) return;
       const img = event.target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
       if (img && activeCameraImg === img) removeCameraFloat();
@@ -573,7 +573,7 @@ export function PortalVisualSiteEditor({
     // Enkele klik → afbeelding vervangen of tekst bewerken
     const handleClick = (event: Event) => {
       const target = event.target;
-      // Gebruik isEl (iframe-safe instanceof) — cross-frame instanceof Element faalt anders
+      console.log("[portal-editor] click", target, "isEl=", isEl(target));
       if (!isEl(target)) return;
       // Al in een actieve contenteditable → niets doen
       if (target.closest('[contenteditable="true"]')) return;
@@ -607,9 +607,11 @@ export function PortalVisualSiteEditor({
         if (isEl(found)) textEl = found;
       }
 
+      console.log("[portal-editor] textEl=", textEl);
       if (textEl && textEl.getAttribute("contenteditable") !== "true") {
         event.preventDefault();
         event.stopPropagation();
+        console.log("[portal-editor] activeren →", textEl.tagName, textEl.textContent?.slice(0, 30));
         activateInlineEdit(doc, textEl);
       }
     };
