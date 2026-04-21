@@ -1755,3 +1755,16 @@ export function applyStudioImageFreeHtmlPass(page: GeneratedTailwindPage): Gener
       : {}),
   };
 }
+
+export function removeDuplicateAlpineNavScopeInHeader(html: string): string {
+  return html.replace(
+    /(<header\b[^>]*\bx-data\s*=\s*["'][^"']*["'][^>]*>)([\s\S]*?)(<\/header>)/gi,
+    (full, headerOpen, inner, headerClose) => {
+      const cleaned = inner.replace(
+        /\s*x-data\s*=\s*["'][^"']*\bnavOpen\b[^"']*["']/gi,
+        ""
+      );
+      return headerOpen + cleaned + headerClose;
+    }
+  );
+}
