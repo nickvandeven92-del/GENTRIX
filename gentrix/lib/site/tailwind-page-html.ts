@@ -2480,6 +2480,11 @@ export type BuildTailwindIframeSrcDocOptions = {
    */
   disableScrollRevealAnimations?: boolean;
   /**
+   * `true`: sla de automatische Gentrix mobile-nav injectie over.
+   * Gebruik dit in de portal editor zodat de originele navbar van de klant zichtbaar blijft.
+   */
+  disableAutoMobileNav?: boolean;
+  /**
    * Server-gecompileerde Tailwind (minified). Gezet → geen Play CDN / FOUC-wacht.
    */
   compiledTailwindCss?: string | null;
@@ -2706,7 +2711,7 @@ export function buildTailwindIframeSrcDoc(
     logoSet: options?.logoSet,
   });
   const existingHeaderLinks = extractHeaderNavLinks(body);
-  const shouldInject = shouldInjectStudioAutoMobileNav(body);
+  const shouldInject = !options?.disableAutoMobileNav && shouldInjectStudioAutoMobileNav(body);
   let studioAutoMobileNavInjected = false;
   if (sections.length > 0 && shouldInject) {
     body = `${buildStudioAutoMobileNavHeaderHtml(

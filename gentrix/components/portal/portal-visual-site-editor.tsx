@@ -221,6 +221,7 @@ export function PortalVisualSiteEditor({
     const base = buildTailwindIframeSrcDoc(previewSections, pageConfigValue, {
       previewPostMessageBridge: false,
       disableScrollRevealAnimations: true,
+      disableAutoMobileNav: true,
       userCss,
       userJs: undefined,
       logoSet,
@@ -458,6 +459,7 @@ export function PortalVisualSiteEditor({
     const mark = () => {
       const stats = markIframeEditables(doc);
       protectAlpineHeader(doc);
+      console.log("[portal-editor] mark →", stats, "editables:", doc.querySelectorAll("[data-portal-editable]").length);
       return stats;
     };
 
@@ -566,8 +568,8 @@ export function PortalVisualSiteEditor({
 
     // Enkele klik → afbeelding vervangen of tekst bewerken
     const handleClick = (event: Event) => {
-      console.log("[portal-editor] handleClick", event.target);
       const target = event.target;
+      console.log("[portal-editor] handleClick target=", target, "editable-attr=", target instanceof Element ? (target as HTMLElement).getAttribute("data-portal-editable") : "n/a");
       if (!(target instanceof Element)) return;
       // Al in een actieve contenteditable → niets doen
       if ((target as HTMLElement).closest('[contenteditable="true"]')) return;
@@ -601,7 +603,9 @@ export function PortalVisualSiteEditor({
         if (found instanceof HTMLElement) textEl = found;
       }
 
+      console.log("[portal-editor] textEl=", textEl);
       if (textEl && textEl.getAttribute("contenteditable") !== "true") {
+        console.log("[portal-editor] activateInlineEdit →", textEl.tagName, textEl.textContent?.slice(0, 40));
         event.preventDefault();
         event.stopPropagation();
         activateInlineEdit(doc, textEl);
