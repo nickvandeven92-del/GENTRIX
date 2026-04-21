@@ -71,6 +71,18 @@ describe("coerceContactBookCtaAnchorsInHtmlFragment", () => {
     const html = `<section class="min-h-screen"><a href="#contact">MAAK EEN AFSPRAAK</a></section>`;
     expect(coerceContactBookCtaAnchorsInHtmlFragment(html)).toContain(STUDIO_BOOKING_PATH_PLACEHOLDER);
   });
+
+  it("herkent al-opgeloste /site/{slug}/contact URL bij boeking-intent tekst", () => {
+    const html = `<section id="hero"><a href="/site/mosham/contact" class="btn">Maak een afspraak</a></section>`;
+    expect(coerceContactBookCtaAnchorsInHtmlFragment(html)).toContain(STUDIO_BOOKING_PATH_PLACEHOLDER);
+    expect(coerceContactBookCtaAnchorsInHtmlFragment(html)).not.toContain("/site/mosham/contact");
+  });
+
+  it("laat opgeloste /contact URL met Contact-tekst ongemoeid", () => {
+    const html = `<a href="/site/mosham/contact">Contact</a>`;
+    expect(coerceContactBookCtaAnchorsInHtmlFragment(html)).toContain("/site/mosham/contact");
+    expect(coerceContactBookCtaAnchorsInHtmlFragment(html)).not.toContain(STUDIO_BOOKING_PATH_PLACEHOLDER);
+  });
 });
 
 describe("coerceHeaderAppointmentCtaHrefs", () => {

@@ -112,6 +112,7 @@ export async function POST(request: Request, context: RouteContext) {
   const applied = applyPortalSectionPatches(loaded.payload, parsed.data.patches, {
     documentTitle: parsed.data.documentTitle,
     existingDocumentTitle: loaded.documentTitle,
+    subfolderSlug: slug,
   });
   if (!applied.ok) {
     return NextResponse.json({ ok: false, error: applied.error }, { status: 400 });

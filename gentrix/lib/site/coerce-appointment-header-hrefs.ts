@@ -12,11 +12,15 @@ const CONTACT_HREF_ESCAPED = STUDIO_CONTACT_PATH_PLACEHOLDER.replace(/[.*+?^${}(
 const SITE_BASE_HREF_ESCAPED = STUDIO_SITE_BASE_PLACEHOLDER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * `<a href="#contact">`, contact-placeholder, of `__STUDIO_SITE_BASE__/contact` (multipage)
- * → booking-placeholder wanneer de zichtbare tekst duidelijk om boeken gaat.
+ * `<a href="#contact">`, contact-placeholder, `__STUDIO_SITE_BASE__/contact` (multipage),
+ * of al-opgeloste paden als `/site/{slug}/contact` → booking-placeholder wanneer de zichtbare
+ * tekst duidelijk om boeken gaat.
+ *
+ * Het `\/[^"'#?]+\/contact` patroon matcht opgeloste paden die eindigen op `/contact`
+ * (bv. `/site/mosham/contact`), veilig omdat de booking-intent-check dit verder beperkt.
  */
 const CONTACT_OR_HASH_CONTACT_ANCHOR_RE = new RegExp(
-  `<a\\b([^>]*?)\\bhref\\s*=\\s*(["'])(#contact\\b|${CONTACT_HREF_ESCAPED}|${SITE_BASE_HREF_ESCAPED}\\/contact)\\2([^>]*)>([\\s\\S]*?)<\\/a>`,
+  `<a\\b([^>]*?)\\bhref\\s*=\\s*(["'])(#contact\\b|${CONTACT_HREF_ESCAPED}|${SITE_BASE_HREF_ESCAPED}\\/contact|\\/[^"'#?]+\\/contact(?:[?#][^"']*)?)\\2([^>]*)>([\\s\\S]*?)<\\/a>`,
   "gi",
 );
 

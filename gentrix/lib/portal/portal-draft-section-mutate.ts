@@ -7,6 +7,7 @@ import { normalizeUnknownToProjectSnapshot } from "@/lib/site/project-snapshot-i
 import { projectSnapshotToTailwindSectionsPayload } from "@/lib/site/project-snapshot-schema";
 import { sanitizeTailwindFragment } from "@/lib/site/tailwind-page-html";
 import { SNAPSHOT_DOCUMENT_TITLE_MAX } from "@/lib/site/project-snapshot-constants";
+import { restoreStudioPathPlaceholders } from "@/lib/site/studio-section-visibility";
 
 export type PortalDraftSectionRow = {
   /** Stabiele sleutel voor PATCH, bv. `main:0` of `contact:1`. */
@@ -101,9 +102,10 @@ function clampDocumentTitle(raw: string): string {
 export function applyPortalSectionPatches(
   payload: TailwindSectionsPayload,
   patches: { key: string; html: string }[],
-  opts: { documentTitle?: string | null; existingDocumentTitle?: string | null },
+  opts: { documentTitle?: string | null; existingDocumentTitle?: string | null; subfolderSlug?: string | null },
 ): { ok: true; nextPayload: TailwindSectionsPayload; documentTitleOut: string } | { ok: false; error: string } {
   const next = cloneTailwindPayload(payload);
+  const slug = opts.subfolderSlug?.trim() ?? "";
 
   for (const p of patches) {
     const parsed = parseKey(p.key);
@@ -113,7 +115,10 @@ export function applyPortalSectionPatches(
     // Structurele secties (navbar/header/footer/nav) worden nooit overschreven via de portal editor.
     // Door ze hier te skippen blijft de originele Alpine-wiring intact en wordt auto-nav-injectie voorkomen.
     if (/^<(header|footer|nav)\b/i.test(p.html.trimStart())) continue;
-    const html = sanitizeTailwindFragment(p.html);
+    // Converteer al-opgeloste paden (bv. `/site/mosham/contact`) terug naar studio-placeholders
+    // zodat opgeslagen HTML porteerbaar blijft en de coerce-laag correct kan werken.
+    const rawHtml = slug ? restoreStudioPathPlaceholders(p.html, slug) : p.html;
+    const html = sanitizeTailwindFragment(rawHtml);
     if (!html.trim()) {
       return { ok: false, error: `Lege HTML na sanitization voor ${p.key}.` };
     }

@@ -174,3 +174,29 @@ export function resolvePublishedStudioHref(href: string, publishedSlug?: string 
   if (!slug) return neutralizeStudioPathPlaceholdersWithoutSlug(href);
   return stripLeakedStudioPlaceholderTokens(applyStudioPublishedPathPlaceholders(href, slug));
 }
+
+/**
+ * Omgekeerde van `applyStudioPublishedPathPlaceholders`: vervangt al-opgeloste paden (bv. uit
+ * een iframe-snapshot) terug naar studio-placeholders zodat opgeslagen HTML porteerbaar blijft.
+ *
+ * Gebruikt door de portal-editor save-flow om te voorkomen dat de slug hardcoded opgeslagen wordt.
+ */
+export function restoreStudioPathPlaceholders(html: string, subfolderSlug: string): string {
+  const enc = encodeURIComponent(subfolderSlug);
+  const siteBase = `/site/${enc}`;
+  const bookingPath = `/booking-app/book/${enc}`;
+  const vensterPath = `/boek-venster/${enc}`;
+  const portalPath = `/portal/${enc}`;
+  const shopPath = `/winkel/${enc}`;
+
+  let h = html;
+  // Langste paden eerst om partiële vervangingen te voorkomen
+  h = h.split(`${siteBase}/contact`).join(STUDIO_CONTACT_PATH_PLACEHOLDER);
+  h = h.split(bookingPath).join(STUDIO_BOOKING_PATH_PLACEHOLDER);
+  h = h.split(vensterPath).join(STUDIO_BOOKING_PATH_PLACEHOLDER);
+  h = h.split(shopPath).join(STUDIO_SHOP_PATH_PLACEHOLDER);
+  h = h.split(portalPath).join(STUDIO_PORTAL_PATH_PLACEHOLDER);
+  // Basis site-URL als laatste (kortste patroon)
+  h = h.split(siteBase).join(STUDIO_SITE_BASE_PLACEHOLDER);
+  return h;
+}
