@@ -270,22 +270,23 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   return true;
 }
 
-export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `body > header[${AUTO_NAV_ATTR}] ~ header,
-body > header[${AUTO_NAV_ATTR}] ~ section:first-of-type header {
-  display: none !important;
-}
-
+export const STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS = `
+/* Verberg zijdelingse mobiele drawers van de originele nav op alle schermgroottes
+ * (hebben normaal lg:hidden; zonder Alpine-x-show zijn ze anders altijd zichtbaar). */
 div.fixed.top-0.right-0,
 div[class*="fixed"][class*="top-0"][class*="right-0"],
 div[class*="fixed"][class*="right-0"][class*="w-"],
 div[class*="fixed"][class*="right-0"][class*="h-full"],
 div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
-div[class*="fixed"][class*="right-0"][class*="z-"],
-div[class*="fixed"][x-show],
+div[class*="fixed"][class*="right-0"][class*="z-"] {
+  display: none !important;
+}
 
-/* Op mobiel: verberg de originele header/nav — de auto-nav neemt het over.
- * Op desktop blijft de originele header zichtbaar; de auto-nav wordt verborgen via :has(). */
+/* Op mobiel (<1024px): originele headers/navs verbergen — auto-nav neemt het over.
+ * Op desktop blijft de originele header zichtbaar; auto-nav wordt verborgen via :has(). */
 @media (max-width: 1023px) {
+  body > header[${AUTO_NAV_ATTR}] ~ header,
+  body > header[${AUTO_NAV_ATTR}] ~ section header,
   body > header:not([${AUTO_NAV_ATTR}]),
   body > nav,
   section header,
@@ -298,9 +299,9 @@ div[class*="fixed"][x-show],
   }
 }
 
-/* Op desktop: verberg de auto-nav wanneer er al een originele header in de secties staat.
- * Gebruikt descendant-selector zodat extra div-wrappers geen probleem zijn.
- * :has() wordt ondersteund in Chrome 105+, Safari 15.4+, Firefox 121+. */
+/* Op desktop (≥1024px): verberg de auto-nav wanneer er al een originele header in de secties staat.
+ * Descendant-selector zodat extra div-wrappers geen probleem zijn.
+ * :has() — Chrome 105+, Safari 15.4+, Firefox 121+. */
 @media (min-width: 1024px) {
   body > header[${AUTO_NAV_ATTR}]:has(~ section header) {
     display: none !important;
