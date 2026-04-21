@@ -470,7 +470,7 @@ export function repairHeaderMobileMenuButton(html: string): string {
 
   const next = h.replace(/<button(\b[^>]*)>([\s\S]*?)<\/button>/gi, (full, attrs: string, inner: string) => {
     if (!isLikelyHeaderMobileMenuButton(attrs)) return full;
-    if (/\bgentrix-menu-repaired\b/.test(attrs)) return full;
+    if (/\bgentrix-menu-repaired\b/.test(attrs) && /(?:@click|x-on:click)\s*=/.test(attrs)) return full;
 
     const trimmed = inner.replace(/<!--[\s\S]*?-->/g, "").trim();
     if (trimmed.includes("gentrix-hamburger-fallback")) return full;
