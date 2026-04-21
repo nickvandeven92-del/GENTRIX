@@ -242,7 +242,7 @@ export function PortalVisualSiteEditor({
   }, []);
 
   const isTextCandidate = useCallback((el: Element) => {
-    if (!(el instanceof HTMLElement)) return false;
+    if (typeof (el as HTMLElement).matches !== "function") return false;
     if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption")) return false;
     if (el.closest("nav,footer,a,button,[role='navigation']")) return false;
     if (el.closest("header[x-data]")) return false;  // Alpine navbar — niet aanraken
@@ -282,15 +282,14 @@ export function PortalVisualSiteEditor({
     doc.querySelectorAll("[data-portal-confirm-btn],[data-portal-camera-btn]").forEach((n) => n.remove());
     const sections: SnapshotSection[] = [];
     for (const sectionNode of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
-      if (!(sectionNode instanceof HTMLElement)) continue;
-      const clone = sectionNode.cloneNode(true) as HTMLElement;
+      const clone = (sectionNode as HTMLElement).cloneNode(true) as HTMLElement;
       // Sla structurele secties (navbar/footer/nav) over — die zijn niet bewerkbaar en mogen de
       // sanitizer-reparaties niet doorlopen, anders raakt de Alpine-wiring van de originele nav kapot.
       const firstEl = clone.firstElementChild;
       if (firstEl && /^(header|footer|nav)$/i.test(firstEl.tagName)) continue;
       for (const node of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
-        if (!(node instanceof Element)) continue;
-        for (const attr of Array.from(node.attributes)) {
+        if ((node as Element).nodeType !== 1) continue;
+        for (const attr of Array.from((node as Element).attributes)) {
           if (/^data-portal-/.test(attr.name)) node.removeAttribute(attr.name);
         }
         node.removeAttribute("contenteditable");
@@ -309,8 +308,8 @@ export function PortalVisualSiteEditor({
     // Stop eventuele andere inline-edit sessie inclusief editor-overlays
     doc.querySelectorAll('[data-portal-confirm-btn],[data-portal-camera-btn]').forEach((n) => n.remove());
     doc.querySelectorAll('[contenteditable="true"]').forEach((node) => {
-      if (node !== el && node instanceof HTMLElement) {
-        node.contentEditable = "false";
+      if (node !== el) {
+        (node as HTMLElement).contentEditable = "false";
         node.removeAttribute("contenteditable");
       }
     });
@@ -443,6 +442,11 @@ export function PortalVisualSiteEditor({
       return;
     }
 
+    // Gebruik de iframe-eigen HTMLElement klasse voor instanceof-checks.
+    // Cross-frame `instanceof Element` faalt altijd: elke frame heeft een eigen constructor.
+    const IframeHTMLElement = doc.defaultView?.HTMLElement ?? HTMLElement;
+    const isEl = (n: unknown): n is HTMLElement => n instanceof IframeHTMLElement;
+
     const timeouts: number[] = [];
 
     // Verwijder per ongeluk gezette data-portal-editable attributen van Alpine navbar-kinderen,
@@ -553,15 +557,15 @@ export function PortalVisualSiteEditor({
     };
 
     const handleMouseOver = (event: Event) => {
-      if (!(event.target instanceof Element)) return;
+      if (!isEl(event.target)) return;
       const img = event.target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
       if (img) showCameraFloat(img);
     };
 
     const handleMouseOut = (event: Event) => {
       const related = (event as MouseEvent).relatedTarget;
-      if (related instanceof Node && (cameraFloatBtn?.contains(related) || cameraFloatBtn === related)) return;
-      if (!(event.target instanceof Element)) return;
+      if (related instanceof doc.defaultView!.Node && (cameraFloatBtn?.contains(related as Node) || cameraFloatBtn === related)) return;
+      if (!isEl(event.target)) return;
       const img = event.target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
       if (img && activeCameraImg === img) removeCameraFloat();
     };
@@ -569,10 +573,10 @@ export function PortalVisualSiteEditor({
     // Enkele klik → afbeelding vervangen of tekst bewerken
     const handleClick = (event: Event) => {
       const target = event.target;
-      console.log("[portal-editor] handleClick target=", target, "editable-attr=", target instanceof Element ? (target as HTMLElement).getAttribute("data-portal-editable") : "n/a");
-      if (!(target instanceof Element)) return;
+      // Gebruik isEl (iframe-safe instanceof) — cross-frame instanceof Element faalt anders
+      if (!isEl(target)) return;
       // Al in een actieve contenteditable → niets doen
-      if ((target as HTMLElement).closest('[contenteditable="true"]')) return;
+      if (target.closest('[contenteditable="true"]')) return;
 
       // Afbeelding: closest() is voldoende want img heeft geen kinderen
       const image = target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
@@ -590,22 +594,20 @@ export function PortalVisualSiteEditor({
       // 1. Omhoog via parentElement (normaal geval: click landt op het editable zelf of een child ervan)
       let node: Element | null = target as Element;
       while (node) {
-        if (node instanceof HTMLElement && node.getAttribute("data-portal-editable") === "text") {
+        if (isEl(node) && node.getAttribute("data-portal-editable") === "text") {
           textEl = node;
           break;
         }
         node = node.parentElement;
       }
 
-      // 2. Omlaag via querySelector (vangnet: click landt toch op een wrapper boven alle editables)
+      // 2. Omlaag via querySelector (vangnet: click landt op een wrapper boven alle editables)
       if (!textEl) {
-        const found = (target as HTMLElement).querySelector('[data-portal-editable="text"]');
-        if (found instanceof HTMLElement) textEl = found;
+        const found = target.querySelector('[data-portal-editable="text"]');
+        if (isEl(found)) textEl = found;
       }
 
-      console.log("[portal-editor] textEl=", textEl);
       if (textEl && textEl.getAttribute("contenteditable") !== "true") {
-        console.log("[portal-editor] activateInlineEdit →", textEl.tagName, textEl.textContent?.slice(0, 40));
         event.preventDefault();
         event.stopPropagation();
         activateInlineEdit(doc, textEl);
