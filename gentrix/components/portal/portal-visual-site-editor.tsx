@@ -110,7 +110,44 @@ function buildPortalEditorCss(): string {
 
 function injectPortalEditorIntoSrcDoc(doc: string): string {
   const styleTag = `<style id="portal-visual-editor-css">${buildPortalEditorCss()}</style>`;
-  return doc.includes("</head>") ? doc.replace("</head>", `${styleTag}</head>`) : `${styleTag}${doc}`;
+  const markScript = `<script>
+(function(){
+  function mark(){
+    var sections = document.querySelectorAll('[data-portal-section-key]');
+    if(!sections.length) return 0;
+    var ti=0, ii=0;
+    sections.forEach(function(section){
+      section.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption').forEach(function(el){
+        if(el.closest('nav,header,footer,a,button')) return;
+        var text=(el.textContent||'').replace(/\\s+/g,' ').trim();
+        if(!text) return;
+        el.setAttribute('data-portal-editable','text');
+        el.setAttribute('data-editable','text');
+        el.setAttribute('data-portal-text-id','text-'+ti++);
+      });
+      section.querySelectorAll('img').forEach(function(img){
+        if(img.closest('a,button,nav,header')) return;
+        img.setAttribute('data-portal-editable','image');
+        img.setAttribute('data-editable','image');
+        img.setAttribute('data-portal-image-id','image-'+ii++);
+      });
+    });
+    return ti;
+  }
+  function tryMark(attempts){
+    var n=mark();
+    if(n===0 && attempts<20) setTimeout(function(){tryMark(attempts+1);},200);
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){tryMark(0);});
+  } else {
+    tryMark(0);
+  }
+  window.addEventListener('load',function(){tryMark(0);});
+})();
+<\/script>`;
+  const withStyle = doc.includes("</head>") ? doc.replace("</head>", `${styleTag}</head>`) : `${styleTag}${doc}`;
+  return withStyle.includes("</body>") ? withStyle.replace("</body>", `${markScript}</body>`) : `${withStyle}${markScript}`;
 }
 
 export function PortalVisualSiteEditor({
