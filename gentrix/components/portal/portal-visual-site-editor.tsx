@@ -240,7 +240,8 @@ export function PortalVisualSiteEditor({
   const isTextCandidate = useCallback((el: Element) => {
     if (!(el instanceof HTMLElement)) return false;
     if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption")) return false;
-    if (el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
+    if (el.closest("nav,footer,a,button,[role='navigation']")) return false;
+    if (el.closest("header[x-data]")) return false;  // Alpine navbar — niet aanraken
     const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
     return text.length > 0;
   }, []);
@@ -439,7 +440,23 @@ export function PortalVisualSiteEditor({
     }
 
     const timeouts: number[] = [];
-    const mark = () => markIframeEditables(doc);
+
+    // Verwijder per ongeluk gezette data-portal-editable attributen van Alpine navbar-kinderen,
+    // en zorg dat pointer-events: auto behouden blijft zodat Alpine-clicks doorwerken.
+    const protectAlpineHeader = (d: Document) => {
+      d.querySelectorAll<HTMLElement>("header[x-data], nav[x-data]").forEach((el) => {
+        el.style.pointerEvents = "auto";
+        el.querySelectorAll("[data-portal-editable]").forEach((child) => {
+          child.removeAttribute("data-portal-editable");
+        });
+      });
+    };
+
+    const mark = () => {
+      const stats = markIframeEditables(doc);
+      protectAlpineHeader(doc);
+      return stats;
+    };
 
     // Fix overlays die editor-clicks blokkeren (imperatief, zodat ook laat-geladen elementen worden geraakt)
     doc.querySelectorAll<HTMLElement>("[data-animation]").forEach((el) => {
