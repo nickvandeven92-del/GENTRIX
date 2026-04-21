@@ -138,6 +138,24 @@ function injectPortalEditorIntoSrcDoc(doc: string): string {
     var n=mark();
     if(n===0 && attempts<20) setTimeout(function(){tryMark(attempts+1);},200);
   }
+  document.addEventListener('click', function(e){
+    var el = e.target;
+    var text = el.closest('[data-portal-editable="text"]');
+    if(text){
+      e.preventDefault();
+      e.stopPropagation();
+      document.querySelectorAll('[data-portal-selected="1"]').forEach(function(n){ n.removeAttribute('data-portal-selected'); });
+      text.setAttribute('data-portal-selected','1');
+      try{ parent.postMessage({ source:'portal-site-editor', type:'portal-text-click', textId: text.getAttribute('data-portal-text-id'), sectionKey: (text.closest('[data-portal-section-key]')||{}).getAttribute('data-portal-section-key'), tagName: text.tagName.toLowerCase(), text: (text.textContent||'').replace(/\s+/g,' ').trim() }, '*'); }catch(_){}
+      return;
+    }
+    var img = el.closest('img[data-portal-editable="image"]');
+    if(img){
+      e.preventDefault();
+      e.stopPropagation();
+      try{ parent.postMessage({ source:'portal-site-editor', type:'portal-image-click', imageId: img.getAttribute('data-portal-image-id'), sectionKey: (img.closest('[data-portal-section-key]')||{}).getAttribute('data-portal-section-key'), src: img.getAttribute('src'), alt: img.getAttribute('alt') }, '*'); }catch(_){}
+    }
+  }, true);
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',function(){tryMark(0);});
   } else {
@@ -396,6 +414,37 @@ export function PortalVisualSiteEditor({
   }, [currentPage, mergeSnapshotIntoSections, pageStates, requestSnapshot]);
 
   useEffect(() => () => iframeCleanupRef.current?.(), []);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object' || data.source !== 'portal-site-editor') return;
+      if (data.type === 'portal-text-click') {
+        setSelectedTextBlock({
+          textId: data.textId ?? '',
+          sectionKey: data.sectionKey ?? '',
+          tagName: data.tagName ?? '',
+          originalText: data.text ?? '',
+          draftText: data.text ?? '',
+        });
+        setSaveErr(null);
+        setSaveMsg(null);
+        setPendingImageTarget(null);
+      }
+      if (data.type === 'portal-image-click') {
+        setPendingImageTarget({
+          imageId: data.imageId ?? '',
+          sectionKey: data.sectionKey ?? '',
+          src: data.src ?? '',
+          alt: data.alt ?? '',
+        });
+        setSaveErr(null);
+        queueMicrotask(() => fileInputRef.current?.click());
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   const hasUnsavedChanges =
     dirty ||
