@@ -283,29 +283,26 @@ div[class*="fixed"][class*="inset-y-0"][class*="right-0"],
 div[class*="fixed"][class*="right-0"][class*="z-"],
 div[class*="fixed"][x-show],
 
-section header,
-section nav,
-section nav[aria-label*="enu"],
-section nav[aria-label*="Menu"] {
-  display: none !important;
-}
-
-/* Op mobiel: verberg de originele header — de auto-nav neemt het over. */
+/* Op mobiel: verberg de originele header/nav — de auto-nav neemt het over.
+ * Op desktop blijft de originele header zichtbaar; de auto-nav wordt verborgen via :has(). */
 @media (max-width: 1023px) {
   body > header:not([${AUTO_NAV_ATTR}]),
   body > nav,
+  section header,
+  section nav,
+  section nav[aria-label*="enu"],
+  section nav[aria-label*="Menu"],
   body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="enu"],
   body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="Menu"] {
     display: none !important;
   }
 }
 
-/* Op desktop: verberg de auto-nav wanneer er al een originele header in een sectie staat.
- * :has() is ondersteund in alle moderne browsers (Chrome 105+, Safari 15.4+, Firefox 121+).
- * Zo toont de site op groot scherm de eigen branding, en op mobiel de werkende Gentrix hamburger. */
+/* Op desktop: verberg de auto-nav wanneer er al een originele header in de secties staat.
+ * Gebruikt descendant-selector zodat extra div-wrappers geen probleem zijn.
+ * :has() wordt ondersteund in Chrome 105+, Safari 15.4+, Firefox 121+. */
 @media (min-width: 1024px) {
-  body > header[${AUTO_NAV_ATTR}]:has(~ section > header),
-  body > header[${AUTO_NAV_ATTR}]:has(~ section > nav) {
+  body > header[${AUTO_NAV_ATTR}]:has(~ section header) {
     display: none !important;
   }
 }
