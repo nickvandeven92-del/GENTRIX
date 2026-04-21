@@ -2860,7 +2860,8 @@ export function buildTailwindIframeSrcDoc(
   const studioMobileCss = options?.studioMobileEditorFrame
     ? `${STUDIO_MOBILE_EDITOR_FRAME_NAV_CSS}\n${STUDIO_IFRAME_MOBILE_X_LOCK_CSS}\n${STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS}\n`
     : "";
-  const iframeShellAttr = ` data-gentrix-studio-iframe="1" data-gentrix-site-credit-variant="${siteCreditVariant}"`;
+  const isPreviewIframe = options?.previewPostMessageBridge !== false;
+const iframeShellAttr = `${isPreviewIframe ? ` data-gentrix-studio-iframe="1"` : ""} data-gentrix-site-credit-variant="${siteCreditVariant}"`;
   const autoNavDupCss = studioAutoMobileNavInjected
     ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n`
     : "";
