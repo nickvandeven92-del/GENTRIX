@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { PortalAppointmentNotifier } from "@/components/portal/portal-appointment-notifier";
@@ -28,7 +27,6 @@ export function PortalShell({
   appointmentsEnabled,
   invoicesEnabled,
   accountEnabled,
-  showStudioNav,
   publicSiteAbsoluteUrl,
   portalSessionMismatch = false,
   showStudioPreviewBanner = false,
@@ -74,14 +72,6 @@ export function PortalShell({
                 <ExternalLink className="size-4" aria-hidden />
                 Publieke site
               </a>
-              {showStudioNav ? (
-                <Link
-                  href="/admin/ops"
-                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  Studio
-                </Link>
-              ) : null}
             </div>
           </div>
         </header>
