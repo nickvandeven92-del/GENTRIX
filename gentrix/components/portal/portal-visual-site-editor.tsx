@@ -97,19 +97,28 @@ function buildPortalEditorCss(): string {
   transition: outline-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
+[data-portal-editable="text"] {
+  position: relative;
+  display: block;
+  min-height: 1.5em;
+  outline: 1px dashed rgba(37, 99, 235, 0.4);
+  outline-offset: 3px;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+  background: rgba(239, 246, 255, 0.2);
+}
+
 [data-portal-editable="text"]:hover,
 [data-portal-editable="image"]:hover {
   outline: 2px solid rgba(37, 99, 235, 0.72);
   outline-offset: 3px;
 }
 
-[data-portal-editable="text"] {
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.14);
-  background: rgba(239, 246, 255, 0.28);
-}
-
 [data-portal-editable="text"]:hover {
   background: rgba(219, 234, 254, 0.42);
+}
+
+[data-portal-editable="text"][contenteditable="true"] {
+  cursor: text;
 }
 
 [data-portal-editing="1"] {
@@ -162,6 +171,8 @@ function buildPortalEditorScript(): string {
         if(!isTextCandidate(el)) return;
         el.setAttribute("data-portal-editable", "text");
         el.setAttribute("data-portal-text-id", "text-" + String(textIndex++));
+        el.setAttribute("contenteditable", "true");
+        el.setAttribute("spellcheck", "false");
       });
       section.querySelectorAll("img").forEach(function(img){
         if(img.closest("a,button,nav,header,[role='navigation']")) return;
@@ -187,8 +198,6 @@ function buildPortalEditorScript(): string {
     if(!el) return;
     var next = normalizeText(el.textContent || "");
     el.textContent = next;
-    el.removeAttribute("contenteditable");
-    el.removeAttribute("spellcheck");
     el.removeAttribute("data-portal-editing");
     if(activeTextEl === el) activeTextEl = null;
     post({ type: "portal-dirty" });
@@ -201,11 +210,17 @@ function buildPortalEditorScript(): string {
   function startTextEdit(el){
     if(activeTextEl && activeTextEl !== el) commitText(activeTextEl);
     activeTextEl = el;
-    el.setAttribute("contenteditable", "true");
-    el.setAttribute("spellcheck", "false");
     el.setAttribute("data-portal-editing", "1");
     el.focus();
     placeCaretAtEnd(el);
+  }
+
+  function handleInput(event){
+    var target = event.target;
+    if(!target || !target.matches || !target.matches('[data-portal-editable="text"]')) return;
+    activeTextEl = target;
+    target.setAttribute("data-portal-editing", "1");
+    post({ type: "portal-dirty" });
   }
 
   function cleanClone(section){
@@ -299,6 +314,7 @@ function buildPortalEditorScript(): string {
   }
 
   document.addEventListener("click", handleClick, true);
+  document.addEventListener("input", handleInput, true);
   document.addEventListener("focusout", handleFocusOut, true);
   document.addEventListener("keydown", handleKeyDown, true);
   window.addEventListener("message", handleParentMessage);
