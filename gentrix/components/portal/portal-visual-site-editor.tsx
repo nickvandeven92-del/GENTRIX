@@ -92,12 +92,15 @@ function buildPortalEditorCss(): string {
 }
 
 [data-portal-editable="text"],
-[data-portal-editable="image"] {
+[data-portal-editable="image"],
+[data-editable="text"],
+[data-editable="image"] {
   cursor: pointer;
   transition: outline-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
-[data-portal-editable="text"] {
+[data-portal-editable="text"],
+[data-editable="text"] {
   position: relative;
   display: block;
   min-height: 1.5em;
@@ -108,16 +111,20 @@ function buildPortalEditorCss(): string {
 }
 
 [data-portal-editable="text"]:hover,
-[data-portal-editable="image"]:hover {
+[data-portal-editable="image"]:hover,
+[data-editable="text"]:hover,
+[data-editable="image"]:hover {
   outline: 2px solid rgba(37, 99, 235, 0.72);
   outline-offset: 3px;
 }
 
-[data-portal-editable="text"]:hover {
+[data-portal-editable="text"]:hover,
+[data-editable="text"]:hover {
   background: rgba(219, 234, 254, 0.42);
 }
 
-[data-portal-editable="text"][contenteditable="true"] {
+[data-portal-editable="text"][contenteditable="true"],
+[data-editable="text"][contenteditable="true"] {
   cursor: text;
 }
 
@@ -134,9 +141,12 @@ function buildPortalEditorScript(): string {
 (function(){
   var SOURCE = "portal-site-editor";
   var ROOT_SELECTOR = "[data-portal-section-key]";
+  var EDITABLE_TEXT_SELECTOR = '[data-portal-editable="text"],[data-editable="text"]';
+  var EDITABLE_IMAGE_SELECTOR = 'img[data-portal-editable="image"],img[data-editable="image"]';
   var TEXT_SELECTOR = "h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption";
   var INLINE_ALLOWED = {A:1,ABBR:1,B:1,BR:1,CITE:1,CODE:1,EM:1,I:1,MARK:1,SMALL:1,SPAN:1,STRONG:1,SUB:1,SUP:1,U:1};
   var activeTextEl = null;
+  var initDone = false;
 
   function post(payload){
     try{ parent.postMessage(Object.assign({ source: SOURCE }, payload), "*"); }catch(_){ }
@@ -170,6 +180,7 @@ function buildPortalEditorScript(): string {
       section.querySelectorAll(TEXT_SELECTOR).forEach(function(el){
         if(!isTextCandidate(el)) return;
         el.setAttribute("data-portal-editable", "text");
+        el.setAttribute("data-editable", "text");
         el.setAttribute("data-portal-text-id", "text-" + String(textIndex++));
         el.setAttribute("contenteditable", "true");
         el.setAttribute("spellcheck", "false");
@@ -177,9 +188,18 @@ function buildPortalEditorScript(): string {
       section.querySelectorAll("img").forEach(function(img){
         if(img.closest("a,button,nav,header,[role='navigation']")) return;
         img.setAttribute("data-portal-editable", "image");
+        img.setAttribute("data-editable", "image");
         img.setAttribute("data-portal-image-id", "image-" + String(imageIndex++));
       });
     });
+    initDone = true;
+  }
+
+  function scheduleMarkEditableNodes(){
+    markEditableNodes();
+    window.requestAnimationFrame(markEditableNodes);
+    window.setTimeout(markEditableNodes, 120);
+    window.setTimeout(markEditableNodes, 480);
   }
 
   function placeCaretAtEnd(el){
@@ -217,7 +237,7 @@ function buildPortalEditorScript(): string {
 
   function handleInput(event){
     var target = event.target;
-    if(!target || !target.matches || !target.matches('[data-portal-editable="text"]')) return;
+    if(!target || !target.matches || !target.matches(EDITABLE_TEXT_SELECTOR)) return;
     activeTextEl = target;
     target.setAttribute("data-portal-editing", "1");
     post({ type: "portal-dirty" });
@@ -249,7 +269,7 @@ function buildPortalEditorScript(): string {
   function handleClick(event){
     var target = event.target;
     if(!target || !target.closest) return;
-    var image = target.closest('img[data-portal-editable="image"]');
+    var image = target.closest(EDITABLE_IMAGE_SELECTOR);
     if(image){
       event.preventDefault();
       event.stopPropagation();
@@ -263,9 +283,8 @@ function buildPortalEditorScript(): string {
       });
       return;
     }
-    var text = target.closest('[data-portal-editable="text"]');
+    var text = target.closest(EDITABLE_TEXT_SELECTOR);
     if(text){
-      event.preventDefault();
       event.stopPropagation();
       startTextEdit(text);
     }
@@ -300,6 +319,10 @@ function buildPortalEditorScript(): string {
       emitSnapshot();
       return;
     }
+    if(data.type === "portal-init-editables"){
+      scheduleMarkEditableNodes();
+      return;
+    }
     if(data.type === "portal-apply-image"){
       var id = typeof data.imageId === "string" ? data.imageId : "";
       var src = typeof data.src === "string" ? data.src : "";
@@ -319,11 +342,23 @@ function buildPortalEditorScript(): string {
   document.addEventListener("keydown", handleKeyDown, true);
   window.addEventListener("message", handleParentMessage);
 
+  try{
+    var observer = new MutationObserver(function(){
+      if(!initDone){
+        scheduleMarkEditableNodes();
+        return;
+      }
+      markEditableNodes();
+    });
+    observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+  }catch(_){ }
+
   if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", markEditableNodes, { once: true });
+    document.addEventListener("DOMContentLoaded", scheduleMarkEditableNodes, { once: true });
   } else {
-    markEditableNodes();
+    scheduleMarkEditableNodes();
   }
+  window.addEventListener("load", scheduleMarkEditableNodes, { once: true });
 })();
 <\/script>`;
 }
@@ -571,6 +606,10 @@ export function PortalVisualSiteEditor({
     }
   }, [enc, pendingImageTarget]);
 
+  const onIframeLoad = useCallback(() => {
+    iframeRef.current?.contentWindow?.postMessage({ type: "portal-init-editables" }, "*");
+  }, []);
+
   return (
     <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
       <section className="overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:rounded-2xl sm:border">
@@ -621,11 +660,13 @@ export function PortalVisualSiteEditor({
             </div>
           </div>
           <iframe
+            id="site-preview"
             ref={iframeRef}
             title="Klant website editor"
             className="h-[68dvh] min-h-[560px] w-full border-0 bg-white lg:h-[calc(100dvh-16rem)] lg:min-h-[760px]"
             sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
             srcDoc={srcDoc}
+            onLoad={onIframeLoad}
           />
         </div>
 
