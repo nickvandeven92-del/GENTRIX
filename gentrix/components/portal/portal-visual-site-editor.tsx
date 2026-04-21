@@ -200,7 +200,12 @@ export function PortalVisualSiteEditor({
 
   const enc = encodeURIComponent(decodeURIComponent(slug));
   const currentPage = pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
-  const currentSections = currentPage ? pageStates[currentPage.id] ?? currentPage.sections : [];
+  const rawSections = currentPage ? pageStates[currentPage.id] ?? currentPage.sections : [];
+  // Filter eerder geïnjecteerde auto-mobile-nav secties eruit — die horen niet thuis in de
+  // portal editor en mogen ook niet opnieuw worden opgeslagen.
+  const currentSections = rawSections.filter(
+    ({ section }) => !/data-gentrix-auto-mobile-nav/i.test(section.html),
+  );
   const themePresets = useMemo(() => buildPortalThemePresets(basePageConfigRef.current), []);
   const activePresetId = useMemo(() => {
     const current = JSON.stringify(pageConfigValue ?? null);
