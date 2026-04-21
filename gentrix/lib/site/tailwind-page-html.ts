@@ -2131,15 +2131,17 @@ export function buildTailwindSectionsBodyInnerHtml(
       : sections;
   return prepared
     .map((s) => {
-      const portalWrapperMatch = s.html.match(
-        /^<div\b[^>]*\bdata-portal-section-key="([^"]*)"[^>]*?(?:\bdata-portal-section-name="([^"]*)")?[^>]*>([\s\S]*)<\/div>\s*$/i,
-      );
-
-      if (!portalWrapperMatch) {
+      const portalKeyMatch = s.html.match(/\bdata-portal-section-key="([^"]*)"/i);
+      const portalNameMatch = s.html.match(/\bdata-portal-section-name="([^"]*)"/i);
+      if (!portalKeyMatch) {
         return `<section data-section="${escapeDataAttr(s.sectionName)}" class="w-full">${sanitizeTailwindFragment(s.html)}</section>`;
       }
 
-      const [, portalKey, portalName, innerHtml] = portalWrapperMatch;
+      const portalKey = portalKeyMatch[1];
+      const portalName = portalNameMatch?.[1] ?? "";
+      const firstTagEnd = s.html.indexOf(">") + 1;
+      const lastDivClose = s.html.lastIndexOf("</div>");
+      const innerHtml = s.html.slice(firstTagEnd, lastDivClose > firstTagEnd ? lastDivClose : s.html.length);
       const sanitizedInner = sanitizeTailwindFragment(innerHtml);
       const portalNameAttr = portalName ? ` data-portal-section-name="${portalName}"` : "";
 
