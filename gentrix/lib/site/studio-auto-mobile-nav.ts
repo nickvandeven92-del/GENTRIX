@@ -261,6 +261,9 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (hasWiredMobileToggle) return false;
   const hasLikelyBrokenDrawer = headerHasLikelyBrokenMobileDrawer(win);
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
+  // Header met 4+ nav-links = volwaardige custom navbar (ook al zijn Alpine-attrs gestript door een
+  // eerdere sanitizer). Niet injecteren — anders verdwijnt de originele desktop-nav door de hide-CSS.
+  if (hrefCount >= 4) return false;
   if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) {
     if (headerHasDesktopOnlyNavWithoutSmallScreenMenuButton(win)) return true;
     if (headerHasUnwiredMobileMenuButton(win, bodyInnerHtml)) return true;
@@ -285,13 +288,18 @@ div[class*="fixed"][x-show],
 
 section header,
 section nav,
-body > header:not([${AUTO_NAV_ATTR}]),
-body > nav,
-body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="enu"],
-body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="Menu"],
 section nav[aria-label*="enu"],
 section nav[aria-label*="Menu"] {
   display: none !important;
+}
+
+@media (max-width: 1023px) {
+  body > header:not([${AUTO_NAV_ATTR}]),
+  body > nav,
+  body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="enu"],
+  body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="Menu"] {
+    display: none !important;
+  }
 }
 
 header[${AUTO_NAV_ATTR}] #gentrix-site-mobile-sheet nav[aria-label="Mobiel menu"],
