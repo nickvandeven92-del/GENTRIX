@@ -475,6 +475,16 @@ export function PortalVisualSiteEditor({
     setSaveErr(null);
     setSaveMsg(null);
     try {
+      // Flush any pending text edit that hasn't been applied to the iframe DOM yet
+      if (selectedTextBlock && selectedTextBlock.draftText !== selectedTextBlock.originalText) {
+        const next = normalizeEditableText(selectedTextBlock.draftText);
+        const doc = iframeRef.current?.contentDocument;
+        const target = doc?.querySelector(`[data-portal-text-id="${selectedTextBlock.textId}"]`) as HTMLElement | null;
+        if (target) {
+          target.textContent = next;
+          setSelectedTextBlock((cur) => cur ? { ...cur, originalText: next, draftText: next } : cur);
+        }
+      }
       const nextPageStates = await flushCurrentPageSnapshot();
       const res = await fetch(`/api/portal/clients/${enc}/draft-sections`, {
         method: "POST",
@@ -501,7 +511,7 @@ export function PortalVisualSiteEditor({
     } finally {
       setSaving(false);
     }
-  }, [enc, flushCurrentPageSnapshot, pageConfigValue, pages, titleValue]);
+  }, [enc, flushCurrentPageSnapshot, normalizeEditableText, pageConfigValue, pages, selectedTextBlock, titleValue]);
 
   const onSaveSelectedTextBlock = useCallback(() => {
     if (!selectedTextBlock) return;
@@ -523,7 +533,9 @@ export function PortalVisualSiteEditor({
     setDirty(true);
     setSaveErr(null);
     setSaveMsg(null);
-  }, [clearSelectedTextHighlight, normalizeEditableText, selectedTextBlock]);
+    // Direct concept opslaan zodat wijziging meteen in de draft staat
+    void onSave();
+  }, [clearSelectedTextHighlight, normalizeEditableText, onSave, selectedTextBlock]);
 
   const onImageFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
