@@ -104,6 +104,9 @@ function buildPortalEditorCss(): string {
 /* Voorkom dat overlay-divs en animatie-wrappers editor-clicks blokkeren */
 [data-animation] { pointer-events: none !important; }
 div.absolute.inset-0:not([data-portal-editable]) { pointer-events: none !important; }
+
+/* Zorg dat editable elementen altijd klikbaar zijn, ook als een parent pointer-events: none heeft */
+[data-portal-editable] { pointer-events: auto !important; }
 `;
 }
 
@@ -578,11 +581,11 @@ export function PortalVisualSiteEditor({
         return;
       }
 
-      // Tekst zoeken: omhoog (overlay-div als target), omlaag (click op wrapper-div boven de tekst),
-      // én direct in de children (h1/p is directe child van de aangeklikte container-div).
+      // Tekst zoeken. Met pointer-events: auto op [data-portal-editable] landt de click al op het
+      // juiste element — de omhoog-walk is dan voldoende. querySelector is vangnet voor edge-cases.
       let textEl: HTMLElement | null = null;
 
-      // 1. Omhoog via parentElement
+      // 1. Omhoog via parentElement (normaal geval: click landt op het editable zelf of een child ervan)
       let node: Element | null = target as Element;
       while (node) {
         if (node instanceof HTMLElement && node.getAttribute("data-portal-editable") === "text") {
@@ -592,25 +595,10 @@ export function PortalVisualSiteEditor({
         node = node.parentElement;
       }
 
-      // 2. Omlaag: alle descendants doorzoeken (vangt geneste structuren op)
+      // 2. Omlaag via querySelector (vangnet: click landt toch op een wrapper boven alle editables)
       if (!textEl) {
         const found = (target as HTMLElement).querySelector('[data-portal-editable="text"]');
         if (found instanceof HTMLElement) textEl = found;
-      }
-
-      // 3. Direct children + hun descendants (vangt op dat de h1 een directe child is van de container)
-      if (!textEl) {
-        for (const child of Array.from((target as HTMLElement).children ?? [])) {
-          if (child instanceof HTMLElement && child.getAttribute("data-portal-editable") === "text") {
-            textEl = child;
-            break;
-          }
-          const nested = child.querySelector('[data-portal-editable="text"]');
-          if (nested instanceof HTMLElement) {
-            textEl = nested;
-            break;
-          }
-        }
       }
 
       if (textEl && textEl.getAttribute("contenteditable") !== "true") {
