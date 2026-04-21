@@ -103,3 +103,22 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* View Transitions API — smooth cross-page fade on supported browsers */
+@supports (view-transition-name: none) {
+  ::view-transition-old(root) {
+    animation: __vt-fade-out 0.12s ease forwards;
+  }
+  ::view-transition-new(root) {
+    animation: __vt-fade-in 0.15s ease forwards;
+  }
+
+  @keyframes __vt-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  @keyframes __vt-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}

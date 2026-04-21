@@ -8,9 +8,11 @@ import { getAverageRating } from '../types';
 
 interface ProductCardProps {
   product: Product;
+  /** Pass true for above-the-fold cards to load eagerly */
+  eager?: boolean;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, eager = false }: ProductCardProps) {
   const { formatPrice, getProductReviews, state, shopBasePath } = useWebshop();
   const simple = state.config.simpleMode;
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.basePrice;
@@ -25,12 +27,13 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       )}
       <Link to={`${shopBasePath}/product/${product.slug}`} className="block">
-        <div className="aspect-square overflow-hidden bg-muted">
+        <div className="aspect-square overflow-hidden bg-muted animate-pulse [&:has(img.loaded)]:animate-none">
           <img
             src={product.images[0]}
             alt={product.name}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
+            loading={eager ? 'eager' : 'lazy'}
+            onLoad={e => (e.currentTarget.classList.add('loaded'))}
           />
         </div>
         <div className="p-4 space-y-2">

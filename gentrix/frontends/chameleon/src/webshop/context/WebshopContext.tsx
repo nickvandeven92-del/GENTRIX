@@ -399,10 +399,17 @@ export function WebshopProvider({ children }: { children: React.ReactNode }) {
     });
   }, [loadWishlist]);
 
+  // For storefronts: loading while the client resolves OR while its data loads.
+  // Previously gated on Boolean(activeClientId), which caused a false-idle flash
+  // while the client row was still in-flight (activeClientId null → dataLoading false → empty UI).
+  const isStorefront = Boolean(slugForPublicShop) && !isDashboardPath(pathname) && !isOwnerPath(pathname);
+
   const dataLoading =
     isSupabaseConfigured &&
-    Boolean(activeClientId) &&
-    (productsLoading || catLoading || (slugForPublicShop && clientLoading));
+    (
+      (isStorefront && (clientLoading || (Boolean(activeClientId) && (productsLoading || catLoading)))) ||
+      (!isStorefront && Boolean(activeClientId) && (productsLoading || catLoading))
+    );
 
   const shopUnavailable =
     isSupabaseConfigured &&

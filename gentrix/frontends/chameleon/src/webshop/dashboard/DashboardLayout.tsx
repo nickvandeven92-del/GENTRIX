@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, FolderTree, Warehouse,
   ShoppingCart, Settings, Store, ChevronLeft, Tag, Star, BarChart3, Building2, LogOut, Menu,
@@ -35,13 +35,22 @@ export default function DashboardLayout() {
   const { state, shopBasePath, clientId, setOwnerDashboardClientId } = useWebshop();
   const { isOwner, signOut, user } = useAuth();
   const { data: ownerClients = [] } = useOwnerClientsList(isOwner);
+  const navigate = useNavigate();
   const lowStockCount = state.products.filter(p => p.active && p.totalStock > 0 && p.totalStock <= p.lowStockThreshold).length;
   const newOrderCount = state.orders.filter(o => o.status === 'new').length;
   const pendingReviews = state.reviews.filter(r => !r.approved).length;
 
+  // Close drawer first, then navigate so the sheet dismissal doesn't overlap the page swap.
+  const closeMobileAndNavigate = (to: string) => {
+    setMobileNavOpen(false);
+    // Small delay lets the sheet start its 150ms exit before the Outlet swaps.
+    setTimeout(() => navigate(to, { viewTransition: true }), 80);
+  };
+
   const closeMobile = () => setMobileNavOpen(false);
 
-  const sidebarInner = (onNavigate?: () => void) => (
+  // isMobile: determines whether to use the close-then-navigate pattern or a plain NavLink
+  const sidebarInner = (mobile = false) => (
     <>
       <div className="p-4 border-b border-border space-y-3">
         <div className="flex items-center gap-2">
@@ -71,7 +80,8 @@ export default function DashboardLayout() {
         {isOwner && (
           <NavLink
             to="/owner/clients"
-            onClick={onNavigate}
+            viewTransition
+            onClick={mobile ? (e) => { e.preventDefault(); closeMobileAndNavigate('/owner/clients'); } : undefined}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-2 text-xs font-medium px-2 py-2 rounded-md',
@@ -91,7 +101,8 @@ export default function DashboardLayout() {
             key={item.to}
             to={item.to}
             end={item.to === '/dashboard'}
-            onClick={onNavigate}
+            viewTransition
+            onClick={mobile ? (e) => { e.preventDefault(); closeMobileAndNavigate(item.to); } : undefined}
             className={({ isActive }) => cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
               isActive
@@ -123,7 +134,8 @@ export default function DashboardLayout() {
       <div className="p-3 border-t border-border space-y-2">
         <NavLink
           to={shopBasePath}
-          onClick={onNavigate}
+          viewTransition
+          onClick={mobile ? (e) => { e.preventDefault(); closeMobileAndNavigate(shopBasePath); } : undefined}
           className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -135,7 +147,7 @@ export default function DashboardLayout() {
             size="sm"
             className="w-full justify-start text-muted-foreground"
             onClick={() => {
-              onNavigate?.();
+              if (mobile) closeMobile();
               void signOut();
             }}
           >
@@ -162,13 +174,13 @@ export default function DashboardLayout() {
           </SheetTrigger>
         </header>
         <SheetContent side="left" className="flex w-[min(100vw,20rem)] flex-col gap-0 p-0">
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card">{sidebarInner(closeMobile)}</div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card">{sidebarInner(true)}</div>
         </SheetContent>
       </Sheet>
 
       {/* Sidebar — desktop */}
       <aside className="hidden min-h-screen w-64 shrink-0 flex-col border-r border-border bg-card lg:flex lg:flex-col">
-        {sidebarInner()}
+        {sidebarInner(false)}
       </aside>
 
       {/* Main content */}

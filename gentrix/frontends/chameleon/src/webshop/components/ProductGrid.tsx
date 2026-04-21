@@ -30,8 +30,8 @@ export function ProductGrid({ products: propProducts, categoryId, columns = 3 }:
 
   return (
     <div className={`grid ${gridCols[columns]} gap-6`}>
-      {products.map(product => (
-        <ProductCard key={product.id} product={product} />
+      {products.map((product, index) => (
+        <ProductCard key={product.id} product={product} eager={index < columns * 2} />
       ))}
     </div>
   );
