@@ -103,6 +103,15 @@ function buildPortalEditorCss(): string {
   outline-offset: 3px;
 }
 
+[data-portal-editable="text"] {
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.14);
+  background: rgba(239, 246, 255, 0.28);
+}
+
+[data-portal-editable="text"]:hover {
+  background: rgba(219, 234, 254, 0.42);
+}
+
 [data-portal-editing="1"] {
   outline: 2px solid rgba(16, 185, 129, 0.9) !important;
   outline-offset: 3px;
@@ -116,7 +125,8 @@ function buildPortalEditorScript(): string {
 (function(){
   var SOURCE = "portal-site-editor";
   var ROOT_SELECTOR = "[data-portal-section-key]";
-  var TEXT_SELECTOR = "h1,h2,h3,h4,h5,h6,p,li,a,button,blockquote,figcaption";
+  var TEXT_SELECTOR = "h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption";
+  var INLINE_ALLOWED = {A:1,ABBR:1,B:1,BR:1,CITE:1,CODE:1,EM:1,I:1,MARK:1,SMALL:1,SPAN:1,STRONG:1,SUB:1,SUP:1,U:1};
   var activeTextEl = null;
 
   function post(payload){
@@ -135,7 +145,12 @@ function buildPortalEditorScript(): string {
   function isTextCandidate(el){
     if(!el || !el.matches || !el.matches(TEXT_SELECTOR)) return false;
     if(el.closest("script,style,noscript")) return false;
-    if(el.children.length !== 0) return false;
+    if(el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
+    for(var i=0;i<el.children.length;i++){
+      var child=el.children[i];
+      if(!child || !INLINE_ALLOWED[child.tagName]) return false;
+      if(child.tagName === "A" || child.closest("a,button")) return false;
+    }
     return normalizeText(el.textContent || "").length > 0;
   }
 
@@ -149,6 +164,7 @@ function buildPortalEditorScript(): string {
         el.setAttribute("data-portal-text-id", "text-" + String(textIndex++));
       });
       section.querySelectorAll("img").forEach(function(img){
+        if(img.closest("a,button,nav,header,[role='navigation']")) return;
         img.setAttribute("data-portal-editable", "image");
         img.setAttribute("data-portal-image-id", "image-" + String(imageIndex++));
       });
