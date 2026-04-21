@@ -578,10 +578,12 @@ export function PortalVisualSiteEditor({
         return;
       }
 
-      // Tekst: loop omhoog door de DOM (overlay-divs landen als target, niet het editable element zelf).
-      // Fallback: zoek een editable BINNEN het aangeklikte element (klik op wrapper-div boven de tekst).
+      // Tekst zoeken: omhoog (overlay-div als target), omlaag (click op wrapper-div boven de tekst),
+      // én direct in de children (h1/p is directe child van de aangeklikte container-div).
       let textEl: HTMLElement | null = null;
-      let node: Element | null = target;
+
+      // 1. Omhoog via parentElement
+      let node: Element | null = target as Element;
       while (node) {
         if (node instanceof HTMLElement && node.getAttribute("data-portal-editable") === "text") {
           textEl = node;
@@ -589,9 +591,28 @@ export function PortalVisualSiteEditor({
         }
         node = node.parentElement;
       }
+
+      // 2. Omlaag: alle descendants doorzoeken (vangt geneste structuren op)
       if (!textEl) {
-        textEl = (target as HTMLElement).querySelector?.('[data-portal-editable="text"]') ?? null;
+        const found = (target as HTMLElement).querySelector('[data-portal-editable="text"]');
+        if (found instanceof HTMLElement) textEl = found;
       }
+
+      // 3. Direct children + hun descendants (vangt op dat de h1 een directe child is van de container)
+      if (!textEl) {
+        for (const child of Array.from((target as HTMLElement).children ?? [])) {
+          if (child instanceof HTMLElement && child.getAttribute("data-portal-editable") === "text") {
+            textEl = child;
+            break;
+          }
+          const nested = child.querySelector('[data-portal-editable="text"]');
+          if (nested instanceof HTMLElement) {
+            textEl = nested;
+            break;
+          }
+        }
+      }
+
       if (textEl && textEl.getAttribute("contenteditable") !== "true") {
         event.preventDefault();
         event.stopPropagation();
