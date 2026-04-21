@@ -24,6 +24,12 @@ type SnapshotSection = {
   html: string;
 };
 
+type ScanStats = {
+  sections: number;
+  text: number;
+  images: number;
+};
+
 type PortalEditorMessage =
   | { source: "portal-site-editor"; type: "portal-dirty" }
   | {
@@ -401,6 +407,7 @@ export function PortalVisualSiteEditor({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [scanStats, setScanStats] = useState<ScanStats | null>(null);
   const [pendingImageTarget, setPendingImageTarget] = useState<{
     imageId: string;
     sectionKey: string;
@@ -469,9 +476,11 @@ export function PortalVisualSiteEditor({
   }, [normalizeEditableText]);
 
   const markIframeEditables = useCallback((doc: Document) => {
+    let sectionCount = 0;
     let textIndex = 0;
     let imageIndex = 0;
     for (const section of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
+      sectionCount += 1;
       for (const node of Array.from(section.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption"))) {
         if (!isTextCandidate(node)) continue;
         const el = node as HTMLElement;
@@ -489,6 +498,8 @@ export function PortalVisualSiteEditor({
         img.setAttribute("data-portal-image-id", `image-${imageIndex++}`);
       }
     }
+    setScanStats({ sections: sectionCount, text: textIndex, images: imageIndex });
+    return { sections: sectionCount, text: textIndex, images: imageIndex };
   }, [isTextCandidate]);
 
   const extractSnapshotFromDocument = useCallback((doc: Document) => {
@@ -515,7 +526,10 @@ export function PortalVisualSiteEditor({
   const bindIframeEditor = useCallback(() => {
     iframeCleanupRef.current?.();
     const doc = iframeRef.current?.contentDocument;
-    if (!doc) return;
+    if (!doc) {
+      setScanStats(null);
+      return;
+    }
 
     const timeouts: number[] = [];
 
@@ -609,9 +623,19 @@ export function PortalVisualSiteEditor({
     doc.addEventListener("keydown", handleKeyDown, true);
     observer.observe(doc.documentElement, { childList: true, subtree: true });
 
-    mark();
-    timeouts.push(window.setTimeout(mark, 120));
-    timeouts.push(window.setTimeout(mark, 480));
+    let tries = 0;
+    const markWithRetry = () => {
+      const stats = mark();
+      const hasSections = stats.sections > 0;
+      const hasText = stats.text > 0;
+      if ((hasSections && hasText) || tries >= 20) return;
+      tries += 1;
+      timeouts.push(window.setTimeout(markWithRetry, 100));
+    };
+
+    markWithRetry();
+    timeouts.push(window.setTimeout(markWithRetry, 120));
+    timeouts.push(window.setTimeout(markWithRetry, 480));
 
     iframeCleanupRef.current = () => {
       observer.disconnect();
@@ -921,6 +945,11 @@ export function PortalVisualSiteEditor({
             <p>Klik op een kop, paragraaf of lijstregel in de preview en typ direct je nieuwe tekst.</p>
             <p>Klik op een foto om een nieuwe afbeelding te uploaden. De verhoudingen van de site blijven staan.</p>
             <p>Je kunt schakelen tussen home, contact en marketingpagina’s zonder een losse tweede editor te openen.</p>
+            <p>
+              {scanStats
+                ? `Editor-scan: ${scanStats.sections} secties, ${scanStats.text} tekstblokken en ${scanStats.images} afbeeldingen herkend.`
+                : "Editor-scan wordt geladen..."}
+            </p>
           </div>
 
           <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-white/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/70">
