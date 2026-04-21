@@ -100,6 +100,10 @@ function buildPortalEditorCss(): string {
 
 /* Voorkom dat Alpine x-cloak / x-show conflicteert tijdens edit */
 [contenteditable="true"] * { pointer-events: none; }
+
+/* Voorkom dat overlay-divs en animatie-wrappers editor-clicks blokkeren */
+[data-animation] { pointer-events: none !important; }
+div.absolute.inset-0:not([data-portal-editable]) { pointer-events: none !important; }
 `;
 }
 
@@ -107,9 +111,18 @@ function injectPortalEditorIntoSrcDoc(doc: string): string {
   const styleTag = `<style id="portal-visual-editor-css">${buildPortalEditorCss()}</style>`;
   const markScript = `<script>
 (function(){
+  function fixOverlayPointerEvents(){
+    document.querySelectorAll('[data-animation]').forEach(function(el){
+      el.style.pointerEvents='none';
+    });
+    document.querySelectorAll('div.absolute.inset-0').forEach(function(el){
+      if(!el.getAttribute('data-portal-editable')) el.style.pointerEvents='none';
+    });
+  }
   function mark(){
     var sections = document.querySelectorAll('[data-portal-section-key]');
     if(!sections.length) return 0;
+    fixOverlayPointerEvents();
     var ti=0, ii=0;
     sections.forEach(function(section){
       section.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption').forEach(function(el){
@@ -530,6 +543,7 @@ export function PortalVisualSiteEditor({
       // Al in een actieve contenteditable → niets doen
       if ((target as HTMLElement).closest("[contenteditable='true']")) return;
 
+      // Afbeelding: closest() is voldoende want img heeft geen kinderen
       const image = target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
       if (image) {
         event.preventDefault();
@@ -538,11 +552,24 @@ export function PortalVisualSiteEditor({
         return;
       }
 
-      const text = target.closest('[data-portal-editable="text"]') as HTMLElement | null;
-      if (text && text.getAttribute("contenteditable") !== "true") {
+      // Tekst: loop omhoog door de DOM (overlay-divs landen als target, niet het editable element zelf).
+      // Fallback: zoek een editable BINNEN het aangeklikte element (klik op wrapper-div boven de tekst).
+      let textEl: HTMLElement | null = null;
+      let node: Element | null = target;
+      while (node) {
+        if (node instanceof HTMLElement && node.getAttribute("data-portal-editable") === "text") {
+          textEl = node;
+          break;
+        }
+        node = node.parentElement;
+      }
+      if (!textEl) {
+        textEl = (target as HTMLElement).querySelector?.('[data-portal-editable="text"]') ?? null;
+      }
+      if (textEl && textEl.getAttribute("contenteditable") !== "true") {
         event.preventDefault();
         event.stopPropagation();
-        activateInlineEdit(doc, text);
+        activateInlineEdit(doc, textEl);
       }
     };
 
