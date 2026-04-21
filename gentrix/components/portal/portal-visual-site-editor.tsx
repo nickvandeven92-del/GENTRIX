@@ -383,6 +383,8 @@ export function PortalVisualSiteEditor({
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const iframeCleanupRef = useRef<(() => void) | null>(null);
+  const activeTextRef = useRef<HTMLElement | null>(null);
   const snapshotResolverRef = useRef<((sections: SnapshotSection[]) => void) | null>(null);
   const basePageConfigRef = useRef<TailwindPageConfig | null>(pageConfig ?? null);
   const [titleValue, setTitleValue] = useState(documentTitle);
@@ -431,8 +433,9 @@ export function PortalVisualSiteEditor({
   const srcDoc = useMemo(() => {
     const base = buildTailwindIframeSrcDoc(previewSections, pageConfigValue, {
       previewPostMessageBridge: false,
+      disableScrollRevealAnimations: true,
       userCss,
-      userJs,
+      userJs: undefined,
       logoSet,
       publishedSlug: decodeURIComponent(slug),
       compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
@@ -450,7 +453,179 @@ export function PortalVisualSiteEditor({
     );
   }, []);
 
+  const normalizeEditableText = useCallback((value: string) => value.replace(/\s+/g, " ").trim(), []);
+
+  const isTextCandidate = useCallback((el: Element) => {
+    if (!(el instanceof HTMLElement)) return false;
+    if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption")) return false;
+    if (el.closest("script,style,noscript")) return false;
+    if (el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
+    for (const child of Array.from(el.children)) {
+      if (!(child instanceof HTMLElement)) return false;
+      if (!child.matches("abbr,b,br,cite,code,em,i,mark,small,span,strong,sub,sup,u")) return false;
+      if (child.tagName === "A" || child.closest("a,button")) return false;
+    }
+    return normalizeEditableText(el.textContent ?? "").length > 0;
+  }, [normalizeEditableText]);
+
+  const markIframeEditables = useCallback((doc: Document) => {
+    let textIndex = 0;
+    let imageIndex = 0;
+    for (const section of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
+      for (const node of Array.from(section.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption"))) {
+        if (!isTextCandidate(node)) continue;
+        const el = node as HTMLElement;
+        el.setAttribute("data-portal-editable", "text");
+        el.setAttribute("data-editable", "text");
+        el.setAttribute("data-portal-text-id", `text-${textIndex++}`);
+        el.setAttribute("contenteditable", "true");
+        el.setAttribute("spellcheck", "false");
+      }
+      for (const node of Array.from(section.querySelectorAll("img"))) {
+        const img = node as HTMLImageElement;
+        if (img.closest("a,button,nav,header,[role='navigation']")) continue;
+        img.setAttribute("data-portal-editable", "image");
+        img.setAttribute("data-editable", "image");
+        img.setAttribute("data-portal-image-id", `image-${imageIndex++}`);
+      }
+    }
+  }, [isTextCandidate]);
+
+  const extractSnapshotFromDocument = useCallback((doc: Document) => {
+    const sections: SnapshotSection[] = [];
+    for (const sectionNode of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
+      if (!(sectionNode instanceof HTMLElement)) continue;
+      const clone = sectionNode.cloneNode(true) as HTMLElement;
+      for (const node of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
+        for (const attr of Array.from(node.attributes)) {
+          if (/^data-portal-/.test(attr.name)) node.removeAttribute(attr.name);
+        }
+        node.removeAttribute("data-editable");
+        node.removeAttribute("contenteditable");
+        node.removeAttribute("spellcheck");
+      }
+      sections.push({
+        key: sectionNode.getAttribute("data-portal-section-key") ?? "",
+        html: clone.innerHTML,
+      });
+    }
+    return sections;
+  }, []);
+
+  const bindIframeEditor = useCallback(() => {
+    iframeCleanupRef.current?.();
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
+
+    const timeouts: number[] = [];
+
+    const commitText = (el: HTMLElement | null) => {
+      if (!el) return;
+      el.textContent = normalizeEditableText(el.textContent ?? "");
+      el.removeAttribute("data-portal-editing");
+      if (activeTextRef.current === el) activeTextRef.current = null;
+      setDirty(true);
+      setSaveErr(null);
+    };
+
+    const startTextEdit = (el: HTMLElement) => {
+      if (activeTextRef.current && activeTextRef.current !== el) commitText(activeTextRef.current);
+      activeTextRef.current = el;
+      el.setAttribute("data-portal-editing", "1");
+      el.focus();
+      const selection = doc.defaultView?.getSelection();
+      if (!selection) return;
+      const range = doc.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
+
+    const mark = () => markIframeEditables(doc);
+
+    const handleClick = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const image = target.closest('img[data-editable="image"]') as HTMLImageElement | null;
+      if (image) {
+        event.preventDefault();
+        event.stopPropagation();
+        commitText(activeTextRef.current);
+        setPendingImageTarget({
+          imageId: image.getAttribute("data-portal-image-id") ?? "",
+          sectionKey: image.closest("[data-portal-section-key]")?.getAttribute("data-portal-section-key") ?? "",
+          src: image.getAttribute("src") ?? "",
+          alt: image.getAttribute("alt") ?? "",
+        });
+        setSaveErr(null);
+        queueMicrotask(() => fileInputRef.current?.click());
+        return;
+      }
+      const text = target.closest('[data-editable="text"]') as HTMLElement | null;
+      if (!text) return;
+      event.stopPropagation();
+      startTextEdit(text);
+    };
+
+    const handleInput = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.matches('[data-editable="text"]')) return;
+      activeTextRef.current = target;
+      target.setAttribute("data-portal-editing", "1");
+      setDirty(true);
+      setSaveErr(null);
+    };
+
+    const handleFocusOut = (event: FocusEvent) => {
+      if (!activeTextRef.current || event.target !== activeTextRef.current) return;
+      timeouts.push(
+        window.setTimeout(() => {
+          if (!activeTextRef.current) return;
+          if (doc.activeElement === activeTextRef.current) return;
+          commitText(activeTextRef.current);
+        }, 0),
+      );
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!activeTextRef.current) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        commitText(activeTextRef.current);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        activeTextRef.current.blur();
+      }
+    };
+
+    const observer = new MutationObserver(() => mark());
+
+    doc.addEventListener("click", handleClick, true);
+    doc.addEventListener("input", handleInput, true);
+    doc.addEventListener("focusout", handleFocusOut, true);
+    doc.addEventListener("keydown", handleKeyDown, true);
+    observer.observe(doc.documentElement, { childList: true, subtree: true });
+
+    mark();
+    timeouts.push(window.setTimeout(mark, 120));
+    timeouts.push(window.setTimeout(mark, 480));
+
+    iframeCleanupRef.current = () => {
+      observer.disconnect();
+      doc.removeEventListener("click", handleClick, true);
+      doc.removeEventListener("input", handleInput, true);
+      doc.removeEventListener("focusout", handleFocusOut, true);
+      doc.removeEventListener("keydown", handleKeyDown, true);
+      for (const timeout of timeouts) window.clearTimeout(timeout);
+    };
+  }, [markIframeEditables, normalizeEditableText]);
+
   const requestSnapshot = useCallback(() => {
+    const directDoc = iframeRef.current?.contentDocument;
+    if (directDoc) return Promise.resolve(extractSnapshotFromDocument(directDoc));
     const target = iframeRef.current?.contentWindow;
     if (!target) return Promise.reject(new Error("Preview niet beschikbaar."));
     return new Promise<SnapshotSection[]>((resolve, reject) => {
@@ -467,7 +642,7 @@ export function PortalVisualSiteEditor({
         reject(new Error("Geen antwoord uit de preview ontvangen."));
       }, 3000);
     });
-  }, []);
+  }, [extractSnapshotFromDocument]);
 
   const flushCurrentPageSnapshot = useCallback(async () => {
     if (!currentPage) return pageStates;
@@ -512,6 +687,8 @@ export function PortalVisualSiteEditor({
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  useEffect(() => () => iframeCleanupRef.current?.(), []);
 
   const hasUnsavedChanges =
     dirty ||
@@ -595,6 +772,14 @@ export function PortalVisualSiteEditor({
         },
         "*",
       );
+      const directDoc = iframeRef.current?.contentDocument;
+      const directImage = directDoc?.querySelector(
+        `img[data-portal-image-id="${pendingImageTarget.imageId}"]`,
+      ) as HTMLImageElement | null;
+      if (directImage) {
+        directImage.setAttribute("src", json.url);
+        directImage.setAttribute("alt", pendingImageTarget.alt);
+      }
       setDirty(true);
       setPendingImageTarget(null);
       setSaveMsg("Afbeelding vervangen. Sla op als concept om de wijziging te bewaren.");
@@ -607,8 +792,9 @@ export function PortalVisualSiteEditor({
   }, [enc, pendingImageTarget]);
 
   const onIframeLoad = useCallback(() => {
+    bindIframeEditor();
     iframeRef.current?.contentWindow?.postMessage({ type: "portal-init-editables" }, "*");
-  }, []);
+  }, [bindIframeEditor]);
 
   return (
     <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
@@ -664,7 +850,7 @@ export function PortalVisualSiteEditor({
             ref={iframeRef}
             title="Klant website editor"
             className="h-[68dvh] min-h-[560px] w-full border-0 bg-white lg:h-[calc(100dvh-16rem)] lg:min-h-[760px]"
-            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
             srcDoc={srcDoc}
             onLoad={onIframeLoad}
           />
