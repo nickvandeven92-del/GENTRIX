@@ -441,6 +441,14 @@ export function PortalVisualSiteEditor({
     const timeouts: number[] = [];
     const mark = () => markIframeEditables(doc);
 
+    // Fix overlays die editor-clicks blokkeren (imperatief, zodat ook laat-geladen elementen worden geraakt)
+    doc.querySelectorAll<HTMLElement>("[data-animation]").forEach((el) => {
+      el.style.pointerEvents = "none";
+    });
+    doc.querySelectorAll<HTMLElement>("div.absolute.inset-0").forEach((el) => {
+      if (!el.getAttribute("data-portal-editable")) el.style.pointerEvents = "none";
+    });
+
     // ── Zwevende camera-knop bij afbeeldingen (hover voor desktop) ──
     let activeCameraImg: HTMLImageElement | null = null;
     let cameraFloatBtn: HTMLElement | null = null;
@@ -541,7 +549,7 @@ export function PortalVisualSiteEditor({
       const target = event.target;
       if (!(target instanceof Element)) return;
       // Al in een actieve contenteditable → niets doen
-      if ((target as HTMLElement).closest("[contenteditable='true']")) return;
+      if ((target as HTMLElement).closest('[contenteditable="true"]')) return;
 
       // Afbeelding: closest() is voldoende want img heeft geen kinderen
       const image = target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
