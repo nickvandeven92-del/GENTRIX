@@ -10,6 +10,7 @@ import {
   normalizeStudioHeroDomIdsAndRootMotion,
   repairBrokenMobileDrawer,
   repairHeaderMobileMenuButton,
+  removeDuplicateAlpineNavScopeInHeader,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
 import {
@@ -1981,7 +1982,7 @@ export function sanitizeTailwindFragment(html: string): string {
     ALLOW_DATA_ATTR: false,
   });
   DOMPurify.removeHook("uponSanitizeAttribute");
-  return repairBrokenMobileDrawer(appendImgOnErrorHide(repairHeaderMobileMenuButton(purified)));
+return removeDuplicateAlpineNavScopeInHeader(repairBrokenMobileDrawer(appendImgOnErrorHide(repairHeaderMobileMenuButton(purified))));
 }
 
 function escapeDataAttr(value: string): string {
