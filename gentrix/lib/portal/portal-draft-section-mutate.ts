@@ -110,6 +110,9 @@ export function applyPortalSectionPatches(
     if (!parsed || !Number.isFinite(parsed.index) || parsed.index < 0) {
       return { ok: false, error: `Ongeldige sleutel: ${p.key}` };
     }
+    // Structurele secties (navbar/header/footer/nav) worden nooit overschreven via de portal editor.
+    // Door ze hier te skippen blijft de originele Alpine-wiring intact en wordt auto-nav-injectie voorkomen.
+    if (/^<(header|footer|nav)\b/i.test(p.html.trimStart())) continue;
     const html = sanitizeTailwindFragment(p.html);
     if (!html.trim()) {
       return { ok: false, error: `Lege HTML na sanitization voor ${p.key}.` };

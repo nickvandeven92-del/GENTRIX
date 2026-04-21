@@ -266,6 +266,10 @@ export function PortalVisualSiteEditor({
     for (const sectionNode of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
       if (!(sectionNode instanceof HTMLElement)) continue;
       const clone = sectionNode.cloneNode(true) as HTMLElement;
+      // Sla structurele secties (navbar/footer/nav) over — die zijn niet bewerkbaar en mogen de
+      // sanitizer-reparaties niet doorlopen, anders raakt de Alpine-wiring van de originele nav kapot.
+      const firstEl = clone.firstElementChild;
+      if (firstEl && /^(header|footer|nav)$/i.test(firstEl.tagName)) continue;
       for (const node of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
         if (!(node instanceof Element)) continue;
         for (const attr of Array.from(node.attributes)) {
@@ -624,7 +628,11 @@ export function PortalVisualSiteEditor({
           documentTitle: titleValue.trim() || undefined,
           pageConfig: pageConfigValue ?? undefined,
           patches: pages.flatMap((page) =>
-            (nextPageStates[page.id] ?? []).map((section) => ({ key: section.key, html: section.section.html })),
+            (nextPageStates[page.id] ?? [])
+              // Structurele secties (navbar/footer/nav) nooit als patch doorsturen — die mogen de
+              // server-sanitizer niet (opnieuw) doorlopen, anders raakt de originele nav corrupted.
+              .filter(({ section }) => !/^<(header|footer|nav)\b/i.test(section.html.trimStart()))
+              .map((section) => ({ key: section.key, html: section.section.html })),
           ),
         }),
       });
