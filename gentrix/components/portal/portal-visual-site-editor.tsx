@@ -519,11 +519,11 @@ export function PortalVisualSiteEditor({
       if (img && activeCameraImg === img) removeCameraFloat();
     };
 
-    // Enkele klik → afbeelding vervangen
+    // Enkele klik → afbeelding vervangen of tekst bewerken
     const handleClick = (event: Event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      // Als we in een contenteditable zitten, niets doen
+      // Al in een actieve contenteditable → niets doen
       if ((target as HTMLElement).closest("[contenteditable='true']")) return;
 
       const image = target.closest('img[data-portal-editable="image"]') as HTMLImageElement | null;
@@ -531,25 +531,19 @@ export function PortalVisualSiteEditor({
         event.preventDefault();
         event.stopPropagation();
         openImagePicker(image);
+        return;
       }
-    };
 
-    // Dubbele klik → inline tekst bewerken
-    const handleDblClick = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
       const text = target.closest('[data-portal-editable="text"]') as HTMLElement | null;
-      if (!text) return;
-      // Al actief → geen nieuwe activatie
-      if (text.getAttribute("contenteditable") === "true") return;
-      event.preventDefault();
-      event.stopPropagation();
-      activateInlineEdit(doc, text);
+      if (text && text.getAttribute("contenteditable") !== "true") {
+        event.preventDefault();
+        event.stopPropagation();
+        activateInlineEdit(doc, text);
+      }
     };
 
     const observer = new MutationObserver(() => mark());
     doc.addEventListener("click", handleClick, true);
-    doc.addEventListener("dblclick", handleDblClick, true);
     doc.addEventListener("mouseover", handleMouseOver, true);
     doc.addEventListener("mouseout", handleMouseOut, true);
     observer.observe(doc.documentElement, { childList: true, subtree: true });
@@ -568,7 +562,6 @@ export function PortalVisualSiteEditor({
     iframeCleanupRef.current = () => {
       observer.disconnect();
       doc.removeEventListener("click", handleClick, true);
-      doc.removeEventListener("dblclick", handleDblClick, true);
       doc.removeEventListener("mouseover", handleMouseOver, true);
       doc.removeEventListener("mouseout", handleMouseOut, true);
       removeCameraFloat();
@@ -835,7 +828,7 @@ export function PortalVisualSiteEditor({
                 Afbeelding uploaden…
               </span>
             ) : (
-              "Dubbelklik op tekst om direct te bewerken · Klik op een foto om te vervangen"
+              "Klik op tekst om direct te bewerken · Klik op een foto om te vervangen"
             )}
           </span>
           {saveErr ? <span className="font-medium text-red-600 dark:text-red-400">{saveErr}</span> : null}
