@@ -1949,6 +1949,9 @@ export function sanitizeTailwindFragment(html: string): string {
       "data-studio-feature-zone",
       /** Ankers / secties in client-HTML. */
       "data-section",
+      /** Portal visuele editor: section wrappers moeten de sanitizer overleven. */
+      "data-portal-section-key",
+      "data-portal-section-name",
       "name",
       "value",
       "placeholder",
