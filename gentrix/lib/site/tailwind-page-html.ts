@@ -2714,7 +2714,7 @@ export function buildTailwindIframeSrcDoc(
   const shouldInject = !options?.disableAutoMobileNav && shouldInjectStudioAutoMobileNav(body);
   let studioAutoMobileNavInjected = false;
   if (sections.length > 0 && shouldInject) {
-    body = `${buildStudioAutoMobileNavHeaderHtml(
+    let autoNavHtml = buildStudioAutoMobileNavHeaderHtml(
       sections,
       pageConfig ?? null,
       {
@@ -2722,7 +2722,17 @@ export function buildTailwindIframeSrcDoc(
         navBrandLabel: options?.navBrandLabel?.trim() || null,
       },
       existingHeaderLinks,
-    )}\n${body}`;
+    );
+    // Als de originele site al een header heeft in een sectie, verberg de auto-nav op desktop
+    // via lg:hidden (betrouwbaarder dan CSS :has() — werkt via STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS).
+    const bodyHasOwnHeader = /<section\b[^>]*>[\s\S]{0,3000}<header\b/i.test(body);
+    if (bodyHasOwnHeader) {
+      autoNavHtml = autoNavHtml.replace(
+        /(<header\b[^>]*\bclass\s*=\s*["'])([^"']*)(["'])/,
+        (_, before, cls, quote) => `${before}${cls} lg:hidden${quote}`,
+      );
+    }
+    body = `${autoNavHtml}\n${body}`;
     studioAutoMobileNavInjected = true;
   }
   const slug = options?.publishedSlug?.trim();

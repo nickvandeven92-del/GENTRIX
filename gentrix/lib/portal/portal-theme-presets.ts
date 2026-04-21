@@ -5,7 +5,7 @@ import {
 } from "@/lib/ai/tailwind-sections-schema";
 
 export type PortalThemePreset = {
-  id: "original" | "light" | "dark" | "warm";
+  id: "original" | "dark" | "warm";
   label: string;
   description: string;
   swatches: [string, string, string];
@@ -74,34 +74,6 @@ function withMutedText(textColor: string, background: string): string {
 }
 
 /**
- * Licht: altijd een heldere, bijna-witte achtergrond — ongeacht de originele achtergrond.
- * Primary en accent blijven herkenbaar maar worden zo nodig licht verdonkerd voor contrast.
- */
-function buildLightPreset(base: MasterPromptPageConfig): MasterPromptPageConfig {
-  const origPrimary = normalizeHex(base.theme.primary, "#1f2937");
-  const origAccent = normalizeHex(base.theme.accent, "#c08a4a");
-  // Achtergrond altijd sterk naar wit trekken (85%), ongeacht de originele kleur
-  const background = mixHex(normalizeHex(base.theme.background, "#ffffff"), "#f8f5f0", 0.85);
-  // Primary donker houden (goed contrast op witte achtergrond)
-  const primary = mixHex(origPrimary, "#111827", 0.3);
-  const accent = origAccent;
-  const textColor = mixHex(origPrimary, "#111827", 0.5);
-  return {
-    ...base,
-    theme: {
-      ...base.theme,
-      primary,
-      accent,
-      secondary: mixHex(primary, "#6b7280", 0.4),
-      background,
-      textColor,
-      textMuted: withMutedText(textColor, background),
-      contrastLevel: "medium",
-    },
-  };
-}
-
-/**
  * Donker: altijd een diepe, donkere achtergrond — primary wordt sterk verlicht
  * zodat tekst en knoppen leesbaar blijven op de donkere achtergrond.
  */
@@ -162,7 +134,6 @@ function buildWarmPreset(base: MasterPromptPageConfig): MasterPromptPageConfig {
 export function buildPortalThemePresets(pageConfig?: TailwindPageConfig | null): PortalThemePreset[] {
   if (!pageConfig || isLegacyTailwindPageConfig(pageConfig)) return [];
 
-  const light = buildLightPreset(pageConfig);
   const dark = buildDarkPreset(pageConfig);
   const warm = buildWarmPreset(pageConfig);
 
@@ -173,13 +144,6 @@ export function buildPortalThemePresets(pageConfig?: TailwindPageConfig | null):
       description: "De merkkleuren zoals gegenereerd voor deze website.",
       swatches: themeSwatches(pageConfig),
       pageConfig,
-    },
-    {
-      id: "light",
-      label: "Licht",
-      description: "Heldere basis met dezelfde merkaccenten.",
-      swatches: themeSwatches(light),
-      pageConfig: light,
     },
     {
       id: "dark",

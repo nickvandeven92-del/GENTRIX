@@ -282,8 +282,7 @@ div[class*="fixed"][class*="right-0"][class*="z-"] {
   display: none !important;
 }
 
-/* Op mobiel (<1024px): originele headers/navs verbergen — auto-nav neemt het over.
- * Op desktop blijft de originele header zichtbaar; auto-nav wordt verborgen via :has(). */
+/* Op mobiel (<1024px): originele headers/navs verbergen — auto-nav neemt het over. */
 @media (max-width: 1023px) {
   body > header[${AUTO_NAV_ATTR}] ~ header,
   body > header[${AUTO_NAV_ATTR}] ~ section header,
@@ -299,10 +298,11 @@ div[class*="fixed"][class*="right-0"][class*="z-"] {
   }
 }
 
-/* Op desktop (≥1024px): verberg de auto-nav wanneer er al een originele header in de secties staat.
- * Descendant-selector zodat extra div-wrappers geen probleem zijn.
+/* Op desktop (≥1024px): fallback — verberg auto-nav als die lg:hidden niet heeft gekregen maar wel
+ * een originele header bestaat (bijv. bij oude gecachte pagina's).
  * :has() — Chrome 105+, Safari 15.4+, Firefox 121+. */
 @media (min-width: 1024px) {
+  body > header[${AUTO_NAV_ATTR}].lg\\:hidden,
   body > header[${AUTO_NAV_ATTR}]:has(~ section header) {
     display: none !important;
   }

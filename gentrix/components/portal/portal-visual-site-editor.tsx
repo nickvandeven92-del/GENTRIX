@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Check, ExternalLink, ImagePlus, Loader2, Paintbrush, Rocket, Save } from "lucide-react";
-import { isLegacyTailwindPageConfig, type TailwindPageConfig, type TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
 import { buildPortalThemePresets } from "@/lib/portal/portal-theme-presets";
@@ -752,18 +752,6 @@ export function PortalVisualSiteEditor({
   );
   onSelectPageRef.current = onSelectPage;
 
-  const updateThemeColor = useCallback(
-    (key: "primary" | "accent" | "background" | "textColor", value: string) => {
-      setPageConfigValue((prev) => {
-        if (!prev || isLegacyTailwindPageConfig(prev)) return prev;
-        return { ...prev, theme: { ...prev.theme, [key]: value } };
-      });
-      setDirty(true);
-      setSaveMsg(null);
-    },
-    [],
-  );
-
   const onSave = useCallback(async () => {
     setSaving(true);
     setSaveErr(null);
@@ -1005,33 +993,6 @@ export function PortalVisualSiteEditor({
               })}
             </div>
 
-            {/* Individuele kleurpickers (alleen voor niet-legacy config) */}
-            {pageConfigValue && !isLegacyTailwindPageConfig(pageConfigValue) ? (
-              <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">Aanpassen:</span>
-                {(
-                  [
-                    { key: "primary", label: "Primair" },
-                    { key: "accent", label: "Accent" },
-                    { key: "background", label: "Achtergrond" },
-                  ] as const
-                ).map(({ key, label }) => (
-                  <label
-                    key={key}
-                    className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"
-                  >
-                    <input
-                      type="color"
-                      value={pageConfigValue.theme[key] ?? "#000000"}
-                      onChange={(e) => updateThemeColor(key, e.target.value)}
-                      className="size-6 cursor-pointer rounded-md border border-black/10 p-0.5 dark:border-white/10"
-                      title={label}
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            ) : null}
           </div>
         ) : null}
 
