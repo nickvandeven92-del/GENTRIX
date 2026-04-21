@@ -208,10 +208,10 @@ export function PortalVisualSiteEditor({
       if (!(el instanceof HTMLElement)) return false;
       if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption")) return false;
       if (el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
-      const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+      const text = normalizeEditableText(el.textContent ?? "");
       return text.length > 0;
     },
-    [],
+    [normalizeEditableText],
   );
 
   const markIframeEditables = useCallback(
@@ -222,7 +222,7 @@ export function PortalVisualSiteEditor({
       clearSelectedTextHighlight(doc);
       for (const section of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
         sectionCount += 1;
-        for (const node of Array.from(section.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,div"))) {
+        for (const node of Array.from(section.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption"))) {
           if (!isTextCandidate(node)) continue;
           const el = node as HTMLElement;
           el.setAttribute("data-portal-editable", "text");
