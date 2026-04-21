@@ -30,21 +30,13 @@ type ScanStats = {
   images: number;
 };
 
-type PortalEditorMessage =
-  | { source: "portal-site-editor"; type: "portal-dirty" }
-  | {
-      source: "portal-site-editor";
-      type: "portal-select-image";
-      imageId: string;
-      sectionKey: string;
-      src: string;
-      alt: string;
-    }
-  | {
-      source: "portal-site-editor";
-      type: "portal-snapshot";
-      sections: SnapshotSection[];
-    };
+type SelectedTextBlock = {
+  textId: string;
+  sectionKey: string;
+  tagName: string;
+  originalText: string;
+  draftText: string;
+};
 
 type Props = {
   slug: string;
@@ -57,27 +49,6 @@ type Props = {
   logoSet?: GeneratedLogoSet | null;
   compiledTailwindCss?: string | null;
 };
-
-const MESSAGE_SOURCE = "portal-site-editor";
-
-function isPortalEditorMessage(data: unknown): data is PortalEditorMessage {
-  if (!data || typeof data !== "object") return false;
-  const row = data as Record<string, unknown>;
-  if (row.source !== MESSAGE_SOURCE || typeof row.type !== "string") return false;
-  if (row.type === "portal-dirty") return true;
-  if (row.type === "portal-select-image") {
-    return (
-      typeof row.imageId === "string" &&
-      typeof row.sectionKey === "string" &&
-      typeof row.src === "string" &&
-      typeof row.alt === "string"
-    );
-  }
-  if (row.type === "portal-snapshot") {
-    return Array.isArray(row.sections);
-  }
-  return false;
-}
 
 function escapeAttr(value: string): string {
   return value
@@ -129,251 +100,17 @@ function buildPortalEditorCss(): string {
   background: rgba(219, 234, 254, 0.42);
 }
 
-[data-portal-editable="text"][contenteditable="true"],
-[data-editable="text"][contenteditable="true"] {
-  cursor: text;
-}
-
-[data-portal-editing="1"] {
-  outline: 2px solid rgba(16, 185, 129, 0.9) !important;
+[data-portal-selected="1"] {
+  outline: 2px solid rgba(16, 185, 129, 0.92) !important;
   outline-offset: 3px;
   background: rgba(236, 253, 245, 0.92) !important;
 }
 `;
 }
 
-function buildPortalEditorScript(): string {
-  return `<script>
-(function(){
-  var SOURCE = "portal-site-editor";
-  var ROOT_SELECTOR = "[data-portal-section-key]";
-  var EDITABLE_TEXT_SELECTOR = '[data-portal-editable="text"],[data-editable="text"]';
-  var EDITABLE_IMAGE_SELECTOR = 'img[data-portal-editable="image"],img[data-editable="image"]';
-  var TEXT_SELECTOR = "h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption";
-  var INLINE_ALLOWED = {A:1,ABBR:1,B:1,BR:1,CITE:1,CODE:1,EM:1,I:1,MARK:1,SMALL:1,SPAN:1,STRONG:1,SUB:1,SUP:1,U:1};
-  var activeTextEl = null;
-  var initDone = false;
-
-  function post(payload){
-    try{ parent.postMessage(Object.assign({ source: SOURCE }, payload), "*"); }catch(_){ }
-  }
-
-  function normalizeText(value){
-    return String(value || "").replace(/\s+/g, " ").trim();
-  }
-
-  function findSectionKey(node){
-    var section = node && node.closest ? node.closest(ROOT_SELECTOR) : null;
-    return section ? (section.getAttribute("data-portal-section-key") || "") : "";
-  }
-
-  function isTextCandidate(el){
-    if(!el || !el.matches || !el.matches(TEXT_SELECTOR)) return false;
-    if(el.closest("script,style,noscript")) return false;
-    if(el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
-    for(var i=0;i<el.children.length;i++){
-      var child=el.children[i];
-      if(!child || !INLINE_ALLOWED[child.tagName]) return false;
-      if(child.tagName === "A" || child.closest("a,button")) return false;
-    }
-    return normalizeText(el.textContent || "").length > 0;
-  }
-
-  function markEditableNodes(){
-    var textIndex = 0;
-    var imageIndex = 0;
-    document.querySelectorAll(ROOT_SELECTOR).forEach(function(section){
-      section.querySelectorAll(TEXT_SELECTOR).forEach(function(el){
-        if(!isTextCandidate(el)) return;
-        el.setAttribute("data-portal-editable", "text");
-        el.setAttribute("data-editable", "text");
-        el.setAttribute("data-portal-text-id", "text-" + String(textIndex++));
-        el.setAttribute("contenteditable", "true");
-        el.setAttribute("spellcheck", "false");
-      });
-      section.querySelectorAll("img").forEach(function(img){
-        if(img.closest("a,button,nav,header,[role='navigation']")) return;
-        img.setAttribute("data-portal-editable", "image");
-        img.setAttribute("data-editable", "image");
-        img.setAttribute("data-portal-image-id", "image-" + String(imageIndex++));
-      });
-    });
-    initDone = true;
-  }
-
-  function scheduleMarkEditableNodes(){
-    markEditableNodes();
-    window.requestAnimationFrame(markEditableNodes);
-    window.setTimeout(markEditableNodes, 120);
-    window.setTimeout(markEditableNodes, 480);
-  }
-
-  function placeCaretAtEnd(el){
-    try{
-      var range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      var sel = window.getSelection();
-      if(!sel) return;
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }catch(_){ }
-  }
-
-  function commitText(el){
-    if(!el) return;
-    var next = normalizeText(el.textContent || "");
-    el.textContent = next;
-    el.removeAttribute("data-portal-editing");
-    if(activeTextEl === el) activeTextEl = null;
-    post({ type: "portal-dirty" });
-  }
-
-  function commitActiveText(){
-    if(activeTextEl) commitText(activeTextEl);
-  }
-
-  function startTextEdit(el){
-    if(activeTextEl && activeTextEl !== el) commitText(activeTextEl);
-    activeTextEl = el;
-    el.setAttribute("data-portal-editing", "1");
-    el.focus();
-    placeCaretAtEnd(el);
-  }
-
-  function handleInput(event){
-    var target = event.target;
-    if(!target || !target.matches || !target.matches(EDITABLE_TEXT_SELECTOR)) return;
-    activeTextEl = target;
-    target.setAttribute("data-portal-editing", "1");
-    post({ type: "portal-dirty" });
-  }
-
-  function cleanClone(section){
-    var clone = section.cloneNode(true);
-    var all = [clone].concat(Array.prototype.slice.call(clone.querySelectorAll("*")));
-    all.forEach(function(node){
-      Array.prototype.slice.call(node.attributes || []).forEach(function(attr){
-        if(attr && /^data-portal-/.test(attr.name)) node.removeAttribute(attr.name);
-      });
-      node.removeAttribute("contenteditable");
-      node.removeAttribute("spellcheck");
-    });
-    return clone.innerHTML;
-  }
-
-  function emitSnapshot(){
-    commitActiveText();
-    var sections = [];
-    document.querySelectorAll(ROOT_SELECTOR).forEach(function(section){
-      var key = section.getAttribute("data-portal-section-key") || "";
-      sections.push({ key: key, html: cleanClone(section) });
-    });
-    post({ type: "portal-snapshot", sections: sections });
-  }
-
-  function handleClick(event){
-    var target = event.target;
-    if(!target || !target.closest) return;
-    var image = target.closest(EDITABLE_IMAGE_SELECTOR);
-    if(image){
-      event.preventDefault();
-      event.stopPropagation();
-      commitActiveText();
-      post({
-        type: "portal-select-image",
-        imageId: image.getAttribute("data-portal-image-id") || "",
-        sectionKey: findSectionKey(image),
-        src: image.getAttribute("src") || "",
-        alt: image.getAttribute("alt") || "",
-      });
-      return;
-    }
-    var text = target.closest(EDITABLE_TEXT_SELECTOR);
-    if(text){
-      event.stopPropagation();
-      startTextEdit(text);
-    }
-  }
-
-  function handleFocusOut(event){
-    if(!activeTextEl || event.target !== activeTextEl) return;
-    window.setTimeout(function(){
-      if(!activeTextEl) return;
-      if(document.activeElement === activeTextEl) return;
-      commitText(activeTextEl);
-    }, 0);
-  }
-
-  function handleKeyDown(event){
-    if(!activeTextEl) return;
-    if(event.key === "Escape"){
-      event.preventDefault();
-      commitText(activeTextEl);
-      return;
-    }
-    if(event.key === "Enter" && !event.shiftKey){
-      event.preventDefault();
-      activeTextEl.blur();
-    }
-  }
-
-  function handleParentMessage(event){
-    var data = event.data;
-    if(!data || typeof data !== "object" || typeof data.type !== "string") return;
-    if(data.type === "portal-request-snapshot"){
-      emitSnapshot();
-      return;
-    }
-    if(data.type === "portal-init-editables"){
-      scheduleMarkEditableNodes();
-      return;
-    }
-    if(data.type === "portal-apply-image"){
-      var id = typeof data.imageId === "string" ? data.imageId : "";
-      var src = typeof data.src === "string" ? data.src : "";
-      if(!id || !src) return;
-      var selector = 'img[data-portal-image-id="' + id.replace(/"/g, '\\"') + '"]';
-      var image = document.querySelector(selector);
-      if(!image) return;
-      image.setAttribute("src", src);
-      if(typeof data.alt === "string") image.setAttribute("alt", data.alt);
-      post({ type: "portal-dirty" });
-    }
-  }
-
-  document.addEventListener("click", handleClick, true);
-  document.addEventListener("input", handleInput, true);
-  document.addEventListener("focusout", handleFocusOut, true);
-  document.addEventListener("keydown", handleKeyDown, true);
-  window.addEventListener("message", handleParentMessage);
-
-  try{
-    var observer = new MutationObserver(function(){
-      if(!initDone){
-        scheduleMarkEditableNodes();
-        return;
-      }
-      markEditableNodes();
-    });
-    observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
-  }catch(_){ }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", scheduleMarkEditableNodes, { once: true });
-  } else {
-    scheduleMarkEditableNodes();
-  }
-  window.addEventListener("load", scheduleMarkEditableNodes, { once: true });
-})();
-<\/script>`;
-}
-
 function injectPortalEditorIntoSrcDoc(doc: string): string {
   const styleTag = `<style id="portal-visual-editor-css">${buildPortalEditorCss()}</style>`;
-  const scriptTag = buildPortalEditorScript();
-  const withHead = doc.includes("</head>") ? doc.replace("</head>", `${styleTag}</head>`) : `${styleTag}${doc}`;
-  return withHead.includes("</body>") ? withHead.replace("</body>", `${scriptTag}</body>`) : `${withHead}${scriptTag}`;
+  return doc.includes("</head>") ? doc.replace("</head>", `${styleTag}</head>`) : `${styleTag}${doc}`;
 }
 
 export function PortalVisualSiteEditor({
@@ -390,9 +127,8 @@ export function PortalVisualSiteEditor({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const iframeCleanupRef = useRef<(() => void) | null>(null);
-  const activeTextRef = useRef<HTMLElement | null>(null);
-  const snapshotResolverRef = useRef<((sections: SnapshotSection[]) => void) | null>(null);
   const basePageConfigRef = useRef<TailwindPageConfig | null>(pageConfig ?? null);
+
   const [titleValue, setTitleValue] = useState(documentTitle);
   const [savedTitleValue, setSavedTitleValue] = useState(documentTitle);
   const [pageConfigValue, setPageConfigValue] = useState<TailwindPageConfig | null>(pageConfig ?? null);
@@ -408,6 +144,7 @@ export function PortalVisualSiteEditor({
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [scanStats, setScanStats] = useState<ScanStats | null>(null);
+  const [selectedTextBlock, setSelectedTextBlock] = useState<SelectedTextBlock | null>(null);
   const [pendingImageTarget, setPendingImageTarget] = useState<{
     imageId: string;
     sectionKey: string;
@@ -418,10 +155,7 @@ export function PortalVisualSiteEditor({
   const enc = encodeURIComponent(decodeURIComponent(slug));
   const currentPage = pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
   const currentSections = currentPage ? pageStates[currentPage.id] ?? currentPage.sections : [];
-  const themePresets = useMemo(
-    () => buildPortalThemePresets(basePageConfigRef.current),
-    [],
-  );
+  const themePresets = useMemo(() => buildPortalThemePresets(basePageConfigRef.current), []);
   const activePresetId = useMemo(() => {
     const current = JSON.stringify(pageConfigValue ?? null);
     const preset = themePresets.find((item) => JSON.stringify(item.pageConfig) === current);
@@ -449,7 +183,7 @@ export function PortalVisualSiteEditor({
       navBrandLabel: clientName,
     });
     return injectPortalEditorIntoSrcDoc(base);
-  }, [clientName, compiledTailwindCss, currentPage, logoSet, pageConfigValue, previewSections, slug, userCss, userJs]);
+  }, [clientName, compiledTailwindCss, logoSet, pageConfigValue, previewSections, slug, userCss, userJs]);
 
   const mergeSnapshotIntoSections = useCallback((baseSections: EditableSection[], snapshot: SnapshotSection[]) => {
     const htmlByKey = new Map(snapshot.map((item) => [item.key, item.html]));
@@ -462,45 +196,58 @@ export function PortalVisualSiteEditor({
 
   const normalizeEditableText = useCallback((value: string) => value.replace(/\s+/g, " ").trim(), []);
 
-  const isTextCandidate = useCallback((el: Element) => {
-    if (!(el instanceof HTMLElement)) return false;
-    if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption")) return false;
-    if (el.closest("script,style,noscript")) return false;
-    if (el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
-    for (const child of Array.from(el.children)) {
-      if (!(child instanceof HTMLElement)) return false;
-      if (!child.matches("abbr,b,br,cite,code,em,i,mark,small,span,strong,sub,sup,u")) return false;
-      if (child.tagName === "A" || child.closest("a,button")) return false;
-    }
-    return normalizeEditableText(el.textContent ?? "").length > 0;
-  }, [normalizeEditableText]);
+  const clearSelectedTextHighlight = useCallback((doc?: Document | null) => {
+    const targetDoc = doc ?? iframeRef.current?.contentDocument;
+    targetDoc?.querySelectorAll('[data-portal-selected="1"]').forEach((node) => {
+      node.removeAttribute("data-portal-selected");
+    });
+  }, []);
 
-  const markIframeEditables = useCallback((doc: Document) => {
-    let sectionCount = 0;
-    let textIndex = 0;
-    let imageIndex = 0;
-    for (const section of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
-      sectionCount += 1;
-      for (const node of Array.from(section.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption"))) {
-        if (!isTextCandidate(node)) continue;
-        const el = node as HTMLElement;
-        el.setAttribute("data-portal-editable", "text");
-        el.setAttribute("data-editable", "text");
-        el.setAttribute("data-portal-text-id", `text-${textIndex++}`);
-        el.setAttribute("contenteditable", "true");
-        el.setAttribute("spellcheck", "false");
+  const isTextCandidate = useCallback(
+    (el: Element) => {
+      if (!(el instanceof HTMLElement)) return false;
+      if (!el.matches("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,div")) return false;
+      if (el.closest("script,style,noscript")) return false;
+      if (el.closest("nav,header,footer,a,button,[role='navigation']")) return false;
+      if (el.matches("div") && el.querySelector("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,div")) return false;
+      for (const child of Array.from(el.children)) {
+        if (!(child instanceof HTMLElement)) return false;
+        if (!child.matches("abbr,b,br,cite,code,em,i,mark,small,span,strong,sub,sup,u")) return false;
+        if (child.tagName === "A" || child.closest("a,button")) return false;
       }
-      for (const node of Array.from(section.querySelectorAll("img"))) {
-        const img = node as HTMLImageElement;
-        if (img.closest("a,button,nav,header,[role='navigation']")) continue;
-        img.setAttribute("data-portal-editable", "image");
-        img.setAttribute("data-editable", "image");
-        img.setAttribute("data-portal-image-id", `image-${imageIndex++}`);
+      return normalizeEditableText(el.textContent ?? "").length > 0;
+    },
+    [normalizeEditableText],
+  );
+
+  const markIframeEditables = useCallback(
+    (doc: Document) => {
+      let sectionCount = 0;
+      let textIndex = 0;
+      let imageIndex = 0;
+      clearSelectedTextHighlight(doc);
+      for (const section of Array.from(doc.querySelectorAll("[data-portal-section-key]"))) {
+        sectionCount += 1;
+        for (const node of Array.from(section.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,div"))) {
+          if (!isTextCandidate(node)) continue;
+          const el = node as HTMLElement;
+          el.setAttribute("data-portal-editable", "text");
+          el.setAttribute("data-editable", "text");
+          el.setAttribute("data-portal-text-id", `text-${textIndex++}`);
+        }
+        for (const node of Array.from(section.querySelectorAll("img"))) {
+          const img = node as HTMLImageElement;
+          if (img.closest("a,button,nav,header,[role='navigation']")) continue;
+          img.setAttribute("data-portal-editable", "image");
+          img.setAttribute("data-editable", "image");
+          img.setAttribute("data-portal-image-id", `image-${imageIndex++}`);
+        }
       }
-    }
-    setScanStats({ sections: sectionCount, text: textIndex, images: imageIndex });
-    return { sections: sectionCount, text: textIndex, images: imageIndex };
-  }, [isTextCandidate]);
+      setScanStats({ sections: sectionCount, text: textIndex, images: imageIndex });
+      return { sections: sectionCount, text: textIndex, images: imageIndex };
+    },
+    [clearSelectedTextHighlight, isTextCandidate],
+  );
 
   const extractSnapshotFromDocument = useCallback((doc: Document) => {
     const sections: SnapshotSection[] = [];
@@ -512,8 +259,7 @@ export function PortalVisualSiteEditor({
           if (/^data-portal-/.test(attr.name)) node.removeAttribute(attr.name);
         }
         node.removeAttribute("data-editable");
-        node.removeAttribute("contenteditable");
-        node.removeAttribute("spellcheck");
+        node.removeAttribute("data-portal-selected");
       }
       sections.push({
         key: sectionNode.getAttribute("data-portal-section-key") ?? "",
@@ -528,35 +274,28 @@ export function PortalVisualSiteEditor({
     const doc = iframeRef.current?.contentDocument;
     if (!doc) {
       setScanStats(null);
+      setSelectedTextBlock(null);
       return;
     }
 
     const timeouts: number[] = [];
-
-    const commitText = (el: HTMLElement | null) => {
-      if (!el) return;
-      el.textContent = normalizeEditableText(el.textContent ?? "");
-      el.removeAttribute("data-portal-editing");
-      if (activeTextRef.current === el) activeTextRef.current = null;
-      setDirty(true);
-      setSaveErr(null);
-    };
-
-    const startTextEdit = (el: HTMLElement) => {
-      if (activeTextRef.current && activeTextRef.current !== el) commitText(activeTextRef.current);
-      activeTextRef.current = el;
-      el.setAttribute("data-portal-editing", "1");
-      el.focus();
-      const selection = doc.defaultView?.getSelection();
-      if (!selection) return;
-      const range = doc.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    };
-
     const mark = () => markIframeEditables(doc);
+
+    const selectTextBlock = (el: HTMLElement) => {
+      clearSelectedTextHighlight(doc);
+      el.setAttribute("data-portal-selected", "1");
+      const nextText = normalizeEditableText(el.textContent ?? "");
+      setPendingImageTarget(null);
+      setSelectedTextBlock({
+        textId: el.getAttribute("data-portal-text-id") ?? "",
+        sectionKey: el.closest("[data-portal-section-key]")?.getAttribute("data-portal-section-key") ?? "",
+        tagName: el.tagName.toLowerCase(),
+        originalText: nextText,
+        draftText: nextText,
+      });
+      setSaveErr(null);
+      setSaveMsg(null);
+    };
 
     const handleClick = (event: Event) => {
       const target = event.target;
@@ -565,7 +304,8 @@ export function PortalVisualSiteEditor({
       if (image) {
         event.preventDefault();
         event.stopPropagation();
-        commitText(activeTextRef.current);
+        clearSelectedTextHighlight(doc);
+        setSelectedTextBlock(null);
         setPendingImageTarget({
           imageId: image.getAttribute("data-portal-image-id") ?? "",
           sectionKey: image.closest("[data-portal-section-key]")?.getAttribute("data-portal-section-key") ?? "",
@@ -578,57 +318,20 @@ export function PortalVisualSiteEditor({
       }
       const text = target.closest('[data-editable="text"]') as HTMLElement | null;
       if (!text) return;
+      event.preventDefault();
       event.stopPropagation();
-      startTextEdit(text);
-    };
-
-    const handleInput = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement) || !target.matches('[data-editable="text"]')) return;
-      activeTextRef.current = target;
-      target.setAttribute("data-portal-editing", "1");
-      setDirty(true);
-      setSaveErr(null);
-    };
-
-    const handleFocusOut = (event: FocusEvent) => {
-      if (!activeTextRef.current || event.target !== activeTextRef.current) return;
-      timeouts.push(
-        window.setTimeout(() => {
-          if (!activeTextRef.current) return;
-          if (doc.activeElement === activeTextRef.current) return;
-          commitText(activeTextRef.current);
-        }, 0),
-      );
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!activeTextRef.current) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        commitText(activeTextRef.current);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        activeTextRef.current.blur();
-      }
+      selectTextBlock(text);
     };
 
     const observer = new MutationObserver(() => mark());
 
     doc.addEventListener("click", handleClick, true);
-    doc.addEventListener("input", handleInput, true);
-    doc.addEventListener("focusout", handleFocusOut, true);
-    doc.addEventListener("keydown", handleKeyDown, true);
     observer.observe(doc.documentElement, { childList: true, subtree: true });
 
     let tries = 0;
     const markWithRetry = () => {
       const stats = mark();
-      const hasSections = stats.sections > 0;
-      const hasText = stats.text > 0;
-      if ((hasSections && hasText) || tries >= 20) return;
+      if ((stats.sections > 0 && stats.text > 0) || tries >= 20) return;
       tries += 1;
       timeouts.push(window.setTimeout(markWithRetry, 100));
     };
@@ -640,32 +343,14 @@ export function PortalVisualSiteEditor({
     iframeCleanupRef.current = () => {
       observer.disconnect();
       doc.removeEventListener("click", handleClick, true);
-      doc.removeEventListener("input", handleInput, true);
-      doc.removeEventListener("focusout", handleFocusOut, true);
-      doc.removeEventListener("keydown", handleKeyDown, true);
       for (const timeout of timeouts) window.clearTimeout(timeout);
     };
-  }, [markIframeEditables, normalizeEditableText]);
+  }, [clearSelectedTextHighlight, markIframeEditables, normalizeEditableText]);
 
   const requestSnapshot = useCallback(() => {
     const directDoc = iframeRef.current?.contentDocument;
-    if (directDoc) return Promise.resolve(extractSnapshotFromDocument(directDoc));
-    const target = iframeRef.current?.contentWindow;
-    if (!target) return Promise.reject(new Error("Preview niet beschikbaar."));
-    return new Promise<SnapshotSection[]>((resolve, reject) => {
-      snapshotResolverRef.current = resolve;
-      try {
-        target.postMessage({ type: "portal-request-snapshot" }, "*");
-      } catch {
-        snapshotResolverRef.current = null;
-        reject(new Error("Kon preview niet aanspreken."));
-      }
-      window.setTimeout(() => {
-        if (snapshotResolverRef.current !== resolve) return;
-        snapshotResolverRef.current = null;
-        reject(new Error("Geen antwoord uit de preview ontvangen."));
-      }, 3000);
-    });
+    if (!directDoc) return Promise.reject(new Error("Preview niet beschikbaar."));
+    return Promise.resolve(extractSnapshotFromDocument(directDoc));
   }, [extractSnapshotFromDocument]);
 
   const flushCurrentPageSnapshot = useCallback(async () => {
@@ -678,39 +363,6 @@ export function PortalVisualSiteEditor({
     setPageStates(nextPageStates);
     return nextPageStates;
   }, [currentPage, mergeSnapshotIntoSections, pageStates, requestSnapshot]);
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== iframeRef.current?.contentWindow) return;
-      if (!isPortalEditorMessage(event.data)) return;
-
-      if (event.data.type === "portal-dirty") {
-        setDirty(true);
-        setSaveErr(null);
-        return;
-      }
-
-      if (event.data.type === "portal-select-image") {
-        setPendingImageTarget({
-          imageId: event.data.imageId,
-          sectionKey: event.data.sectionKey,
-          src: event.data.src,
-          alt: event.data.alt,
-        });
-        setSaveErr(null);
-        queueMicrotask(() => fileInputRef.current?.click());
-        return;
-      }
-
-      if (event.data.type === "portal-snapshot") {
-        snapshotResolverRef.current?.(event.data.sections);
-        snapshotResolverRef.current = null;
-      }
-    };
-
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
 
   useEffect(() => () => iframeCleanupRef.current?.(), []);
 
@@ -727,6 +379,8 @@ export function PortalVisualSiteEditor({
       try {
         await flushCurrentPageSnapshot();
         setSelectedPageId(pageId);
+        setSelectedTextBlock(null);
+        setPendingImageTarget(null);
       } catch (error) {
         setSaveErr(error instanceof Error ? error.message : "Pagina wisselen mislukt.");
       } finally {
@@ -769,217 +423,274 @@ export function PortalVisualSiteEditor({
     }
   }, [enc, flushCurrentPageSnapshot, pageConfigValue, pages, titleValue]);
 
-  const onImageFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !pendingImageTarget) return;
-    setUploadingImage(true);
+  const onSaveSelectedTextBlock = useCallback(() => {
+    if (!selectedTextBlock) return;
+    const next = normalizeEditableText(selectedTextBlock.draftText);
+    const doc = iframeRef.current?.contentDocument;
+    const target = doc?.querySelector(`[data-portal-text-id="${selectedTextBlock.textId}"]`) as HTMLElement | null;
+    if (!target) {
+      setSaveErr("Geselecteerd tekstblok niet gevonden in de preview.");
+      return;
+    }
+    target.textContent = next;
+    clearSelectedTextHighlight(doc);
+    target.setAttribute("data-portal-selected", "1");
+    setSelectedTextBlock({
+      ...selectedTextBlock,
+      originalText: next,
+      draftText: next,
+    });
+    setDirty(true);
     setSaveErr(null);
     setSaveMsg(null);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(`/api/portal/clients/${enc}/site-asset`, {
-        method: "POST",
-        body: form,
-      });
-      const json = (await res.json()) as { ok?: boolean; error?: string; url?: string };
-      if (!res.ok || !json.ok || !json.url) {
-        setSaveErr(json.error ?? "Upload mislukt.");
-        return;
+  }, [clearSelectedTextHighlight, normalizeEditableText, selectedTextBlock]);
+
+  const onImageFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file || !pendingImageTarget) return;
+      setUploadingImage(true);
+      setSaveErr(null);
+      setSaveMsg(null);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch(`/api/portal/clients/${enc}/site-asset`, {
+          method: "POST",
+          body: form,
+        });
+        const json = (await res.json()) as { ok?: boolean; error?: string; url?: string };
+        if (!res.ok || !json.ok || !json.url) {
+          setSaveErr(json.error ?? "Upload mislukt.");
+          return;
+        }
+        const directDoc = iframeRef.current?.contentDocument;
+        const directImage = directDoc?.querySelector(
+          `img[data-portal-image-id="${pendingImageTarget.imageId}"]`,
+        ) as HTMLImageElement | null;
+        if (directImage) {
+          directImage.setAttribute("src", json.url);
+          directImage.setAttribute("alt", pendingImageTarget.alt);
+        }
+        setDirty(true);
+        setPendingImageTarget(null);
+        setSaveMsg("Afbeelding vervangen. Sla op als concept om de wijziging te bewaren.");
+      } catch {
+        setSaveErr("Upload mislukt.");
+      } finally {
+        event.target.value = "";
+        setUploadingImage(false);
       }
-      iframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "portal-apply-image",
-          imageId: pendingImageTarget.imageId,
-          src: json.url,
-          alt: pendingImageTarget.alt,
-        },
-        "*",
-      );
-      const directDoc = iframeRef.current?.contentDocument;
-      const directImage = directDoc?.querySelector(
-        `img[data-portal-image-id="${pendingImageTarget.imageId}"]`,
-      ) as HTMLImageElement | null;
-      if (directImage) {
-        directImage.setAttribute("src", json.url);
-        directImage.setAttribute("alt", pendingImageTarget.alt);
-      }
-      setDirty(true);
-      setPendingImageTarget(null);
-      setSaveMsg("Afbeelding vervangen. Sla op als concept om de wijziging te bewaren.");
-    } catch {
-      setSaveErr("Upload mislukt.");
-    } finally {
-      event.target.value = "";
-      setUploadingImage(false);
-    }
-  }, [enc, pendingImageTarget]);
+    },
+    [enc, pendingImageTarget],
+  );
 
   const onIframeLoad = useCallback(() => {
     bindIframeEditor();
-    iframeRef.current?.contentWindow?.postMessage({ type: "portal-init-editables" }, "*");
   }, [bindIframeEditor]);
 
   return (
     <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
       <section className="overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:rounded-2xl sm:border">
-      <div className="flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-start lg:justify-between lg:px-6">
-        <div>
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Visuele website-editor</h2>
-          <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-            Dit is alleen voor de klant in het portaal. Klik direct op tekst in de preview om te typen,
-            of klik op een afbeelding om die te vervangen. De indeling van de site blijft vast staan, ook op contact-
-            en marketingpagina’s.
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={saving || switchingPage || uploadingImage || !hasUnsavedChanges}
-          onClick={() => void onSave()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-        >
-          {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
-          Opslaan als concept
-        </button>
-      </div>
-
-      <div className="grid gap-4 border-t border-zinc-200 px-2 pb-2 pt-4 dark:border-zinc-800 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-3 lg:pb-3">
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-          <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-            {pages.map((page) => {
-              const active = page.id === selectedPageId;
-              return (
-                <button
-                  key={page.id}
-                  type="button"
-                  disabled={switchingPage || saving}
-                  onClick={() => void onSelectPage(page.id)}
-                  className={[
-                    "rounded-full border px-3 py-1.5 text-sm font-medium transition",
-                    active
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
-                  ].join(" ")}
-                >
-                  {page.label}
-                </button>
-              );
-            })}
-            <div className="ml-auto text-xs text-zinc-500 dark:text-zinc-400">
-              {currentPage ? `Je bewerkt nu: ${currentPage.label}` : "Geen pagina geselecteerd"}
-            </div>
-          </div>
-          <iframe
-            id="site-preview"
-            ref={iframeRef}
-            title="Klant website editor"
-            className="h-[68dvh] min-h-[560px] w-full border-0 bg-white lg:h-[calc(100dvh-16rem)] lg:min-h-[760px]"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-            srcDoc={srcDoc}
-            onLoad={onIframeLoad}
-          />
-        </div>
-
-        <aside className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/70 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-11rem)] lg:overflow-auto">
-          <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">Browsertitel</label>
-          <input
-            value={titleValue}
-            onChange={(event) => setTitleValue(event.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            placeholder="Naam in de browsertab"
-          />
-
-          <div className="mt-4">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-              <Paintbrush className="size-3.5" aria-hidden />
-              Thema
-            </div>
-            <div className="mt-2 space-y-2">
-              {themePresets.length > 0 ? (
-                themePresets.map((preset) => {
-                  const active = activePresetId === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        setPageConfigValue(preset.pageConfig);
-                        setDirty(true);
-                        setSaveMsg(null);
-                      }}
-                      className={[
-                        "w-full rounded-xl border p-3 text-left transition",
-                        active
-                          ? "border-zinc-900 bg-white shadow-sm dark:border-zinc-100 dark:bg-zinc-900"
-                          : "border-zinc-200 bg-white/80 hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/70 dark:hover:bg-zinc-900",
-                      ].join(" ")}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{preset.label}</p>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{preset.description}</p>
-                        </div>
-                        {active ? <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        {preset.swatches.map((swatch) => (
-                          <span
-                            key={swatch}
-                            className="size-6 rounded-full border border-black/10 dark:border-white/10"
-                            style={{ backgroundColor: swatch }}
-                          />
-                        ))}
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <p className="rounded-xl border border-dashed border-zinc-300 bg-white/80 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400">
-                  Thema-varianten zijn alleen beschikbaar voor moderne Tailwind-stijlen.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-            <p>Klik op een kop, paragraaf of lijstregel in de preview en typ direct je nieuwe tekst.</p>
-            <p>Klik op een foto om een nieuwe afbeelding te uploaden. De verhoudingen van de site blijven staan.</p>
-            <p>Je kunt schakelen tussen home, contact en marketingpagina’s zonder een losse tweede editor te openen.</p>
-            <p>
-              {scanStats
-                ? `Editor-scan: ${scanStats.sections} secties, ${scanStats.text} tekstblokken en ${scanStats.images} afbeeldingen herkend.`
-                : "Editor-scan wordt geladen..."}
+        <div className="flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-start lg:justify-between lg:px-6">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Visuele website-editor</h2>
+            <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+              Klik op een tekstblok in de preview. Rechts verschijnt dan een echt tekstvak met een opslaan-knop voor
+              alleen dat blok. Afbeeldingen vervang je nog steeds door erop te klikken.
             </p>
           </div>
+          <button
+            type="button"
+            disabled={saving || switchingPage || uploadingImage || !hasUnsavedChanges}
+            onClick={() => void onSave()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
+            Opslaan als concept
+          </button>
+        </div>
 
-          <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-white/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/70">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Afbeelding vervangen</p>
-            {pendingImageTarget ? (
-              <div className="mt-2 space-y-2">
-                <p className="text-sm text-zinc-700 dark:text-zinc-300">Geselecteerd beeld: {pendingImageTarget.sectionKey}</p>
-                <button
-                  type="button"
-                  disabled={uploadingImage}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
-                >
-                  {uploadingImage ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <ImagePlus className="size-4" aria-hidden />}
-                  Kies nieuwe afbeelding
-                </button>
+        <div className="grid gap-4 border-t border-zinc-200 px-2 pb-2 pt-4 dark:border-zinc-800 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-3 lg:pb-3">
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+            <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+              {pages.map((page) => {
+                const active = page.id === selectedPageId;
+                return (
+                  <button
+                    key={page.id}
+                    type="button"
+                    disabled={switchingPage || saving}
+                    onClick={() => void onSelectPage(page.id)}
+                    className={[
+                      "rounded-full border px-3 py-1.5 text-sm font-medium transition",
+                      active
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                        : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                    ].join(" ")}
+                  >
+                    {page.label}
+                  </button>
+                );
+              })}
+              <div className="ml-auto text-xs text-zinc-500 dark:text-zinc-400">
+                {currentPage ? `Je bewerkt nu: ${currentPage.label}` : "Geen pagina geselecteerd"}
               </div>
-            ) : (
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Klik eerst op een afbeelding in de preview.</p>
-            )}
+            </div>
+            <iframe
+              id="site-preview"
+              ref={iframeRef}
+              title="Klant website editor"
+              className="h-[68dvh] min-h-[560px] w-full border-0 bg-white lg:h-[calc(100dvh-16rem)] lg:min-h-[760px]"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+              srcDoc={srcDoc}
+              onLoad={onIframeLoad}
+            />
           </div>
 
-          {saveErr ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{saveErr}</p> : null}
-          {saveMsg ? <p className="mt-4 text-sm text-emerald-800 dark:text-emerald-200">{saveMsg}</p> : null}
+          <aside className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/70 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-11rem)] lg:overflow-auto">
+            <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">Browsertitel</label>
+            <input
+              value={titleValue}
+              onChange={(event) => setTitleValue(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              placeholder="Naam in de browsertab"
+            />
 
-          <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-            Dit scherm verandert alleen het klantportaal. Studio, generator en interne editor blijven onaangeraakt.
-          </p>
-        </aside>
-      </div>
+            <div className="mt-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                <Paintbrush className="size-3.5" aria-hidden />
+                Thema
+              </div>
+              <div className="mt-2 space-y-2">
+                {themePresets.length > 0 ? (
+                  themePresets.map((preset) => {
+                    const active = activePresetId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setPageConfigValue(preset.pageConfig);
+                          setDirty(true);
+                          setSaveMsg(null);
+                        }}
+                        className={[
+                          "w-full rounded-xl border p-3 text-left transition",
+                          active
+                            ? "border-zinc-900 bg-white shadow-sm dark:border-zinc-100 dark:bg-zinc-900"
+                            : "border-zinc-200 bg-white/80 hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/70 dark:hover:bg-zinc-900",
+                        ].join(" ")}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{preset.label}</p>
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{preset.description}</p>
+                          </div>
+                          {active ? <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                          {preset.swatches.map((swatch) => (
+                            <span
+                              key={swatch}
+                              className="size-6 rounded-full border border-black/10 dark:border-white/10"
+                              style={{ backgroundColor: swatch }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="rounded-xl border border-dashed border-zinc-300 bg-white/80 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-400">
+                    Thema-varianten zijn alleen beschikbaar voor moderne Tailwind-stijlen.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <p>Klik op een tekstblok in de preview. Rechts open ik dan alleen dat blok voor bewerken.</p>
+              <p>Klik op een foto om een nieuwe afbeelding te uploaden. De verhoudingen van de site blijven staan.</p>
+              <p>
+                {scanStats
+                  ? `Editor-scan: ${scanStats.sections} secties, ${scanStats.text} tekstblokken en ${scanStats.images} afbeeldingen herkend.`
+                  : "Editor-scan wordt geladen..."}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-white/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/80">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Tekstblok bewerken</p>
+              {selectedTextBlock ? (
+                <div className="mt-3 space-y-3">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Geselecteerd: {selectedTextBlock.tagName.toUpperCase()} in {selectedTextBlock.sectionKey}
+                  </p>
+                  <textarea
+                    value={selectedTextBlock.draftText}
+                    onChange={(event) =>
+                      setSelectedTextBlock((current) =>
+                        current ? { ...current, draftText: event.target.value } : current,
+                      )
+                    }
+                    rows={7}
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onSaveSelectedTextBlock}
+                      className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                    >
+                      <Save className="size-4" aria-hidden />
+                      Tekstblok opslaan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedTextBlock((current) =>
+                          current ? { ...current, draftText: current.originalText } : current,
+                        )
+                      }
+                      className="inline-flex items-center rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      Herstel blok
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Klik eerst op een tekstblok in de preview.</p>
+              )}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-white/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/70">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Afbeelding vervangen</p>
+              {pendingImageTarget ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">Geselecteerd beeld: {pendingImageTarget.sectionKey}</p>
+                  <button
+                    type="button"
+                    disabled={uploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                  >
+                    {uploadingImage ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <ImagePlus className="size-4" aria-hidden />}
+                    Kies nieuwe afbeelding
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Klik eerst op een afbeelding in de preview.</p>
+              )}
+            </div>
+
+            {saveErr ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{saveErr}</p> : null}
+            {saveMsg ? <p className="mt-4 text-sm text-emerald-800 dark:text-emerald-200">{saveMsg}</p> : null}
+
+            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+              Dit scherm verandert alleen het klantportaal. Studio, generator en interne editor blijven onaangeraakt.
+            </p>
+          </aside>
+        </div>
       </section>
 
       <input
