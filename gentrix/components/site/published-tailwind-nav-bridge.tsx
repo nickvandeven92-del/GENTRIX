@@ -26,7 +26,6 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
     (href: string) => {
       const pathname = new URL(href).pathname + new URL(href).search + new URL(href).hash;
       if (typeof document !== "undefined" && "startViewTransition" in document) {
-        // @ts-expect-error — View Transitions API (breed ondersteund, geen TS-type in oudere @types/dom)
         document.startViewTransition(() => {
           router.push(pathname);
         });
