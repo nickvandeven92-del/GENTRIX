@@ -2130,10 +2130,21 @@ export function buildTailwindSectionsBodyInnerHtml(
       ? applyBrandLogoFallbackToSections(sections, bodyOptions.logoSet)
       : sections;
   return prepared
-    .map(
-      (s) =>
-        `<section data-section="${escapeDataAttr(s.sectionName)}" class="w-full">${sanitizeTailwindFragment(s.html)}</section>`,
-    )
+    .map((s) => {
+      const portalWrapperMatch = s.html.match(
+        /^<div\b[^>]*\bdata-portal-section-key="([^"]*)"[^>]*?(?:\bdata-portal-section-name="([^"]*)")?[^>]*>([\s\S]*)<\/div>\s*$/i,
+      );
+
+      if (!portalWrapperMatch) {
+        return `<section data-section="${escapeDataAttr(s.sectionName)}" class="w-full">${sanitizeTailwindFragment(s.html)}</section>`;
+      }
+
+      const [, portalKey, portalName, innerHtml] = portalWrapperMatch;
+      const sanitizedInner = sanitizeTailwindFragment(innerHtml);
+      const portalNameAttr = portalName ? ` data-portal-section-name="${portalName}"` : "";
+
+      return `<section data-section="${escapeDataAttr(s.sectionName)}" class="w-full"><div data-portal-section-key="${portalKey}"${portalNameAttr}>${sanitizedInner}</div></section>`;
+    })
     .join("\n");
 }
 
