@@ -516,7 +516,10 @@ export function repairHeaderMobileMenuButton(html: string): string {
   });
 
   if (next === fullHeader) return html;
-  return html.slice(0, hm.index) + next + html.slice(hm.index + fullHeader.length);
+  // Als een button werd gerepareerd maar de header nog steeds geen x-data heeft, injecteer de scope.
+  // Voorbeeld: sanitizer stripte zowel x-data als x-show — de @click werkt anders niet (Alpine-scope miss).
+  const repaired = !/\bx-data\s*=/i.test(probe) ? injectNavStateScope(next, stateKey) : next;
+  return html.slice(0, hm.index) + repaired + html.slice(hm.index + fullHeader.length);
 }
 
 /**

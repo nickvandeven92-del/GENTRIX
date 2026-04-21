@@ -261,9 +261,6 @@ export function shouldInjectStudioAutoMobileNav(bodyInnerHtml: string): boolean 
   if (hasWiredMobileToggle) return false;
   const hasLikelyBrokenDrawer = headerHasLikelyBrokenMobileDrawer(win);
   const hrefCount = (win.match(/<a\b[^>]*\bhref\s*=/gi) ?? []).length;
-  // Header met 4+ nav-links = volwaardige custom navbar (ook al zijn Alpine-attrs gestript door een
-  // eerdere sanitizer). Niet injecteren — anders verdwijnt de originele desktop-nav door de hide-CSS.
-  if (hrefCount >= 4) return false;
   if (/\b(fixed|sticky)\b/i.test(win) && hrefCount >= 1 && !hasLikelyBrokenDrawer) {
     if (headerHasDesktopOnlyNavWithoutSmallScreenMenuButton(win)) return true;
     if (headerHasUnwiredMobileMenuButton(win, bodyInnerHtml)) return true;
@@ -293,11 +290,22 @@ section nav[aria-label*="Menu"] {
   display: none !important;
 }
 
+/* Op mobiel: verberg de originele header — de auto-nav neemt het over. */
 @media (max-width: 1023px) {
   body > header:not([${AUTO_NAV_ATTR}]),
   body > nav,
   body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="enu"],
   body > header:not([${AUTO_NAV_ATTR}]) nav[aria-label*="Menu"] {
+    display: none !important;
+  }
+}
+
+/* Op desktop: verberg de auto-nav wanneer er al een originele header in een sectie staat.
+ * :has() is ondersteund in alle moderne browsers (Chrome 105+, Safari 15.4+, Firefox 121+).
+ * Zo toont de site op groot scherm de eigen branding, en op mobiel de werkende Gentrix hamburger. */
+@media (min-width: 1024px) {
+  body > header[${AUTO_NAV_ATTR}]:has(~ section > header),
+  body > header[${AUTO_NAV_ATTR}]:has(~ section > nav) {
     display: none !important;
   }
 }
