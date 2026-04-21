@@ -7,6 +7,8 @@ import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { loadTailwindPayloadFromDraftJson } from "@/lib/portal/portal-draft-section-mutate";
 import { getRequestOrigin } from "@/lib/site/request-origin";
 
+export const dynamic = "force-dynamic";
+
 function labelForMarketingPage(pageKey: string): string {
   return pageKey
     .split("-")

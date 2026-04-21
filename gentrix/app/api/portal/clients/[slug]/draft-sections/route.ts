@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { checkPortalRateLimit } from "@/lib/api/portal-rate-limit";
 import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-access";
 import { getDraftSiteJsonBySlug } from "@/lib/data/client-draft-site";
@@ -184,6 +185,8 @@ export async function POST(request: Request, context: RouteContext) {
   if (!persist.ok) {
     return NextResponse.json({ ok: false, error: persist.error }, { status: persist.status });
   }
+
+  revalidatePath(`/portal/${encodeURIComponent(slug)}/website`);
 
   return NextResponse.json({
     ok: true,
