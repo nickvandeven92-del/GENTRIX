@@ -353,6 +353,13 @@ export function CinematicNav({
             className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
+            onClick={(e: ReactMouseEvent) => {
+              const anchor = (e.target as HTMLElement).closest("a");
+              if (anchor) {
+                const href = anchor.getAttribute("href");
+                if (href) handleNavLinkClick(e as any as MouseEvent, href);
+              }
+            }}
           >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />
           </nav>
