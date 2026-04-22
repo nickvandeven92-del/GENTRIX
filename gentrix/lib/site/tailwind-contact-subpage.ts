@@ -170,10 +170,16 @@ function isMarketingPath(p){
 }
 function postTop(url){
   try{
-    if(window.top&&window.top!==window)window.top.location.assign(url);
-    else if(window.parent&&window.parent!==window){
-      window.parent.postMessage({source:CFG.src,href:url},window.location.origin||"*");
-    }else window.location.assign(url);
+    if(window.parent&&window.parent!==window){
+      var pmOrigin=CFG.origin&&CFG.origin.length?CFG.origin:"*";
+      window.parent.postMessage({source:CFG.src,href:url},pmOrigin);
+      return;
+    }
+    if(window.top&&window.top!==window){
+      window.top.location.assign(url);
+      return;
+    }
+    window.location.assign(url);
   }catch(_){
     try{window.parent.postMessage({source:CFG.src,href:url},"*");}catch(__){}
   }
