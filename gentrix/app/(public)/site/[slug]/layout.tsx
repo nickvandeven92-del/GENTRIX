@@ -45,14 +45,10 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
          */
         @supports (view-transition-name: none) {
           ::view-transition-old(root) {
-            animation: __site-fade-out 0.08s ease-out forwards;
+            animation: none; /* blijft op opacity 1 — nieuwe pagina fadt er bovenop, geen gap */
           }
           ::view-transition-new(root) {
-            animation: __site-fade-in 0.14s ease-out forwards;
-          }
-          @keyframes __site-fade-out {
-            from { opacity: 1; }
-            to   { opacity: 0; }
+            animation: __site-fade-in 0.18s ease-out forwards;
           }
           @keyframes __site-fade-in {
             from { opacity: 0; }
