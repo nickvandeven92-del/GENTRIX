@@ -6,34 +6,18 @@ import {
 } from "@/lib/site/public-site-composition";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { PublicPublishedTailwind } from "@/components/site/public-published-tailwind";
+import { PublicPublishedTailwindInline } from "@/components/site/public-published-tailwind-inline";
 import { SiteRenderer } from "@/components/site/site-renderer";
 import {
   contactNavCaptureFragmentId,
   hasResolvedPublicContactRoute,
   landingSectionIdsForPublicSubpageNav,
-  publicSiteIframeDocumentPathname,
   resolvePublicTailwindContactPlan,
   selectTailwindSectionsForPublicView,
   type ContactSubpageNavScriptInput,
 } from "@/lib/site/tailwind-contact-subpage";
-import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
-import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
 import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
-
-/**
- * Geeft de site-origin terug voor server-side srcDoc opbouw:
- * - `NEXT_PUBLIC_SITE_URL` (aanbevolen; zet dit in .env.local / Vercel-env)
- * - `VERCEL_URL` als fallback (automatisch gezet door Vercel; niet altijd het custom-domein)
- * - Lege string als niets beschikbaar (client bouwt als fallback)
- */
-function deriveSSROrigin(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
-    ""
-  );
-}
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -167,47 +151,29 @@ export function PublishedSiteView({
         : null;
 
     /**
-     * Server-side srcDoc — bouwt de volledige iframe-HTML op de Vercel-server (ISR) i.p.v. in de browser.
-     * Voordelen: iframe verschijnt direct bij eerste paint; CDN-scripts worden via eigen proxy geladen.
-     * Vereist `NEXT_PUBLIC_SITE_URL` (of `VERCEL_URL`) — zonder origin valt de client terug op client-build.
+     * Publieke weergave — **geen iframe**: HTML wordt direct in de Next.js-pagina gerenderd
+     * (Optie A). Portaal blijft iframe-based zodat inline visual editing mogelijk blijft.
      */
-    let ssrSrcDoc: string | null = null;
     if (visibility === "public") {
-      try {
-        const ssrOrigin = deriveSSROrigin();
-        const iframeDocPathname = publicSiteIframeDocumentPathname(
-          publishedSlug,
-          contactNavBase ?? undefined,
-        );
-        const contactSubpageNav =
-          contactNavBase && ssrOrigin
-            ? { ...contactNavBase, pageOrigin: ssrOrigin }
-            : undefined;
-
-        let doc = buildTailwindIframeSrcDoc(twSections, payload.config, {
-          previewPostMessageBridge: false,
-          userCss: payload.customCss,
-          userJs: payload.customJs,
-          logoSet: payload.logoSet,
-          publishedSlug: publishedSlug?.trim(),
-          draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
-          appointmentsEnabled,
-          webshopEnabled,
-          compiledTailwindCss: payload.tailwindCompiledCss?.trim() || undefined,
-          previewScriptOrigin: ssrOrigin || undefined,
-          navBrandLabel: docTitle,
-          iframeDocumentPathname: iframeDocPathname,
-          ...(contactSubpageNav ? { contactSubpageNav } : {}),
-        });
-        if (ssrOrigin) {
-          doc = rewriteStudioDevOriginsInHtml(doc, ssrOrigin);
-        }
-        if (doc.length <= 3_500_000) {
-          ssrSrcDoc = doc;
-        }
-      } catch {
-        /* Server-build mislukt: client bouwt als fallback */
-      }
+      return (
+        <div className={cn("relative flex w-full flex-1 flex-col", className)}>
+          <PublicPublishedTailwindInline
+            sections={twSections}
+            pageConfig={payload.config}
+            publishedSlug={publishedSlug}
+            draftPublicPreviewToken={draftPublicPreviewToken}
+            userCss={payload.customCss}
+            userJs={payload.customJs}
+            logoSet={payload.logoSet}
+            compiledTailwindCss={payload.tailwindCompiledCss}
+            documentTitle={iframeTitle}
+            navBrandLabel={docTitle}
+            appointmentsEnabled={appointmentsEnabled}
+            webshopEnabled={webshopEnabled}
+            contactSubpageNavBase={contactNavBase}
+          />
+        </div>
+      );
     }
 
     return (
@@ -233,7 +199,7 @@ export function PublishedSiteView({
           embedded={visibility === "portal"}
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
-          ssrSrcDoc={ssrSrcDoc}
+          ssrSrcDoc={null}
           contactSubpageNavBase={contactNavBase}
         />
       </div>

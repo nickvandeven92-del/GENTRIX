@@ -1,55 +1,85 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { publicBookingIframeSrcFromNavHref } from "@/lib/site/public-booking-modal-url";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 
 /**
- * Ontvangt navigatie uit de sandboxed marketing-iframe wanneer scripts geen `top.location` mogen zetten.
- * Boek-flow opent in een **modal** op deze pagina (geen volledige tab / geen full-screen weg van de site).
+ * Bridge voor publieke sites — twee taken:
  *
- * Navigatie via `router.push` i.p.v. `window.location.assign`:
- * – Geen volledige browser-reload → JS-bundle blijft in geheugen
- * – `loading.tsx` skeleton verschijnt direct
- * – RSC streamt in → naadloze overgang
+ * 1. **Boek-modal**: klikken op `/boek/...`-links openen een modal i.p.v. navigeren.
+ *    Werkt zowel voor directe DOM-klikken (inline render) als postMessage (legacy iframe).
+ *
+ * 2. **Legacy iframe postMessage**: luistert naar `STUDIO_PUBLIC_NAV_MESSAGE_SOURCE` berichten
+ *    voor portaal/editor-iframes die nog via postMessage navigeren.
+ *
+ * Reguliere interne `<a>`-links laten we met rust: de browser doet native full-page navigation
+ * — dat houdt de oude pagina zichtbaar tot de nieuwe klaar is (SSR + `revalidate` cache = instant-gevoel).
+ * Alpine/Tailwind/etc. herinitialiseren zo betrouwbaar bij elke navigatie.
  */
 export function PublishedTailwindNavBridge({ children }: { children: ReactNode }) {
   const [bookingModalSrc, setBookingModalSrc] = useState<string | null>(null);
-  const router = useRouter();
-
   const closeBookingModal = useCallback(() => setBookingModalSrc(null), []);
 
-  const softNavigate = useCallback(
-    (href: string) => {
-      const pathname = new URL(href).pathname + new URL(href).search + new URL(href).hash;
-      router.push(pathname);
-    },
-    [router],
-  );
+  const tryOpenBooking = useCallback((href: string): boolean => {
+    try {
+      const bookingSrc = publicBookingIframeSrcFromNavHref(href, window.location.origin);
+      if (bookingSrc) {
+        setBookingModalSrc(bookingSrc);
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }, []);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      const target = e.target as Element | null;
+      if (!target) return;
+      const anchor = target.closest("a");
+      if (!anchor) return;
+      const rawHref = anchor.getAttribute("href");
+      if (!rawHref) return;
+      if (rawHref.startsWith("#") || rawHref.startsWith("mailto:") || rawHref.startsWith("tel:")) return;
+      if (anchor.target && anchor.target !== "" && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+      let absolute: string;
+      try {
+        absolute = new URL(rawHref, window.location.href).toString();
+      } catch {
+        return;
+      }
+      if (tryOpenBooking(absolute)) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [tryOpenBooking]);
 
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin && ev.origin !== "null") return;
       const d = ev.data as { source?: string; href?: string };
       if (!d || d.source !== STUDIO_PUBLIC_NAV_MESSAGE_SOURCE || typeof d.href !== "string") return;
+      if (tryOpenBooking(d.href)) return;
       try {
-        const bookingSrc = publicBookingIframeSrcFromNavHref(d.href, window.location.origin);
-        if (bookingSrc) {
-          setBookingModalSrc(bookingSrc);
-          return;
-        }
-        const u = new URL(d.href);
+        const u = new URL(d.href, window.location.origin);
         if (u.origin !== window.location.origin) return;
-        softNavigate(d.href);
+        window.location.assign(u.pathname + u.search + u.hash);
       } catch {
         /* ignore */
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [softNavigate]);
+  }, [tryOpenBooking]);
 
   useEffect(() => {
     if (!bookingModalSrc) return;
