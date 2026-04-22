@@ -44,7 +44,17 @@ export function SiteRenderer({ data, className, publishedSlug }: SiteRendererPro
 
   return (
     <div className={className} style={cssVars}>
-      <div className="min-h-full bg-[var(--site-bg)] text-[var(--site-fg)] antialiased selection:bg-[var(--site-primary)]/25">
+      <style>{`
+        :root{
+          --public-site-shell-bg:${theme.background};
+          --public-site-shell-fg:${theme.foreground};
+        }
+        html,body{
+          background:${theme.background}!important;
+          color:${theme.foreground}!important;
+        }
+      `}</style>
+      <div className="min-h-screen bg-[var(--site-bg)] text-[var(--site-fg)] antialiased selection:bg-[var(--site-primary)]/25">
         <SiteNav site={data} publishedSlug={publishedSlug} />
         <main>
           {sections.map((section) => (

@@ -25,6 +25,8 @@ function defaultNav(site: GeneratedSite): SiteNavigation {
 
 export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishedSlug?: string | null }) {
   const [open, setOpen] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const router = useRouter();
   const nav = site.navigation ?? defaultNav(site);
   const logoHomeHref = resolvePublishedStudioHref(STUDIO_SITE_BASE_PLACEHOLDER, publishedSlug) || "#top";
@@ -94,6 +96,20 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
     };
   }, []);
 
+  useEffect(() => {
+    if (open) {
+      setMenuMounted(true);
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setMenuVisible(true));
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    setMenuVisible(false);
+    const timeout = setTimeout(() => setMenuMounted(false), 220);
+    return () => clearTimeout(timeout);
+  }, [open]);
+
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--site-fg)]/12 bg-[var(--site-bg)]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--site-bg)]/88">
       <a href="#top" id="top" className="sr-only">
@@ -160,28 +176,31 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
         </button>
       </div>
       {/* Backdrop — alleen zichtbaar als menu open is */}
-      <button
-        type="button"
-        aria-label="Menu sluiten"
-        className={cn(
-          "fixed inset-0 z-40 bg-transparent transition-opacity duration-200 lg:hidden",
-          open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
-        )}
-        onClick={() => setOpen(false)}
-      />
+      {menuMounted && (
+        <button
+          type="button"
+          aria-label="Menu sluiten"
+          className={cn(
+            "fixed inset-0 z-40 bg-transparent transition-opacity duration-200 lg:hidden",
+            menuVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+          )}
+          onClick={() => setOpen(false)}
+        />
+      )}
 
       {/*
        * Mobile drawer — altijd in de DOM, zichtbaar via opacity + transition.
        * Header met X-knop om te sluiten.
        */}
-      <div
-        className={cn(
-          "relative z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] lg:hidden",
-          "transition-all duration-200 ease-out",
-          open ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0",
-        )}
-        aria-hidden={!open}
-      >
+      {menuMounted && (
+        <div
+          className={cn(
+            "relative z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] lg:hidden",
+            "transition-all duration-200 ease-out",
+            menuVisible ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0",
+          )}
+          aria-hidden={!menuVisible}
+        >
         <div className="flex items-center justify-between gap-2 border-b border-[var(--site-fg)]/10 px-4 py-3">
           <span className="text-xs font-semibold uppercase tracking-widest text-[var(--site-fg)]/75">Menu</span>
           <button
@@ -214,7 +233,8 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             </a>
           )}
         </nav>
-      </div>
+        </div>
+      )}
     </header>
   );
 }

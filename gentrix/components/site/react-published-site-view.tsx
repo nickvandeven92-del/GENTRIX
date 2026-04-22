@@ -95,6 +95,16 @@ export function ReactPublishedSiteView({
       )}
       style={rootStyle}
     >
+      <style>{`
+        :root{
+          --public-site-shell-bg:${doc.theme.background};
+          --public-site-shell-fg:${doc.theme.foreground};
+        }
+        html,body{
+          background:${doc.theme.background}!important;
+          color:${doc.theme.foreground}!important;
+        }
+      `}</style>
       {sections.map((section) => (
         <ReactSiteSectionView
           key={`${section.type}-${section.id}`}
