@@ -32,30 +32,37 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
   /**
    * Premium navigatie: <a href> behouden voor SEO/toegankelijkheid/fallback,
    * maar gewone klikken overnemen met JavaScript.
-   * - Anchor-links (#id): sluit menu + smooth scroll → geen route-change flash
-   * - Interne paginaLinks: router.push() → Next.js SPA + View Transitions API (naadloze fade)
+   * - Anchor-links (#id): sluit menu (100ms wacht) + smooth scroll → geen route-change flash
+   * - Interne paginaLinks: sluit menu (220ms wacht) + router.push() → naadloze fade
+   *   (Timing: drawer-exit-animatie is 200ms CSS + 20ms buffer)
    * - Externe links of modifier-klikken (Ctrl/Cmd/Shift): normaal laten
    */
   function handleNavLinkClick(e: MouseEvent<HTMLAnchorElement>, href: string) {
     if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
 
-    // Anchor-link: smooth scroll, geen navigatie
+    // Anchor-link: sluit menu snel + scroll
     if (href.startsWith("#")) {
       e.preventDefault();
       setOpen(false);
-      const id = href.slice(1);
-      const el = document.getElementById(id);
-      el?.scrollIntoView({ behavior: "smooth" });
+      // Korte delay voor smooth init
+      setTimeout(() => {
+        const id = href.slice(1);
+        const el = document.getElementById(id);
+        el?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
       return;
     }
 
-    // Interne paginalink: use SPA-router zodat View Transitions actief zijn
+    // Interne paginalink: sluit menu EERST, wacht tot animatie klaar is, dan navigeer
     try {
       const url = new URL(href, window.location.origin);
       if (url.origin !== window.location.origin) return; // extern → normaal
       e.preventDefault();
       setOpen(false);
-      router.push(href);
+      // Wacht tot drawer-exit animatie voltooid (200ms CSS + 20ms buffer)
+      setTimeout(() => {
+        router.push(href);
+      }, 220);
     } catch {
       // ongeldige URL → normaal
     }
