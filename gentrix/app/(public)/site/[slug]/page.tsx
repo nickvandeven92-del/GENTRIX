@@ -4,6 +4,7 @@ import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experien
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
+import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type SitePageProps = {
@@ -95,8 +96,9 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
     const p = bundle.payload;
 
     if (p.kind === "tailwind") {
-      const bg = p.config?.theme?.background?.trim() || p.config?.theme?.primary?.trim() || "#ffffff";
-      const fg = p.config?.theme?.textColor?.trim() || "#171717";
+      const cfg = p.config != null && !isLegacyTailwindPageConfig(p.config) ? p.config : undefined;
+      const bg = cfg?.theme?.background?.trim() || cfg?.theme?.primary?.trim() || "#ffffff";
+      const fg = cfg?.theme?.textColor?.trim() || "#171717";
       return { bg, fg };
     }
 
