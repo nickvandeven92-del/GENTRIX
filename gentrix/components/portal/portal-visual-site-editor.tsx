@@ -5,7 +5,16 @@ import { Check, ExternalLink, ImagePlus, Loader2, Paintbrush, Rocket, Save } fro
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
-import { buildPortalThemePresets } from "@/lib/portal/portal-theme-presets";
+import { buildPortalThemePresets, type PortalThemePreset } from "@/lib/portal/portal-theme-presets";
+
+type ThemePresetId = PortalThemePreset["id"];
+
+type RestyleResponsePayload = {
+  config: TailwindPageConfig;
+  sections: TailwindSection[];
+  contactSections?: TailwindSection[];
+  marketingPages?: Record<string, TailwindSection[]>;
+};
 
 type EditableSection = {
   key: string;
@@ -216,6 +225,9 @@ export function PortalVisualSiteEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const iframeCleanupRef = useRef<(() => void) | null>(null);
   const basePageConfigRef = useRef<TailwindPageConfig | null>(pageConfig ?? null);
+  // Mount-time snapshot van sections per pagina — gebruikt als "Origineel"-baseline.
+  // Bevriezen op eerste mount zodat een restyle de baseline niet overschrijft.
+  const originalPagesRef = useRef<PortalEditorPage[]>(pages);
   // Ref zodat bindIframeEditor altijd de laatste onSelectPage aanroept zonder circulaire deps
   const onSelectPageRef = useRef<((pageId: string) => Promise<void>) | null>(null);
 
@@ -241,6 +253,7 @@ export function PortalVisualSiteEditor({
     src: string;
     alt: string;
   } | null>(null);
+  const [restylingThemeId, setRestylingThemeId] = useState<ThemePresetId | null>(null);
 
   const enc = encodeURIComponent(decodeURIComponent(slug));
   const currentPage = pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
@@ -837,6 +850,184 @@ export function PortalVisualSiteEditor({
     }
   }, [enc, flushCurrentPageSnapshot, pageConfigValue, pages, titleValue]);
 
+  /**
+   * Bouwt uit `pageStates` een restyle-payload (config + main/contact/marketingPages arrays).
+   * Alle *structurele* secties (header/footer/nav) gaan mee — die moeten mee-restylen.
+   * We behouden de volgorde en aantal 1-op-1 met `pages[i].sections`, zodat de server-response
+   * per index-mapping terug naar de editor-state kan worden geschreven.
+   */
+  const buildRestylePayloadFromPages = useCallback(
+    (source: Record<string, EditableSection[]>, baseConfig: TailwindPageConfig) => {
+      const mainSections: TailwindSection[] = [];
+      const contactSections: TailwindSection[] = [];
+      const marketingPages: Record<string, TailwindSection[]> = {};
+
+      for (const page of pages) {
+        const items = source[page.id] ?? page.sections;
+        const sectionList = items.map((item) => item.section);
+        if (page.id === "main" || page.id.startsWith("main:")) {
+          mainSections.push(...sectionList);
+        } else if (page.id === "contact" || page.id.startsWith("contact:")) {
+          contactSections.push(...sectionList);
+        } else if (page.id.startsWith("marketing:")) {
+          const key = page.id.slice("marketing:".length);
+          if (key) marketingPages[key] = sectionList;
+        }
+      }
+
+      const payload: {
+        config: TailwindPageConfig;
+        sections: TailwindSection[];
+        contactSections?: TailwindSection[];
+        marketingPages?: Record<string, TailwindSection[]>;
+        documentTitle?: string;
+      } = {
+        config: baseConfig,
+        sections: mainSections,
+      };
+      if (contactSections.length > 0) payload.contactSections = contactSections;
+      if (Object.keys(marketingPages).length > 0) payload.marketingPages = marketingPages;
+      const trimmedTitle = titleValue.trim();
+      if (trimmedTitle) payload.documentTitle = trimmedTitle;
+      return payload;
+    },
+    [pages, titleValue],
+  );
+
+  /**
+   * Bouwt nieuwe `pageStates` uit een restyle-response. Sectie-keys (`main:0`, `contact:1`,
+   * `marketing:x:2`) blijven 1-op-1 behouden omdat Claude elke index ongewijzigd teruglevert —
+   * alleen de HTML/kleuren veranderen.
+   */
+  const pageStatesFromRestyleResponse = useCallback(
+    (restyled: RestyleResponsePayload): Record<string, EditableSection[]> => {
+      const next: Record<string, EditableSection[]> = {};
+      for (const page of pages) {
+        let pool: TailwindSection[] = [];
+        if (page.id === "main" || page.id.startsWith("main:")) {
+          pool = restyled.sections;
+        } else if (page.id === "contact" || page.id.startsWith("contact:")) {
+          pool = restyled.contactSections ?? [];
+        } else if (page.id.startsWith("marketing:")) {
+          const key = page.id.slice("marketing:".length);
+          pool = restyled.marketingPages?.[key] ?? [];
+        }
+
+        const existing = pageStates[page.id] ?? page.sections;
+        const rebuilt: EditableSection[] = existing.map((item, index) => {
+          const freshSection = pool[index];
+          if (!freshSection) return item;
+          return {
+            ...item,
+            section: { ...item.section, ...freshSection },
+          };
+        });
+        next[page.id] = rebuilt;
+      }
+      return next;
+    },
+    [pageStates, pages],
+  );
+
+  const onSelectTheme = useCallback(
+    async (themeId: ThemePresetId) => {
+      if (restylingThemeId || saving || publishing || switchingPage || uploadingImage) return;
+      if (activePresetId === themeId) return;
+
+      setRestylingThemeId(themeId);
+      setSaveErr(null);
+      setSaveMsg(null);
+
+      try {
+        const snapshotPageStates = await flushCurrentPageSnapshot();
+        // Belangrijk: `payload.config` is de *baseline* waarvan de server Donker/Warm afleidt.
+        // We gebruiken bewust de mount-time config (niet `pageConfigValue`) zodat:
+        //  - Donker → Warm → Donker niet compound (warm-van-donker-van-origineel ≠ donker-van-origineel).
+        //  - Het server-side afgeleide doel-palet exact overeenkomt met wat `themePresets` lokaal toont,
+        //    zodat `activePresetId` na de round-trip de juiste preset highlight.
+        const baselineConfig = basePageConfigRef.current;
+        if (!baselineConfig) {
+          setSaveErr("Geen pageConfig beschikbaar; deze site kan niet van thema wisselen.");
+          return;
+        }
+
+        const currentPayload = buildRestylePayloadFromPages(snapshotPageStates, baselineConfig);
+
+        // Voor "Origineel": stuur ook de mount-time baseline mee — daarmee rollback de server
+        // exact terug naar de bij-page-load opgeslagen versie (geen Claude-call nodig).
+        let originalPayloadForBody: ReturnType<typeof buildRestylePayloadFromPages> | undefined;
+        if (themeId === "original" && basePageConfigRef.current) {
+          const originalPageStates: Record<string, EditableSection[]> = Object.fromEntries(
+            originalPagesRef.current.map((page) => [page.id, page.sections]),
+          );
+          originalPayloadForBody = buildRestylePayloadFromPages(
+            originalPageStates,
+            basePageConfigRef.current,
+          );
+        }
+
+        const res = await fetch(`/api/portal/clients/${enc}/restyle-theme`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            themeId,
+            payload: currentPayload,
+            ...(originalPayloadForBody ? { originalPayload: originalPayloadForBody } : {}),
+          }),
+        });
+
+        const json = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          data?: {
+            snapshot_id?: string;
+            documentTitle?: string;
+            payload?: RestyleResponsePayload;
+          };
+        };
+
+        if (!res.ok || !json.ok || !json.data?.payload) {
+          setSaveErr(json.error ?? "Thema wisselen mislukt.");
+          return;
+        }
+
+        const restyled = json.data.payload;
+        const nextPageStates = pageStatesFromRestyleResponse(restyled);
+        setPageStates(nextPageStates);
+        setPageConfigValue(restyled.config);
+        setSavedPageConfigValue(restyled.config);
+        if (json.data.documentTitle) {
+          setTitleValue(json.data.documentTitle);
+          setSavedTitleValue(json.data.documentTitle);
+        }
+        setDirty(false);
+        setSaveMsg(
+          themeId === "original"
+            ? "Originele kleuren hersteld en opgeslagen als concept."
+            : themeId === "dark"
+              ? "Donkere variant toegepast en opgeslagen als concept."
+              : "Warme variant toegepast en opgeslagen als concept.",
+        );
+      } catch (error) {
+        setSaveErr(error instanceof Error ? error.message : "Thema wisselen mislukt.");
+      } finally {
+        setRestylingThemeId(null);
+      }
+    },
+    [
+      activePresetId,
+      buildRestylePayloadFromPages,
+      enc,
+      flushCurrentPageSnapshot,
+      pageStatesFromRestyleResponse,
+      publishing,
+      restylingThemeId,
+      saving,
+      switchingPage,
+      uploadingImage,
+    ],
+  );
+
   const onImageFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -928,7 +1119,7 @@ export function PortalVisualSiteEditor({
             {/* Opslaan als concept */}
             <button
               type="button"
-              disabled={saving || publishing || switchingPage || uploadingImage || !hasUnsavedChanges}
+              disabled={saving || publishing || switchingPage || uploadingImage || !!restylingThemeId || !hasUnsavedChanges}
               onClick={() => void onSave()}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
@@ -938,7 +1129,7 @@ export function PortalVisualSiteEditor({
             {/* Publiceer live */}
             <button
               type="button"
-              disabled={saving || publishing || switchingPage || uploadingImage}
+              disabled={saving || publishing || switchingPage || uploadingImage || !!restylingThemeId}
               onClick={() => void onPublishLive()}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
             >
@@ -951,33 +1142,57 @@ export function PortalVisualSiteEditor({
         {/* ── Thema-presets: horizontale scroll-rij + individuele kleuren ── */}
         {themePresets.length > 0 ? (
           <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:px-6">
-            <div className="flex items-center gap-2 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <div className="flex flex-wrap items-center gap-2 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
               <Paintbrush className="size-3.5" aria-hidden />
               Thema
+              {restylingThemeId ? (
+                <span className="ml-2 inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-white normal-case tracking-normal dark:bg-zinc-100 dark:text-zinc-900">
+                  <Loader2 className="size-3 animate-spin" aria-hidden />
+                  {restylingThemeId === "original"
+                    ? "Originele kleuren herstellen…"
+                    : restylingThemeId === "dark"
+                      ? "Donkere variant berekenen (30–60 sec)…"
+                      : "Warme variant berekenen (30–60 sec)…"}
+                </span>
+              ) : (
+                <span className="ml-2 font-normal normal-case tracking-normal text-zinc-400">
+                  Sla om naar een andere kleurrichting — AI-herstijl en automatisch opgeslagen
+                </span>
+              )}
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {themePresets.map((preset) => {
                 const active = activePresetId === preset.id;
+                const loadingThis = restylingThemeId === preset.id;
+                const disabled =
+                  !!restylingThemeId ||
+                  saving ||
+                  publishing ||
+                  switchingPage ||
+                  uploadingImage;
                 return (
                   <button
                     key={preset.id}
                     type="button"
-                    onClick={() => {
-                      setPageConfigValue(preset.pageConfig);
-                      setDirty(true);
-                      setSaveMsg(null);
-                    }}
+                    disabled={disabled}
+                    title={preset.description}
+                    onClick={() => void onSelectTheme(preset.id)}
                     className={[
                       "flex shrink-0 flex-col gap-2 rounded-xl border px-3 py-2.5 text-left transition",
                       active
                         ? "border-zinc-900 bg-white shadow-sm dark:border-zinc-100 dark:bg-zinc-800"
                         : "border-zinc-200 bg-zinc-50 hover:bg-white dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:bg-zinc-800",
+                      disabled ? "cursor-not-allowed opacity-60" : "",
                     ].join(" ")}
                     style={{ minWidth: "9rem" }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{preset.label}</p>
-                      {active ? <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
+                      {loadingThis ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin text-zinc-500" aria-hidden />
+                      ) : active ? (
+                        <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                      ) : null}
                     </div>
                     <div className="flex gap-1.5">
                       {preset.swatches.map((swatch) => (
@@ -1029,6 +1244,21 @@ export function PortalVisualSiteEditor({
           {switchingPage ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-zinc-900/70">
               <Loader2 className="size-6 animate-spin text-zinc-500" aria-hidden />
+            </div>
+          ) : null}
+          {restylingThemeId ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/85 px-6 text-center dark:bg-zinc-900/85">
+              <Loader2 className="size-8 animate-spin text-zinc-700 dark:text-zinc-200" aria-hidden />
+              <p className="max-w-sm text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                {restylingThemeId === "original"
+                  ? "Originele kleuren worden hersteld…"
+                  : restylingThemeId === "dark"
+                    ? "De site wordt in donkere tonen herkleurd…"
+                    : "De site wordt in warme tonen herkleurd…"}
+              </p>
+              <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
+                Dit duurt meestal 30 tot 60 seconden. Je tekst- en fotowijzigingen blijven behouden.
+              </p>
             </div>
           ) : null}
           <iframe

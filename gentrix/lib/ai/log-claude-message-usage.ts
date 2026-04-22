@@ -13,7 +13,8 @@ export type ClaudeUsageOperation =
   | "extract_site_intent"
   | "extract_prompt_interpretation"
   | "generate_brand_logo"
-  | "briefing_reference_images_vision";
+  | "briefing_reference_images_vision"
+  | "restyle_site_theme";
 
 type MessageUsage = {
   input_tokens: number;
