@@ -16,6 +16,7 @@ import {
   selectTailwindSectionsForPublicView,
   type ContactSubpageNavScriptInput,
 } from "@/lib/site/tailwind-contact-subpage";
+import { ensureFooterAppendedFromLanding } from "@/lib/site/ensure-footer-on-subpage";
 import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
 
@@ -41,6 +42,11 @@ type PublishedSiteViewProps = {
    * Admin-routes (concept-preview): `nav_overlay` gebruikt `position:fixed` — zonder dit kleef je aan de hele viewport.
    */
   embedReactInChrome?: boolean;
+  /**
+   * Publieke weergave op een pretty-URL-host (primair studio-domein of klant-domein):
+   * strip `/site/{slug}` uit alle anchor-hrefs zodat bezoekers alleen `gentrix.nl/werkwijze` zien.
+   */
+  prettyPublicUrls?: boolean;
 };
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
@@ -55,6 +61,7 @@ export function PublishedSiteView({
   publicSiteTailwindPath = "landing",
   marketingSubpageKey = null,
   embedReactInChrome = false,
+  prettyPublicUrls = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
     return (
@@ -103,7 +110,7 @@ export function PublishedSiteView({
       visibility === "public"
         ? resolvePublicTailwindContactPlan(sections, payload.contactSections)
         : { kind: "none" as const };
-    const twSections =
+    const twSectionsRaw =
       visibility === "public" && marketingPageSections != null && marketingPageSections.length > 0
         ? composePublicMarketingTailwindSections(
             filterSectionsForPublicSite(marketingPageSections),
@@ -120,6 +127,19 @@ export function PublishedSiteView({
               contactPlan,
             )
           : sections;
+
+    /**
+     * Elke publieke pagina sluit af met dezelfde footer als de landing. Contact- en marketing-
+     * subpagina's worden door de generator zelden met een eigen footer-sectie opgeleverd;
+     * daarom wordt de landings-footer hier idempotent achter de subpagina-secties gezet.
+     */
+    const isPublicSubpage =
+      visibility === "public" &&
+      ((marketingPageSections != null && marketingPageSections.length > 0) ||
+        (publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)));
+    const twSections = isPublicSubpage
+      ? ensureFooterAppendedFromLanding(twSectionsRaw, sections)
+      : twSectionsRaw;
     const iframeTitle =
       marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
         ? `${docTitle} · ${formatSlugForDisplay(marketingKey)}`
@@ -171,6 +191,7 @@ export function PublishedSiteView({
             appointmentsEnabled={appointmentsEnabled}
             webshopEnabled={webshopEnabled}
             contactSubpageNavBase={contactNavBase}
+            prettyPublicUrls={prettyPublicUrls}
           />
         </div>
       );

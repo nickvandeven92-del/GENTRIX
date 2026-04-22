@@ -5,6 +5,7 @@ import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
+import { readPrettyPublicUrlContext, toPrettyPublicRedirectTarget } from "@/lib/site/pretty-public-url";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
 import {
   hasResolvedPublicContactRoute,
@@ -76,8 +77,11 @@ export default async function PublicClientSiteContactPage({ params, searchParams
   const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
 
+  const prettyCtx = await readPrettyPublicUrlContext();
+  const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
+
   if (bundle.payload.kind !== "tailwind") {
-    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
+    redirect(toPrettyPublicRedirectTarget(`/site/${encodeURIComponent(slug)}${tq}`, prettyCtx));
   }
 
   const sections = composePublicMarketingTailwindSections(
@@ -96,7 +100,7 @@ export default async function PublicClientSiteContactPage({ params, searchParams
     bundle.payload.kind === "tailwind" ? bundle.payload.contactSections : undefined,
   );
   if (!hasResolvedPublicContactRoute(contactPlan)) {
-    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
+    redirect(toPrettyPublicRedirectTarget(`/site/${encodeURIComponent(slug)}${tq}`, prettyCtx));
   }
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
@@ -121,6 +125,7 @@ export default async function PublicClientSiteContactPage({ params, searchParams
         webshopEnabled={bundle.webshopEnabled}
         publicSiteTailwindPath="contact"
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+        prettyPublicUrls={prettyPublicUrls}
       />
     </>
   );

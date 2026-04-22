@@ -76,6 +76,11 @@ export type ContactSubpageNavScriptInput = {
    * Oude `/preview/...`-paden in HTML worden nog herkend via `legB`/`legC`.
    */
   draftPublicPreviewToken?: string | null;
+  /**
+   * Primaire studio-host of klant-domein: sla `/site/{slug}` over en emit `/`, `/contact`, `/werkwijze`, …
+   * De middleware routet deze korte paden intern terug naar `/site/{slug}/…`.
+   */
+  prettyPublicUrls?: boolean;
 };
 
 /**
@@ -92,13 +97,17 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
   const legB = prevBase;
   const legC = prevBase ? `${prevBase}/contact` : null;
   const origin = input.pageOrigin.replace(/\/$/, "");
-  const baseAbs = `${origin}${basePath}${tokenQ}`;
-  const contactAbs = `${origin}${contactPath}${tokenQ}`;
+  const pretty = input.prettyPublicUrls === true && tokenRaw.length === 0;
+  // Pretty URLs: user-facing href = `/`, `/contact`, `/werkwijze`. Interne route verzorgt de middleware.
+  const baseAbs = pretty ? `${origin}/` : `${origin}${basePath}${tokenQ}`;
+  const contactAbs = pretty ? `${origin}/contact` : `${origin}${contactPath}${tokenQ}`;
   const marketingSlugs = (input.marketingSlugs ?? []).filter((s) => typeof s === "string" && s.trim().length > 0);
   const mseg = buildMarketingSlugSegmentResolutionMap(marketingSlugs);
   const mabs: Record<string, string> = {};
   for (const k of marketingSlugs) {
-    mabs[k] = `${origin}${basePath}/${encodeURIComponent(k)}${tokenQ}`;
+    mabs[k] = pretty
+      ? `${origin}/${encodeURIComponent(k)}`
+      : `${origin}${basePath}/${encodeURIComponent(k)}${tokenQ}`;
   }
   const cfg = {
     origin,
@@ -117,12 +126,24 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
     mabs,
     mseg,
     mcur: input.view === "marketing" ? (input.activeMarketingSlug ?? "").trim() : "",
+    /** Pretty URL host: `/` en `/contact` tellen als base resp. contact — náást de interne `/site/{slug}`-paden. */
+    pretty: pretty ? 1 : 0,
   };
   const json = JSON.stringify(cfg);
   return `<script>(function(){
 var CFG=${json};
-function isBase(p){return p===CFG.basePath||p===CFG.basePath+"/"||(CFG.legB&&(p===CFG.legB||p===CFG.legB+"/"));}
-function isContact(p){return p===CFG.contactPath||p===CFG.contactPath+"/"||(CFG.legC&&(p===CFG.legC||p===CFG.legC+"/"));}
+function isBase(p){
+  if(p===CFG.basePath||p===CFG.basePath+"/")return true;
+  if(CFG.legB&&(p===CFG.legB||p===CFG.legB+"/"))return true;
+  if(CFG.pretty&&(p===""||p==="/"))return true;
+  return false;
+}
+function isContact(p){
+  if(p===CFG.contactPath||p===CFG.contactPath+"/")return true;
+  if(CFG.legC&&(p===CFG.legC||p===CFG.legC+"/"))return true;
+  if(CFG.pretty&&(p==="/contact"||p==="/contact/"))return true;
+  return false;
+}
 function marketingSegKey(basePath,p){
   if(p.indexOf(basePath+"/")!==0)return "";
   var tail=p.slice(basePath.length+1);

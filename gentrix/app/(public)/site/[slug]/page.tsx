@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { readPrettyPublicUrlContext } from "@/lib/site/pretty-public-url";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
@@ -91,6 +92,8 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
   const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
 
+  const prettyCtx = await readPrettyPublicUrlContext();
+  const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
   const shell = (() => {
     const p = bundle.payload;
@@ -153,6 +156,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
         appointmentsEnabled={bundle.appointmentsEnabled}
         webshopEnabled={bundle.webshopEnabled}
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+        prettyPublicUrls={prettyPublicUrls}
       />
     </>
   );

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { readPrettyPublicUrlContext, toPrettyPublicRedirectTarget } from "@/lib/site/pretty-public-url";
 import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
 import { resolveMarketingPageKeyForUrlSegment } from "@/lib/site/marketing-path-aliases";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
@@ -74,18 +75,24 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
   const bundle = await getPublishedSiteBySlug(slug, previewToken);
   if (!bundle) notFound();
 
+  const prettyCtx = await readPrettyPublicUrlContext();
+  const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
+
   if (bundle.payload.kind !== "tailwind") {
-    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
+    redirect(toPrettyPublicRedirectTarget(`/site/${encodeURIComponent(slug)}${tq}`, prettyCtx));
   }
 
   const pages = bundle.payload.marketingPages;
   const resolvedSeg = resolveMarketingPageKeyForUrlSegment(seg, pages ?? null);
   if (!resolvedSeg || !pages?.[resolvedSeg]?.length) {
-    redirect(`/site/${encodeURIComponent(slug)}${tq}`);
+    redirect(toPrettyPublicRedirectTarget(`/site/${encodeURIComponent(slug)}${tq}`, prettyCtx));
   }
   if (resolvedSeg !== seg) {
     redirect(
-      `/site/${encodeURIComponent(slug)}/${encodeURIComponent(resolvedSeg)}${tq}`,
+      toPrettyPublicRedirectTarget(
+        `/site/${encodeURIComponent(slug)}/${encodeURIComponent(resolvedSeg)}${tq}`,
+        prettyCtx,
+      ),
     );
   }
 
@@ -111,6 +118,7 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
         webshopEnabled={bundle.webshopEnabled}
         marketingSubpageKey={resolvedSeg}
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+        prettyPublicUrls={prettyPublicUrls}
       />
     </>
   );

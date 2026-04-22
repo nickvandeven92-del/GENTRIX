@@ -1,6 +1,7 @@
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
+import { rewritePublishedHtmlToPrettyPublicUrls } from "@/lib/site/rewrite-published-html-public-basepath";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 import { extractTailwindPageParts } from "@/lib/site/tailwind-page-html-to-parts";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
@@ -42,6 +43,12 @@ type PublicPublishedTailwindInlineProps = {
   webshopEnabled?: boolean;
   contactSubpageNavBase?: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null;
   navBrandLabel?: string | null;
+  /**
+   * Pretty URL host (primaire studio-domein of klant-custom-domain): strip `/site/{slug}` uit alle
+   * anchor-hrefs en laat de nav-scripts pretty paden emitteren. De middleware vertaalt korte paden
+   * intern terug naar `/site/{slug}/…`.
+   */
+  prettyPublicUrls?: boolean;
 };
 
 function deriveSSROrigin(): string {
@@ -67,6 +74,7 @@ export function PublicPublishedTailwindInline({
   webshopEnabled = true,
   contactSubpageNavBase = null,
   navBrandLabel = null,
+  prettyPublicUrls = false,
 }: PublicPublishedTailwindInlineProps) {
   const filtered = filterSectionsForPublicSite(sections);
   const iframeDocumentPathname = publicSiteIframeDocumentPathname(
@@ -76,7 +84,7 @@ export function PublicPublishedTailwindInline({
   const ssrOrigin = deriveSSROrigin();
   const contactSubpageNav =
     contactSubpageNavBase && ssrOrigin
-      ? { ...contactSubpageNavBase, pageOrigin: ssrOrigin }
+      ? { ...contactSubpageNavBase, pageOrigin: ssrOrigin, prettyPublicUrls: prettyPublicUrls || undefined }
       : undefined;
 
   let fullHtml: string;
@@ -97,6 +105,12 @@ export function PublicPublishedTailwindInline({
       ...(contactSubpageNav ? { contactSubpageNav } : {}),
     });
     if (ssrOrigin) fullHtml = rewriteStudioDevOriginsInHtml(fullHtml, ssrOrigin);
+    if (prettyPublicUrls && publishedSlug?.trim()) {
+      fullHtml = rewritePublishedHtmlToPrettyPublicUrls(fullHtml, {
+        slug: publishedSlug.trim(),
+        pageOrigin: ssrOrigin || null,
+      });
+    }
   } catch {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 bg-white px-4 text-center text-sm text-zinc-700">
