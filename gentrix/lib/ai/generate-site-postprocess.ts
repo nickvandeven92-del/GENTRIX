@@ -414,22 +414,48 @@ const stateKey =
   return out;
 }
 
-/** Geen `dark:` op de strepen: bij lichte header + system dark kan `dark:bg-*` witte streepjes op wit geven. */
-function buildGentrixHamburgerFallbackInner(headerHtml: string, buttonAttrs: string): string {
-  const blob = `${headerHtml}\n${buttonAttrs}`;
-  const looksDarkNav =
-    /\bbg-(?:stone|zinc|slate|neutral)-(8|9)00\b/i.test(blob) ||
-    /\bbg-black\b/i.test(blob) ||
-    /\bbg-\[#0/i.test(blob);
-  const looksLightNav =
-    /\bbg-white\b/i.test(blob) ||
-    /\bbg-stone-50\b/i.test(blob) ||
-    /\bbg-zinc-50\b/i.test(blob) ||
-    /\bbg-stone-100\b/i.test(blob);
-  const bar = looksDarkNav && !looksLightNav
-    ? "h-0.5 w-5 rounded-full bg-white/95 shadow-sm"
-    : "h-0.5 w-5 rounded-full bg-neutral-900 shadow-sm";
-  return `<span class="gentrix-hamburger-fallback pointer-events-none flex flex-col justify-center gap-[5px]" aria-hidden="true"><span class="${bar}"></span><span class="${bar}"></span><span class="${bar}"></span></span>`;
+/**
+ * Premium hamburger↔X-toggle in dezelfde knop. Gebruikt Alpine `x-show` + `x-transition` met
+ * `x-cloak` op de X zodat er voor Alpine-init nooit twee staten tegelijk te zien zijn.
+ *
+ * - `bg-current` laat de strepen de tekstkleur van de knop erven (die wordt elders al licht/donker genormaliseerd).
+ * - `pointer-events-none` zorgt dat de klik altijd door de binnenste spans heen naar de knop gaat.
+ * - Geen `dark:`-varianten: bij lichte header + system-dark kan `dark:bg-*` witte strepen op wit geven.
+ */
+export function buildGentrixMenuIconToggle(stateKey: string): string {
+  const bar = "block h-0.5 w-5 rounded-full bg-current";
+  const sharedTransition =
+    `x-transition:enter="transition ease-out duration-150"` +
+    ` x-transition:enter-start="opacity-0 scale-90"` +
+    ` x-transition:enter-end="opacity-100 scale-100"` +
+    ` x-transition:leave="transition ease-in duration-100"` +
+    ` x-transition:leave-start="opacity-100 scale-100"` +
+    ` x-transition:leave-end="opacity-0 scale-90"`;
+  const hamburger =
+    `<span x-show="!${stateKey}" ${sharedTransition} class="absolute inset-0 flex flex-col items-center justify-center gap-[5px]">` +
+    `<span class="${bar}"></span><span class="${bar}"></span><span class="${bar}"></span>` +
+    `</span>`;
+  const cross =
+    `<span x-show="${stateKey}" x-cloak ${sharedTransition} class="absolute inset-0 flex items-center justify-center">` +
+    `<span class="absolute ${bar} rotate-45"></span>` +
+    `<span class="absolute ${bar} -rotate-45"></span>` +
+    `</span>`;
+  return `<span class="gentrix-menu-icon pointer-events-none relative inline-flex h-5 w-5 items-center justify-center" aria-hidden="true">${hamburger}${cross}</span>`;
+}
+
+/**
+ * Detecteert of de bestaande knop-inhoud al een echte twee-staten-toggle (hamburger ↔ ×) heeft.
+ * Criterium: twee of meer `x-show`-expressies die dezelfde `stateKey` referenceren (typisch één
+ * voor `${stateKey}` en één voor `!${stateKey}`). Dan laten we 'm met rust.
+ */
+function innerHasHamburgerXToggle(inner: string, stateKey: string): boolean {
+  const s = inner.replace(/<!--[\s\S]*?-->/g, "");
+  if (/\bgentrix-menu-icon\b/.test(s)) return true;
+  const matches = s.match(/\bx-show\s*=\s*["'][^"']+["']/gi);
+  if (!matches || matches.length < 2) return false;
+  const key = new RegExp(`\\b${escapeRegExpKey(stateKey)}\\b`);
+  const hits = matches.filter((m) => key.test(m));
+  return hits.length >= 2;
 }
 
 function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
@@ -443,9 +469,15 @@ function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
 }
 
 /**
- * `repairBrokenMobileDrawer` pakt vooral **zij-drawers** (`fixed right-0 h-full`). Veel AI-headers gebruiken
- * een **top-sheet** (`x-show="navOpen"`) zonder side-drawer — dan bleef de hamburger leeg en/of zonder @click.
- * Repareert de eerste `<header>`: toggle + vaste streepjes als de knop inhoudloos is.
+ * Normaliseert de mobiele menuknop in de eerste `<header>`:
+ *   - zorgt voor een `@click`-toggle op de juiste Alpine-state,
+ *   - vervangt inhoud die géén echte hamburger↔× twee-staten-toggle is door de premium
+ *     `gentrix-menu-icon` (drie streepjes ↔ kruisje, vloeiend overgaan).
+ *
+ * Voorheen werden alleen *lege* knoppen gevuld met statische streepjes. Het gevolg: AI-output die
+ * een los icoon (bijv. `☰`, een enkel SVG zonder `x-show`) toont, bleef zichtbaar terwijl het menu
+ * open stond — geen kruisje, geen feedback. De nieuwe detectie laat alleen knoppen die zelf al
+ * een correcte twee-staten-toggle hebben met rust.
  */
 export function repairHeaderMobileMenuButton(html: string): string {
   const headerRe = /<header\b[^>]*>[\s\S]*?<\/header>/i;
@@ -470,14 +502,13 @@ export function repairHeaderMobileMenuButton(html: string): string {
 
   const next = h.replace(/<button(\b[^>]*)>([\s\S]*?)<\/button>/gi, (full, attrs: string, inner: string) => {
     if (!isLikelyHeaderMobileMenuButton(attrs)) return full;
-    if (/\bgentrix-menu-repaired\b/.test(attrs) && /(?:@click|x-on:click)\s*=/.test(attrs)) return full;
 
     const trimmed = inner.replace(/<!--[\s\S]*?-->/g, "").trim();
-    if (trimmed.includes("gentrix-hamburger-fallback")) return full;
+    const hasProperToggle = innerHasHamburgerXToggle(trimmed, stateKey);
 
     const needsClick = !/(?:@click|x-on:click)\s*=/.test(attrs);
-    const needsBars = trimmed.length === 0;
-    if (!needsClick && !needsBars) return full;
+    const needsIcon = !hasProperToggle;
+    if (!needsClick && !needsIcon) return full;
 
     let nextAttrs = attrs;
     if (needsClick) {
@@ -486,32 +517,48 @@ export function repairHeaderMobileMenuButton(html: string): string {
         nextAttrs = `${nextAttrs} :aria-expanded="${stateKey}.toString()"`;
       }
     }
-    if (needsBars) {
-      const blob = `${h}\n${attrs}`;
+
+    // Verzamel extra classes die binnen `class="..."` moeten landen. Nooit als losse attributen plakken,
+    // anders wordt `text-neutral-900` een bare attribute op de button i.p.v. een utility.
+    const extraClasses: string[] = [];
+    if (!/\bgentrix-menu-repaired\b/.test(nextAttrs)) {
+      extraClasses.push("gentrix-menu-repaired");
+    }
+    if (needsIcon) {
+      const blob = `${h}\n${nextAttrs}`;
       const lightNav =
         /\bbg-white\b/i.test(blob) ||
         /\bbg-stone-50\b/i.test(blob) ||
         /\bbg-zinc-50\b/i.test(blob) ||
         /\bbg-stone-100\b/i.test(blob);
       if (lightNav) {
+        // Lichte header: forceer donkere streepjes via `bg-current` op de button.
         nextAttrs = nextAttrs.replace(/\btext-white\b/g, "text-neutral-900");
-        if (!/\btext-(?:neutral|stone|zinc|slate|gray)-(?:[6-9]00|950)\b/.test(nextAttrs) && !/\btext-black\b/.test(nextAttrs)) {
-          nextAttrs = `${nextAttrs} text-neutral-900`.replace(/\s+/g, " ");
-        }
-      } else if (!/\btext-(?:stone|zinc|neutral|slate|gray|white|black)\b/.test(nextAttrs)) {
-        nextAttrs = `${nextAttrs} text-neutral-200`.replace(/\s+/g, " ");
+      }
+      const hasExplicitTextColor =
+        /\btext-(?:neutral|stone|zinc|slate|gray)-(?:[1-9]00|950)\b/i.test(nextAttrs) ||
+        /\btext-(?:black|white)\b/i.test(nextAttrs);
+      if (!hasExplicitTextColor) {
+        extraClasses.push(lightNav ? "text-neutral-900" : "text-neutral-200");
       }
     }
-    if (/\bclass\s*=\s*["']/i.test(nextAttrs)) {
-      nextAttrs = nextAttrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/i, (_m, q: string, c: string) => {
-        if (/\bgentrix-menu-repaired\b/.test(c)) return `class=${q}${c}${q}`;
-        return `class=${q}${c} gentrix-menu-repaired${q}`;
-      });
-    } else {
-      nextAttrs = `${nextAttrs} class="gentrix-menu-repaired"`;
+
+    if (extraClasses.length > 0) {
+      if (/\bclass\s*=\s*["']/i.test(nextAttrs)) {
+        nextAttrs = nextAttrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/i, (_m, q: string, c: string) => {
+          const additions = extraClasses.filter(
+            (cls) => !new RegExp(`\\b${escapeRegExpKey(cls)}\\b`).test(c),
+          );
+          if (additions.length === 0) return `class=${q}${c}${q}`;
+          const merged = `${c} ${additions.join(" ")}`.replace(/\s+/g, " ").trim();
+          return `class=${q}${merged}${q}`;
+        });
+      } else {
+        nextAttrs = `${nextAttrs} class="${extraClasses.join(" ")}"`;
+      }
     }
 
-    const nextInner = needsBars ? buildGentrixHamburgerFallbackInner(h, attrs) : inner;
+    const nextInner = needsIcon ? buildGentrixMenuIconToggle(stateKey) : inner;
     return `<button${nextAttrs}>${nextInner}</button>`;
   });
 
