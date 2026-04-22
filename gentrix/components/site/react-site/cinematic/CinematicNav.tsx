@@ -7,6 +7,7 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -274,7 +275,7 @@ export function CinematicNav({
           ? "[&_a]:!text-zinc-100 [&_summary]:!text-zinc-100 [&_details]:border-white/20"
           : "[&_a]:!text-zinc-900 [&_summary]:!text-zinc-800 [&_details]:border-zinc-200/90",
       )}
-      onClick={(e: React.MouseEvent) => {
+      onClick={(e: ReactMouseEvent) => {
         const anchor = (e.target as HTMLElement).closest("a");
         if (anchor) {
           const href = anchor.getAttribute("href");
@@ -305,20 +306,13 @@ export function CinematicNav({
             className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
-                                  onClick={(e: React.MouseEvent) => {
-                                    const anchor = (e.target as HTMLElement).closest("a");
-                                    if (anchor) {
-                                      const href = anchor.getAttribute("href");
-                                      if (href) handleNavLinkClick(e as any as MouseEvent, href);
-                                    }
-                                  }}
-                      onClick={(e: React.MouseEvent) => {
-                        const anchor = (e.target as HTMLElement).closest("a");
-                        if (anchor) {
-                          const href = anchor.getAttribute("href");
-                          if (href) handleNavLinkClick(e as any as MouseEvent, href);
-                        }
-                      }}
+            onClick={(e: ReactMouseEvent) => {
+              const anchor = (e.target as HTMLElement).closest("a");
+              if (anchor) {
+                const href = anchor.getAttribute("href");
+                if (href) handleNavLinkClick(e as any as MouseEvent, href);
+              }
+            }}
           >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />
           </nav>
@@ -440,7 +434,7 @@ export function CinematicNav({
         </div>
         <nav
           className="items-center gap-x-6 gap-y-2 text-[0.9375rem] lg:text-sm"
-                    onClick={(e: React.MouseEvent) => {
+                    onClick={(e: ReactMouseEvent) => {
                       const anchor = (e.target as HTMLElement).closest("a");
                       if (anchor) {
                         const href = anchor.getAttribute("href");
