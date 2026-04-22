@@ -46,7 +46,7 @@ body {
 
 @supports (view-transition-name: none) {
   ::view-transition-group(root) {
-    background: var(--background);
+    background: transparent;
   }
   ::view-transition-old(root),
   ::view-transition-new(root) {

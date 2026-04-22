@@ -44,10 +44,6 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
          * Timing: fade-out snel (oude content wegglippen), fade-in iets langer (nieuwe content opkomen).
          */
         @supports (view-transition-name: none) {
-          ::view-transition-group(root),
-          ::view-transition-image-pair(root) {
-            background: var(--public-site-shell-bg);
-          }
           ::view-transition-old(root) {
             animation: __site-fade-out 0.08s ease-out forwards;
           }

@@ -69,7 +69,7 @@ export const STUDIO_ALPINE_X_CLOAK_CSS = `[x-cloak]{display:none!important}`;
 /** Cross-document View Transitions voor gegenereerde pagina's (ook buiten Next soft-nav). */
 export const STUDIO_VIEW_TRANSITION_CSS = `@view-transition{navigation:auto}
 ::view-transition-old(root),::view-transition-new(root){animation-duration:.14s}
-::view-transition-group(root){background:var(--background,#fff)}`;
+::view-transition-group(root){background:transparent}`;
 
 /** Klik raakt de BUTTON i.p.v. inner spans (Alpine + sommige browsers). */
 export const STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS = `@media (max-width: 1023px) {
