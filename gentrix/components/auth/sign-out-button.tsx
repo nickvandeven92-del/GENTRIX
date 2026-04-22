@@ -19,6 +19,7 @@ export function SignOutButton({ variant = "sidebar", className, redirectNext }: 
   async function signOut() {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
+    await fetch("/api/auth/mfa-email/clear-cookie", { method: "POST" });
     const next = redirectNext?.trim();
     const login = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
     router.push(login);

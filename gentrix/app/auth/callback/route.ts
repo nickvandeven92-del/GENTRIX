@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { safePostAuthRedirectPath } from "@/lib/auth/safe-same-origin-next-path";
+import { EMAIL_MFA_COOKIE_NAME, clearEmailMfaCookieOptions } from "@/lib/auth/email-mfa-cookie";
 
 /**
  * Supabase Auth redirect: PKCE (`code`) en e-mailverificatie (`token_hash` + `type`).
@@ -34,7 +35,9 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const res = NextResponse.redirect(`${origin}${next}`);
+      res.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
+      return res;
     }
     return NextResponse.redirect(`${origin}/login?error=auth_callback`);
   }
@@ -44,7 +47,9 @@ export async function GET(request: Request) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const res = NextResponse.redirect(`${origin}${next}`);
+      res.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
+      return res;
     }
     return NextResponse.redirect(`${origin}/login?error=auth_confirm`);
   }

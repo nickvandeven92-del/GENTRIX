@@ -51,13 +51,16 @@ function useBodyScrollLock(locked: boolean) {
 }
 
 /**
- * Premium mobiele menu-sheet: valt **onder de navbar** open over de volle breedte
- * (Vugts/Apple-patroon). Geen zijdelingse drawer meer — dat oogt te zwaar.
+ * Premium mobiele menu-sheet: valt **onder de navbar** open over de volle breedte,
+ * met **content-hoogte** (Vugts/Apple-patroon). Geen vullende backdrop — de hero
+ * blijft eronder gewoon zichtbaar, wat rustig en elegant oogt.
  *
  * - `topOffset` = onderkant van de zichtbare navbar (gemeten vanaf top van viewport).
  * - Sheet: transform van `-translate-y-full` naar `translate-y-0` (glijdt neer), met
  *   subtiele opacity-fade en cubic-bezier easing voor rustige, dure beweging.
- * - Backdrop: begint net onder de navbar zodat het logo/sluit-kruis zichtbaar blijft.
+ *   Hoogte is `auto` (clamp via `max-height` voor hele lange menu's).
+ * - Click-catcher: **onzichtbare** laag onder de sheet die alleen klikken afvangt
+ *   om het menu te sluiten — géén dim/darkening over de hero.
  * - Hamburger-knop in de navbar toggelt al naar een X → geen extra X in de sheet.
  */
 function MobileNavDrawer({
@@ -125,38 +128,29 @@ function MobileNavDrawer({
 
   if (!mounted || typeof document === "undefined") return null;
 
-  const backdrop =
-    variant === "bar_light"
-      ? "bg-zinc-900/25"
-      : variant === "bar_dark"
-        ? "bg-black/55"
-        : "bg-black/45";
-
   const sheet =
     variant === "bar_light"
-      ? "border-b border-zinc-200 bg-white/97 text-zinc-900 shadow-[0_30px_60px_-24px_rgba(15,23,42,0.25)] backdrop-blur-md"
+      ? "border-b border-zinc-200 bg-white text-zinc-900 shadow-[0_24px_40px_-24px_rgba(15,23,42,0.22)]"
       : variant === "bar_dark"
-        ? "border-b border-white/10 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 text-white shadow-[0_30px_60px_-24px_rgba(0,0,0,0.6)]"
-        : "border-b border-white/12 bg-zinc-950/95 text-white backdrop-blur-md shadow-[0_30px_60px_-24px_rgba(0,0,0,0.6)]";
+        ? "border-b border-white/10 bg-zinc-950 text-white shadow-[0_24px_40px_-24px_rgba(0,0,0,0.55)]"
+        : "border-b border-white/12 bg-zinc-950/96 text-white backdrop-blur-md shadow-[0_24px_40px_-24px_rgba(0,0,0,0.55)]";
 
-  // Sheet + backdrop starten exact onder de navbar.
+  // Sheet + click-catcher starten exact onder de navbar.
   const topStyle: CSSProperties = { top: `${topOffset}px` };
 
   const ui = (
     <div className="pointer-events-auto">
-      {/* Backdrop: fade in/out, alleen onder de navbar */}
+      {/* Onzichtbare click-catcher: sluit het menu bij klik naast/onder de sheet,
+          zonder de hero te verdonkeren. */}
       <button
         type="button"
-        className={cn(
-          "fixed inset-x-0 bottom-0 z-[200] transition-opacity duration-[260ms] ease-out",
-          backdrop,
-          visible ? "opacity-100" : "opacity-0",
-        )}
+        className="fixed inset-x-0 bottom-0 z-[200] bg-transparent"
         style={{ ...topStyle, pointerEvents: visible ? undefined : "none" }}
         aria-label="Menu sluiten"
         onClick={onClose}
+        tabIndex={-1}
       />
-      {/* Sheet: glijdt neer vanonder de navbar */}
+      {/* Sheet: glijdt neer vanonder de navbar — content-hoogte, niet fullscreen. */}
       <div
         className={cn(
           "fixed inset-x-0 z-[210] overflow-hidden",
@@ -168,7 +162,7 @@ function MobileNavDrawer({
       >
         <nav
           ref={navRef}
-          className="mx-auto flex w-full max-w-6xl flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-8 pt-5 sm:px-6 sm:pt-6"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-5 sm:px-6 sm:pt-6"
           aria-label="Mobiel menu"
         >
           {children}

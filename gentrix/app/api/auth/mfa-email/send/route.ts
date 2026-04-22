@@ -4,6 +4,10 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendMfaCodeEmail } from "@/lib/email/mfa-email";
 import { generateNumericOtp, sha256Hex } from "@/lib/auth/otp-code";
 import { checkMemoryRateLimit } from "@/lib/api/rate-limit-memory";
+import {
+  EMAIL_MFA_COOKIE_NAME,
+  clearEmailMfaCookieOptions,
+} from "@/lib/auth/email-mfa-cookie";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 
@@ -57,5 +61,8 @@ export async function POST(): Promise<NextResponse> {
     return NextResponse.json({ error: "Kon e-mail niet versturen." }, { status: 500 });
   }
 
-  return NextResponse.json({ codeId: row.id });
+  const response = NextResponse.json({ codeId: row.id });
+  /** Oude 24u-cookie mag niet meer gelden als er een nieuwe code actief is (anders middleware “ingelogd” zonder invoer). */
+  response.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
+  return response;
 }

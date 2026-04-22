@@ -36,15 +36,8 @@ export const STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET = `<header id="site-he
       </span>
     </button>
   </div>
-  <div class="fixed inset-x-0 bottom-0 top-16 z-[60] bg-slate-950/55 backdrop-blur-sm lg:hidden" x-show="navOpen" x-cloak
-    x-transition:enter="transition-opacity duration-[260ms] ease-out"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition-opacity duration-[220ms] ease-in"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    @click="navOpen = false" aria-hidden="true"></div>
-  <div id="site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] overflow-hidden border-t border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 shadow-[0_30px_60px_-24px_rgba(0,0,0,0.6)] ring-1 ring-white/10 lg:hidden will-change-transform" x-show="navOpen" x-cloak
+  <div class="fixed inset-x-0 bottom-0 top-16 z-[60] bg-transparent lg:hidden" x-show="navOpen" x-cloak @click="navOpen = false" aria-hidden="true"></div>
+  <div id="site-mobile-sheet" class="fixed inset-x-0 top-16 z-[70] overflow-hidden border-b border-white/10 bg-slate-950 shadow-[0_24px_40px_-24px_rgba(0,0,0,0.55)] ring-1 ring-white/10 lg:hidden will-change-transform" x-show="navOpen" x-cloak
     x-transition:enter="transition-[transform,opacity] duration-[320ms] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]"
     x-transition:enter-start="opacity-0 -translate-y-full"
     x-transition:enter-end="opacity-100 translate-y-0"

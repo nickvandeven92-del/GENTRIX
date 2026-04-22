@@ -94,3 +94,20 @@ export function emailMfaCookieOptions(): {
     maxAge: MAX_AGE_MS / 1000,
   };
 }
+
+/** Wis `gentrix_mfa` (zelfde pad/flags als bij zetten, maxAge 0). */
+export function clearEmailMfaCookieOptions(): {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "strict";
+  path: string;
+  maxAge: number;
+} {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0,
+  };
+}

@@ -49,6 +49,7 @@ export function IdleTimeoutGuard() {
     if (countdownRef.current) clearInterval(countdownRef.current);
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
+    await fetch("/api/auth/mfa-email/clear-cookie", { method: "POST" });
     router.push("/login");
     router.refresh();
   }, [router]);

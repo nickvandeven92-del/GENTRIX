@@ -37,6 +37,7 @@ export function LoginForm() {
         setError(mapAuthErrorToDutch(signError.message));
         return;
       }
+      await fetch("/api/auth/mfa-email/clear-cookie", { method: "POST" });
       router.push(next);
       router.refresh();
     } finally {
