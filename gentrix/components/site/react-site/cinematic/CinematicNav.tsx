@@ -274,6 +274,13 @@ export function CinematicNav({
           ? "[&_a]:!text-zinc-100 [&_summary]:!text-zinc-100 [&_details]:border-white/20"
           : "[&_a]:!text-zinc-900 [&_summary]:!text-zinc-800 [&_details]:border-zinc-200/90",
       )}
+      onClick={(e: React.MouseEvent) => {
+        const anchor = (e.target as HTMLElement).closest("a");
+        if (anchor) {
+          const href = anchor.getAttribute("href");
+          if (href) handleNavLinkClick(e as any as MouseEvent, href);
+        }
+      }}
     >
       {node}
     </div>

@@ -188,7 +188,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
               key={link.label + link.href}
               href={link.href}
               className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--site-fg)] hover:bg-transparent hover:text-[var(--site-fg)] active:bg-transparent"
-              onClick={(e) => handleNavLinkClick(e, link.href)}
+              onClick={() => setOpen(false)}
             >
               {link.label}
             </a>
@@ -197,7 +197,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             <a
               href={nav.ctaHref}
               className="mt-2 rounded-md bg-[var(--site-primary)] px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.12em] text-zinc-950 hover:bg-[var(--site-primary)] active:bg-[var(--site-primary)]"
-              onClick={(e) => handleNavLinkClick(e, nav.ctaHref!)}
+              onClick={() => setOpen(false)}
             >
               {nav.ctaLabel}
             </a>
