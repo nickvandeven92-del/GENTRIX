@@ -31,6 +31,10 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
           tap-highlight-color:transparent;
         }
 
+        @view-transition {
+          navigation: auto;
+        }
+
         /*
          * View Transitions API — naadloze swap bij paginawissels (Chrome/Edge/Safari 18+).
          * Principe: browser houdt screenshot van de oude pagina vast (geen flikkering) terwijl
