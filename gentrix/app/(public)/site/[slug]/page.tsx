@@ -92,23 +92,25 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
   const shell = (() => {
-    const payload = bundle.payload as unknown as {
-      kind?: string;
-      doc?: { theme?: { background?: string; foreground?: string } };
-      site?: { theme?: { background?: string; foreground?: string } };
-    };
+    const p = bundle.payload;
 
-    if (payload.kind === "react") {
+    if (p.kind === "tailwind") {
+      const bg = p.config?.theme?.background?.trim() || p.config?.theme?.primary?.trim() || "#ffffff";
+      const fg = p.config?.theme?.textColor?.trim() || "#171717";
+      return { bg, fg };
+    }
+
+    if (p.kind === "react") {
       return {
-        bg: payload.doc?.theme?.background?.trim() || "#ffffff",
-        fg: payload.doc?.theme?.foreground?.trim() || "#171717",
+        bg: p.doc?.theme?.background?.trim() || "#ffffff",
+        fg: p.doc?.theme?.foreground?.trim() || "#171717",
       };
     }
 
-    if (payload.kind === "legacy") {
+    if (p.kind === "legacy") {
       return {
-        bg: payload.site?.theme?.background?.trim() || "#ffffff",
-        fg: payload.site?.theme?.foreground?.trim() || "#171717",
+        bg: (p.site as { theme?: { background?: string; foreground?: string } })?.theme?.background?.trim() || "#ffffff",
+        fg: (p.site as { theme?: { background?: string; foreground?: string } })?.theme?.foreground?.trim() || "#171717",
       };
     }
 
