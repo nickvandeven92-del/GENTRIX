@@ -1,4 +1,6 @@
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import Script from "next/script";
+import { publishedTailwindInlineHtmlShellAttrs } from "@/lib/site/studio-site-shell";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
 import { rewritePublishedHtmlToPrettyPublicUrls } from "@/lib/site/rewrite-published-html-public-basepath";
@@ -11,6 +13,7 @@ import {
 } from "@/lib/site/tailwind-contact-subpage";
 import { PublishedTailwindAssets } from "@/components/site/published-tailwind-assets";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
+import { PublishedTailwindShellSync } from "@/components/site/published-tailwind-shell-sync";
 import { cn } from "@/lib/utils";
 
 /**
@@ -123,8 +126,22 @@ export function PublicPublishedTailwindInline({
   const parts = extractTailwindPageParts(fullHtml);
   const docTitle = documentTitle?.trim() || undefined;
 
+  const htmlShellAttrs = publishedTailwindInlineHtmlShellAttrs({
+    publishedSlug,
+    navBrandLabel,
+  });
+  const shellBootScript = `(function(){try{var e=document.documentElement;${Object.entries(htmlShellAttrs)
+    .map(([k, v]) => `e.setAttribute(${JSON.stringify(k)},${JSON.stringify(v)});`)
+    .join("")}}catch(_){}})();`;
+
   return (
     <PublishedTailwindNavBridge>
+      <Script
+        id="gentrix-published-tailwind-html-shell"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{ __html: shellBootScript }}
+      />
+      <PublishedTailwindShellSync publishedSlug={publishedSlug} navBrandLabel={navBrandLabel} />
       <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
       {/* gegenereerde head-inhoud uit eigen builder (styles, meta, scripts) */}
       <div

@@ -27,7 +27,6 @@ import {
   STUDIO_SITE_CREDIT_BODY_HTML,
   STUDIO_SITE_CREDIT_CSS,
   STUDIO_SITE_CREDIT_VARIANT_CSS,
-  pickStudioSiteCreditVariant,
   STUDIO_FIXED_NAV_HERO_INSET_CSS,
   getStudioAosHtmlFragments,
   getStudioGsapHtmlFragments,
@@ -42,6 +41,7 @@ import {
   STUDIO_PORTAL_PATH_PLACEHOLDER,
   STUDIO_SHOP_PATH_PLACEHOLDER,
 } from "@/lib/site/studio-section-visibility";
+import { pickStudioSiteCreditVariant } from "@/lib/site/studio-site-shell";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import type { GeneratedLogoSet } from "@/types/logo";
 

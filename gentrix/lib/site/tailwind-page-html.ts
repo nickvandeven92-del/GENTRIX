@@ -39,6 +39,7 @@ import { replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import { STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
+import { pickStudioSiteCreditVariant } from "@/lib/site/studio-site-shell";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 export { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
@@ -150,19 +151,7 @@ export const STUDIO_SITE_CREDIT_BODY_HTML = `<div data-studio-site-credit transl
 /** Luminantie-drempel: eigen oppervlak van de nav is licht → altijd donkere chrome (icoon/links), ook als de hero onder de balk donker is. */
 const STUDIO_NAV_SELF_SURFACE_LIGHT_LUM = 0.58;
 
-/**
- * Deterministische variant (0–2) o.b.v. slug/merk — voorkomt dat elke preview dezelfde hoek/plaatsing heeft.
- */
-export function pickStudioSiteCreditVariant(seed: string | null | undefined): "0" | "1" | "2" {
-  const s = (seed ?? "").trim().toLowerCase() || "studio";
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  const v = Math.abs(h) % 3;
-  return v === 0 ? "0" : v === 1 ? "1" : "2";
-}
+export { pickStudioSiteCreditVariant } from "@/lib/site/studio-site-shell";
 
 /**
  * `0` = standaard (fixed, onder midden). `1` = compact rechtsonder. `2` = onderaan document (scrollt mee t.o.v. viewport).

@@ -7,9 +7,20 @@ export function isPortalSectionHtml(html: string): boolean {
   return PORTAL_VISIBILITY_RE.test(html);
 }
 
+const NAVISH_SECTION_IDS = new Set(["nav", "header", "site-nav", "site-header", "navbar"]);
+
+function coercePortalMisTaggedNavHtml(html: string): string {
+  return html.replace(/\sdata-studio-visibility\s*=\s*(["'])portal\1/gi, "");
+}
+
 /** Publieke site: geen portaalblokken. */
 export function filterSectionsForPublicSite(sections: TailwindSection[]): TailwindSection[] {
-  return sections.filter((s) => !isPortalSectionHtml(s.html));
+  const coerced = sections.map((s) => {
+    const id = (s.id ?? "").trim().toLowerCase();
+    if (!NAVISH_SECTION_IDS.has(id) || !isPortalSectionHtml(s.html)) return s;
+    return { ...s, html: coercePortalMisTaggedNavHtml(s.html) };
+  });
+  return coerced.filter((s) => !isPortalSectionHtml(s.html));
 }
 
 /** Alleen portaalblokken (achter login). */
