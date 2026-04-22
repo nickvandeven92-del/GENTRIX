@@ -37,14 +37,6 @@ import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tail
 import { replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
-import {
-  buildStudioAutoMobileNavHeaderHtml,
-  extractHeaderNavLinks,
-  shouldInjectStudioAutoMobileNav,
-  STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
-  STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
-  STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS,
-} from "@/lib/site/studio-auto-mobile-nav";
 import { STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import type { GeneratedLogoSet } from "@/types/logo";
 
@@ -193,27 +185,22 @@ html[data-gentrix-site-credit-variant="2"] [data-studio-site-credit]{
 
 /**
  * `scroll-padding` op `html` helpt alleen bij hash-scroll; `fixed` nav laat inhoud visueel onder de balk starten.
- * Zet `data-gentrix-studio-auto-nav="1"` op `<html>` wanneer `buildStudioAutoMobileNavHeaderHtml` is toegevoegd —
- * dan geldt alleen de eerste regel (anders telt `:has(> header.fixed)` dubbel op verborgen AI-headers).
  *
  * **Dubbele inset:** veel AI-hero’s hebben al `pt-12` / `pt-16` op de eerste content-`div` na `header`. Dan is
  * `padding-top` op `#hero` **overbodig** en ontstaat een wit/grijs band **boven** de vaste balk + extra ruimte
  * tussen nav en hero (dubbele “navbar offset”).
  */
-export const STUDIO_FIXED_NAV_HERO_INSET_CSS = `html[data-gentrix-studio-iframe="1"][data-gentrix-studio-auto-nav="1"] body > section[data-section]:first-of-type {
+export const STUDIO_FIXED_NAV_HERO_INSET_CSS = `html[data-gentrix-studio-iframe="1"] section#hero:has(> header[class*="fixed"]),
+html[data-gentrix-studio-iframe="1"] #hero:has(> header[class*="fixed"]) {
   padding-top: 5.5rem;
 }
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section#hero:has(> header[class*="fixed"]),
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) #hero:has(> header[class*="fixed"]) {
+html[data-gentrix-studio-iframe="1"] section[data-section] > header[class*="fixed"] + #hero,
+html[data-gentrix-studio-iframe="1"] section[data-section] > header[class*="fixed"] + section#hero {
   padding-top: 5.5rem;
 }
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + #hero,
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + section#hero {
-  padding-top: 5.5rem;
-}
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section#hero:has(> header[class*="fixed"] + *[class*="pt-"]),
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) #hero:has(> header[class*="fixed"] + *[class*="pt-"]),
-html[data-gentrix-studio-iframe="1"]:not([data-gentrix-studio-auto-nav="1"]) section[data-section] > header[class*="fixed"] + section#hero:has(> *[class*="pt-"]) {
+html[data-gentrix-studio-iframe="1"] section#hero:has(> header[class*="fixed"] + *[class*="pt-"]),
+html[data-gentrix-studio-iframe="1"] #hero:has(> header[class*="fixed"] + *[class*="pt-"]),
+html[data-gentrix-studio-iframe="1"] section[data-section] > header[class*="fixed"] + section#hero:has(> *[class*="pt-"]) {
   padding-top: 0 !important;
 }
 `;
@@ -472,7 +459,6 @@ export const STUDIO_IFRAME_MOBILE_EDITOR_NAV_SHEET_CSS = `@media (max-width: 102
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
-  html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header #gentrix-site-mobile-sheet,
   html[data-gentrix-studio-mobile="1"][data-gentrix-studio-iframe="1"] header #site-mobile-sheet {
     background: rgb(15 23 42) !important;
     backdrop-filter: blur(12px);
@@ -1448,7 +1434,6 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     for(var i=0;i<list.length;i++){
       var el=list[i];
       if(el.closest("[data-studio-skip-nav-tone]"))continue;
-      if(el.getAttribute&&el.getAttribute("data-gentrix-auto-mobile-nav")==="1")continue;
       var st=getComputedStyle(el);
       if(st.position!=="fixed"&&st.position!=="sticky")continue;
       if(st.display==="none"||st.visibility==="hidden")continue;
@@ -2489,11 +2474,6 @@ export type BuildTailwindIframeSrcDocOptions = {
    */
   disableScrollRevealAnimations?: boolean;
   /**
-   * `true`: sla de automatische Gentrix mobile-nav injectie over.
-   * Gebruik dit in de portal editor zodat de originele navbar van de klant zichtbaar blijft.
-   */
-  disableAutoMobileNav?: boolean;
-  /**
    * Server-gecompileerde Tailwind (minified). Gezet → geen Play CDN / FOUC-wacht.
    */
   compiledTailwindCss?: string | null;
@@ -2570,7 +2550,7 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
     allow={navOpen:1,menuOpen:1,open:1,mobileOpen:1,drawerOpen:1,menuVisible:1,mobileMenuOpen:1};
     for(si=0;si<secs.length;si++){
       sec=secs[si];
-      if(!sec||sec.getAttribute("data-gentrix-auto-mobile-nav")==="1")continue;
+      if(!sec)continue;
       if(sec.getAttribute("x-data"))continue;
       hdr=sec.querySelector("header");
       if(!hdr)continue;
@@ -2588,7 +2568,7 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
     }
   }
   function repairRoot(h,Alp){
-    if(!h||h.getAttribute("data-gentrix-auto-mobile-nav")==="1")return false;
+    if(!h)return false;
     if(h.getAttribute("x-data"))return false;
     var btn=findMobileMenuBtn(h);
     if(!btn)return false;
@@ -2719,31 +2699,6 @@ export function buildTailwindIframeSrcDoc(
   let body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {
     logoSet: options?.logoSet,
   });
-  const existingHeaderLinks = extractHeaderNavLinks(body);
-  const shouldInject = !options?.disableAutoMobileNav && shouldInjectStudioAutoMobileNav(body);
-  let studioAutoMobileNavInjected = false;
-  if (sections.length > 0 && shouldInject) {
-    let autoNavHtml = buildStudioAutoMobileNavHeaderHtml(
-      sections,
-      pageConfig ?? null,
-      {
-        logoSet: options?.logoSet,
-        navBrandLabel: options?.navBrandLabel?.trim() || null,
-      },
-      existingHeaderLinks,
-    );
-    // Als de originele site al een header heeft in een sectie, verberg de auto-nav op desktop
-    // via lg:hidden (betrouwbaarder dan CSS :has() — werkt via STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS).
-    const bodyHasOwnHeader = /<section\b[^>]*>[\s\S]{0,3000}<header\b/i.test(body);
-    if (bodyHasOwnHeader) {
-      autoNavHtml = autoNavHtml.replace(
-        /(<header\b[^>]*\bclass\s*=\s*["'])([^"']*)(["'])/,
-        (_, before, cls, quote) => `${before}${cls} lg:hidden${quote}`,
-      );
-    }
-    body = `${autoNavHtml}\n${body}`;
-    studioAutoMobileNavInjected = true;
-  }
   const slug = options?.publishedSlug?.trim();
   const isGentrixHomeSlug = (slug?.toLowerCase() ?? "") === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
   const siteCreditVariant = pickStudioSiteCreditVariant(slug || options?.navBrandLabel?.trim() || "");
@@ -2871,14 +2826,10 @@ export function buildTailwindIframeSrcDoc(
     : "";
   const isPreviewIframe = options?.previewPostMessageBridge !== false;
 const iframeShellAttr = `${isPreviewIframe ? ` data-gentrix-studio-iframe="1"` : ""} data-gentrix-site-credit-variant="${siteCreditVariant}"`;
-  const autoNavDupCss = studioAutoMobileNavInjected
-    ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n`
-    : "";
-  const bodyTopIdAttr = studioAutoMobileNavInjected ? ` id="top"` : "";
 
   // Zonder compiled CSS: Tailwind Play CDN onderaan body (JIT) + FOUC-guard.
   let out = `<!DOCTYPE html>
-<html lang="nl"${iframeShellAttr}${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}${studioMobileAttr}${staticScrollBorderAttr}${isGentrixHomeSlug ? ` data-gentrix-scroll-nav-fallback="1"` : ""}>
+<html lang="nl"${iframeShellAttr}${studioMobileAttr}${staticScrollBorderAttr}${isGentrixHomeSlug ? ` data-gentrix-scroll-nav-fallback="1"` : ""}>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
@@ -2908,14 +2859,13 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
-    ${STUDIO_GENERATED_SITE_NAVBAR_CLEANUP_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
     ${STUDIO_SITE_CREDIT_VARIANT_CSS}
-    ${autoNavDupCss}    ${studioMobileCss}${foucCssBlock}  </style>
+    ${studioMobileCss}${foucCssBlock}  </style>
   ${compiledStyleBlock}${userCssBlock}
 ${aosHeadLink}</head>
-<body class="antialiased text-slate-900${radiusClass}"${bodyTopIdAttr}>
+<body class="antialiased text-slate-900${radiusClass}">
 ${twLoadingScript}${body}
 ${STUDIO_SITE_CREDIT_BODY_HTML}
 ${studioTailwindPlayConsoleMute}${tailwindCdnScripts}${buildLucideRuntimeScriptBlock()}<script>

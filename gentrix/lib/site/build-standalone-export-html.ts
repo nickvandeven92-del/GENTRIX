@@ -44,12 +44,6 @@ import {
 } from "@/lib/site/studio-section-visibility";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import {
-  buildStudioAutoMobileNavHeaderHtml,
-  extractHeaderNavLinks,
-  shouldInjectStudioAutoMobileNav,
-  STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS,
-  STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS,
-} from "@/lib/site/studio-auto-mobile-nav";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 function escapeHtmlText(s: string): string {
@@ -109,25 +103,6 @@ export function buildStandaloneExportHtmlDocument(
   let bodyInner = buildTailwindSectionsBodyInnerHtml(sectionSource, pageConfig, {
     logoSet: userAssets?.logoSet,
   });
-  const existingHeaderLinks = extractHeaderNavLinks(bodyInner);
-  const autoNavSourceBodyInner = bodyInner;
-  let studioAutoMobileNavInjected = false;
-  if (
-    !forScan &&
-    sectionSource.length > 0 &&
-    shouldInjectStudioAutoMobileNav(autoNavSourceBodyInner)
-  ) {
-    bodyInner = `${buildStudioAutoMobileNavHeaderHtml(
-      sectionSource,
-      pageConfig ?? null,
-      {
-        logoSet: userAssets?.logoSet,
-        navBrandLabel: docTitle.trim() || null,
-      },
-      existingHeaderLinks,
-    )}\n${autoNavSourceBodyInner}`;
-    studioAutoMobileNavInjected = true;
-  }
 
   if (!forScan && publish && publish.subfolderSlug.trim()) {
     const slug = publish.subfolderSlug.trim();
@@ -170,7 +145,7 @@ export function buildStandaloneExportHtmlDocument(
   );
 
   return `<!DOCTYPE html>
-<html lang="nl" data-gentrix-studio-iframe="1" data-gentrix-site-credit-variant="${siteCreditVariant}"${studioAutoMobileNavInjected ? ` data-gentrix-studio-auto-nav="1"` : ""}>
+<html lang="nl" data-gentrix-studio-iframe="1" data-gentrix-site-credit-variant="${siteCreditVariant}">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -196,10 +171,9 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_SITE_CREDIT_CSS}
     ${STUDIO_SITE_CREDIT_VARIANT_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
-    ${studioAutoMobileNavInjected ? `${STUDIO_AUTO_MOBILE_NAV_DUPLICATE_HEADER_HIDE_CSS}\n    ${STUDIO_AUTO_MOBILE_NAV_LINK_CONTRAST_CSS}\n    ` : ""}
   </style>
   ${userCssBlock}${aos.headLink}</head>
-<body class="min-h-screen antialiased text-slate-900${radiusClass}"${studioAutoMobileNavInjected ? ` id="top"` : ""}>
+<body class="min-h-screen antialiased text-slate-900${radiusClass}">
 ${bodyInner}
 ${STUDIO_SITE_CREDIT_BODY_HTML}
 ${STUDIO_SCROLL_REVEAL_SCRIPT}${STUDIO_SCROLL_BORDER_SCRIPT}${gsap.bodyScripts}${aos.bodyScripts}

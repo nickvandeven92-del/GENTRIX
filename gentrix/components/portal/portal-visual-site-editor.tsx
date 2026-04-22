@@ -323,13 +323,10 @@ export function PortalVisualSiteEditor({
 
   const enc = encodeURIComponent(decodeURIComponent(slug));
   const currentPage = pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
-  // Filter eerder geïnjecteerde auto-mobile-nav secties eruit — die horen niet thuis in de
-  // portal editor en mogen ook niet opnieuw worden opgeslagen.
-  // Gebruik useMemo zodat de referentie stabiel is; een losse .filter() maakt anders elke
-  // render een nieuw array, waardoor srcDoc wijzigt en de iframe continu herlaadt.
+  // Memoized zodat de referentie stabiel is; een losse expressie maakt anders elke render een
+  // nieuw array, waardoor `srcDoc` wijzigt en de iframe continu herlaadt.
   const currentSections = useMemo(() => {
-    const raw = currentPage ? pageStates[currentPage.id] ?? currentPage.sections : [];
-    return raw.filter(({ section }) => !/data-gentrix-auto-mobile-nav/i.test(section.html));
+    return currentPage ? pageStates[currentPage.id] ?? currentPage.sections : [];
   }, [currentPage, pageStates]);
   const themePresets = useMemo(() => buildPortalThemePresets(basePageConfigRef.current), []);
   const activePresetId = useMemo(() => {
@@ -351,7 +348,6 @@ export function PortalVisualSiteEditor({
     const base = buildTailwindIframeSrcDoc(previewSections, pageConfigValue, {
       previewPostMessageBridge: false,
       disableScrollRevealAnimations: true,
-      disableAutoMobileNav: true,
       userCss,
       userJs: undefined,
       logoSet,

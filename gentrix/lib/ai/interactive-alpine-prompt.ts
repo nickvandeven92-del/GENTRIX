@@ -24,8 +24,6 @@ De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-int
 
 **Alpine-scope (verplicht):** zet \`x-data="{ … }"\` op **\`<header>\`** (aanbevolen) of op **één** parent die **zowel** de hamburger-knop **als** alle \`x-show\` / \`@click\` gebruikt die diezelfde state togglen (inclusief streepjes vs. × in dezelfde knop). **Fout patroon:** knop met \`@click\` en spans met \`x-show="!open"\` / \`x-show="open"\` terwijl \`x-data\` alleen op een **ander** takje van de header staat (of ontbreekt) — dan bindt Alpine niet, doet de knop niets en kunnen **hamburger en × tegelijk** zichtbaar blijven.
 
-**Referentie in dit project:** bestand \`lib/site/studio-default-mobile-nav-snippet.ts\`, export \`STUDIO_DEFAULT_ONEPAGE_HEADER_ALPINE_SNIPPET\` — complete \`<header>\` met werkend mobiel menu (één \`navOpen\`, backdrop \`z-[60]\`, sheet \`z-[70]\`, streepjes en × **in dezelfde** knop via \`x-show\`, \`x-cloak\`, Escape). Pas labels/hrefs/kleuren aan de briefing aan; behoud het **zelfde gedrag** (geen tweede menu-kolom naast de balk, geen \`open: true\` bij load).
-
 **Mobiel menu — contrast:** de pagina-shell heeft \`text-slate-900\` op \`body\`; elke link in een **donkere** sheet/overlay moet expliciet lichte tekst hebben (bv. \`text-white\`, \`text-white/90\`, \`hover:bg-white/10\`) — anders erven ankers de donkere bodykleur en zijn ze op zwart **onzichtbaar**.
 
 **Leesbaarheid:** transparante of glass header over wisselende achtergronden: zorg **functioneel** voor contrast (bijv. \`:class\` op scroll, \`@scroll.window\`) — **geen** verplichte nav-stijl.

@@ -3,20 +3,13 @@ import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 /** Op het root-element van portaal-/dashboard-HTML (zoals door de studio-prompt gevraagd). */
 const PORTAL_VISIBILITY_RE = /data-studio-visibility\s*=\s*["']portal["']/i;
 
-/** Auto-injecteerde mobiele navbar — moet nooit als opgeslagen sectie verschijnen. */
-const AUTO_MOBILE_NAV_RE = /data-gentrix-auto-mobile-nav/i;
-
 export function isPortalSectionHtml(html: string): boolean {
   return PORTAL_VISIBILITY_RE.test(html);
 }
 
-export function isAutoMobileNavSectionHtml(html: string): boolean {
-  return AUTO_MOBILE_NAV_RE.test(html);
-}
-
-/** Publieke site: geen portaalblokken en geen eerder geïnjecteerde auto-mobile-nav secties. */
+/** Publieke site: geen portaalblokken. */
 export function filterSectionsForPublicSite(sections: TailwindSection[]): TailwindSection[] {
-  return sections.filter((s) => !isPortalSectionHtml(s.html) && !isAutoMobileNavSectionHtml(s.html));
+  return sections.filter((s) => !isPortalSectionHtml(s.html));
 }
 
 /** Alleen portaalblokken (achter login). */
