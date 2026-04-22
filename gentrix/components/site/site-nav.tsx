@@ -170,9 +170,8 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
       />
 
       {/*
-       * Mobile drawer — altijd in de DOM, zichtbaar via opacity + translate transitie.
-       * `hidden` verwijdert het element instant; max-h + overflow-hidden laat CSS animeren.
-       * Transitie: 180ms cubic-ease voelt premium aan zonder traag te zijn.
+       * Mobile drawer — altijd in de DOM, zichtbaar via opacity + transition.
+       * Header met X-knop om te sluiten.
        */}
       <div
         className={cn(
@@ -182,6 +181,17 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
         )}
         aria-hidden={!open}
       >
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--site-fg)]/10 px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-widest text-[var(--site-fg)]/75">Menu</span>
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--site-fg)] transition hover:bg-[var(--site-fg)]/10"
+            onClick={() => setOpen(false)}
+            aria-label="Menu sluiten"
+          >
+            <X className="size-5" strokeWidth={2} />
+          </button>
+        </div>
         <nav className="flex flex-col gap-1 px-4 py-4" aria-label="Mobiel menu">
           {nav.links.map((link) => (
             <a
