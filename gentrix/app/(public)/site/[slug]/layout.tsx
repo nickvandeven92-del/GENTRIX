@@ -20,13 +20,20 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
       <style>{`
         body{background:#fff!important;color:#171717!important}
 
-        /* View Transitions API — naadloze fade bij paginawissels (Chrome/Edge/Safari 18+) */
+        /*
+         * View Transitions API — naadloze swap bij paginawissels (Chrome/Edge/Safari 18+).
+         * Principe: browser houdt screenshot van de oude pagina vast (geen flikkering) terwijl
+         * de nieuwe pagina rendert; pas daarna crossfade. Gecombineerd met verwijderd loading.tsx
+         * en experimental.viewTransition in next.config.ts geeft dit instant-aanvoelende navigatie.
+         *
+         * Timing: fade-out snel (oude content wegglippen), fade-in iets langer (nieuwe content opkomen).
+         */
         @supports (view-transition-name: none) {
           ::view-transition-old(root) {
-            animation: __site-fade-out 0.10s ease forwards;
+            animation: __site-fade-out 0.08s ease-out forwards;
           }
           ::view-transition-new(root) {
-            animation: __site-fade-in 0.18s ease forwards;
+            animation: __site-fade-in 0.14s ease-out forwards;
           }
           @keyframes __site-fade-out {
             from { opacity: 1; }

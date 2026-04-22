@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { PortalPwaRoot } from "@/components/portal/portal-pwa-root";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { ADMIN_DASHBOARD_THEME_STORAGE_KEY } from "@/lib/admin/dashboard-theme";
 import "./globals.css";
 
@@ -60,6 +61,7 @@ export default function RootLayout({
             __html: `(function(){try{if(!/^\\/admin(\\/|$)/.test(location.pathname))return;var k=${JSON.stringify(ADMIN_DASHBOARD_THEME_STORAGE_KEY)};var d=document.documentElement;d.classList.remove("admin-theme-light","admin-theme-dark","admin-theme-glass","dark");d.classList.add("admin-theme-light");try{localStorage.setItem(k,"light");}catch(e2){}}catch(e){}})();`,
           }}
         />
+        <NavigationProgress />
         {children}
         <PortalPwaRoot />
       </body>
