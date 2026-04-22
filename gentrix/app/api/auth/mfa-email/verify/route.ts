@@ -8,8 +8,12 @@ import {
   emailMfaCookieOptions,
   EMAIL_MFA_COOKIE_NAME,
 } from "@/lib/auth/email-mfa-cookie";
+import { MfaSigningSecretMissingError } from "@/lib/auth/mfa-signing-secret";
 import { clearMfaAttempts, registerMfaAttempt } from "@/lib/auth/mfa-attempt-limiter";
 import { sha256Hex } from "@/lib/auth/otp-code";
+
+/** Expliciet Node i.v.m. `crypto.timingSafeEqual` / Buffer; voorkomt Edge/HTML-errorpagina’s bij falen. */
+export const runtime = "nodejs";
 
 const bodySchema = z.object({
   codeId: z.string().uuid(),
@@ -26,6 +30,27 @@ function constantTimeEqualHex(a: string, b: string): boolean {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  try {
+    return await handleVerify(request);
+  } catch (err) {
+    console.error("[mfa-email/verify]", err);
+    if (err instanceof MfaSigningSecretMissingError) {
+      return NextResponse.json(
+        {
+          error:
+            "Serverconfiguratie ontbreekt (MFA_SIGNING_SECRET). Neem contact op met de beheerder.",
+        },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Verificatie tijdelijk niet beschikbaar. Probeer het zo opnieuw." },
+      { status: 500 },
+    );
+  }
+}
+
+async function handleVerify(request: Request): Promise<NextResponse> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

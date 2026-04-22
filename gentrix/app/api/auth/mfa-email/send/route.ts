@@ -15,7 +15,18 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_SENDS_PER_WINDOW = 5;
 const SEND_WINDOW_MS = 10 * 60 * 1000;
 
+export const runtime = "nodejs";
+
 export async function POST(): Promise<NextResponse> {
+  try {
+    return await handleSend();
+  } catch (err) {
+    console.error("[mfa-email/send]", err);
+    return NextResponse.json({ error: "Kon code niet aanmaken." }, { status: 500 });
+  }
+}
+
+async function handleSend(): Promise<NextResponse> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

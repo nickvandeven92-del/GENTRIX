@@ -6,6 +6,16 @@ import { cn } from "@/lib/utils";
 
 type Phase = "sending" | "waiting" | "verifying" | "error";
 
+async function parseApiJson(res: Response): Promise<Record<string, unknown> | null> {
+  const text = await res.text();
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 export function EmailMfaVerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,14 +33,19 @@ export function EmailMfaVerifyForm() {
     setPhase("sending");
     setError(null);
     try {
-      const res = await fetch("/api/auth/mfa-email/send", { method: "POST" });
-      const json = (await res.json()) as { codeId?: string; error?: string };
-      if (!res.ok || !json.codeId) {
-        setError(json.error ?? "Kon code niet versturen.");
+      const res = await fetch("/api/auth/mfa-email/send", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const json = await parseApiJson(res);
+      const codeId = typeof json?.codeId === "string" ? json.codeId : undefined;
+      const errMsg = typeof json?.error === "string" ? json.error : undefined;
+      if (!res.ok || !codeId) {
+        setError(errMsg ?? `Kon code niet versturen (${res.status}).`);
         setPhase("error");
         return;
       }
-      setCodeId(json.codeId);
+      setCodeId(codeId);
       setPhase("waiting");
       setResendCooldown(60);
       if (cooldownRef.current) clearInterval(cooldownRef.current);
@@ -64,19 +79,27 @@ export function EmailMfaVerifyForm() {
     try {
       const res = await fetch("/api/auth/mfa-email/verify", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ codeId, code: code.replace(/\s/g, "") }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !json.ok) {
-        setError(json.error ?? "Verificatie mislukt.");
+      const json = await parseApiJson(res);
+      const ok = json?.ok === true;
+      const errMsg = typeof json?.error === "string" ? json.error : undefined;
+      if (!json) {
+        setError(`Serverfout (${res.status}). Probeer opnieuw of vraag een nieuwe code aan.`);
+        setPhase("waiting");
+        return;
+      }
+      if (!res.ok || !ok) {
+        setError(errMsg ?? "Verificatie mislukt.");
         setPhase("waiting");
         return;
       }
       router.push(next);
       router.refresh();
     } catch {
-      setError("Netwerkfout. Probeer opnieuw.");
+      setError("Netwerkfout. Controleer je verbinding en probeer opnieuw.");
       setPhase("waiting");
     }
   }
