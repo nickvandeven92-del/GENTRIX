@@ -66,10 +66,13 @@ html.tw-ready body { visibility: visible; }
  */
 export const STUDIO_ALPINE_X_CLOAK_CSS = `[x-cloak]{display:none!important}`;
 
-/** Cross-document View Transitions voor gegenereerde pagina's (ook buiten Next soft-nav). */
-export const STUDIO_VIEW_TRANSITION_CSS = `@view-transition{navigation:auto}
-::view-transition-old(root),::view-transition-new(root){animation-duration:.14s}
-::view-transition-group(root){background:transparent}`;
+/**
+ * Cross-document View Transitions stonden hier ooit, maar veroorzaken een zichtbare witte flits
+ * bij full-page SSR-navigatie (Optie A, geen iframe): de browser snapshot de oude pagina, laat die
+ * kort vallen voor de nieuwe snapshot klaar is → wit gat. Browser-native navigatie houdt de oude
+ * DOM zichtbaar tot de nieuwe klaar is — dat is exact wat we willen.
+ */
+export const STUDIO_VIEW_TRANSITION_CSS = "";
 
 /** Klik raakt de BUTTON i.p.v. inner spans (Alpine + sommige browsers). */
 export const STUDIO_MOBILE_TOGGLE_POINTER_FIX_CSS = `@media (max-width: 1023px) {
