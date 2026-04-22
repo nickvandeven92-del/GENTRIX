@@ -297,6 +297,7 @@ export function CinematicNav({
             href={homeHref}
             className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-900 sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             style={fontSerifLogo}
+                      onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
           >
             {logoText}
           </a>
@@ -304,6 +305,20 @@ export function CinematicNav({
             className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
+                                  onClick={(e: React.MouseEvent) => {
+                                    const anchor = (e.target as HTMLElement).closest("a");
+                                    if (anchor) {
+                                      const href = anchor.getAttribute("href");
+                                      if (href) handleNavLinkClick(e as any as MouseEvent, href);
+                                    }
+                                  }}
+                      onClick={(e: React.MouseEvent) => {
+                        const anchor = (e.target as HTMLElement).closest("a");
+                        if (anchor) {
+                          const href = anchor.getAttribute("href");
+                          if (href) handleNavLinkClick(e as any as MouseEvent, href);
+                        }
+                      }}
           >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />
           </nav>
@@ -341,6 +356,7 @@ export function CinematicNav({
           <a
             href={homeHref}
             className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg rounded-sm text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                        onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
             style={fontSerifLogo}
           >
             {logoText}
@@ -406,6 +422,7 @@ export function CinematicNav({
           <a
             href={homeHref}
             className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950/90"
+                        onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
             style={fontSerifLogo}
           >
             {logoText}
@@ -423,6 +440,13 @@ export function CinematicNav({
         </div>
         <nav
           className="items-center gap-x-6 gap-y-2 text-[0.9375rem] lg:text-sm"
+                    onClick={(e: React.MouseEvent) => {
+                      const anchor = (e.target as HTMLElement).closest("a");
+                      if (anchor) {
+                        const href = anchor.getAttribute("href");
+                        if (href) handleNavLinkClick(e as any as MouseEvent, href);
+                      }
+                    }}
           style={{ display: lgUp ? "flex" : "none" }}
           aria-label="Hoofdnavigatie"
         >

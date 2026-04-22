@@ -103,6 +103,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
         <a
           href={logoHomeHref}
           className="group flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--site-bg)]"
+                  onClick={(e) => handleNavLinkClick(e, logoHomeHref)}
         >
           {nav.logoImageUrl ? (
             <>
@@ -132,6 +133,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
               key={link.label + link.href}
               href={link.href}
               className="rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--site-fg)]/75 transition hover:bg-[var(--site-fg)]/5 hover:text-[var(--site-fg)]"
+                            onClick={(e) => handleNavLinkClick(e, link.href)}
               onClick={(e) => handleNavLinkClick(e, link.href)}
             >
               {link.label}
@@ -141,6 +143,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             <a
               href={nav.ctaHref}
               className="ml-2 rounded-md bg-[var(--site-primary)] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-950 shadow-md transition hover:opacity-95"
+                            onClick={(e) => handleNavLinkClick(e, nav.ctaHref!)}
               onClick={(e) => handleNavLinkClick(e, nav.ctaHref!)}
             >
               {nav.ctaLabel}
@@ -198,7 +201,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
               key={link.label + link.href}
               href={link.href}
               className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--site-fg)] hover:bg-transparent hover:text-[var(--site-fg)] active:bg-transparent"
-              onClick={() => setOpen(false)}
+              onClick={(e) => handleNavLinkClick(e, link.href)}
             >
               {link.label}
             </a>
@@ -207,7 +210,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             <a
               href={nav.ctaHref}
               className="mt-2 rounded-md bg-[var(--site-primary)] px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.12em] text-zinc-950 hover:bg-[var(--site-primary)] active:bg-[var(--site-primary)]"
-              onClick={() => setOpen(false)}
+              onClick={(e) => handleNavLinkClick(e, nav.ctaHref!)}
             >
               {nav.ctaLabel}
             </a>
