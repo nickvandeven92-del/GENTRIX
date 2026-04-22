@@ -34,9 +34,8 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
   /**
    * Premium navigatie: <a href> behouden voor SEO/toegankelijkheid/fallback,
    * maar gewone klikken overnemen met JavaScript.
-   * - Anchor-links (#id): sluit menu (100ms wacht) + smooth scroll → geen route-change flash
-   * - Interne paginaLinks: sluit menu (220ms wacht) + router.push() → naadloze fade
-   *   (Timing: drawer-exit-animatie is 200ms CSS + 20ms buffer)
+    * - Anchor-links (#id): sluit menu + smooth scroll
+    * - Interne paginaLinks: direct router.push() voor snappier gevoel
    * - Externe links of modifier-klikken (Ctrl/Cmd/Shift): normaal laten
    */
   function handleNavLinkClick(e: MouseEvent<HTMLAnchorElement>, href: string) {
@@ -46,25 +45,19 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
     if (href.startsWith("#")) {
       e.preventDefault();
       setOpen(false);
-      // Korte delay voor smooth init
-      setTimeout(() => {
-        const id = href.slice(1);
-        const el = document.getElementById(id);
-        el?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+      const id = href.slice(1);
+      const el = document.getElementById(id);
+      el?.scrollIntoView({ behavior: "smooth" });
       return;
     }
 
-    // Interne paginalink: sluit menu EERST, wacht tot animatie klaar is, dan navigeer
+    // Interne paginalink: direct navigeren (geen kunstmatige vertraging)
     try {
       const url = new URL(href, window.location.origin);
       if (url.origin !== window.location.origin) return; // extern → normaal
       e.preventDefault();
       setOpen(false);
-      // Wacht tot drawer-exit animatie voltooid (200ms CSS + 20ms buffer)
-      setTimeout(() => {
-        router.push(href);
-      }, 220);
+      router.push(href);
     } catch {
       // ongeldige URL → normaal
     }
@@ -181,7 +174,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           type="button"
           aria-label="Menu sluiten"
           className={cn(
-            "fixed inset-0 z-40 bg-transparent transition-opacity duration-200 lg:hidden",
+            "fixed inset-0 z-40 bg-black/25 transition-opacity duration-200 lg:hidden",
             menuVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
           )}
           onClick={() => setOpen(false)}
@@ -195,9 +188,9 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
       {menuMounted && (
         <div
           className={cn(
-            "relative z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] lg:hidden",
-            "transition-all duration-200 ease-out",
-            menuVisible ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0",
+            "fixed inset-x-0 top-16 z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] shadow-2xl lg:hidden",
+            "transition-[opacity,transform] duration-200 ease-out will-change-transform",
+            menuVisible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
           )}
           aria-hidden={!menuVisible}
         >

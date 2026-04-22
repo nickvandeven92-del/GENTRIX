@@ -91,6 +91,29 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
   if (!bundle) notFound();
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
+  const shell = (() => {
+    const payload = bundle.payload as unknown as {
+      kind?: string;
+      doc?: { theme?: { background?: string; foreground?: string } };
+      site?: { theme?: { background?: string; foreground?: string } };
+    };
+
+    if (payload.kind === "react") {
+      return {
+        bg: payload.doc?.theme?.background?.trim() || "#ffffff",
+        fg: payload.doc?.theme?.foreground?.trim() || "#171717",
+      };
+    }
+
+    if (payload.kind === "legacy") {
+      return {
+        bg: payload.site?.theme?.background?.trim() || "#ffffff",
+        fg: payload.site?.theme?.foreground?.trim() || "#171717",
+      };
+    }
+
+    return { bg: "#ffffff", fg: "#171717" };
+  })();
   const siteLabel =
     bundle.payload.kind === "tailwind"
       ? bundle.payload.clientName?.trim() || formatSlugForDisplay(slug)
@@ -100,6 +123,16 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
 
   return (
     <>
+      <style>{`
+        :root{
+          --public-site-shell-bg:${shell.bg};
+          --public-site-shell-fg:${shell.fg};
+        }
+        html,body{
+          background:${shell.bg}!important;
+          color:${shell.fg}!important;
+        }
+      `}</style>
       {showFlyer ? (
         <ConceptFlyerExperience
           siteLabel={siteLabel}

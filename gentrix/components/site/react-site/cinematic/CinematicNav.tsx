@@ -200,7 +200,7 @@ export function CinematicNav({
   /**
    * Premium navigatie: <a href> behouden voor SEO/toegankelijkheid,
    * maar klikken overnemen met router.push() → Next.js SPA + View Transitions.
-   * Timing: menu sluiten EERST (220ms drawer-exit), dan navigeren → geen botsen.
+   * Interne routes gaan direct door zonder kunstmatige delay.
    */
   const handleNavLinkClick = useCallback(
     (e: MouseEvent, href: string) => {
@@ -209,12 +209,9 @@ export function CinematicNav({
       if (href.startsWith("#")) {
         e.preventDefault();
         closeMobile();
-        // Korte delay voor smooth scroll init
-        setTimeout(() => {
-          const id = href.slice(1);
-          const el = document.getElementById(id);
-          el?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
+        const id = href.slice(1);
+        const el = document.getElementById(id);
+        el?.scrollIntoView({ behavior: "smooth" });
         return;
       }
 
@@ -223,10 +220,7 @@ export function CinematicNav({
         if (url.origin !== window.location.origin) return;
         e.preventDefault();
         closeMobile();
-        // Wacht tot drawer-exit animatie klaar (200ms CSS + 20ms buffer)
-        setTimeout(() => {
-          router.push(href);
-        }, 220);
+        router.push(href);
       } catch {
         // ongeldige URL → normaal
       }
