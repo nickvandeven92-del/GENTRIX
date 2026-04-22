@@ -179,17 +179,24 @@ export function PublicPublishedTailwind({
         minHeight: "min(72vh, 720px)",
         height: "min(72vh, 720px)",
         border: "none",
-        background: "white",
+        background: "transparent",
         overflow: "auto",
       }
-    : { width: "100%", height: "100%", border: "none", background: "white", display: "block", overflow: "auto" };
+    : {
+        width: "100%",
+        height: "100%",
+        border: "none",
+        background: "transparent",
+        display: "block",
+        overflow: "auto",
+      };
   const shouldShowSkeleton = embedded || showSkeleton;
 
   if (srcDoc === null) {
     return (
       <PublishedTailwindNavBridge>
         <div
-          className={cn("flex min-h-0 w-full flex-1 flex-col bg-white", className)}
+          className={cn("flex min-h-0 w-full flex-1 flex-col bg-transparent", className)}
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
           <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
@@ -197,7 +204,7 @@ export function PublicPublishedTailwind({
             <PublicSitePageSkeleton embedded={embedded} />
           ) : (
             <div
-              className={cn("w-full bg-white", embedded ? "min-h-[min(72vh,720px)]" : "min-h-0 flex-1")}
+              className={cn("w-full bg-transparent", embedded ? "min-h-[min(72vh,720px)]" : "min-h-0 flex-1")}
               role="status"
               aria-live="polite"
               aria-busy="true"
@@ -213,7 +220,7 @@ export function PublicPublishedTailwind({
   return (
     <PublishedTailwindNavBridge>
       <div
-        className={cn("flex min-h-0 w-full flex-1 flex-col bg-white", className)}
+        className={cn("flex min-h-0 w-full flex-1 flex-col bg-transparent", className)}
         style={{ width: "100%", height: embedded ? undefined : "100%" }}
       >
         <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
