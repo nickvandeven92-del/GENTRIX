@@ -5,6 +5,7 @@ import DOMPurify from "isomorphic-dompurify";
 import {
   ALPINE_NAV_TOGGLE_KEYS,
   ensureAlpineMobileOverlayHasLgHidden,
+  convertMobileDrawerToPushDown,
   ensureAlpineMobileToggleButtonHasLgHidden,
   fixAlpineNavToggleDefaultsInXData,
   normalizeStudioHeroDomIdsAndRootMotion,
@@ -1975,7 +1976,13 @@ export function sanitizeTailwindFragment(html: string): string {
     ALLOW_DATA_ATTR: false,
   });
   DOMPurify.removeHook("uponSanitizeAttribute");
-return removeDuplicateAlpineNavScopeInHeader(repairBrokenMobileDrawer(appendImgOnErrorHide(repairHeaderMobileMenuButton(purified))));
+return removeDuplicateAlpineNavScopeInHeader(
+  repairBrokenMobileDrawer(
+    appendImgOnErrorHide(
+      convertMobileDrawerToPushDown(repairHeaderMobileMenuButton(purified)),
+    ),
+  ),
+);
 }
 
 function escapeDataAttr(value: string): string {

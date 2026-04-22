@@ -1,19 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGentrixMenuIconToggle,
+  convertMobileDrawerToPushDown,
   repairHeaderMobileMenuButton,
 } from "@/lib/ai/generate-site-postprocess";
 
 describe("buildGentrixMenuIconToggle", () => {
-  it("bouwt twee-staten toggle met x-show en x-cloak op de X", () => {
+  it("bouwt twee SVG-staten (hamburger + X) met x-show en x-cloak op de X", () => {
     const html = buildGentrixMenuIconToggle("navOpen");
     expect(html).toContain(`x-show="!navOpen"`);
     expect(html).toContain(`x-show="navOpen"`);
     expect(html).toContain("x-cloak");
-    expect(html).toContain("rotate-45");
-    expect(html).toContain("-rotate-45");
     expect(html).toContain("gentrix-menu-icon");
-    expect(html).toContain("bg-current");
+    expect(html).toContain("<svg");
+    expect(html).toContain(`stroke="currentColor"`);
+    // 3 streepjes voor de hamburger + 2 diagonalen voor de X = 5 lines
+    expect((html.match(/<line\b/g) ?? []).length).toBe(5);
+  });
+
+  it("gebruikt geen utility rotate-klassen (bulletproof t.o.v. flex-col parents)", () => {
+    const html = buildGentrixMenuIconToggle("navOpen");
+    expect(html).not.toContain("rotate-45");
+    expect(html).not.toContain("-rotate-45");
   });
 
   it("respecteert de gegeven stateKey", () => {
@@ -40,7 +48,7 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).toContain("gentrix-menu-icon");
     expect(out).toContain(`x-show="!navOpen"`);
     expect(out).toContain(`x-show="navOpen"`);
-    expect(out).toContain("rotate-45");
+    expect(out).toContain("<svg");
     // text-neutral-900 moet *binnen* class="..." op de button landen (niet als bare attribute)
     expect(out).toMatch(/<button\b[^>]*\bclass="[^"]*\btext-neutral-900\b[^"]*"[^>]*>/);
   });
@@ -71,9 +79,32 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).not.toContain("<path");
   });
 
-  it("laat een knop met al-correcte dual-state x-show toggle ongewijzigd", () => {
-    const html = `<header x-data="{ navOpen: false }"><button type="button" class="lg:hidden" aria-label="Menu" @click="navOpen = !navOpen"><span x-show="!navOpen">open</span><span x-show="navOpen" x-cloak>close</span></button></header>`;
+  it("laat een knop met onze eigen gentrix-menu-icon toggle ongewijzigd", () => {
+    const html = `<header x-data="{ navOpen: false }"><button type="button" class="lg:hidden gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen"><span class="gentrix-menu-icon"><svg x-show="!navOpen"></svg><svg x-show="navOpen" x-cloak></svg></span></button></header>`;
     expect(repairHeaderMobileMenuButton(html)).toBe(html);
+  });
+
+  it("vervangt AI-output met losse x-show spans in een flex-col parent (MOSHAM-case)", () => {
+    // Dit is precies de broken AI-output die in mosham.html staat:
+    // 3 bars voor !navOpen + 2 gedraaide bars voor navOpen, binnen een flex flex-col gap-[5px] button.
+    // De twee "X"-spans krijgen door de flex-col geen gedeeld centrum → "| |" i.p.v. een kruis.
+    const html = `<header class="sticky top-0 z-50 bg-[#f5e6cb]" x-data="{ navOpen: false }">
+  <button type="button" class="md:hidden flex flex-col gap-[5px] p-2" aria-label="Menu" @click="navOpen = !navOpen">
+    <span x-show="!navOpen" class="block w-6 h-0.5 bg-[#1c130d]"></span>
+    <span x-show="!navOpen" class="block w-6 h-0.5 bg-[#1c130d]"></span>
+    <span x-show="!navOpen" class="block w-6 h-0.5 bg-[#1c130d]"></span>
+    <span x-show="navOpen" class="block w-6 h-0.5 bg-[#1c130d] rotate-45 translate-y-[7px]"></span>
+    <span x-show="navOpen" class="block w-6 h-0.5 bg-[#1c130d] -rotate-45"></span>
+  </button>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toContain("gentrix-menu-icon");
+    expect(out).toContain("<svg");
+    // Oorspronkelijke kapotte spans met bg-[#1c130d] zijn weg
+    expect(out).not.toContain("bg-[#1c130d]");
+    expect(out).not.toContain("translate-y-[7px]");
+    // Er is nog steeds een @click toggle
+    expect(out).toContain("navOpen = !navOpen");
   });
 
   it("is idempotent: een tweede run verandert niets meer", () => {
@@ -95,5 +126,78 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).toContain(`x-show="!menuOpen"`);
     expect(out).toContain(`x-show="menuOpen"`);
     expect(out).not.toContain("navOpen");
+  });
+});
+
+describe("convertMobileDrawerToPushDown", () => {
+  const MOSHAM_HEADER = `<header class="sticky top-0 z-50 bg-[#f5e6cb] w-full" x-data="{ navOpen: false }">
+  <div class="flex items-center justify-between px-6 py-5 border-b border-[#1c130d]">
+    <a href="#top">MoSham</a>
+    <button type="button" class="md:hidden flex flex-col gap-[5px] p-2" aria-label="Menu" @click="navOpen = !navOpen"></button>
+  </div>
+  <div x-show="navOpen" class="fixed inset-0 bg-[#f5e6cb] z-[70] flex flex-col pt-20 px-8 gap-6 md:hidden lg:hidden">
+    <a href="#a">Home</a>
+    <a href="#b">Contact</a>
+  </div>
+</header>`;
+
+  it("zet een full-screen `fixed inset-0` drawer in de header om naar push-down", () => {
+    const out = convertMobileDrawerToPushDown(MOSHAM_HEADER);
+    expect(out).toContain("gentrix-push-drawer");
+    // Overlay-klassen moeten weg zijn
+    expect(out).not.toMatch(/\bfixed\b/);
+    expect(out).not.toContain("inset-0");
+    expect(out).not.toContain("z-[70]");
+    expect(out).not.toContain("pt-20");
+    // Maar layout/kleur moet behouden blijven
+    expect(out).toContain("bg-[#f5e6cb]");
+    expect(out).toContain("flex flex-col");
+    expect(out).toContain("gap-6");
+    // Mobile-only gate blijft
+    expect(out).toContain("lg:hidden");
+    // Slide-down animatie via x-transition op max-height
+    expect(out).toContain("transition-[max-height,opacity]");
+    expect(out).toContain("max-h-0");
+    expect(out).toContain("max-h-[80vh]");
+    // x-cloak voorkomt flicker voor Alpine-init
+    expect(out).toContain("x-cloak");
+    // Links blijven intact
+    expect(out).toContain(`<a href="#a">Home</a>`);
+  });
+
+  it("is idempotent: tweede run verandert niets meer", () => {
+    const first = convertMobileDrawerToPushDown(MOSHAM_HEADER);
+    const second = convertMobileDrawerToPushDown(first);
+    expect(second).toBe(first);
+  });
+
+  it("laat een drawer die al in-flow is (geen fixed overlay) met rust", () => {
+    const html = `<header x-data="{ navOpen: false }" class="sticky top-0 bg-white">
+  <div class="flex justify-between py-4"><a href="#top">Logo</a><button aria-label="Menu">X</button></div>
+  <div x-show="navOpen" class="lg:hidden bg-white px-4 py-3"><a href="#a">A</a></div>
+</header>`;
+    expect(convertMobileDrawerToPushDown(html)).toBe(html);
+  });
+
+  it("werkt ook voor drawers met menuOpen als state-key", () => {
+    const html = `<header x-data="{ menuOpen: false }" class="sticky top-0 bg-white">
+  <div class="flex justify-between py-4"><a>L</a><button>M</button></div>
+  <div x-show="menuOpen" class="fixed inset-0 bg-white z-50 pt-20 md:hidden"><a href="#a">A</a></div>
+</header>`;
+    const out = convertMobileDrawerToPushDown(html);
+    expect(out).toContain("gentrix-push-drawer");
+    expect(out).not.toContain("fixed");
+    expect(out).toContain(`x-show="menuOpen"`);
+  });
+
+  it("voegt een default verticale padding toe als die na stripping ontbreekt", () => {
+    // Oorspronkelijke drawer gebruikt alleen `pt-20` voor afstand onder de fixed top-bar.
+    // Na stripping moet er *iets* van vertical padding terugkomen.
+    const html = `<header x-data="{ navOpen: false }">
+  <div class="flex"><button>M</button></div>
+  <div x-show="navOpen" class="fixed inset-0 bg-white z-50 pt-20 px-6 md:hidden"><a href="#a">A</a></div>
+</header>`;
+    const out = convertMobileDrawerToPushDown(html);
+    expect(out).toMatch(/\bpy-\d/);
   });
 });

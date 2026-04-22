@@ -415,15 +415,17 @@ const stateKey =
 }
 
 /**
- * Premium hamburger↔X-toggle in dezelfde knop. Gebruikt Alpine `x-show` + `x-transition` met
- * `x-cloak` op de X zodat er voor Alpine-init nooit twee staten tegelijk te zien zijn.
+ * Premium hamburger↔X-toggle in dezelfde knop, als inline SVG.
  *
- * - `bg-current` laat de strepen de tekstkleur van de knop erven (die wordt elders al licht/donker genormaliseerd).
- * - `pointer-events-none` zorgt dat de klik altijd door de binnenste spans heen naar de knop gaat.
- * - Geen `dark:`-varianten: bij lichte header + system-dark kan `dark:bg-*` witte strepen op wit geven.
+ * Waarom SVG in plaats van utility-bars?
+ * - `rotate-45` vereist een parent die centreert op één punt; AI-output heeft vaak een `flex flex-col`
+ *   knop waardoor twee gedraaide spans *naast* elkaar belanden en je geen X krijgt maar "| |".
+ * - SVG is visueel identiek ongeacht de klassen op de button-parent — werkt ook in `flex flex-col gap-x`.
+ * - `stroke="currentColor"` erft de tekstkleur van de knop (die we elders al licht/donker normaliseren).
+ * - `x-cloak` op de X voorkomt flicker vóór Alpine-init.
+ * - `pointer-events-none` stuurt de klik altijd door naar de button.
  */
 export function buildGentrixMenuIconToggle(stateKey: string): string {
-  const bar = "block h-0.5 w-5 rounded-full bg-current";
   const sharedTransition =
     `x-transition:enter="transition ease-out duration-150"` +
     ` x-transition:enter-start="opacity-0 scale-90"` +
@@ -431,31 +433,30 @@ export function buildGentrixMenuIconToggle(stateKey: string): string {
     ` x-transition:leave="transition ease-in duration-100"` +
     ` x-transition:leave-start="opacity-100 scale-100"` +
     ` x-transition:leave-end="opacity-0 scale-90"`;
+  const svgBase =
+    `class="absolute inset-0 h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
   const hamburger =
-    `<span x-show="!${stateKey}" ${sharedTransition} class="absolute inset-0 flex flex-col items-center justify-center gap-[5px]">` +
-    `<span class="${bar}"></span><span class="${bar}"></span><span class="${bar}"></span>` +
-    `</span>`;
+    `<svg x-show="!${stateKey}" ${sharedTransition} ${svgBase} aria-hidden="true">` +
+    `<line x1="4" y1="7" x2="20" y2="7"/>` +
+    `<line x1="4" y1="12" x2="20" y2="12"/>` +
+    `<line x1="4" y1="17" x2="20" y2="17"/>` +
+    `</svg>`;
   const cross =
-    `<span x-show="${stateKey}" x-cloak ${sharedTransition} class="absolute inset-0 flex items-center justify-center">` +
-    `<span class="absolute ${bar} rotate-45"></span>` +
-    `<span class="absolute ${bar} -rotate-45"></span>` +
-    `</span>`;
-  return `<span class="gentrix-menu-icon pointer-events-none relative inline-flex h-5 w-5 items-center justify-center" aria-hidden="true">${hamburger}${cross}</span>`;
+    `<svg x-show="${stateKey}" x-cloak ${sharedTransition} ${svgBase} aria-hidden="true">` +
+    `<line x1="6" y1="6" x2="18" y2="18"/>` +
+    `<line x1="18" y1="6" x2="6" y2="18"/>` +
+    `</svg>`;
+  return `<span class="gentrix-menu-icon pointer-events-none relative inline-flex h-6 w-6 items-center justify-center" aria-hidden="true">${hamburger}${cross}</span>`;
 }
 
 /**
- * Detecteert of de bestaande knop-inhoud al een echte twee-staten-toggle (hamburger ↔ ×) heeft.
- * Criterium: twee of meer `x-show`-expressies die dezelfde `stateKey` referenceren (typisch één
- * voor `${stateKey}` en één voor `!${stateKey}`). Dan laten we 'm met rust.
+ * Detecteert of de bestaande knop-inhoud al onze premium dual-state toggle bevat.
+ * We vertrouwen *alleen* op de `gentrix-menu-icon`-marker — AI-output die er qua
+ * `x-show` op lijkt (losse spans in `flex flex-col` met `rotate-45`) is geen echte X
+ * en moet altijd vervangen worden.
  */
-function innerHasHamburgerXToggle(inner: string, stateKey: string): boolean {
-  const s = inner.replace(/<!--[\s\S]*?-->/g, "");
-  if (/\bgentrix-menu-icon\b/.test(s)) return true;
-  const matches = s.match(/\bx-show\s*=\s*["'][^"']+["']/gi);
-  if (!matches || matches.length < 2) return false;
-  const key = new RegExp(`\\b${escapeRegExpKey(stateKey)}\\b`);
-  const hits = matches.filter((m) => key.test(m));
-  return hits.length >= 2;
+function innerHasHamburgerXToggle(inner: string, _stateKey: string): boolean {
+  return /\bgentrix-menu-icon\b/.test(inner);
 }
 
 function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
@@ -567,6 +568,128 @@ export function repairHeaderMobileMenuButton(html: string): string {
   // Voorbeeld: sanitizer stripte zowel x-data als x-show — de @click werkt anders niet (Alpine-scope miss).
   const repaired = !/\bx-data\s*=/i.test(probe) ? injectNavStateScope(next, stateKey) : next;
   return html.slice(0, hm.index) + repaired + html.slice(hm.index + fullHeader.length);
+}
+
+/**
+ * Zet de mobiele drawer binnen de sticky <header> om naar een "push-down"-paneel à la Vugts Makelaardij:
+ *  - Logo blijft altijd zichtbaar (de header is sticky).
+ *  - Drawer is *in-flow* onder de top-bar, geen fixed overlay meer.
+ *  - Open → header wordt hoger → hero eronder schuift vloeiend naar beneden.
+ *  - Soepele slide-down via `x-transition` op `max-height` + `opacity` (werkt met Tailwind Play CDN).
+ *
+ * Alleen drawers die er nu als full-screen overlay uitzien (`fixed` + `inset-0` / `h-screen` /
+ * `min-h-screen` / hoge z-index) worden omgezet. Drawers die al in-flow zijn of reeds de
+ * `gentrix-push-drawer`-marker hebben laten we met rust (idempotent).
+ *
+ * Rationale: pure AI-output plaatst vrijwel altijd `<div x-show="navOpen" class="fixed inset-0 ...">`
+ * als kind van de header. Dat dekt het hele scherm af → logo valt weg, hero wordt niet geduwd.
+ */
+export function convertMobileDrawerToPushDown(html: string): string {
+  const headerRe = /<header\b[^>]*>[\s\S]*?<\/header>/i;
+  const hm = html.match(headerRe);
+  if (!hm || hm.index === undefined) return html;
+  const fullHeader = hm[0];
+
+  const drawerOpenRe =
+    /<(div|nav|aside)(\b[^>]*\bx-show\s*=\s*["'][^"']*\b(?:navOpen|menuOpen|mobileOpen|menuVisible|mobileMenuOpen|drawerOpen|sheetOpen)\b[^"']*["'][^>]*)>/gi;
+
+  const next = fullHeader.replace(drawerOpenRe, (full, tag: string, attrs: string) => {
+    const clsM = /\bclass\s*=\s*(["'])([^"']*)\1/i.exec(attrs);
+    if (!clsM) return full;
+    const quote = clsM[1];
+    const cls = clsM[2];
+
+    if (/\bgentrix-push-drawer\b/.test(cls)) return full;
+
+    const isOverlay =
+      /\bfixed\b/.test(cls) &&
+      (/\binset-0\b/.test(cls) ||
+        /\binset-x-0\b/.test(cls) ||
+        /\bh-screen\b/.test(cls) ||
+        /\bh-full\b/.test(cls) ||
+        /\bmin-h-screen\b/.test(cls) ||
+        /\btop-(?:0|16|20|24|28)\b/.test(cls) ||
+        /\bz-\[[5-9]\d\]\b/.test(cls) ||
+        /\bz-(?:40|50|60|70|80|90)\b/.test(cls));
+    if (!isOverlay) return full;
+
+    // Twee patronen die er oppervlakkig als "fixed + inset" uitzien maar géén push-down-drawer zijn:
+    //  1. Een transparante backdrop (`bg-black/60`, blur etc.) — hoort bovenop de side-drawer te blijven.
+    //  2. Een side-drawer (slide-in from right/left) met vaste breedte (`w-72`, `w-[320px]`).
+    // Die laten we onaangeraakt; de bestaande `repairBrokenMobileDrawer` regelt daar de Alpine-wiring.
+    const looksLikeBackdrop =
+      /\bbg-black\/\d/.test(cls) ||
+      /\bbg-(?:slate|zinc|neutral|gray|stone)-9\d\d\/\d/.test(cls) ||
+      /\bbackdrop-(?:blur|brightness|saturate)\b/.test(cls);
+    const looksLikeSideDrawer =
+      /\b(?:left-0|right-0)\b/.test(cls) &&
+      (/\bw-\d/.test(cls) || /\bw-\[/.test(cls) || /\bmax-w-(?:xs|sm|md|\[)/.test(cls));
+    if (looksLikeBackdrop || looksLikeSideDrawer) return full;
+
+    // Strip alle klassen die 'm tot full-screen overlay maken — behoud kleur/layout/spacing.
+    let stripped = cls
+      .replace(/\bfixed\b/g, "")
+      .replace(/\binset-0\b/g, "")
+      .replace(/\binset-x-0\b/g, "")
+      .replace(/\binset-y-0\b/g, "")
+      .replace(/\btop-(?:0|4|8|12|16|20|24|28|32)\b/g, "")
+      .replace(/\bleft-0\b/g, "")
+      .replace(/\bright-0\b/g, "")
+      .replace(/\bbottom-0\b/g, "")
+      .replace(/\bh-screen\b/g, "")
+      .replace(/\bh-full\b/g, "")
+      .replace(/\bmin-h-screen\b/g, "")
+      .replace(/\bz-\[\d+\]/g, "")
+      .replace(/\bz-(?:10|20|30|40|50|60|70|80|90)\b/g, "")
+      // `pt-20/24` was vaak bedoeld om onder de fixed top-bar weg te duiken — niet meer nodig.
+      .replace(/\bpt-(?:16|20|24|28|32)\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Zorg dat de drawer op desktop verborgen blijft.
+    if (!/\b(?:md|lg|sm|xl|2xl):hidden\b/.test(stripped)) {
+      stripped = `${stripped} lg:hidden`;
+    }
+    // `overflow-hidden` crop voor de max-height-animatie.
+    if (!/\boverflow-hidden\b/.test(stripped)) {
+      stripped = `${stripped} overflow-hidden`;
+    }
+    // Verticale padding toevoegen als de oorspronkelijke pt-20 weggehaald is en er niets anders staat.
+    const hasVerticalPadding =
+      /\bpy-\d/.test(stripped) ||
+      /\bpt-\d/.test(stripped) ||
+      /\bpb-\d/.test(stripped) ||
+      /\bp-\d+\b/.test(stripped);
+    if (!hasVerticalPadding) {
+      stripped = `${stripped} py-4`;
+    }
+
+    const newCls = `gentrix-push-drawer ${stripped}`.replace(/\s+/g, " ").trim();
+
+    let nextAttrs = attrs.replace(
+      /\bclass\s*=\s*(["'])[^"']*\1/i,
+      `class=${quote}${newCls}${quote}`,
+    );
+
+    if (!/\bx-transition\b/.test(nextAttrs)) {
+      nextAttrs =
+        nextAttrs +
+        ` x-transition:enter="transition-[max-height,opacity] ease-out duration-300 motion-reduce:transition-none"` +
+        ` x-transition:enter-start="max-h-0 opacity-0"` +
+        ` x-transition:enter-end="max-h-[80vh] opacity-100"` +
+        ` x-transition:leave="transition-[max-height,opacity] ease-in duration-200 motion-reduce:transition-none"` +
+        ` x-transition:leave-start="max-h-[80vh] opacity-100"` +
+        ` x-transition:leave-end="max-h-0 opacity-0"`;
+    }
+    if (!/\bx-cloak\b/.test(nextAttrs)) {
+      nextAttrs = ` x-cloak${nextAttrs}`;
+    }
+
+    return `<${tag}${nextAttrs}>`;
+  });
+
+  if (next === fullHeader) return html;
+  return html.slice(0, hm.index) + next + html.slice(hm.index + fullHeader.length);
 }
 
 /**
@@ -1450,7 +1573,8 @@ export function postProcessClaudeTailwindPage(
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
     const html2c0 = repairBrokenMobileDrawer(html2b);
-    const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0);
+    const html2c0b = convertMobileDrawerToPushDown(html2c0);
+    const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0b);
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html2d = stripStudioMarqueeMarkupFromHtml(html2c);
