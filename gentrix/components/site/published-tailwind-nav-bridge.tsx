@@ -21,17 +21,10 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
 
   const closeBookingModal = useCallback(() => setBookingModalSrc(null), []);
 
-  /** Soft-navigeer met optionele View Transitions fade. */
   const softNavigate = useCallback(
     (href: string) => {
       const pathname = new URL(href).pathname + new URL(href).search + new URL(href).hash;
-      if (typeof document !== "undefined" && "startViewTransition" in document) {
-        document.startViewTransition(() => {
-          router.push(pathname);
-        });
-      } else {
-        router.push(pathname);
-      }
+      router.push(pathname);
     },
     [router],
   );

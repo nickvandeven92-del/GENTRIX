@@ -18,26 +18,10 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
     <>
       {/* Inline override: voorkomt donkere body-achtergrond op apparaten met dark mode */}
       <style>{`
-        :root{
-          --public-site-shell-bg:#08081a; /* donkere shell = geen witte flits tijdens view-transitie */
-          --public-site-shell-fg:#ededed;
-        }
-        html,body{
-          background:var(--public-site-shell-bg)!important;
-          color:var(--public-site-shell-fg)!important;
-        }
+        body{background:#fff!important;color:#171717!important}
         a,button,[role="button"],summary{
           -webkit-tap-highlight-color:transparent;
           tap-highlight-color:transparent;
-        }
-
-        @view-transition {
-          navigation: auto;
-        }
-
-        @supports (view-transition-name: none) {
-          ::view-transition-old(root) { animation: none; }
-          ::view-transition-new(root) { animation: none; }
         }
       `}</style>
       {children}

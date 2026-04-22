@@ -1,15 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    /**
-     * Wraps elke client-navigatie automatisch in `document.startViewTransition()`.
-     * Gecombineerd met de `::view-transition-*` CSS in `site/[slug]/layout.tsx` en het
-     * verwijderen van `loading.tsx` geeft dit naadloze page-swaps: oude pagina blijft
-     * zichtbaar (browser houdt screenshot vast) tot RSC klaar is, dan fade-over.
-     */
-    viewTransition: true,
-  },
   async rewrites() {
     return {
       /** Vite SPA onder `public/booking-app` — client-routes (`/booking-app/book/…`) naar index.html. */
