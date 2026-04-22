@@ -3,12 +3,14 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import type { ReactSiteSection } from "@/lib/site/react-site-schema";
 import { CinematicNavMenuEntries } from "@/components/site/react-site/cinematic/cinematic-nav-menu";
@@ -50,14 +52,37 @@ function useBodyScrollLock(locked: boolean) {
 function MobileNavDrawer({
   open,
   onClose,
+  onLinkClick,
   children,
   variant,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Intercepteert klikken op <a href> in het drawer via event-delegatie. */
+  onLinkClick?: (e: MouseEvent, href: string) => void;
   children: ReactNode;
   variant: "floating" | "bar_light" | "bar_dark";
 }) {
+  // Twee-fase mounting: gemount houden tijdens exit-animatie
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      // Double RAF: geeft browser tijd om het element te renderen vóór de transitie start
+      const id = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setVisible(true)),
+      );
+      return () => cancelAnimationFrame(id);
+    } else {
+      setVisible(false);
+      const t = setTimeout(() => setMounted(false), 220);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
   useBodyScrollLock(open);
 
   useEffect(() => {
@@ -69,7 +94,22 @@ function MobileNavDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  // Event-delegatie: intercept <a href> klikken in de nav
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || !onLinkClick) return;
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as Element).closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href) return;
+      onLinkClick(e, href);
+    };
+    nav.addEventListener("click", handler);
+    return () => nav.removeEventListener("click", handler);
+  }, [onLinkClick]);
+
+  if (!mounted || typeof document === "undefined") return null;
 
   const backdrop =
     variant === "bar_light"
@@ -92,16 +132,25 @@ function MobileNavDrawer({
 
   const ui = (
     <div className="pointer-events-auto">
+      {/* Backdrop: fade in/out */}
       <button
         type="button"
-        className={cn("fixed inset-0 z-[200]", backdrop)}
+        className={cn(
+          "fixed inset-0 z-[200] transition-opacity duration-200",
+          backdrop,
+          visible ? "opacity-100" : "opacity-0",
+        )}
+        style={{ pointerEvents: visible ? undefined : "none" }}
         aria-label="Menu sluiten"
         onClick={onClose}
       />
+      {/* Sheet: slide in from right */}
       <div
         className={cn(
           "fixed inset-y-0 right-0 z-[210] flex w-[min(100vw-2.5rem,18rem)] flex-col gap-4 border-l p-5 pt-6 shadow-2xl",
+          "transition-transform duration-200 ease-out",
           sheet,
+          visible ? "translate-x-0" : "translate-x-full",
         )}
       >
         <div className="flex items-center justify-between gap-2">
@@ -110,14 +159,17 @@ function MobileNavDrawer({
             <X className="size-5" strokeWidth={2} aria-hidden />
           </button>
         </div>
-        <nav className="flex flex-col gap-1 overflow-y-auto overscroll-contain" aria-label="Mobiel menu">
+        <nav
+          ref={navRef}
+          className="flex flex-col gap-1 overflow-y-auto overscroll-contain"
+          aria-label="Mobiel menu"
+        >
           {children}
         </nav>
       </div>
     </div>
   );
 
-  if (typeof document === "undefined") return null;
   return createPortal(ui, document.body);
 }
 
@@ -142,6 +194,37 @@ export function CinematicNav({
   const mobileMenuOpen = mobileOpen && !lgUp;
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const router = useRouter();
+
+  /**
+   * Premium navigatie: <a href> behouden voor SEO/toegankelijkheid,
+   * maar klikken overnemen met router.push() → Next.js SPA + View Transitions.
+   */
+  const handleNavLinkClick = useCallback(
+    (e: MouseEvent, href: string) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
+      if (href.startsWith("#")) {
+        e.preventDefault();
+        closeMobile();
+        const id = href.slice(1);
+        const el = document.getElementById(id);
+        el?.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+        e.preventDefault();
+        closeMobile();
+        router.push(href);
+      } catch {
+        // ongeldige URL → normaal
+      }
+    },
+    [closeMobile, router],
+  );
 
   useEffect(() => {
     if (barStyle !== "floating") return;
@@ -184,9 +267,6 @@ export function CinematicNav({
           ? "[&_a]:!text-zinc-100 [&_summary]:!text-zinc-100 [&_details]:border-white/20"
           : "[&_a]:!text-zinc-900 [&_summary]:!text-zinc-800 [&_details]:border-zinc-200/90",
       )}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest("a")) closeMobile();
-      }}
     >
       {node}
     </div>
@@ -226,7 +306,7 @@ export function CinematicNav({
         </div>
         {/* Only render mobile drawer on mobile */}
         {!lgUp && (
-          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_light">
+          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_light">
             {mobileLinkWrap(
               <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />,
               "light",
@@ -271,7 +351,7 @@ export function CinematicNav({
         </div>
         {/* Only render mobile drawer on mobile */}
         {!lgUp && (
-          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="bar_dark">
+          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_dark">
             {mobileLinkWrap(
               <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />,
               "dark",
@@ -337,7 +417,7 @@ export function CinematicNav({
       </MotionNavShell>
       {/* Only render mobile drawer on mobile */}
       {!lgUp && (
-        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} variant="floating">
+        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="floating">
           {mobileLinkWrap(
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />,
             "dark",

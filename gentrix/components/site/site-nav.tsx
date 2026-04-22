@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import type { GeneratedSite, SiteNavigation } from "@/lib/ai/generated-site-schema";
 import { SiteRemoteImage } from "@/components/site/site-remote-image";
@@ -24,8 +25,41 @@ function defaultNav(site: GeneratedSite): SiteNavigation {
 
 export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishedSlug?: string | null }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const nav = site.navigation ?? defaultNav(site);
   const logoHomeHref = resolvePublishedStudioHref(STUDIO_SITE_BASE_PLACEHOLDER, publishedSlug) || "#top";
+
+  /**
+   * Premium navigatie: <a href> behouden voor SEO/toegankelijkheid/fallback,
+   * maar gewone klikken overnemen met JavaScript.
+   * - Anchor-links (#id): sluit menu + smooth scroll → geen route-change flash
+   * - Interne paginaLinks: router.push() → Next.js SPA + View Transitions API (naadloze fade)
+   * - Externe links of modifier-klikken (Ctrl/Cmd/Shift): normaal laten
+   */
+  function handleNavLinkClick(e: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
+    // Anchor-link: smooth scroll, geen navigatie
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      setOpen(false);
+      const id = href.slice(1);
+      const el = document.getElementById(id);
+      el?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    // Interne paginalink: use SPA-router zodat View Transitions actief zijn
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) return; // extern → normaal
+      e.preventDefault();
+      setOpen(false);
+      router.push(href);
+    } catch {
+      // ongeldige URL → normaal
+    }
+  }
 
   // Sluit menu bij resize; zelfde breakpoint als lg: (tablet krijgt hamburger tot 1024px)
   useEffect(() => {
@@ -91,6 +125,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
               key={link.label + link.href}
               href={link.href}
               className="rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--site-fg)]/75 transition hover:bg-[var(--site-fg)]/5 hover:text-[var(--site-fg)]"
+              onClick={(e) => handleNavLinkClick(e, link.href)}
             >
               {link.label}
             </a>
@@ -99,6 +134,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             <a
               href={nav.ctaHref}
               className="ml-2 rounded-md bg-[var(--site-primary)] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-950 shadow-md transition hover:opacity-95"
+              onClick={(e) => handleNavLinkClick(e, nav.ctaHref!)}
             >
               {nav.ctaLabel}
             </a>
@@ -115,28 +151,37 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           {open ? <X className="size-6" strokeWidth={2} /> : <Menu className="size-6" strokeWidth={2} />}
         </button>
       </div>
-      {open && (
-        <button
-          type="button"
-          aria-label="Menu sluiten"
-          className="fixed inset-0 z-40 bg-transparent lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
+      {/* Backdrop — alleen zichtbaar als menu open is */}
+      <button
+        type="button"
+        aria-label="Menu sluiten"
+        className={cn(
+          "fixed inset-0 z-40 bg-transparent transition-opacity duration-200 lg:hidden",
+          open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={() => setOpen(false)}
+      />
 
+      {/*
+       * Mobile drawer — altijd in de DOM, zichtbaar via opacity + translate transitie.
+       * `hidden` verwijdert het element instant; max-h + overflow-hidden laat CSS animeren.
+       * Transitie: 180ms cubic-ease voelt premium aan zonder traag te zijn.
+       */}
       <div
         className={cn(
-          "relative z-50 border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] px-4 py-4 lg:hidden",
-          open ? "block" : "hidden",
+          "relative z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] lg:hidden",
+          "transition-all duration-200 ease-out",
+          open ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0",
         )}
+        aria-hidden={!open}
       >
-        <nav className="flex flex-col gap-1" aria-label="Mobiel menu">
+        <nav className="flex flex-col gap-1 px-4 py-4" aria-label="Mobiel menu">
           {nav.links.map((link) => (
             <a
               key={link.label + link.href}
               href={link.href}
               className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--site-fg)] hover:bg-transparent hover:text-[var(--site-fg)] active:bg-transparent"
-              onClick={() => setOpen(false)}
+              onClick={(e) => handleNavLinkClick(e, link.href)}
             >
               {link.label}
             </a>
@@ -145,7 +190,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
             <a
               href={nav.ctaHref}
               className="mt-2 rounded-md bg-[var(--site-primary)] px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.12em] text-zinc-950 hover:bg-[var(--site-primary)] active:bg-[var(--site-primary)]"
-              onClick={() => setOpen(false)}
+              onClick={(e) => handleNavLinkClick(e, nav.ctaHref!)}
             >
               {nav.ctaLabel}
             </a>
