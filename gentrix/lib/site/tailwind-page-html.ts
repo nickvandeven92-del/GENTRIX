@@ -1196,7 +1196,8 @@ html[data-gentrix-scroll-nav-fallback="1"] body {
  */
 html[data-gentrix-scroll-nav-fallback="1"] section#hero [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
 html[data-gentrix-scroll-nav-fallback="1"] #hero [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type [class*="absolute"][class*="bg-gradient"][class*="w-1/2"] {
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type [class*="absolute"][class*="bg-gradient"][class*="w-1/2"] {
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
@@ -1204,7 +1205,8 @@ html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type [class*=
 }
 html[data-gentrix-scroll-nav-fallback="1"] section#hero,
 html[data-gentrix-scroll-nav-fallback="1"] #hero,
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type {
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type {
   overflow-x: clip !important;
 }
 header[data-gentrix-scroll-nav="1"],
@@ -1246,7 +1248,11 @@ html[data-gentrix-scroll-nav-fallback="1"] nav[class*="fixed"][class*="top-0"]:n
 html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type,
 html[data-gentrix-scroll-nav-fallback="1"] body > nav:first-of-type,
 html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > nav:first-of-type {
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > nav:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > nav:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > nav:first-of-type {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -1468,7 +1474,10 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       if(!shouldTreatAsGentrixScrollNavTarget(el))continue;
       return el;
     }
-    var hard=document.querySelector("body > header:first-of-type, body > nav:first-of-type, body > section:first-of-type > header:first-of-type, body > section:first-of-type > nav:first-of-type");
+    var hard=document.querySelector(
+      "body > header:first-of-type, body > nav:first-of-type, body > section:first-of-type > header:first-of-type, body > section:first-of-type > nav:first-of-type," +
+      ".gentrix-published-root > header:first-of-type, .gentrix-published-root > nav:first-of-type, .gentrix-published-root > section:first-of-type > header:first-of-type, .gentrix-published-root > section:first-of-type > nav:first-of-type"
+    );
     if(hard&&hard.tagName){
       return hard;
     }
