@@ -54,41 +54,107 @@ type Props = {
 };
 
 /**
- * Probeert een nav-link href te matchen aan een pagina-ID uit de editor.
- * Geeft null terug als de link niet naar een bekende pagina wijst.
+ * Synoniemen die ook server-side gebruikt worden in `matchCanonicalMarketingPageKey`.
+ * Clientside gedupliceerd om geen server-only module te importeren in deze "use client".
  */
-function resolveNavHrefToPageId(href: string, pages: PortalEditorPage[]): string | null {
-  let path = href.trim();
-  try {
-    if (/^https?:\/\//i.test(path)) path = new URL(path).pathname;
-  } catch {
-    /* ignore */
-  }
-  path = (path.split("?")[0] ?? "").split("#")[0] ?? "";
+const MARKETING_PAGE_SLUG_SYNONYMS: Record<string, readonly string[]> = {
+  assortiment: ["collectie"],
+  catalogus: ["collectie"],
+  aanbod: ["collectie"],
+  shop: ["collectie"],
+  producten: ["collectie"],
+  diensten: ["wat-wij-doen"],
+  services: ["wat-wij-doen"],
+  methode: ["werkwijze"],
+  procedure: ["werkwijze"],
+  about: ["over-ons"],
+  overons: ["over-ons"],
+  veelgestelde: ["faq"],
+  veelgesteldevragen: ["faq"],
+  help: ["faq"],
+  retour: ["service-retour"],
+  garantie: ["service-retour"],
+};
 
-  if (!path || path === "/") {
-    return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
-  }
+function slugifySegment(value: string): string {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
-  const seg = (path.split("/").filter(Boolean)[0] ?? "").toLowerCase();
-  if (!seg) return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
+/** Resolveert één slug/fragment naar een editor-pagina (marketing of contact). */
+function findPageIdForSegment(seg: string, pages: PortalEditorPage[]): string | null {
+  if (!seg) return null;
 
   if (seg === "contact") {
     return pages.find((p) => p.id.startsWith("contact:") || p.id === "contact")?.id ?? null;
   }
 
-  const slugify = (s: string) =>
-    s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const direct = pages.find((p) => {
+    if (p.id.startsWith("marketing:")) {
+      const key = (p.id.split(":")[1] ?? "").toLowerCase();
+      return key === seg || slugifySegment(p.label) === seg;
+    }
+    return slugifySegment(p.label) === seg;
+  });
+  if (direct) return direct.id;
 
-  return (
-    pages.find((p) => {
-      if (p.id.startsWith("marketing:")) {
-        const key = (p.id.split(":")[1] ?? "").toLowerCase();
-        return key === seg || slugify(p.label) === seg;
+  // Synoniem-fallback: `diensten` → marketing:wat-wij-doen, etc.
+  const synonymTargets =
+    MARKETING_PAGE_SLUG_SYNONYMS[seg] ??
+    MARKETING_PAGE_SLUG_SYNONYMS[seg.replace(/-/g, "")] ??
+    [];
+  for (const target of synonymTargets) {
+    const match = pages.find((p) => {
+      if (!p.id.startsWith("marketing:")) return false;
+      const key = (p.id.split(":")[1] ?? "").toLowerCase();
+      return key === target || slugifySegment(p.label) === target;
+    });
+    if (match) return match.id;
+  }
+  return null;
+}
+
+/**
+ * Probeert een nav-link href te matchen aan een pagina-ID uit de editor.
+ * Accepteert zowel pad-links (`/diensten`) als hash-links (`#diensten`), en
+ * absolute URL's. Geeft null terug als de link niet naar een bekende pagina wijst.
+ */
+function resolveNavHrefToPageId(href: string, pages: PortalEditorPage[]): string | null {
+  let working = href.trim();
+  if (!working) return null;
+
+  let fragment = "";
+  try {
+    if (/^https?:\/\//i.test(working)) {
+      const u = new URL(working);
+      fragment = u.hash && u.hash.length > 1 ? decodeURIComponent(u.hash.slice(1)) : "";
+      working = u.pathname || "/";
+    } else {
+      const hashIdx = working.indexOf("#");
+      if (hashIdx >= 0) {
+        fragment = decodeURIComponent(working.slice(hashIdx + 1));
+        working = working.slice(0, hashIdx);
       }
-      return slugify(p.label) === seg;
-    })?.id ?? null
-  );
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const path = (working.split("?")[0] ?? "").trim();
+
+  // Hash-only: `#contact`, `#diensten`, …
+  if (!path || path === "/") {
+    if (fragment) {
+      const hit = findPageIdForSegment(slugifySegment(fragment), pages);
+      if (hit) return hit;
+      if (!path) return null; // hash zonder match → laat normale scroll doorgaan
+    }
+    return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
+  }
+
+  const seg = slugifySegment(path.split("/").filter(Boolean)[0] ?? "");
+  if (!seg) return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
+
+  return findPageIdForSegment(seg, pages);
 }
 
 function escapeAttr(value: string): string {
@@ -642,11 +708,14 @@ export function PortalVisualSiteEditor({
       // Al in een actieve contenteditable → niets doen
       if (target.closest('[contenteditable="true"]')) return;
 
-      // Nav-link → wissel van pagina in de editor
+      // Nav-link → wissel van pagina in de editor. Ook hash-fragmenten (`#diensten`,
+      // `#over-ons`) worden meegenomen, omdat de AI-postprocess cross-page links op de
+      // homepage vaak herschrijft naar in-page hashes. Als het fragment geen bekende
+      // editor-pagina matcht, laten we de default (scroll) gewoon doorgaan.
       const navLink = target.closest("nav a[href], header a[href], [role='navigation'] a[href]") as HTMLAnchorElement | null;
       if (navLink) {
         const href = navLink.getAttribute("href") ?? "";
-        if (href && !/^(mailto:|tel:|javascript:|#)/i.test(href)) {
+        if (href && !/^(mailto:|tel:|javascript:)/i.test(href)) {
           const targetPageId = resolveNavHrefToPageId(href, pages);
           if (targetPageId && targetPageId !== selectedPageId) {
             event.preventDefault();
@@ -1211,28 +1280,19 @@ export function PortalVisualSiteEditor({
           </div>
         ) : null}
 
-        {/* ── Pagina-tabs + scan-info ── */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 bg-zinc-50/60 px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/60 sm:px-6">
-          {pages.map((page) => {
-            const active = page.id === selectedPageId;
-            return (
-              <button
-                key={page.id}
-                type="button"
-                disabled={switchingPage || saving}
-                onClick={() => void onSelectPage(page.id)}
-                className={[
-                  "rounded-full border px-3 py-1 text-sm font-medium transition",
-                  active
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                    : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
-                ].join(" ")}
-              >
-                {page.label}
-              </button>
-            );
-          })}
-          <span className="ml-auto text-xs text-zinc-400 dark:text-zinc-500">
+        {/* ── Huidige pagina + scan-info ── */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 bg-zinc-50/60 px-4 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-900/60 sm:px-6">
+          <span className="text-zinc-500 dark:text-zinc-400">
+            Pagina:{" "}
+            <span className="font-medium text-zinc-900 dark:text-zinc-100">
+              {currentPage?.label ?? "—"}
+            </span>
+          </span>
+          <span className="hidden text-zinc-300 dark:text-zinc-700 sm:inline">·</span>
+          <span className="text-zinc-400 dark:text-zinc-500">
+            Klik op een menulink in de preview om naar een andere pagina te gaan
+          </span>
+          <span className="ml-auto text-zinc-400 dark:text-zinc-500">
             {scanStats
               ? `${scanStats.text} tekstvlakken · ${scanStats.images} afbeeldingen`
               : "Scan bezig…"}
