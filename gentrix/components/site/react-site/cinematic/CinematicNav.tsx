@@ -50,12 +50,23 @@ function useBodyScrollLock(locked: boolean) {
   }, [locked]);
 }
 
+/**
+ * Premium mobiele menu-sheet: valt **onder de navbar** open over de volle breedte
+ * (Vugts/Apple-patroon). Geen zijdelingse drawer meer — dat oogt te zwaar.
+ *
+ * - `topOffset` = onderkant van de zichtbare navbar (gemeten vanaf top van viewport).
+ * - Sheet: transform van `-translate-y-full` naar `translate-y-0` (glijdt neer), met
+ *   subtiele opacity-fade en cubic-bezier easing voor rustige, dure beweging.
+ * - Backdrop: begint net onder de navbar zodat het logo/sluit-kruis zichtbaar blijft.
+ * - Hamburger-knop in de navbar toggelt al naar een X → geen extra X in de sheet.
+ */
 function MobileNavDrawer({
   open,
   onClose,
   onLinkClick,
   children,
   variant,
+  topOffset,
 }: {
   open: boolean;
   onClose: () => void;
@@ -63,6 +74,8 @@ function MobileNavDrawer({
   onLinkClick?: (e: MouseEvent, href: string) => void;
   children: ReactNode;
   variant: "floating" | "bar_light" | "bar_dark";
+  /** Pixel-afstand tussen viewport-top en onderrand van de navbar. */
+  topOffset: number;
 }) {
   // Twee-fase mounting: gemount houden tijdens exit-animatie
   const [mounted, setMounted] = useState(open);
@@ -79,7 +92,7 @@ function MobileNavDrawer({
       return () => cancelAnimationFrame(id);
     } else {
       setVisible(false);
-      const t = setTimeout(() => setMounted(false), 220);
+      const t = setTimeout(() => setMounted(false), 320);
       return () => clearTimeout(t);
     }
   }, [open]);
@@ -114,55 +127,48 @@ function MobileNavDrawer({
 
   const backdrop =
     variant === "bar_light"
-      ? "bg-black/40"
+      ? "bg-zinc-900/25"
       : variant === "bar_dark"
         ? "bg-black/55"
-        : "bg-black/50";
+        : "bg-black/45";
 
   const sheet =
     variant === "bar_light"
-      ? "border-l border-zinc-200 bg-white text-zinc-900"
+      ? "border-b border-zinc-200 bg-white/97 text-zinc-900 shadow-[0_30px_60px_-24px_rgba(15,23,42,0.25)] backdrop-blur-md"
       : variant === "bar_dark"
-        ? "border-l border-white/10 bg-zinc-950 text-white"
-        : "border-l border-white/15 bg-zinc-950 text-white backdrop-blur-md";
+        ? "border-b border-white/10 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 text-white shadow-[0_30px_60px_-24px_rgba(0,0,0,0.6)]"
+        : "border-b border-white/12 bg-zinc-950/95 text-white backdrop-blur-md shadow-[0_30px_60px_-24px_rgba(0,0,0,0.6)]";
 
-  const closeBtnClass =
-    variant === "bar_light"
-      ? "rounded-lg p-2 text-zinc-900 hover:bg-zinc-100"
-      : "rounded-lg p-2 text-white hover:bg-white/15";
+  // Sheet + backdrop starten exact onder de navbar.
+  const topStyle: CSSProperties = { top: `${topOffset}px` };
 
   const ui = (
     <div className="pointer-events-auto">
-      {/* Backdrop: fade in/out */}
+      {/* Backdrop: fade in/out, alleen onder de navbar */}
       <button
         type="button"
         className={cn(
-          "fixed inset-0 z-[200] transition-opacity duration-200",
+          "fixed inset-x-0 bottom-0 z-[200] transition-opacity duration-[260ms] ease-out",
           backdrop,
           visible ? "opacity-100" : "opacity-0",
         )}
-        style={{ pointerEvents: visible ? undefined : "none" }}
+        style={{ ...topStyle, pointerEvents: visible ? undefined : "none" }}
         aria-label="Menu sluiten"
         onClick={onClose}
       />
-      {/* Sheet: slide in from right */}
+      {/* Sheet: glijdt neer vanonder de navbar */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-[210] flex w-[min(100vw-2.5rem,18rem)] flex-col gap-4 border-l p-5 pt-6 shadow-2xl",
-          "transition-transform duration-200 ease-out",
+          "fixed inset-x-0 z-[210] overflow-hidden",
+          "transition-[transform,opacity] duration-[320ms] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] will-change-transform",
           sheet,
-          visible ? "translate-x-0" : "translate-x-full",
+          visible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0",
         )}
+        style={{ ...topStyle, maxHeight: `calc(100dvh - ${topOffset}px)` }}
       >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold tracking-tight">Menu</span>
-          <button type="button" className={closeBtnClass} aria-label="Menu sluiten" onClick={onClose}>
-            <X className="size-5" strokeWidth={2} aria-hidden />
-          </button>
-        </div>
         <nav
           ref={navRef}
-          className="flex flex-col gap-1 overflow-y-auto overscroll-contain"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-8 pt-5 sm:px-6 sm:pt-6"
           aria-label="Mobiel menu"
         >
           {children}
@@ -196,6 +202,33 @@ export function CinematicNav({
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const router = useRouter();
+
+  /**
+   * Mobiele sheet valt open **onder de navbar** — Vugts/Apple-patroon. Meet daarom
+   * de exacte onderkant van de navbar (verschilt per variant én per breakpoint:
+   * sticky balk ≈ 68px, floating pill + top-padding ≈ 86–98px).
+   */
+  const headerRef = useRef<HTMLElement>(null);
+  const [topOffset, setTopOffset] = useState(0);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setTopOffset(Math.max(0, Math.round(rect.bottom)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    // scroll kan elevatie veranderen → rand verschuift minimaal, maar padding ~constant
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [barStyle]);
 
   /**
    * Premium navigatie: <a href> behouden voor SEO/toegankelijkheid,
@@ -264,10 +297,10 @@ export function CinematicNav({
   const mobileLinkWrap = (node: ReactNode, drawerTone: "light" | "dark") => (
     <div
       className={cn(
-        "contents [&_a]:block [&_a]:rounded-lg [&_a]:px-3 [&_a]:py-2.5 [&_a]:text-sm [&_a]:font-medium [&_details]:rounded-lg [&_details]:border [&_details]:p-2",
+        "contents [&_a]:block [&_a]:rounded-xl [&_a]:px-4 [&_a]:py-3.5 [&_a]:text-[15px] [&_a]:font-medium [&_a]:tracking-tight [&_a]:transition-colors [&_details]:rounded-xl [&_details]:border [&_details]:p-2",
         drawerTone === "dark"
-          ? "[&_a]:!text-zinc-100 [&_summary]:!text-zinc-100 [&_details]:border-white/20"
-          : "[&_a]:!text-zinc-900 [&_summary]:!text-zinc-800 [&_details]:border-zinc-200/90",
+          ? "[&_a]:!text-zinc-100 [&_a:hover]:!bg-white/10 [&_a:active]:!bg-white/15 [&_summary]:!text-zinc-100 [&_details]:border-white/20"
+          : "[&_a]:!text-zinc-900 [&_a:hover]:!bg-zinc-100 [&_a:active]:!bg-zinc-200/70 [&_summary]:!text-zinc-800 [&_details]:border-zinc-200/90",
       )}
       onClick={(e: ReactMouseEvent) => {
         const anchor = (e.target as HTMLElement).closest("a");
@@ -284,6 +317,7 @@ export function CinematicNav({
   if (barStyle === "bar_light") {
     return (
       <header
+        ref={headerRef}
         className="sticky top-0 z-50 w-full border-b border-zinc-200/90 bg-white/92 backdrop-blur-md shadow-sm"
         style={fontSans}
       >
@@ -323,7 +357,7 @@ export function CinematicNav({
         </div>
         {/* Only render mobile drawer on mobile */}
         {!lgUp && (
-          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_light">
+          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_light" topOffset={topOffset}>
             {mobileLinkWrap(
               <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />,
               "light",
@@ -337,6 +371,7 @@ export function CinematicNav({
   if (barStyle === "bar_dark") {
     return (
       <header
+        ref={headerRef}
         className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-950/92 text-white backdrop-blur-md"
         style={fontSans}
       >
@@ -376,7 +411,7 @@ export function CinematicNav({
         </div>
         {/* Only render mobile drawer on mobile */}
         {!lgUp && (
-          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_dark">
+          <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_dark" topOffset={topOffset}>
             {mobileLinkWrap(
               <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />,
               "dark",
@@ -401,6 +436,7 @@ export function CinematicNav({
 
   return (
     <header
+      ref={headerRef}
       className={cn(
         "z-50 flex w-full justify-center px-4 pt-5 sm:pt-6",
         embedded ? "sticky top-0" : "pointer-events-none fixed inset-x-0 top-0",
@@ -450,7 +486,7 @@ export function CinematicNav({
       </MotionNavShell>
       {/* Only render mobile drawer on mobile */}
       {!lgUp && (
-        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="floating">
+        <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="floating" topOffset={topOffset}>
           {mobileLinkWrap(
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />,
             "dark",

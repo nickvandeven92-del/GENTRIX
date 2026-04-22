@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { patchQuoteBodySchema } from "@/lib/commercial/billing-api-schemas";
 import { createDraftInvoiceFromQuote } from "@/lib/commercial/create-draft-invoice-from-quote";
 import { insertInvoiceAuditEvent } from "@/lib/commercial/invoice-audit";
@@ -13,7 +13,7 @@ const DETAIL_SELECT =
   "id, client_id, deal_id, quote_number, amount, status, valid_until, currency, notes, title, intro_text, scope_text, delivery_text, exclusions_text, terms_text, company_name_snapshot, contact_name_snapshot, billing_email_snapshot, billing_phone_snapshot, billing_address_snapshot, billing_postal_code_snapshot, billing_city_snapshot, issued_at, sent_at, accepted_at, rejected_at, created_at, clients(name, subfolder_slug, client_number)";
 
 export async function GET(_request: Request, ctx: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }
@@ -39,7 +39,7 @@ export async function GET(_request: Request, ctx: Ctx) {
 }
 
 export async function PATCH(request: Request, ctx: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

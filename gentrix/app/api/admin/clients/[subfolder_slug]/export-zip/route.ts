@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { getParsedSiteDraftBySlug } from "@/lib/data/client-draft-site";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { isValidSubfolderSlug } from "@/lib/slug";
@@ -13,7 +13,7 @@ function safeZipBaseName(slug: string): string {
 }
 
 export async function GET(_request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

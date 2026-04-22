@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { ensureClientFlyerPublicTokenBySlug } from "@/lib/data/ensure-client-flyer-token";
 import { buildClientFlyerPdf } from "@/lib/flyer/build-client-flyer-pdf";
 import { flyerStudioPersistedSchema } from "@/lib/flyer/flyer-studio-schema";
@@ -22,7 +22,7 @@ const bodySchema = z
 
 /** Admin: genereer PDF in het geheugen op basis van (nog niet opgeslagen) Flyerstudio-state — voor live preview. */
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

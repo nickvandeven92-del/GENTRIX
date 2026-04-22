@@ -3,11 +3,17 @@
  *
  * Formaat:  <userId>.<issuedAtMs>.<base64url-HMAC-SHA256>
  * Geldig:   24 uur
- * Sleutel:  SUPABASE_SERVICE_ROLE_KEY (al beschikbaar server-side)
+ * Sleutel:  MFA_SIGNING_SECRET (fallback in dev: SUPABASE_SERVICE_ROLE_KEY — zie mfa-signing-secret.ts)
+ *
+ * Productie-hardening:
+ *   - geen statische fallback-string (dev-fallback alleen op NODE_ENV !== production)
+ *   - verificatie via `crypto.subtle.verify` (constant-time intern)
  */
 
+import { getMfaSigningSecret } from "@/lib/auth/mfa-signing-secret";
+
 export const EMAIL_MFA_COOKIE_NAME = "gentrix_mfa";
-const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 uur
+const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function b64url(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -26,7 +32,7 @@ function b64urlDecode(s: string): ArrayBuffer {
 }
 
 async function getKey(): Promise<CryptoKey> {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "gentrix-fallback-mfa-key";
+  const secret = getMfaSigningSecret();
   return crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -59,7 +65,8 @@ export async function verifyEmailMfaCookie(
     const userId = payload.slice(0, dotIdx);
     const iat = parseInt(payload.slice(dotIdx + 1), 10);
 
-    if (userId !== expectedUserId) return false;
+    if (!userId || userId !== expectedUserId) return false;
+    if (!Number.isFinite(iat)) return false;
     const age = Date.now() - iat;
     if (age > MAX_AGE_MS || age < 0) return false;
 
@@ -71,7 +78,7 @@ export async function verifyEmailMfaCookie(
   }
 }
 
-/** Cookie-opties voor Next.js response headers */
+/** Cookie-opties voor Next.js response headers. */
 export function emailMfaCookieOptions(): {
   httpOnly: boolean;
   secure: boolean;

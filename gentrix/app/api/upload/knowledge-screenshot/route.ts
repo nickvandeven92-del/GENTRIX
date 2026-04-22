@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -13,7 +13,7 @@ function safeFileName(name: string): string {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

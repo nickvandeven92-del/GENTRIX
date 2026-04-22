@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 
 export type SiteGenerationTransportMode = "jobs" | "stream";
 
@@ -12,7 +12,7 @@ export function resolveSiteGenerationTransportMode(): SiteGenerationTransportMod
 }
 
 export async function GET() {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

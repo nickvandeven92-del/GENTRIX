@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { checkPublicRateLimit } from "@/lib/api/public-rate-limit";
+import { extractClientIp } from "@/lib/api/request-client-ip";
 import { isValidIban, normalizeIban } from "@/lib/banking/iban";
 import { notifyStudioOfSiteOrder } from "@/lib/email/studio-site-order-notification";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
@@ -45,6 +47,14 @@ export async function POST(request: Request, context: RouteCtx) {
   const slug = decodeRouteSlugParam(raw);
   if (!slug) {
     return NextResponse.json({ ok: false as const, error: "Ongeldige site." }, { status: 400 });
+  }
+
+  const ip = extractClientIp(request.headers);
+  if (!checkPublicRateLimit(ip, `site-order:${slug}`, 5)) {
+    return NextResponse.json(
+      { ok: false as const, error: "Te veel pogingen. Probeer over een paar minuten opnieuw." },
+      { status: 429 },
+    );
   }
 
   let json: unknown;

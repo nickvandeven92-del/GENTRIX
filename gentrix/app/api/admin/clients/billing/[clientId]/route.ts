@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 
@@ -13,7 +13,7 @@ const FALLBACK_SELECT =
 
 /** Facturatiegegevens voor offerte/factuur-formulieren (snapshot-bron). */
 export async function GET(_request: Request, ctx: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

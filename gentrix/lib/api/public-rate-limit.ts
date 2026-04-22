@@ -1,20 +1,9 @@
 /**
- * Publieke endpoints: per IP + scope, in-memory (zelfde beperking als portal-rate-limit).
+ * Publieke endpoints: per IP + scope. Deelt de backing-store met `checkPortalRateLimit`.
+ * Zie `rate-limit-memory.ts` voor beperkingen op serverless (multi-instance).
  */
-type Bucket = { count: number; resetAt: number };
-
-const store = new Map<string, Bucket>();
-const WINDOW_MS = 60_000;
+import { checkMemoryRateLimit } from "@/lib/api/rate-limit-memory";
 
 export function checkPublicRateLimit(ip: string, scope: string, maxPerWindow: number): boolean {
-  const key = `${ip}:${scope}`;
-  const now = Date.now();
-  let b = store.get(key);
-  if (!b || now > b.resetAt) {
-    b = { count: 0, resetAt: now + WINDOW_MS };
-    store.set(key, b);
-  }
-  if (b.count >= maxPerWindow) return false;
-  b.count += 1;
-  return true;
+  return checkMemoryRateLimit(`public:${scope}:${ip}`, maxPerWindow);
 }

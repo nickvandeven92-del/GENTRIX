@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type RouteContext = { params: Promise<{ subfolder_slug: string }> };
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

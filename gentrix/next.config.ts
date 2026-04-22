@@ -1,22 +1,58 @@
 import type { NextConfig } from "next";
 
+/**
+ * Basis-security headers voor álle routes. CSP wordt bewust niet als Report-Only opgezet;
+ * de gepubliceerde klantsites bevatten door-ontwerp inline Alpine/Tailwind-scripts die zonder
+ * uitgebreide allow-list breken. Als je toe bent aan CSP: begin met `Content-Security-Policy-Report-Only`
+ * en rapporteer naar een endpoint, anders gaan klant-sites stuk.
+ */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+  { key: "X-DNS-Prefetch-Control", value: "on" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+];
+
+function parseAllowedDevOrigins(): string[] {
+  const base = ["127.0.0.1", "localhost"];
+  const extra = process.env.NEXT_DEV_ALLOWED_ORIGINS?.trim();
+  if (!extra) return base;
+  return [
+    ...base,
+    ...extra
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  ];
+}
+
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: SECURITY_HEADERS,
+      },
+    ];
+  },
   async rewrites() {
     return {
-      /** Vite SPA onder `public/booking-app` — client-routes (`/booking-app/book/…`) naar index.html. */
+      /** Vite SPA onder `public/booking-app` — alle client-routes (`/booking-app/...`) naar index.html. */
       afterFiles: [
-        { source: "/booking-app", destination: "/booking-app/index.html" },
-        { source: "/booking-app/", destination: "/booking-app/index.html" },
         { source: "/booking-app/:path*", destination: "/booking-app/index.html" },
       ],
     };
   },
   /**
-   * Next 16 dev blokkeert /_next/* bij Sec-Fetch-Site: cross-site + no-cors zonder Referer (“unknown source”).
-   * Zie `npm run dev`: gebruik `--hostname localhost` zodat pagina en /_next hetzelfde host hebben.
-   * Test je via de “Network”-URL? Zet hier je LAN-hostname/IP (zoals in de dev-server output).
+   * Next 16 dev blokkeert /_next/* bij Sec-Fetch-Site: cross-site + no-cors zonder Referer.
+   * Zie `npm run dev`: gebruik `--hostname localhost`. Extra LAN-hosts via `NEXT_DEV_ALLOWED_ORIGINS`.
    */
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: parseAllowedDevOrigins(),
   /**
    * `@tailwindcss/cli` wordt via `execFile` aangeroepen — standaard file-tracing pakt die paden soms niet mee
    * op Vercel → `ENOENT` in `attachCompiledTailwindCssToPayload`. Picomatch-keys matchen op genormaliseerde routes.

@@ -5,7 +5,11 @@ import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-acc
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/gif"]);
+/**
+ * SVG wordt bewust geweigerd: de `site-assets`-bucket serveert public-URLs zonder inline
+ * sanitizer, dus SVG met `<script>` zou stored XSS opleveren in het klantdomein.
+ */
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 function safeFileName(name: string): string {
   const base = name.replace(/[/\\]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 80);
@@ -41,7 +45,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!IMAGE_TYPES.has(file.type || "")) {
     return NextResponse.json(
-      { ok: false, error: "Alleen PNG, JPEG, WebP, SVG en GIF zijn toegestaan." },
+      { ok: false, error: "Alleen PNG, JPEG, WebP en GIF zijn toegestaan (SVG niet toegestaan)." },
       { status: 400 },
     );
   }

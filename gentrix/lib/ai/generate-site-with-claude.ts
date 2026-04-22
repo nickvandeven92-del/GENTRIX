@@ -1252,6 +1252,16 @@ function buildSiteGenerationSalesCopyGuidanceLine(): string {
 }
 
 /**
+ * Voorkomt een terugkerende footer-bug: adres-regels + telefoon/e-mail/WhatsApp-link naast elkaar
+ * als losse `<span>`/`<a>` in een `<div>` zonder `flex-col`. Die vallen op ??n regel, breken lelijk,
+ * en erven bovendien de default body-fontgrootte terwijl de rest van de kolom op `text-sm` staat ?
+ * resultaat: "adres in een raar/te groot font, niet uitgelijnd".
+ */
+function buildContactStackStructureLine(): string {
+  return `- **Contactgegevens-stack (footer / \`#contact\` / contactkolom):** Meerdere contactfeiten onder elkaar (adresregels, telefoon, e-mail, WhatsApp, openingstijden, sociale links) **altijd** in **??n** verticale container ??? ofwel \`<ul class="flex flex-col gap-1 text-sm">\` met \`<li>\`-regels (of \`<li><a ???>\` voor links), ofwel \`<div class="flex flex-col gap-1 text-sm">\` met **block-level** kinderen (\`<p>\`, \`<a class="block ???">\`, \`<address>\`). **Verboden:** losse \`<span>\` en/of \`<a>\` direct naast elkaar als siblings in een \`<div>\` **zonder** \`flex flex-col\` / \`grid\` / \`block\`-klasse ??? die vallen op ??n regel, wrappen lelijk en erven de default body-fontgrootte (terwijl de rest van de kolom \`text-sm\` is), waardoor het adres ineens veel groter en uit de pas oogt. **Adres** = **minstens twee** aparte regels in de stack (\`Straat 7\` + \`Postcode Plaats\`, evt. + \`Land\`) ??? **niet** ??n lange zin met komma's, **niet** ??n \`<span>\` met \`<br>\`. **Consistente typografie in het blok:** dezelfde \`text-\`-maat (typisch \`text-sm\`) **en** dezelfde basis-tekstkleur/opacity (bv. \`text-[#f5e6cb]/60\` of \`text-slate-500\`) voor **alle** regels ??? adresregels, telefoon-/e-mail-/WhatsApp-link, openingstijden ??? alleen \`hover:\`/\`focus:\`-varianten mogen afwijken. **Kopje** boven de stack (bv. ???Bezoek ons???, ???Openingstijden???, ???Contact???) krijgt juist wel een eigen kleine label-stijl (\`text-xs font-bold tracking-[0.25em] uppercase\` + accent-kleur + \`mb-3\`/\`mb-4\`), maar de regels **onder** dat kopje volgen de stack-regels hierboven. Zelfde patroon voor \`contactSections\`-contactkolommen.`;
+}
+
+/**
  * Stock beperken; **klant-uploads** (blok KLANTFOTO'S) en briefing-vision blijven expliciet toegestaan.
  */
 function buildStockImageryAgencyDefaultMarkdown(): string {
@@ -1330,6 +1340,7 @@ ${slugHints}
 - **Extern (https):** alleen \`https://\`; geen \`http://\` zonder TLS.
 - **Knoppen:** geen decoratieve \`<button>\` zonder actie: gebruik \`<a class="???">\` met echte \`href\`.
 - **Nieuw tabblad:** bij \`target="_blank"\` altijd \`rel="noopener noreferrer"\`.
+${buildContactStackStructureLine()}
 
 === 4. TECHNISCHE HTML-REGELS ===
 
@@ -1684,6 +1695,7 @@ ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Interne links (\`#???\`):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#???">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen ??? plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).
 - **One-pager menu & CTA's (strikt):** Voor springen **binnen deze pagina** gebruik je **alleen** \`href="#<sectie-id>"\` (zelfde id als op het buitenste element van die sectie). **Verboden** voor interne secties: dezelfde canonieke URL op elk item (\`href="/site/jouwe-slug"\`, \`https://???/site/jouwe-slug\` **zonder** hash), of losse paden als \`/diensten\` / \`/contact\` ??? in de live viewer lijken die ???werkend??? maar landen ze praktisch allemaal op dezelfde plek. Elk menu-item krijgt **een eigen** geldig anker naar **inhoud die je ook echt in een sectie met die \`id\` uitwerkt** (bv. \`#diensten\`, \`#over-ons\`, \`#klanten\`, \`#faq\`, \`#contact\`). Uitzonderingen: echte externe \`https://\` (social, kaarten), \`mailto:\`, \`tel:\`, en studio-placeholders \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\` volgens de portal-/module-instructies.
 - **Contact:** Zonder e-mail/telefoon in de briefing: gebruik **werkende** \`mailto:\`/\`tel:\` met **plausible** adressen afgeleid van de bedrijfsnaam (bijv. \`mailto:info@<kortenaam-zonder-spaties>.nl\`, \`tel:+3185???\` als fictief maar **geldig formaat**) **of** link naar \`#contact\` / \`#footer\` waar een duidelijk contactblok staat ??? geen dode knoppen.
+${buildContactStackStructureLine()}
 - **WhatsApp:** Alleen \`https://wa.me/???\` als een nummer in de briefing staat; anders CTA naar \`#contact\` met copy "Neem contact op".
 - **Extern (https):** Alleen \`https://\` URL's; gebruik **bestaande** patronen (Google Maps-zoeklink, offici?le social templates) of vermijd de link en gebruik intern \`#contact\`. Geen \`http://\` zonder TLS.
 - **Knoppen:** Geen decoratieve \`<button>\` zonder actie: gebruik \`<a class="???">\` met echte \`href\` voor navigatie.

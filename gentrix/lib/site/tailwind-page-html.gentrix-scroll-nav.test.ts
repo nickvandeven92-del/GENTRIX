@@ -61,12 +61,17 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     expect(doc).toContain("background-color: transparent !important;");
   });
 
-  it("includes idle timeout logic so scrolled chrome clears after scrolling stops", () => {
+  it("keeps scroll-overlay bookkeeping but applies chrome purely on scrolled state", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toContain("scrollIdleTimer=0");
     expect(doc).toContain("touchGentrixScrolling()");
     expect(doc).toContain("setGentrixScrolling(false)");
     expect(doc).toContain("data-gentrix-scrolling");
     expect(doc).toContain("data-gentrix-scroll-overlay");
+    // Frosted chrome mag niet langer afhangen van de `data-gentrix-scrolling`-attribuut — dat caused flicker:
+    // zodra de idle-timer de scrolling-flag op "0" zette werd de navbar weer volledig transparant over de content.
+    expect(doc).not.toMatch(
+      /\[data-gentrix-scroll-(?:nav|overlay)="1"\]\[data-gentrix-scrolled="1"\]\[data-gentrix-scrolling="1"\]/,
+    );
   });
 });

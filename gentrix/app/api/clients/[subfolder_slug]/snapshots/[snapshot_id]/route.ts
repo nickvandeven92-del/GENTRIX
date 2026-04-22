@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { getClientRowForSiteOps } from "@/lib/data/site-snapshot-admin";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -15,7 +15,7 @@ type RouteContext = { params: Promise<{ subfolder_slug: string; snapshot_id: str
 
 /** Label / notities op snapshot (fase 4). */
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

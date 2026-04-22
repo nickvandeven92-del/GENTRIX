@@ -5,7 +5,7 @@ import {
   tryAppendClaudeActivityJournal,
 } from "@/lib/ai/claude-activity-journal";
 import { editSiteWithClaude } from "@/lib/ai/edit-site-with-claude";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { tailwindPageConfigSchema, tailwindSectionsArraySchema } from "@/lib/ai/tailwind-sections-schema";
 
 const bodySchema = z
@@ -33,7 +33,7 @@ const bodySchema = z
   });
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

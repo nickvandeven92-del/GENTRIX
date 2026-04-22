@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { patchWebsiteOpsBodySchema } from "@/lib/sales-os/api-schemas";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type Ctx = { params: Promise<{ clientId: string }> };
 
 export async function PATCH(request: Request, context: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

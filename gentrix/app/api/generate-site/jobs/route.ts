@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { generateSiteRequestBodySchema } from "@/lib/api/generate-site-request-schema";
 import {
   insertSiteGenerationJob,
@@ -16,7 +16,7 @@ import {
 export const maxDuration = 800;
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

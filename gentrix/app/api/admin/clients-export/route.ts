@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { listAdminClients } from "@/lib/data/list-admin-clients";
 
 function csvEscape(s: string): string {
@@ -8,7 +8,7 @@ function csvEscape(s: string): string {
 }
 
 export async function GET() {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

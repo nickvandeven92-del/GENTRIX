@@ -7,7 +7,7 @@ import {
   siteChatRequestMessagesSchema,
 } from "@/lib/ai/site-chat-with-claude";
 import { tailwindPageConfigSchema, tailwindSectionsArraySchema } from "@/lib/ai/tailwind-sections-schema";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { z } from "zod";
 
 const bodySchema = z
@@ -43,7 +43,7 @@ const bodySchema = z
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return new Response(JSON.stringify({ ok: false, error: auth.message }), {
       status: auth.status,

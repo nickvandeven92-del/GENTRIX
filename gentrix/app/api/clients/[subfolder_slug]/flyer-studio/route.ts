@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { flyerStudioPersistedSchema } from "@/lib/flyer/flyer-studio-schema";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -19,7 +19,7 @@ const bodySchema = z
 
 /** Admin: sla Flyerstudio (teksten + presets) op in `clients.flyer_studio_json`. */
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

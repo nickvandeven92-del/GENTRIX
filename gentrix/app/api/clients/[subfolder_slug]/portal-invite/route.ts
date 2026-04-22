@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { sendPortalInviteForClientSlug } from "@/lib/portal/portal-invite";
 
@@ -11,7 +11,7 @@ const bodySchema = z.object({
 type RouteContext = { params: Promise<{ subfolder_slug: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

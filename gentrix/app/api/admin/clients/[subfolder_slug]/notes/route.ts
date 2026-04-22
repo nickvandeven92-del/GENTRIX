@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { actorDisplayLabel } from "@/lib/auth/actor-display-label";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -13,7 +13,7 @@ const postBodySchema = z.object({
 });
 
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { actorDisplayLabel } from "@/lib/auth/actor-display-label";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { patchDealBodySchema } from "@/lib/sales-os/api-schemas";
 import { isClosedDealStage } from "@/lib/sales-os/deal-stages";
 import type { SalesDealStage } from "@/lib/sales-os/deal-stages";
@@ -12,7 +12,7 @@ import { parseDealStepLog } from "@/lib/sales-os/deal-step-log";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

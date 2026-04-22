@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { slugify, isValidSubfolderSlug } from "@/lib/slug";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
@@ -14,7 +14,7 @@ type Ctx = { params: Promise<{ id: string }> };
  * Genereert een unieke subfolder_slug; site_data_json minimaal.
  */
 export async function POST(_request: Request, context: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

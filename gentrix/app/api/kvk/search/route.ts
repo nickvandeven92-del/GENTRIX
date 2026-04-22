@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { searchCompanies, KvkApiError } from "@/lib/kvk/client";
 import { mapZoekenItem } from "@/lib/kvk/mappers";
 import { kvkSearchQuerySchema } from "@/lib/leads/kvk-enrichment-schemas";
@@ -7,7 +7,7 @@ import { kvkSearchQuerySchema } from "@/lib/leads/kvk-enrichment-schemas";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

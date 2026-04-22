@@ -1,17 +1,28 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { signEmailMfaCookie, emailMfaCookieOptions, EMAIL_MFA_COOKIE_NAME } from "@/lib/auth/email-mfa-cookie";
+import {
+  signEmailMfaCookie,
+  emailMfaCookieOptions,
+  EMAIL_MFA_COOKIE_NAME,
+} from "@/lib/auth/email-mfa-cookie";
+import { clearMfaAttempts, registerMfaAttempt } from "@/lib/auth/mfa-attempt-limiter";
+import { sha256Hex } from "@/lib/auth/otp-code";
 
 const bodySchema = z.object({
   codeId: z.string().uuid(),
   code: z.string().length(6).regex(/^\d{6}$/),
 });
 
-async function sha256hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+function constantTimeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -31,7 +42,26 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const { codeId, code } = parsed.data;
-  const codeHash = await sha256hex(code);
+
+  if (!registerMfaAttempt(codeId)) {
+    // Te vaak mis → markeer de code als verbruikt zodat bruteforce ook na restart stopt.
+    try {
+      const serviceRole = createServiceRoleClient();
+      await serviceRole
+        .from("admin_email_mfa_codes")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("id", codeId)
+        .eq("user_id", user.id);
+    } catch {
+      /* stil falen — attempt-limiter blokkeert al verdere pogingen */
+    }
+    return NextResponse.json(
+      { error: "Te veel pogingen. Vraag een nieuwe code aan." },
+      { status: 429 },
+    );
+  }
+
+  const codeHash = await sha256Hex(code);
 
   const serviceRole = createServiceRoleClient();
 
@@ -54,15 +84,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Code is verlopen." }, { status: 400 });
   }
 
-  if (row.code_hash !== codeHash) {
+  if (!constantTimeEqualHex(row.code_hash, codeHash)) {
     return NextResponse.json({ error: "Onjuiste code." }, { status: 400 });
   }
 
-  // Code is correct — markeer als gebruikt
   await serviceRole
     .from("admin_email_mfa_codes")
     .update({ consumed_at: new Date().toISOString() })
     .eq("id", codeId);
+
+  clearMfaAttempts(codeId);
 
   const cookieValue = await signEmailMfaCookie(user.id);
   const opts = emailMfaCookieOptions();

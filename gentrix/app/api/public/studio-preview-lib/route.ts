@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkPublicRateLimit } from "@/lib/api/public-rate-limit";
+import { extractClientIp } from "@/lib/api/request-client-ip";
 import {
   isStudioPreviewLibName,
   STUDIO_PREVIEW_LIB_UPSTREAM,
@@ -26,6 +28,13 @@ export function OPTIONS() {
  * zodat o.a. Edge Tracking Prevention geen third-party script-storage op Alpine/Lucide blokkeert.
  */
 export async function GET(req: NextRequest) {
+  const ip = extractClientIp(req.headers);
+  if (!checkPublicRateLimit(ip, "studio-preview-lib", 120)) {
+    return NextResponse.json(
+      { error: "Te veel verzoeken" },
+      { status: 429, headers: { ...STUDIO_PREVIEW_LIB_CORS_HEADERS } },
+    );
+  }
   const name = req.nextUrl.searchParams.get("name") ?? "";
   if (!isStudioPreviewLibName(name)) {
     return NextResponse.json(

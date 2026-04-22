@@ -2,19 +2,14 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendMfaCodeEmail } from "@/lib/email/mfa-email";
+import { generateNumericOtp, sha256Hex } from "@/lib/auth/otp-code";
+import { checkMemoryRateLimit } from "@/lib/api/rate-limit-memory";
 
-const CODE_TTL_MS = 10 * 60 * 1000; // 10 minuten
+const CODE_TTL_MS = 10 * 60 * 1000;
 
-function randomDigits(length: number): string {
-  const arr = new Uint8Array(length);
-  crypto.getRandomValues(arr);
-  return Array.from(arr, (b) => (b % 10).toString()).join("");
-}
-
-async function sha256hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
-}
+/** Beperkt mail-bombing en kostenexplosie via Resend: max. 5 codes per 10 min per user. */
+const MAX_SENDS_PER_WINDOW = 5;
+const SEND_WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(): Promise<NextResponse> {
   const supabase = await createSupabaseServerClient();
@@ -26,17 +21,23 @@ export async function POST(): Promise<NextResponse> {
     return NextResponse.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
+  if (!checkMemoryRateLimit(`mfa:send:${user.id}`, MAX_SENDS_PER_WINDOW, SEND_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Te veel aanvragen. Probeer over een paar minuten opnieuw." },
+      { status: 429 },
+    );
+  }
+
   const serviceRole = createServiceRoleClient();
 
-  // Verwijder verlopen / eerder verstuurde codes
   await serviceRole
     .from("admin_email_mfa_codes")
     .delete()
     .eq("user_id", user.id)
     .lt("expires_at", new Date().toISOString());
 
-  const code = randomDigits(6);
-  const codeHash = await sha256hex(code);
+  const code = generateNumericOtp(6);
+  const codeHash = await sha256Hex(code);
   const expiresAt = new Date(Date.now() + CODE_TTL_MS).toISOString();
 
   const { data: row, error: insertErr } = await serviceRole

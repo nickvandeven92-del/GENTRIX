@@ -8,7 +8,7 @@ import {
 import { instructionForSiteAiCommand, type SiteAiCommandId } from "@/lib/ai/site-ai-commands";
 import { tailwindPageConfigSchema, tailwindSectionsArraySchema } from "@/lib/ai/tailwind-sections-schema";
 import { projectSnapshotFromTailwindPayload, projectSnapshotToTailwindSectionsPayload } from "@/lib/site/project-snapshot-io";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { tryLogSiteGenerationRun } from "@/lib/data/log-site-generation-run";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { snapshotPageTypeSchema } from "@/lib/site/snapshot-page-type";
@@ -28,7 +28,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

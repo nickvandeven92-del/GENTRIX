@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { ensureClientFlyerPublicTokenBySlug } from "@/lib/data/ensure-client-flyer-token";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { getRequestOrigin } from "@/lib/site/request-origin";
@@ -16,7 +16,7 @@ type RouteContext = { params: Promise<{ subfolder_slug: string }> };
  * Handig als de pagina nog geen link toonde (migratie net gezet, schema-cache, of eerste write).
  */
 export async function POST(_request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

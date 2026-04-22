@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { generateSiteWithClaude, type GenerateSitePromptOptions } from "@/lib/ai/generate-site-with-claude";
 import {
   buildJournalFactsGenerateSite,
@@ -16,7 +16,7 @@ import { isStudioUndecidedBrandName } from "@/lib/studio/studio-brand-sentinel";
 export const maxDuration = 800;
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

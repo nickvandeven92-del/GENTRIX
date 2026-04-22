@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { aiKnowledgeCategoryZod, KNOWLEDGE_JOURNAL_CATEGORY } from "@/lib/ai/knowledge-categories";
 import { zKnowledgeReferenceImageUrls } from "@/lib/ai/knowledge-reference-urls";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const patchSchema = z
@@ -19,7 +19,7 @@ const patchSchema = z
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }
@@ -74,7 +74,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

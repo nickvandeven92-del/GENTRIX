@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { actorDisplayLabel } from "@/lib/auth/actor-display-label";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createTaskBodySchema } from "@/lib/sales-os/api-schemas";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

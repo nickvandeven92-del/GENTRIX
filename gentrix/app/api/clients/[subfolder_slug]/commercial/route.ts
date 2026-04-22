@@ -5,7 +5,7 @@ import {
   PIPELINE_STAGES,
   PLAN_TYPES,
 } from "@/lib/commercial/client-commercial";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import {
   sendPortalInviteForClientSlug,
@@ -120,7 +120,7 @@ function normalizeHostname(s: string | null | undefined): string | null {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

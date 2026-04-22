@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { persistTailwindDraftForExistingClient } from "@/lib/data/persist-tailwind-client-draft";
 import { resolveDraftSitePayloadJson } from "@/lib/data/resolve-site-payload-json";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { appendDefaultBookingSectionToSections } from "@/lib/site/append-booking-section-to-payload";
@@ -23,7 +23,7 @@ const bodySchema = z
  * Voegt alleen de canonieke booking-sectie toe aan de huidige draft-site (geen AI / geen volledige regenerate).
  */
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

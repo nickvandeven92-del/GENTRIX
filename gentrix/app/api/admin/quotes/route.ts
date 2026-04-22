@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createQuoteBodySchema } from "@/lib/commercial/billing-api-schemas";
 import { generateQuoteNumber } from "@/lib/commercial/document-numbering";
 import {
@@ -14,7 +14,7 @@ const LIST_SELECT =
   "id, client_id, deal_id, quote_number, amount, status, valid_until, issued_at, sent_at, created_at, clients(name, client_number)";
 
 export async function GET() {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { originFromRequest } from "@/lib/http/origin-from-request";
 import { isValidSubfolderSlug } from "@/lib/slug";
@@ -25,7 +25,7 @@ function safeFileBase(slug: string): string {
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

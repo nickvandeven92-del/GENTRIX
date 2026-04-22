@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actorDisplayLabel } from "@/lib/auth/actor-display-label";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 const bodySchema = z.object({
@@ -15,7 +15,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** Maakt een deal aan en zet lead op converted + converted_deal_id. */
 export async function POST(request: Request, context: Ctx) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

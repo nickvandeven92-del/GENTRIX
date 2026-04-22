@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { ensureClientFlyerPublicTokenBySlug } from "@/lib/data/ensure-client-flyer-token";
 import { getClientFlyerStudioBySlugService } from "@/lib/data/get-client-flyer-studio";
 import { buildClientFlyerPdf, type FlyerPdfTemplateId } from "@/lib/flyer/build-client-flyer-pdf";
@@ -20,7 +20,7 @@ function templateFromSearch(search: string | null): FlyerPdfTemplateId {
 
 /** Admin: download vaste A4-flyer met QR naar `/p/{token}`. */
 export async function GET(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

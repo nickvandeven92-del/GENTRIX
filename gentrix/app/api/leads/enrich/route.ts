@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { upsertKvkEnrichedLead } from "@/lib/data/kvk-enriched-leads";
 import { KvkApiError } from "@/lib/kvk/client";
 import { leadEnrichBodySchema } from "@/lib/leads/kvk-enrichment-schemas";
@@ -8,7 +8,7 @@ import { runLeadEnrichment } from "@/lib/leads/enrich-pipeline";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

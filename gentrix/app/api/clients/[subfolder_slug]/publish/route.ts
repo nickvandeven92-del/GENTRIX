@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { publishClientSnapshotForSlug } from "@/lib/data/publish-client-snapshot";
 import { publishedSiteTag } from "@/lib/data/get-published-site";
 import { isValidSubfolderSlug } from "@/lib/slug";
@@ -15,7 +15,7 @@ type RouteContext = { params: Promise<{ subfolder_slug: string }> };
  * Wijzigt niet `clients.status`; publieke URL vereist nog steeds `active`.
  */
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }

@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
@@ -8,7 +8,11 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 /** Hero-loops (o.a. Remotion-export); groter dan logo-afbeeldingen. */
 const MAX_VIDEO_BYTES = 35 * 1024 * 1024;
 
-const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/gif"]);
+/**
+ * SVG is expres niet toegestaan: de bucket serveert public-URLs zonder inline-sanitizer,
+ * dus `<script>`-payloads in SVG zouden stored XSS geven. Gebruik PNG/WebP voor iconen.
+ */
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 const VIDEO_TYPES = new Set(["video/mp4", "video/webm"]);
 
 function safeFileName(name: string): string {
@@ -17,7 +21,7 @@ function safeFileName(name: string): string {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
   const isImage = IMAGE_TYPES.has(type);
   if (!isImage && !isVideo) {
     return NextResponse.json(
-      { ok: false, error: "Alleen PNG, JPEG, WebP, SVG, GIF, MP4 of WebM toegestaan." },
+      { ok: false, error: "Alleen PNG, JPEG, WebP, GIF, MP4 of WebM toegestaan (SVG niet toegestaan)." },
       { status: 400 },
     );
   }

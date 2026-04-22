@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminApiAuth } from "@/lib/auth/require-admin-api";
+import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { assertSnapshotOwnedByClient, getClientRowForSiteOps } from "@/lib/data/site-snapshot-admin";
 import { parseAnyStoredProjectDataToLatestSnapshot } from "@/lib/site/project-snapshot-migrate";
 import { projectSnapshotToCanonicalJsonString } from "@/lib/site/project-snapshot-canonical";
@@ -10,7 +10,7 @@ type RouteContext = { params: Promise<{ subfolder_slug: string }> };
 
 /** Diff op canonieke `project_snapshot_v1` tussen twee snapshot-id’s (fase 4). */
 export async function GET(request: Request, context: RouteContext) {
-  const auth = await requireAdminApiAuth();
+  const auth = await requireStudioAdminApiAuth();
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
   }
