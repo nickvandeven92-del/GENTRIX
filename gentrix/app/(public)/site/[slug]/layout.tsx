@@ -19,8 +19,8 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
       {/* Inline override: voorkomt donkere body-achtergrond op apparaten met dark mode */}
       <style>{`
         :root{
-          --public-site-shell-bg:#fff;
-          --public-site-shell-fg:#171717;
+          --public-site-shell-bg:#08081a; /* donkere shell = geen witte flits tijdens view-transitie */
+          --public-site-shell-fg:#ededed;
         }
         html,body{
           background:var(--public-site-shell-bg)!important;
