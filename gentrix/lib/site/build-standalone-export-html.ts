@@ -43,7 +43,6 @@ import {
   STUDIO_SHOP_PATH_PLACEHOLDER,
 } from "@/lib/site/studio-section-visibility";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
-import {
 import type { GeneratedLogoSet } from "@/types/logo";
 
 function escapeHtmlText(s: string): string {
