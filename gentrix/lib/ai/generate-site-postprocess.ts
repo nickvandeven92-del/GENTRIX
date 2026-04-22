@@ -470,6 +470,35 @@ function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
 }
 
 /**
+ * Berekent of een header-achtergrond "donker" is, zodat we de menuknop-icon de juiste tekstkleur
+ * (en dus SVG-stroke) kunnen geven. Werkt voor zowel Tailwind-palette klassen als arbitrary hexes.
+ *
+ * Donker ⇒ `text-neutral-100` (witte streepjes)
+ * Anders ⇒ `text-neutral-900` (zwarte streepjes) — ook voor crème/pastel/beige headers.
+ */
+function isHeaderBackgroundDark(blob: string): boolean {
+  // 1) Palette-kleuren: `bg-black`, `bg-(neutral|zinc|slate|stone|gray)-(700|800|900|950)`.
+  if (/\bbg-black\b/i.test(blob)) return true;
+  if (/\bbg-(?:neutral|zinc|slate|stone|gray)-(?:700|800|900|950)\b/i.test(blob)) return true;
+
+  // 2) Arbitrary hex: `bg-[#rgb]` of `bg-[#rrggbb]` — kies de eerste match in het blob (meestal de header zelf).
+  const hexMatch = /\bbg-\[#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\]/.exec(blob);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    const full = hex.length === 3
+      ? hex.split("").map((c) => c + c).join("")
+      : hex;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    // Standaard perceptual luminance (ITU-R BT.601): onder 128 ⇒ donker.
+    const luminance = r * 0.299 + g * 0.587 + b * 0.114;
+    return luminance < 128;
+  }
+  return false;
+}
+
+/**
  * Normaliseert de mobiele menuknop in de eerste `<header>`:
  *   - zorgt voor een `@click`-toggle op de juiste Alpine-state,
  *   - vervangt inhoud die géén echte hamburger↔× twee-staten-toggle is door de premium
@@ -526,21 +555,20 @@ export function repairHeaderMobileMenuButton(html: string): string {
       extraClasses.push("gentrix-menu-repaired");
     }
     if (needsIcon) {
-      const blob = `${h}\n${nextAttrs}`;
-      const lightNav =
-        /\bbg-white\b/i.test(blob) ||
-        /\bbg-stone-50\b/i.test(blob) ||
-        /\bbg-zinc-50\b/i.test(blob) ||
-        /\bbg-stone-100\b/i.test(blob);
-      if (lightNav) {
-        // Lichte header: forceer donkere streepjes via `bg-current` op de button.
+      // Alleen de *`<header>`-tag zelf* inspecteren voor de achtergrondkleur — niet de kinderen,
+      // anders detecteert een donkere drawer (`bg-stone-900`) de header foutief als donker.
+      const headerOpenTag = /<header\b[^>]*>/i.exec(h)?.[0] ?? "";
+      const blob = `${headerOpenTag}\n${nextAttrs}`;
+      const darkNav = isHeaderBackgroundDark(blob);
+      if (!darkNav) {
+        // Lichte/neutrale header: een `text-white` op de button zou onzichtbaar zijn → forceer donker.
         nextAttrs = nextAttrs.replace(/\btext-white\b/g, "text-neutral-900");
       }
       const hasExplicitTextColor =
         /\btext-(?:neutral|stone|zinc|slate|gray)-(?:[1-9]00|950)\b/i.test(nextAttrs) ||
         /\btext-(?:black|white)\b/i.test(nextAttrs);
       if (!hasExplicitTextColor) {
-        extraClasses.push(lightNav ? "text-neutral-900" : "text-neutral-200");
+        extraClasses.push(darkNav ? "text-neutral-100" : "text-neutral-900");
       }
     }
 

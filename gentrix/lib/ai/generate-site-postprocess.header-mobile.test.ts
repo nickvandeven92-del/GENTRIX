@@ -105,6 +105,27 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).not.toContain("translate-y-[7px]");
     // Er is nog steeds een @click toggle
     expect(out).toContain("navOpen = !navOpen");
+    // Crème header (`bg-[#f5e6cb]`, luminantie ≈ 233) is géén donker → kruis moet zwart zijn.
+    expect(out).toMatch(/<button\b[^>]*\bclass="[^"]*\btext-neutral-900\b[^"]*"[^>]*>/);
+  });
+
+  it("kiest lichte tekstkleur op een donkere arbitrary hex header", () => {
+    // Luminance van #08081a ≈ 11 (ITU-R BT.601) → duidelijk donker.
+    const html = `<header x-data="{ navOpen: false }" class="bg-[#08081a]">
+  <button type="button" class="lg:hidden w-10 h-10" aria-label="Menu"></button>
+  <div class="lg:hidden" x-show="navOpen" x-cloak><a href="#a">A</a></div>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toMatch(/<button\b[^>]*\bclass="[^"]*\btext-neutral-100\b[^"]*"[^>]*>/);
+  });
+
+  it("kiest donkere tekstkleur op een crème arbitrary hex header (MOSHAM)", () => {
+    const html = `<header x-data="{ navOpen: false }" class="bg-[#f5e6cb]">
+  <button type="button" class="lg:hidden w-10 h-10" aria-label="Menu"></button>
+  <div class="lg:hidden" x-show="navOpen" x-cloak><a href="#a">A</a></div>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toMatch(/<button\b[^>]*\bclass="[^"]*\btext-neutral-900\b[^"]*"[^>]*>/);
   });
 
   it("is idempotent: een tweede run verandert niets meer", () => {
