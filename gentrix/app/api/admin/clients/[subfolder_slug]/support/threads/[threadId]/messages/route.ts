@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { actorDisplayLabel } from "@/lib/auth/actor-display-label";
 import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
+import { trySendSupportStaffReplyEmail } from "@/lib/email/support-portal-notifications";
 import { getAdminClientBySlug } from "@/lib/data/get-admin-client-by-slug";
 import { isValidSubfolderSlug } from "@/lib/slug";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -86,7 +87,7 @@ export async function POST(request: Request, context: RouteContext) {
   const supabase = await createSupabaseServerClient();
   const { data: th, error: thErr } = await supabase
     .from("client_support_threads")
-    .select("id, client_id, status")
+    .select("id, client_id, status, subject")
     .eq("id", threadId)
     .maybeSingle();
 
@@ -98,6 +99,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const display = actorDisplayLabel(auth.userId, auth.email);
+  const threadSubject = (th as { subject?: string }).subject?.trim() ?? "Support";
 
   const { data, error } = await supabase
     .from("client_support_messages")
@@ -124,6 +126,14 @@ export async function POST(request: Request, context: RouteContext) {
     }
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
+
+  void trySendSupportStaffReplyEmail({
+    clientId: client.id,
+    threadId,
+    threadSubject,
+    staffDisplayName: display,
+    messagePreview: parsed.data.body.trim(),
+  });
 
   return NextResponse.json({ ok: true, message: data });
 }

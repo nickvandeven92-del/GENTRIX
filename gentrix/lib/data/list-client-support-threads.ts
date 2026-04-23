@@ -8,6 +8,8 @@ export type ClientSupportThreadRow = {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  /** Alleen portaal: aantal studio-berichten sinds laatste lezen in het portaal. */
+  unread_staff_count?: number;
 };
 
 /** Nieuwste activiteit eerst. Lege lijst bij ontbrekende tabel of fout. */

@@ -30,6 +30,7 @@ import { listInvoices } from "@/lib/data/list-invoices";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
+import { AdminPosthogDossierCard } from "@/components/admin/admin-posthog-dossier-card";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -120,6 +121,8 @@ export default async function ClientOverviewPage({ params }: PageProps) {
           </Link>
         </div>
       </section>
+
+      <AdminPosthogDossierCard siteSlug={row.subfolder_slug} />
 
       <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Bedrijf & contact</h2>

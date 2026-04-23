@@ -8,6 +8,7 @@ import {
   isStudioPortalPreview,
 } from "@/lib/portal/studio-portal-preview";
 import { userMayActAsStudioForPortalApis } from "@/lib/portal/portal-access-policy";
+import { getPortalSupportUnreadSummary } from "@/lib/data/portal-support-unread";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { GentrixPortalAnalyticsBoot } from "@/components/analytics/gentrix-portal-analytics-boot";
 
@@ -46,6 +47,8 @@ export default async function PortalSlugLayout({ children, params }: Props) {
 
   const decodedSlug = decodeURIComponent(slug);
 
+  const supportUnread = await getPortalSupportUnreadSummary(client.id);
+
   return (
     <PortalShell
       slug={slug}
@@ -53,6 +56,7 @@ export default async function PortalSlugLayout({ children, params }: Props) {
       appointmentsEnabled={client.appointments_enabled}
       invoicesEnabled={client.portal_invoices_enabled}
       accountEnabled={client.portal_account_enabled}
+      supportUnreadInitial={supportUnread.totalUnreadStaffMessages}
       showStudioNav={showStudioNav}
       publicSiteAbsoluteUrl={publicSiteAbsoluteUrl}
       portalSessionMismatch={portalSessionMismatch}

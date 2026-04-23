@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { checkPortalRateLimit } from "@/lib/api/portal-rate-limit";
 import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-access";
+import { fetchPortalSupportUnreadCountsByThread } from "@/lib/data/portal-support-unread";
 import { resolveActivePortalClientIdBySlug } from "@/lib/portal/resolve-portal-client";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -63,7 +64,13 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, threads: data ?? [] });
+    const unreadMap = await fetchPortalSupportUnreadCountsByThread(access.clientId);
+    const threads = (data ?? []).map((t: { id: string }) => ({
+      ...t,
+      unread_staff_count: unreadMap.get(t.id) ?? 0,
+    }));
+
+    return NextResponse.json({ ok: true, threads });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Onbekende fout";
     if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {
@@ -144,6 +151,12 @@ export async function POST(request: Request, context: RouteContext) {
       await supabase.from("client_support_threads").delete().eq("id", thread.id);
       return NextResponse.json({ ok: false, error: mErr.message ?? "Bericht opslaan mislukt." }, { status: 500 });
     }
+
+    await supabase
+      .from("client_support_threads")
+      .update({ customer_last_read_at: new Date().toISOString() })
+      .eq("id", thread.id)
+      .eq("client_id", access.clientId);
 
     return NextResponse.json({ ok: true, thread });
   } catch (e) {

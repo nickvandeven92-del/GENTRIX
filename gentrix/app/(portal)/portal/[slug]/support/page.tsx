@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PortalSupportChat } from "@/components/portal/portal-support-chat";
 import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { listClientSupportThreads } from "@/lib/data/list-client-support-threads";
+import { fetchPortalSupportUnreadCountsByThread } from "@/lib/data/portal-support-unread";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -22,10 +23,15 @@ export default async function PortalSupportPage({ params }: Props) {
   const client = await getActivePortalClient(decoded);
   if (!client) notFound();
 
-  const [initialOpen, initialClosed] = await Promise.all([
+  const [initialOpenRaw, initialClosedRaw, unreadMap] = await Promise.all([
     listClientSupportThreads(client.id, "open"),
     listClientSupportThreads(client.id, "closed"),
+    fetchPortalSupportUnreadCountsByThread(client.id),
   ]);
+  const withUnread = <T extends { id: string }>(rows: T[]) =>
+    rows.map((t) => ({ ...t, unread_staff_count: unreadMap.get(t.id) ?? 0 }));
+  const initialOpen = withUnread(initialOpenRaw);
+  const initialClosed = withUnread(initialClosedRaw);
 
   return (
     <main className="space-y-6">

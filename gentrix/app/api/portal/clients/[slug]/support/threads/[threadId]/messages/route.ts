@@ -48,6 +48,12 @@ export async function GET(_request: Request, context: RouteContext) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
+    await supabase
+      .from("client_support_threads")
+      .update({ customer_last_read_at: new Date().toISOString() })
+      .eq("id", threadId)
+      .eq("client_id", access.clientId);
+
     return NextResponse.json({ ok: true, messages: data ?? [], threadStatus: th.status });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Onbekende fout";
@@ -114,6 +120,12 @@ export async function POST(request: Request, context: RouteContext) {
     if (error || !data) {
       return NextResponse.json({ ok: false, error: error?.message ?? "Opslaan mislukt." }, { status: 500 });
     }
+
+    await supabase
+      .from("client_support_threads")
+      .update({ customer_last_read_at: new Date().toISOString() })
+      .eq("id", threadId)
+      .eq("client_id", access.clientId);
 
     return NextResponse.json({ ok: true, message: data });
   } catch (e) {

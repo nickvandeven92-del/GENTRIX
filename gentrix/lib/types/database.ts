@@ -327,6 +327,7 @@ export type Database = {
           updated_at: string;
           closed_at: string | null;
           closed_by_staff_user_id: string | null;
+          customer_last_read_at: string;
         };
         Insert: {
           id?: string;
@@ -337,6 +338,7 @@ export type Database = {
           updated_at?: string;
           closed_at?: string | null;
           closed_by_staff_user_id?: string | null;
+          customer_last_read_at?: string;
         };
         Update: {
           id?: string;
@@ -347,6 +349,7 @@ export type Database = {
           updated_at?: string;
           closed_at?: string | null;
           closed_by_staff_user_id?: string | null;
+          customer_last_read_at?: string;
         };
         Relationships: [];
       };

@@ -73,6 +73,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
         }
         setMessages(j.messages ?? []);
         setThreadStatus(j.threadStatus ?? null);
+        void refreshLists();
       } catch {
         if (!cancelled) setError("Netwerkfout.");
       } finally {
@@ -82,7 +83,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [apiBase, selectedId]);
+  }, [apiBase, selectedId, refreshLists]);
 
   const createThread = useCallback(async () => {
     const body = newBody.trim();
@@ -107,7 +108,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
       setNewBody("");
       setNewSubject("");
       setTab("open");
-      setOpenThreads((prev) => [j.thread!, ...prev]);
+      setOpenThreads((prev) => [{ ...j.thread!, unread_staff_count: 0 }, ...prev]);
       setSelectedId(j.thread.id);
       router.refresh();
     } catch {
@@ -261,7 +262,16 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
                           : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50",
                       )}
                     >
-                      <span className="font-medium text-zinc-900 dark:text-zinc-50">{t.subject}</span>
+                      <span className="flex items-start gap-2">
+                        {(t.unread_staff_count ?? 0) > 0 ? (
+                          <span
+                            className="mt-2 size-2 shrink-0 rounded-full bg-blue-600 dark:bg-blue-500"
+                            title="Nieuw studio-antwoord"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <span className="min-w-0 flex-1 font-medium text-zinc-900 dark:text-zinc-50">{t.subject}</span>
+                      </span>
                       <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
                         {t.status === "closed" ? "Gesloten · " : ""}
                         {new Date(t.updated_at).toLocaleString("nl-NL", { dateStyle: "short", timeStyle: "short" })}
