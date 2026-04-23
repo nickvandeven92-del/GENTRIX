@@ -1,0 +1,344 @@
+================================================================================
+  GENTRIX — UITGEBREID PROJECTVERSLAG
+  Wat is gebouwd, wat het doet, en hoe de onderdelen samenhangen
+  Datum document: 23 april 2026
+================================================================================
+
+
+1. SAMENVATTING
+--------------------------------------------------------------------------------
+
+GENTRIX is een softwareplatform voor een digitale studio: het combineert
+klantwebsites (marketing), een intern admin- en verkoopsysteem (CRM-achtig),
+een klantportaal, online afspraken/boekingen, optioneel een webshop-kanaal,
+facturatie/offertes en uitgebreide AI-ondersteuning (Claude/Anthropic) voor
+het genereren en bijwerken van sites.
+
+Technisch bestaat het uit drie losse frontend-toepassingen die allemaal met
+één gedeelde Supabase (PostgreSQL) backend praten:
+
+  • Studio — Next.js 16 (App Router), projectroot "gentrix/"
+  • Chameleon — Vite + React 18 webshop, map frontends/chameleon/
+  • Booking — Vite + React 18 boekingsflow, map frontends/booking/
+
+Dit is géén npm-workspaces-monorepo: de hoofdapp installeert dependencies in
+de root; Chameleon en Booking hebben elk een eigen package.json en eigen
+npm install in hun map.
+
+De naam "GENTRIX" wordt in de codebase ook als merk/label gebruikt in
+publieke teksten en configuratie (bijv. e-mailfooters, site-credits).
+
+
+2. ARCHITECTUUR EN KERNPRINCIPES
+--------------------------------------------------------------------------------
+
+2.1 Eén database, meerdere apps
+    Alle kerngegevens (klanten, sites, afspraken, facturen, leads, enz.)
+    leven in PostgreSQL via Supabase. Migraties staan onder supabase/migrations/.
+    Documentatie in docs/ legt uit hoe het booking-model één waarheid heeft
+    (BOOKING_GENTRIX_UNIFIED.md) en hoe de webshop-slug synchroniseert met
+    Chameleon (WEBSHOP_TENANT_SYNC.md).
+
+2.2 Tenant per klant
+    Een "klant" in het systeem is een rij in public.clients met onder meer
+    subfolder_slug: dat is de URL-basis voor de marketing-site (/site/{slug}),
+    preview, winkelpad, boekingslinks, portaal, enz.
+
+2.3 AI als productmotor
+    Site-opbouw en veel bewerkingen gebruiken gestructureerde prompts naar
+    Anthropic Claude. Output is voornamelijk JSON met HTML-fragmenten per
+    sectie (Tailwind-classes), themaconfiguratie, en bij multipage-sites
+    aparte marketing-subpagina's. Er is logging van tokengebruik, optionele
+    self-review, gefaseerde job-continuatie voor lange generaties, en
+    beheer van "AI-kennis" (globale instructies in de database).
+
+2.4 Veiligheid en rollen (hoog niveau)
+    Server routes scheiden publiek, portaal en admin. Er zijn strikte
+    modi voor portaal- en studio-admin-toegang (UUID-lijsten in env),
+    MFA voor e-mail, webhooks voor auth, service role voor server-only
+    operaties. Details staan in .env.example.
+
+
+3. STUDIO-APPLICATIE (NEXT.JS) — FUNCTIONEEL OVERZICHT
+--------------------------------------------------------------------------------
+
+3.1 Publieke klantwebsites
+    Routes onder (public) serveren de gegenereerde sites per slug, o.a.:
+      • /site/[slug] — hoofdmarketingpagina (en subroutes voor contact,
+        bestellen, marketing-subpagina's waar van toepassing)
+      • /preview/[slug] — voorbeeldweergave (studio/preview flows)
+      • /winkel/[slug] — winkelroute; kan een iframe laden naar de
+        Chameleon-shop als NEXT_PUBLIC_WEBSHOP_IFRAME_SRC_TEMPLATE is gezet
+      • /boek/[slug] — korte URL; redirect naar de ingebouwde booking-SPA
+      • /boek-venster/[slug] — variant voor embedded/boekvenster-use cases
+      • /agenda/[slug] — publieke agenda-weergave waar relevant
+
+    Middleware kan het gedrag van "/" beïnvloeden (eigen landingspagina via
+    slug "home", vaste showroom, of hostname-specifieke rewrites). Zie
+    .env.example voor LANDING_SITE_ROOT_SLUG en PRIMARY_HOST.
+
+3.2 Site-inhoud als gestructureerde data
+    Sites worden opgeslagen als o.a. tailwind_sections: HTML per sectie plus
+    config (thema, fonts, stijl). Er bestaan legacy- en moderne config-vormen;
+    de generator en editors houden daar rekening mee. Secties kunnen
+    data-studio-visibility="portal" dragen voor zakelijke mocks. Integraties
+    (WhatsApp, boeken, webshop) worden via briefing en modules gestuurd.
+
+3.3 Contact en bestellen op de publieke site
+    Er is een contactpagina-flow en een bestelroute (/site/.../bestellen).
+    API's zoals /api/public/site/[slug]/order ondersteunen bestellingen in
+    het studio-domein (o.a. studio_site_orders in de database).
+
+3.4 Admin / "Sales OS" / Business hub
+    Het interne deel bevat o.a.:
+      • Dashboard en navigatie (sales-os nav-config, hub-nav-config)
+      • Overzicht, leads, KVK-prospecting, deals, klanten, pipeline, omzet
+      • Site-studio (generator workspace naast /admin/generator routes)
+      • Websites-overzicht, HTML-editor per site, knowledge voor AI
+      • Taken, inzichten, instellingen
+      • Facturen en offertes (aanmaken, bewerken, bekijken)
+      • Zoeken naar klant of slug
+      • Flyers (lijst en per-klant flyer-studio)
+      • Packages-admin (admin/packages) — generatie is in de codebase
+        gecentreerd rond één "studio"-pakketconcept met briefing/commercieel
+        onderscheid
+
+    API-routes onder /api/admin/* en /api/clients/* voeden deze schermen
+    (export ZIP, bulk delete, billing, promo-video, tailwind compile preview,
+    spellcheck Nederlands, enz.).
+
+3.5 Site-studio en AI-generatie
+    Kernbestanden: lib/ai/generate-site-with-claude.ts en aanverwante modules.
+    Functionaliteit in het kort:
+      • Volledige nieuwe site uit briefing (bedrijfsnaam, beschrijving,
+        optioneel referentie-URL, klantfoto's, briefing-afbeeldingen met
+        vision-extract, marketing multipage-contract, homepage-sectiebudget)
+      • Post-processing (consistente id's, contactsecties, nav-validatie)
+      • Streaming en job-gebaseerde transportmodi (SITE_GENERATION_*)
+      • Gefaseerde jobs met checkpoint/continue voor serverless-limieten
+      • Self-review pipeline om kwaliteit te verbeteren
+      • Optioneel premium logo-pipeline (ENABLE_BRAND_LOGO_SYSTEM)
+      • AI-hero beeld (Gemini/OpenAI) met upload naar site-assets
+
+    Endpoints o.a.: /api/generate-site, /api/generate-site/stream,
+    /api/generate-site/jobs, jobs/[id]/continue.
+
+3.6 Site bewerken na generatie
+      • /api/ai-edit-site — instructiegestuurde sectie-updates
+      • /api/ai-site-chat — conversatie met streaming; scope per beurt
+      • /api/ai-site-command — vooraf gedefinieerde commando's op snapshot
+    Prompts enforced: geen ruwe script-tags in fragmenten, Alpine.js patronen
+    voor micro-interactie, GSAP beschikbaar via shell, regels rond marquee,
+    laser-effecten, dubbele navbars, mobiele breakpoints, enz.
+
+3.7 Editor, snapshots en publiceren
+    Beheerders werken sites bij via /admin/editor/[slug], kunnen snapshots
+    maken (versiehistorie), diff/rollback via API onder
+    /api/clients/[subfolder_slug]/snapshots. Publiceren gebeurt via publish-API.
+    Generation runs worden bijgehouden (site_generation_runs, jobs-tabellen).
+
+3.8 Klantportaal (/portal/[slug])
+    Het portaal geeft eindklanten toegang tot o.a.:
+      • Dashboard/home van hun omgeving
+      • Website-sectie (concept/publicatie flows)
+      • Behandelingen/diensten, medewerkers, planning, boekingen, afspraken
+      • Account
+      • Facturen (lijst en detail)
+
+    Portal-API's onder /api/portal/clients/[slug]/... dekken o.a.:
+      • portal-me, publish, draft-sections, restyle-theme, site-asset upload
+      • booking-settings, booking-services, staff, staff-shifts
+      • appointments (inclusief ICS-export per afspraak)
+      • agenda-pin (pincode voor agenda)
+      • push subscribe/unsubscribe (web push)
+      • subscription cancel
+
+    Toegang is configureerbaar strikt/non-strikt (PORTAL_STRICT_ACCESS,
+    gekoppelde auth-user per klant, studio preview users).
+
+3.9 Boeking (functioneel in Studio + Booking-SPA)
+    Eén unified schema: client_appointments, client_staff, client_staff_shifts,
+    client_booking_services, clients.appointments_enabled en booking_settings
+    (JSON; Zod-validatie in lib/booking/booking-settings.ts).
+
+    Publieke API's: /api/public/clients/[slug]/booking-services,
+    booking-staff, booking-slots, appointments — voor de ingebouwde SPA.
+
+    Cron: appointment-reminders en gerelateerde e-mailflows (Resend),
+    configureerbaar met CRON_SECRET.
+
+3.10 Webshop en Chameleon-sync
+    Als webshop_enabled in commercial data aan staat, kan de studio-site
+    winkel-CTA's tonen en /winkel/{slug} de iframe-shop laden. Bij aanmaken
+    van een klant of wijzigen van commercial velden kan een upsert naar
+    Chameleon clients (slug = subfolder_slug) plaatsvinden — zie
+    WEBSHOP_TENANT_SYNC.md.
+
+3.11 Facturatie, offertes en betalingen
+    Migraties dekken invoices, quote_items, invoice_items, audit events,
+    payment_attempts, sepa_mandates, billing_events. UI in admin en portaal.
+    Stripe en Resend worden via env ondersteund (.env.example).
+
+3.12 Sales / CRM-randen
+    Leads met KVK-enrichment (api/kvk, api/leads/enrich), conversie naar
+    klant, deals en tasks, website_ops_state voor operationele follow-up.
+
+3.13 Flyers
+    Flyer-studio per klant, PDF-preview en download, flyer-link, scans
+    (flyer_scans). Promo-video via Playwright (uitschakelbaar STUDIO_PROMO_VIDEO).
+
+3.14 Authenticatie en beveiliging
+    Login, wachtwoord vergeten/instellen, MFA (e-mail en aparte mfa routes),
+    admin email MFA-tabellen. Webhook /api/webhooks/auth voor welkom e-mail.
+
+3.15 Overige technische assets
+      • Remotion (remotion/) voor studio-promovideo compositie; npm scripts
+        remotion:studio, remotion:render
+      • PWA-iconen script (icons:pwa)
+      • FAQ-PDF build script
+      • FAQ / publieke showroom component (ShowroomFallback)
+      • Diverse publieke hulp-API's: domain-check, nl-address, studio-preview-lib
+
+
+4. FRONTEND CHAMELEON (WEBSHOP)
+--------------------------------------------------------------------------------
+
+Pad: frontends/chameleon/
+
+Vite + React 18 SPA voor de eigenlijke storefront (routes in de shop-app,
+bijv. /shop/c/{slug} op de gehoste origin — exact pad hangt van deploy af).
+
+De README in die map is beknopt; de integratie met GENTRIX staat vooral in
+docs/WEBSHOP_TENANT_SYNC.md: slug-gelijkheid aan studio subfolder_slug,
+optioneel tweede Supabase-project via KAMELEON_* env vars, iframe-template
+op de Next-app voor /winkel/{slug}.
+
+Chameleon heeft eigen supabase/README voor shop-specifieke migraties indien
+los gedeployed; in een geünificeerde productie-DB worden kolommen vaak
+samengevoegd tot één clients-tabel.
+
+
+5. FRONTEND BOOKING (BOEKINGS-SPA)
+--------------------------------------------------------------------------------
+
+Pad: frontends/booking/
+
+Vite + React 18 voor:
+  • Publieke boekflow (live tegen Next API + unified schema)
+  • Mock-demo op /booking-app/demo
+
+Build-proces: npm run build vanuit de Next-root roept build:booking-app aan
+en plaatst de SPA in public/booking-app/. Canonieke URL in productie:
+/booking-app/book/{slug}. Korte link /boek/{slug} redirect voor bookmarks.
+
+Alleen-Vite dev: proxy van /api naar localhost:3000; SPA-base /booking-app/.
+
+De map database/ bevat SQL voor een standalone demo-schema — niet mengen
+met productie-GENTRIX zonder migratieplan (zie BOOKING_GENTRIX_UNIFIED.md).
+
+
+6. DATABASE (POSTGRES / SUPABASE) — HOOFDLIJNEN
+--------------------------------------------------------------------------------
+
+Belangrijke tabellen en features uit migraties (niet exhaustief):
+
+  • clients — kern tenant; slug/subfolder, commerciële velden, flags
+  • sales_leads, sales_deals, sales_tasks — sales operating system
+  • website_ops_state — operationele status per website
+  • ai_knowledge, ai_usage_events — kennisbase en verbruik
+  • site_snapshots, site_generation_runs — versies en generatiehistorie
+  • site_generation_jobs, site_generation_chunk_sessions — async/chunk jobs
+  • client_appointments, client_staff, client_staff_shifts,
+    client_booking_services — boeking
+  • portal_push_subscriptions — web push
+  • invoices, quotes, invoice_items, quote_items — documenten
+  • invoice_audit_events — hardening geannuleerde facturen
+  • payment_attempts, sepa_mandates, billing_events — betalingen
+  • studio_site_orders — bestellingen via publieke site
+  • kvk_enriched_leads — prospecting
+  • client_dossier_notes — notities op dossier
+  • flyer_scans — flyer analytics/scan
+  • admin_email_mfa, admin_email_mfa_codes — MFA
+
+Scripts in scripts/ helpen bij migraties toepassen en onderhoudstaken.
+
+
+7. TECHNOLOGIEËN EN BIBLIOTHEKEN (STUDIO-ROOT)
+--------------------------------------------------------------------------------
+
+  • Next.js 16, React 19, TypeScript
+  • Tailwind CSS 4
+  • Supabase JS + SSR helpers
+  • Anthropic SDK (@anthropic-ai/sdk)
+  • Zod 4, date-fns, framer-motion
+  • DOMPurify (isomorphic) voor sanitization waar nodig
+  • jsonrepair — robuuste JSON-parse uit modeloutput
+  • jszip — export
+  • pdf-lib — PDF's (o.a. factuur/flyer context)
+  • qrcode, web-push
+  • Remotion + @remotion/cli
+  • Playwright — promo video pipeline
+  • Vitest — tests
+  • ESLint 9 flat config
+
+ pinned: jsdom 25.0.1 via overrides (ESM-compatibiliteit)
+
+
+8. BUILD, TEST EN DEVELOPMENT
+--------------------------------------------------------------------------------
+
+Root scripts (package.json):
+  • npm run dev — Next dev met webpack, hostname localhost
+  • npm run dev:with-booking-spa — booking build + dev
+  • npm run build — booking SPA build + next build
+  • npm run lint, npm run test
+  • db:migrate, db:clear-clients, icons:pwa, faq:pdf, remotion:*
+
+Let op Next 16: middleware.ts kan deprecation warnings geven; dev script
+gebruikt --hostname localhost voor asset-CORS.
+
+Chameleon/Booking: apart npm install in hun mappen; beide default Vite-poort
+8080 — tweede proces kiest vaak volgende vrije poort.
+
+
+9. OMGEUNGSVARIABELEN (SAMENVATTING)
+--------------------------------------------------------------------------------
+
+Zie .env.example voor de volledige lijst. Minimaal voor functionele studio:
+NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, ANTHROPIC_API_KEY.
+Zonder echte Supabase-credentials start de app nog wel, maar data-features
+vallen weg.
+
+Server-only: SUPABASE_SERVICE_ROLE_KEY, Stripe, Resend, KVK, MFA signing,
+cron secrets, VAPID keys, interne site-gen job secrets, optioneel aparte
+KAMELEON_* voor webshop-DB.
+
+Publieke URL's: NEXT_PUBLIC_SITE_URL, portal host, webshop iframe template,
+studio meeting/checkout/quote URL's voor CTA's.
+
+
+10. WAT DIT PLATFORM IN DE PRAKTIJK "LEVERT"
+--------------------------------------------------------------------------------
+
+Voor de studio-eigenaar:
+  • Eén stack om klanten te onboarden, sites te genereren en te itereren met AI
+  • CRM: leads → deals → klanten, taken, omzetinzicht
+  • Operationeel: websites pipeline, facturatie/offertes
+  • Marketing output: landingspagina's, previews, exports, flyers, video
+
+Voor de eindklant (zzp/mkb):
+  • Professionele site met contact/bestelpad waar geconfigureerd
+  • Portaal om website, boekingen, team en facturen te beheren
+  • Optioneel online afspraken (zelfde kern-DB)
+  • Optioneel webshop via Chameleon + iframe
+
+Voor ontwikkelaars/ops:
+  • Migratie-gedreven schema in supabase/migrations
+  • Duidelijke scheiding: Next = orchestratie + auth + API; Vite SPAs =
+    zware client UX voor shop en booking
+  • Documentatie in docs/ en README's voor snelle onboarding
+
+
+================================================================================
+  EINDE VERSLAG
+================================================================================
