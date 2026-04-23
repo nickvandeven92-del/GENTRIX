@@ -84,6 +84,18 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(repairHeaderMobileMenuButton(html)).toBe(html);
   });
 
+  it("verwijdert `md:hidden` op de menuknop wanneer ook `lg:hidden` staat (anders verdwijnt de knop vanaf 768px)", () => {
+    const html = `<header x-data="{ navOpen: false }" class="bg-white">
+  <button type="button" class="md:hidden flex flex-col gap-[5px] p-2 lg:hidden gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen">
+    <span class="gentrix-menu-icon"><svg x-show="!navOpen"></svg><svg x-show="navOpen" x-cloak></svg></span>
+  </button>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).not.toMatch(/\bmd:hidden\b/);
+    expect(out).toContain("lg:hidden");
+    expect(out).toContain("gentrix-menu-icon");
+  });
+
   it("vervangt AI-output met losse x-show spans in een flex-col parent (MOSHAM-case)", () => {
     // Dit is precies de broken AI-output die in mosham.html staat:
     // 3 bars voor !navOpen + 2 gedraaide bars voor navOpen, binnen een flex flex-col gap-[5px] button.

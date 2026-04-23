@@ -451,12 +451,28 @@ export function buildGentrixMenuIconToggle(stateKey: string): string {
 
 /**
  * Detecteert of de bestaande knop-inhoud al onze premium dual-state toggle bevat.
- * We vertrouwen *alleen* op de `gentrix-menu-icon`-marker — AI-output die er qua
- * `x-show` op lijkt (losse spans in `flex flex-col` met `rotate-45`) is geen echte X
- * en moet altijd vervangen worden.
+ * Alleen `gentrix-menu-icon` is onvoldoende: sommige sites houden de wrapper maar lege
+ * of kapotte SVG's — dan moeten we opnieuw `buildGentrixMenuIconToggle` injecteren.
  */
-function innerHasHamburgerXToggle(inner: string, _stateKey: string): boolean {
-  return /\bgentrix-menu-icon\b/.test(inner);
+function innerHasHamburgerXToggle(inner: string, stateKey: string): boolean {
+  if (!/\bgentrix-menu-icon\b/.test(inner)) return false;
+  const k = escapeRegExpKey(stateKey);
+  const closed = new RegExp(`x-show\\s*=\\s*["']\\s*!\\s*${k}\\b`, "i");
+  const openOnly = new RegExp(`x-show\\s*=\\s*["']\\s*${k}\\s*["']`, "i");
+  return closed.test(inner) && openOnly.test(inner);
+}
+
+/**
+ * Modellen zetten soms `md:hidden` én `lg:hidden` op dezelfde menuknop. `md:hidden` verbergt vanaf 768px,
+ * waardoor hamburger én kruis op tablet/desktop verdwijnen. `lg:hidden` alleen is het gebruikelijke
+ * patroon (zichtbaar tot het grote breakpoint).
+ */
+function dropMdHiddenWhenLgHiddenOnButtonAttrs(attrs: string): string {
+  return attrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/gi, (full, q: string, c: string) => {
+    if (!/\bmd:hidden\b/.test(c) || !/\blg:hidden\b/.test(c)) return full;
+    const next = c.replace(/\bmd:hidden\b/g, "").replace(/\s+/g, " ").trim();
+    return `class=${q}${next}${q}`;
+  });
 }
 
 function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
@@ -538,9 +554,15 @@ export function repairHeaderMobileMenuButton(html: string): string {
 
     const needsClick = !/(?:@click|x-on:click)\s*=/.test(attrs);
     const needsIcon = !hasProperToggle;
-    if (!needsClick && !needsIcon) return full;
+    if (!needsClick && !needsIcon) {
+      const normalizedAttrs = dropMdHiddenWhenLgHiddenOnButtonAttrs(attrs);
+      if (normalizedAttrs !== attrs) {
+        return `<button${normalizedAttrs}>${inner}</button>`;
+      }
+      return full;
+    }
 
-    let nextAttrs = attrs;
+    let nextAttrs = dropMdHiddenWhenLgHiddenOnButtonAttrs(attrs);
     if (needsClick) {
       nextAttrs = `${nextAttrs} @click="${stateKey} = !${stateKey}"`;
       if (!/\baria-expanded\s*=/.test(nextAttrs)) {
