@@ -4,6 +4,7 @@ import Script from "next/script";
 import { PortalPwaRoot } from "@/components/portal/portal-pwa-root";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ADMIN_DASHBOARD_THEME_STORAGE_KEY } from "@/lib/admin/dashboard-theme";
+import { PUBLIC_BRAND } from "@/lib/constants";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Premium Web Solutions",
+    default: PUBLIC_BRAND,
     template: "%s",
   },
   description: "Premium webdesign en digitale ervaringen.",

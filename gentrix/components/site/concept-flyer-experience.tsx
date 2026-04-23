@@ -18,6 +18,7 @@ import {
   type PortalThemePresetId,
 } from "@/lib/portal/portal-theme-presets";
 import { buildPublicStudioBookingHref, buildPublicStudioOrderHref } from "@/lib/studio-order/build-public-order-href";
+import { ShowroomWordmark } from "@/components/public/showroom-wordmark";
 import { cn } from "@/lib/utils";
 
 type ConceptFlyerExperienceProps = {
@@ -287,16 +288,16 @@ export function ConceptFlyerExperience({
 
   const dockTrigger = (active: boolean) =>
     cn(
-      "flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 border-l border-white/10 px-1 py-2 text-center transition-colors first:border-l-0 sm:min-h-[56px] sm:flex-row sm:gap-2 sm:px-3",
+      "flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 border-l border-zinc-200 px-1 py-2 text-center transition-colors first:border-l-0 sm:min-h-[56px] sm:flex-row sm:gap-2 sm:px-3 dark:border-zinc-700",
       active
-        ? "bg-white/[0.08] text-white"
-        : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200",
+        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
     );
 
   const dockLabel = "max-w-full truncate text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px]";
 
-  const sectionTitle = "text-sm font-semibold tracking-tight text-white";
-  const sectionMuted = "text-xs leading-relaxed text-zinc-400";
+  const sectionTitle = "text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50";
+  const sectionMuted = "text-xs leading-relaxed text-zinc-600 dark:text-zinc-400";
 
   return (
     <>
@@ -407,7 +408,7 @@ export function ConceptFlyerExperience({
         >
           <div
             ref={flyerChromeRef}
-            className="pointer-events-auto flex flex-col border-t border-white/10 bg-zinc-950/97 shadow-[0_-12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+            className="pointer-events-auto flex flex-col border-t border-zinc-200 bg-white/95 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/98 dark:shadow-[0_-12px_40px_rgba(0,0,0,0.45)] dark:backdrop-blur-xl"
           >
             {/* Uitklapbaar paneel — volle breedte, inhoud per sectie */}
             <div
@@ -418,7 +419,7 @@ export function ConceptFlyerExperience({
               )}
               aria-hidden={!expanded}
             >
-              <div className="min-h-0 overflow-hidden border-b border-white/5">
+              <div className="min-h-0 overflow-hidden border-b border-zinc-100 bg-zinc-50/90 dark:border-zinc-800 dark:bg-zinc-950/80">
                 <div className="max-h-[min(56vh,520px)] overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-8 sm:py-5">
                   {expanded === "thema" ? (
                     <div className="mx-auto max-w-2xl space-y-4">
@@ -430,7 +431,7 @@ export function ConceptFlyerExperience({
                             niet.
                           </p>
                         </div>
-                        <Sparkles className="size-5 shrink-0 text-amber-400/90" aria-hidden />
+                        <Sparkles className="size-5 shrink-0 text-zinc-400 dark:text-zinc-500" aria-hidden />
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {themePresets.map((p) => (
@@ -442,8 +443,8 @@ export function ConceptFlyerExperience({
                             className={cn(
                               "rounded-full border px-4 py-2 text-xs font-medium transition",
                               selectedFlyerThemeId === p.id
-                                ? "border-amber-400/60 bg-amber-500/15 text-amber-100"
-                                : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20 hover:bg-white/10",
+                                ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                                : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-700",
                             )}
                           >
                             {p.label}
@@ -456,7 +457,7 @@ export function ConceptFlyerExperience({
                           resetThema();
                           setExpanded(null);
                         }}
-                        className="w-full rounded-xl border border-white/10 py-3 text-sm font-medium text-zinc-200 transition hover:bg-white/5"
+                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Thema terugzetten
                       </button>
@@ -486,7 +487,7 @@ export function ConceptFlyerExperience({
                             href={meetingUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-medium text-white transition hover:bg-white/10"
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <Calendar className="size-4 shrink-0" aria-hidden />
                             Plan gesprek (agenda)
@@ -495,7 +496,7 @@ export function ConceptFlyerExperience({
                           <button
                             type="button"
                             onClick={() => mailStudio("Persoonlijk gesprek — website concept")}
-                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-medium text-white transition hover:bg-white/10"
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <Calendar className="size-4 shrink-0" aria-hidden />
                             Mail voor een gesprek
@@ -527,15 +528,24 @@ export function ConceptFlyerExperience({
             </div>
 
             {/* Rail — volle breedte, gelijke kolommen, geen horizontale scroll */}
-            <div className="flex min-h-[52px] w-full items-stretch sm:min-h-[56px]">
-              <div className="hidden w-[min(11rem,28%)] shrink-0 flex-col justify-center border-r border-white/10 px-3 py-2 sm:flex sm:px-4">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Concept</span>
-                <span className="truncate text-xs font-medium text-zinc-300" title={siteLabel}>
+            <div className="flex min-h-[52px] w-full flex-col items-stretch sm:min-h-[56px] sm:flex-row">
+              <div className="flex items-center justify-between gap-2 border-b border-zinc-100 px-3 py-2 sm:hidden dark:border-zinc-800">
+                <ShowroomWordmark variant="onLight" compact className="max-w-[min(100%,12rem)]" />
+                <span className="max-w-[50%] truncate text-right text-[11px] font-medium text-zinc-500 dark:text-zinc-400" title={siteLabel}>
+                  {siteLabel}
+                </span>
+              </div>
+              <div className="hidden w-[min(14rem,32%)] shrink-0 flex-col justify-center gap-1 border-r border-zinc-200 px-3 py-2 sm:flex sm:px-4 dark:border-zinc-700">
+                <ShowroomWordmark variant="onLight" className="min-w-0" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+                  Concept
+                </span>
+                <span className="truncate text-xs font-medium text-zinc-600 dark:text-zinc-300" title={siteLabel}>
                   {siteLabel}
                 </span>
               </div>
 
-              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/10">
+              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-zinc-200 dark:divide-zinc-700">
                 <button
                   type="button"
                   className={dockTrigger(expanded === "thema")}
@@ -543,12 +553,20 @@ export function ConceptFlyerExperience({
                   aria-controls="flyer-dock-panel"
                   onClick={() => toggleSection("thema")}
                 >
-                  <Palette className="size-4 shrink-0 text-zinc-300 sm:size-[18px]" aria-hidden />
+                  <Palette
+                    className={cn(
+                      "size-4 shrink-0 sm:size-[18px]",
+                      expanded === "thema"
+                        ? "text-white dark:text-zinc-900"
+                        : "text-zinc-500 dark:text-zinc-400",
+                    )}
+                    aria-hidden
+                  />
                   <span className={dockLabel}>Thema</span>
                   {expanded === "thema" ? (
-                    <ChevronUp className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                    <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
                   ) : (
-                    <ChevronDown className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                    <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
                   )}
                 </button>
 
@@ -560,17 +578,25 @@ export function ConceptFlyerExperience({
                     aria-controls="flyer-dock-panel"
                     onClick={() => toggleSection("afspraak")}
                   >
-                    <Calendar className="size-4 shrink-0 text-zinc-300 sm:size-[18px]" aria-hidden />
+                    <Calendar
+                      className={cn(
+                        "size-4 shrink-0 sm:size-[18px]",
+                        expanded === "afspraak"
+                          ? "text-white dark:text-zinc-900"
+                          : "text-zinc-500 dark:text-zinc-400",
+                      )}
+                      aria-hidden
+                    />
                     <span className={dockLabel}>{appointmentsEnabled ? "Afspraak" : "Contact"}</span>
                     {expanded === "afspraak" ? (
-                      <ChevronUp className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                      <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
                     ) : (
-                      <ChevronDown className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                      <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
                     )}
                   </button>
                 ) : (
                   <div
-                    className="flex min-h-[52px] flex-1 flex-col items-center justify-center border-l border-white/10 px-1 py-2 opacity-40 sm:min-h-[56px]"
+                    className="flex min-h-[52px] flex-1 flex-col items-center justify-center border-l border-zinc-200 px-1 py-2 opacity-40 sm:min-h-[56px] dark:border-zinc-700"
                     aria-hidden
                   >
                     <Calendar className="size-4 text-zinc-500" aria-hidden />
@@ -585,19 +611,27 @@ export function ConceptFlyerExperience({
                   aria-controls="flyer-dock-panel"
                   onClick={() => toggleSection("bestellen")}
                 >
-                  <ShoppingBag className="size-4 shrink-0 text-emerald-400/90 sm:size-[18px]" aria-hidden />
-                  <span className={cn(dockLabel, "text-emerald-100/90")}>Bestellen</span>
+                  <ShoppingBag
+                    className={cn(
+                      "size-4 shrink-0 sm:size-[18px]",
+                      expanded === "bestellen"
+                        ? "text-white dark:text-zinc-900"
+                        : "text-zinc-500 dark:text-zinc-400",
+                    )}
+                    aria-hidden
+                  />
+                  <span className={dockLabel}>Bestellen</span>
                   {expanded === "bestellen" ? (
-                    <ChevronUp className="size-3.5 text-emerald-400/70 max-sm:hidden" aria-hidden />
+                    <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
                   ) : (
-                    <ChevronDown className="size-3.5 text-emerald-400/70 max-sm:hidden" aria-hidden />
+                    <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
                   )}
                 </button>
               </div>
 
               <button
                 type="button"
-                className="flex w-14 shrink-0 flex-col items-center justify-center gap-1 border-l border-white/10 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200 sm:w-16"
+                className="flex w-14 shrink-0 flex-col items-center justify-center gap-1 border-l border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 sm:w-16 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                 onClick={() => {
                   setExpanded(null);
                   setStep(0);

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Cpu, LayoutDashboard } from "lucide-react";
+import { ArrowUpRight, LayoutDashboard } from "lucide-react";
 import { PUBLIC_BRAND, PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
+import { ShowroomWordmark } from "@/components/public/showroom-wordmark";
 import { cn } from "@/lib/utils";
 
 /** Eén aanbod — bewerk hier. Op het primaire studio-domein herschrijft middleware standaard `/` naar `/site/home` (generator-slug); zie `LANDING_SITE_ROOT_SLUG` / `off` in `.env.example`. */
@@ -100,10 +101,7 @@ export function ShowroomFallback() {
 
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#05080d]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#05080d]/55">
         <div className="mx-auto flex min-h-[4.25rem] max-w-6xl items-center justify-between gap-4 px-5 py-3.5 md:min-h-[4.75rem] md:px-8 md:py-4">
-          <span className="flex items-center gap-2 text-sm font-medium tracking-[0.2em] text-zinc-100">
-            <Cpu className="size-4 text-cyan-400/90" aria-hidden />
-            {PUBLIC_BRAND}
-          </span>
+          <ShowroomWordmark />
           <nav className="flex flex-wrap items-center justify-end gap-4 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500 md:gap-8">
             <a href="#aanpak" className="transition hover:text-cyan-200/90">
               Aanpak
