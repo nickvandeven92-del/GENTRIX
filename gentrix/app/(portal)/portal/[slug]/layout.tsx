@@ -9,6 +9,7 @@ import {
 } from "@/lib/portal/studio-portal-preview";
 import { userMayActAsStudioForPortalApis } from "@/lib/portal/portal-access-policy";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { GentrixPortalAnalyticsBoot } from "@/components/analytics/gentrix-portal-analytics-boot";
 
 type Props = {
   children: React.ReactNode;
@@ -43,6 +44,8 @@ export default async function PortalSlugLayout({ children, params }: Props) {
   const origin = await getRequestOrigin();
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${enc}` : undefined;
 
+  const decodedSlug = decodeURIComponent(slug);
+
   return (
     <PortalShell
       slug={slug}
@@ -55,6 +58,11 @@ export default async function PortalSlugLayout({ children, params }: Props) {
       portalSessionMismatch={portalSessionMismatch}
       showStudioPreviewBanner={showStudioPreviewBanner}
     >
+      <GentrixPortalAnalyticsBoot
+        siteSlug={decodedSlug}
+        bookingModuleEnabled={client.appointments_enabled}
+        webshopModuleEnabled={client.webshop_enabled}
+      />
       {children}
     </PortalShell>
   );

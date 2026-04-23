@@ -45,7 +45,7 @@ export function initGentrixAnalytics() {
     capture_pageleave: true,
     persistence: "localStorage",
     loaded: (ph) => {
-      if (process.env.NODE_ENV === "development") {
+      if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_POSTHOG_DEBUG === "1") {
         ph.debug();
       }
     },

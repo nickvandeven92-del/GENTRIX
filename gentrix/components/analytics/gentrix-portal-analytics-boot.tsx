@@ -8,12 +8,16 @@ import {
   trackGentrixEvent,
 } from "@/lib/analytics/gentrix-analytics";
 
-type Props = { siteSlug: string };
+type Props = { siteSlug: string; bookingModuleEnabled?: boolean; webshopModuleEnabled?: boolean };
 
 /**
  * Stelt PostHog-context in op klant-portaalroutes (`/portal/...`); draait in de portaal-pagina.
  */
-export function GentrixPortalAnalyticsBoot({ siteSlug }: Props) {
+export function GentrixPortalAnalyticsBoot({
+  siteSlug,
+  bookingModuleEnabled = false,
+  webshopModuleEnabled = false,
+}: Props) {
   const once = useRef(false);
   useEffect(() => {
     if (!isGentrixAnalyticsEnabled()) return;
@@ -26,11 +30,13 @@ export function GentrixPortalAnalyticsBoot({ siteSlug }: Props) {
       actor: "known_customer",
       is_internal_actor: false,
       render_surface: "other",
+      booking_module_enabled: bookingModuleEnabled,
+      webshop_module_enabled: webshopModuleEnabled,
     });
     if (once.current) return;
     once.current = true;
     trackGentrixEvent("client_dashboard_viewed", { site_slug: siteSlug });
-  }, [siteSlug]);
+  }, [siteSlug, bookingModuleEnabled, webshopModuleEnabled]);
 
   return null;
 }

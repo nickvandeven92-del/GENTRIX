@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { PortalPwaRoot } from "@/components/portal/portal-pwa-root";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { GentrixAnalyticsRoot } from "@/components/analytics/gentrix-analytics-root";
+import { GentrixIframeAnalyticsListener } from "@/components/analytics/gentrix-iframe-analytics-listener";
 import { ADMIN_DASHBOARD_THEME_STORAGE_KEY } from "@/lib/admin/dashboard-theme";
 import { PUBLIC_BRAND } from "@/lib/constants";
 import "./globals.css";
@@ -63,6 +66,10 @@ export default function RootLayout({
           }}
         />
         <NavigationProgress />
+        <Suspense fallback={null}>
+          <GentrixAnalyticsRoot />
+        </Suspense>
+        <GentrixIframeAnalyticsListener />
         {children}
         <PortalPwaRoot />
       </body>

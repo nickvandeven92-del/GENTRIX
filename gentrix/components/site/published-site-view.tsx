@@ -19,6 +19,7 @@ import {
 import { ensureFooterAppendedFromLanding } from "@/lib/site/ensure-footer-on-subpage";
 import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
+import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -72,8 +73,21 @@ export function PublishedSiteView({
   flyerPreview = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
+    const slugForA = publishedSlug?.trim() ?? "";
+    const isPreview = Boolean(draftPublicPreviewToken?.trim());
     return (
       <div className="relative flex min-h-screen w-full flex-1 flex-col">
+        {visibility === "public" && slugForA ? (
+          <GentrixPublicSiteAnalytics
+            siteSlug={slugForA}
+            pageKey="home"
+            isPreview={isPreview}
+            bookingModuleEnabled={appointmentsEnabled}
+            webshopModuleEnabled={webshopEnabled}
+            sessionType={isPreview ? "public_preview" : "public_site"}
+            renderSurface="react_page"
+          />
+        ) : null}
         <ReactPublishedSiteView
           doc={payload.doc}
           className={cn("min-h-0 flex-1", className)}
@@ -178,13 +192,33 @@ export function PublishedSiteView({
           }
         : null;
 
+    const analyticsPageKey =
+      marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
+        ? `marketing:${marketingKey}`
+        : publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)
+          ? "contact"
+          : "home";
+
     /**
      * Publieke weergave — **geen iframe**: HTML wordt direct in de Next.js-pagina gerenderd
      * (Optie A). Portaal blijft iframe-based zodat inline visual editing mogelijk blijft.
      */
     if (visibility === "public") {
+      const slugForA = publishedSlug?.trim() ?? "";
+      const isPreview = Boolean(draftPublicPreviewToken?.trim());
       return (
         <div className={cn("relative flex w-full flex-1 flex-col", className)}>
+          {slugForA ? (
+            <GentrixPublicSiteAnalytics
+              siteSlug={slugForA}
+              pageKey={analyticsPageKey}
+              isPreview={isPreview}
+              bookingModuleEnabled={appointmentsEnabled}
+              webshopModuleEnabled={webshopEnabled}
+              sessionType={isPreview ? "public_preview" : "public_site"}
+              renderSurface="public_inline"
+            />
+          ) : null}
           <PublicPublishedTailwindInline
             sections={twSections}
             pageConfig={payload.config}
