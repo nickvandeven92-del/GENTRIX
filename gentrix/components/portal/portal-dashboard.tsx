@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CreditCard, Download, ExternalLink, FileText, LayoutDashboard, Link2 } from "lucide-react";
+import { CreditCard, Download, ExternalLink, FileText, LayoutDashboard, Link2, MessageCircle } from "lucide-react";
 import type { PortalDashboardSnapshot } from "@/lib/data/get-portal-dashboard-snapshot";
 import { publicLiveBookingHref, publicLiveBookingVensterHref } from "@/lib/site/studio-section-visibility";
 import { PortalBookingOpenVensterButton } from "@/components/portal/portal-booking-open-venster-button";
@@ -44,6 +44,7 @@ export function PortalDashboard({
 
   const links: { href: string; label: string; icon: typeof FileText; nativeSite?: boolean }[] = [
     { href: base, label: "Dashboard", icon: LayoutDashboard },
+    { href: `${base}/support`, label: "Support", icon: MessageCircle },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account", icon: CreditCard }] : []),
     { href: sitePublicHref, label: "Publieke site", icon: ExternalLink, nativeSite: true },

@@ -539,7 +539,7 @@ export function ConceptFlyerExperience({
             {/* Rail — mobiel: titelregel + één rij (3 knoppen + help); vanaf sm: sidebar | rij zoals voorheen */}
             <div className="flex min-h-0 w-full flex-col items-stretch sm:min-h-[56px] sm:flex-row">
               <div className="flex min-h-[36px] items-center justify-between gap-2 border-b border-zinc-100 px-2.5 py-1.5 sm:hidden dark:border-zinc-800">
-                <div className="flex min-w-0 items-center gap-1.5">
+                <div className="flex w-fit max-w-full min-w-0 shrink-0 items-center gap-1 self-start">
                   <ShowroomWordmark variant="onLight" compact className="min-w-0 max-w-[min(100%,8.5rem)] shrink" />
                   <span className="shrink-0 text-[8px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
                     preview
@@ -550,9 +550,9 @@ export function ConceptFlyerExperience({
                 </span>
               </div>
               <div className="hidden w-[min(14rem,32%)] shrink-0 flex-col justify-center gap-1 border-r border-zinc-200 px-3 py-2 sm:flex sm:px-4 dark:border-zinc-700">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <ShowroomWordmark variant="onLight" className="min-w-0 flex-1" />
-                  <span className="shrink-0 self-center text-[9px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
+                <div className="flex w-fit max-w-full shrink-0 items-center gap-1 self-start">
+                  <ShowroomWordmark variant="onLight" className="min-w-0 shrink" />
+                  <span className="shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
                     preview
                   </span>
                 </div>
