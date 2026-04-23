@@ -248,8 +248,8 @@ export function ConceptFlyerExperience({
     const prev = document.body.style.paddingBottom;
     const apply = () => {
       const pad = smMq.matches
-        ? "calc(3.75rem + env(safe-area-inset-bottom, 0px))"
-        : "calc(5.25rem + env(safe-area-inset-bottom, 0px))";
+        ? "calc(7rem + env(safe-area-inset-bottom, 0px))"
+        : "calc(8.25rem + env(safe-area-inset-bottom, 0px))";
       document.body.style.paddingBottom = pad;
     };
     apply();
@@ -536,135 +536,132 @@ export function ConceptFlyerExperience({
               </div>
             </div>
 
-            {/* Rail — mobiel: titelregel + één rij (3 knoppen + help); vanaf sm: sidebar | rij zoals voorheen */}
-            <div className="flex min-h-0 w-full flex-col items-stretch sm:min-h-[56px] sm:flex-row">
-              <div className="flex min-h-[36px] items-center justify-between gap-2 border-b border-zinc-100 px-2.5 py-1.5 sm:hidden dark:border-zinc-800">
-                <div className="flex w-fit max-w-full min-w-0 shrink-0 items-center gap-1 self-start">
-                  <ShowroomWordmark variant="onLight" compact className="min-w-0 max-w-[min(100%,8.5rem)] shrink" />
-                  <span className="shrink-0 text-[8px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
-                    preview
+            {/* Rail — boven: titel + (sidebar | thema/help); onder: volle-breedte groene «Probeer gratis». */}
+            <div className="flex min-h-0 w-full flex-col items-stretch">
+              <div className="flex min-w-0 w-full flex-col sm:flex-row sm:items-stretch">
+                <div className="flex min-h-[36px] items-center justify-between gap-2 border-b border-zinc-100 px-2.5 py-1.5 sm:hidden dark:border-zinc-800">
+                  <div className="flex w-fit max-w-full min-w-0 shrink-0 items-center gap-1 self-start">
+                    <ShowroomWordmark variant="onLight" compact className="min-w-0 max-w-[min(100%,8.5rem)] shrink" />
+                    <span className="shrink-0 text-[8px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
+                      preview
+                    </span>
+                  </div>
+                  <span className="min-w-0 max-w-[50%] truncate text-right text-[10px] font-medium text-zinc-500 dark:text-zinc-400" title={siteLabel}>
+                    {siteLabel}
                   </span>
                 </div>
-                <span className="min-w-0 max-w-[50%] truncate text-right text-[10px] font-medium text-zinc-500 dark:text-zinc-400" title={siteLabel}>
-                  {siteLabel}
-                </span>
-              </div>
-              <div className="hidden w-[min(14rem,32%)] shrink-0 flex-col justify-center gap-1 border-r border-zinc-200 px-3 py-2 sm:flex sm:px-4 dark:border-zinc-700">
-                <div className="flex w-fit max-w-full shrink-0 items-center gap-1 self-start">
-                  <ShowroomWordmark variant="onLight" className="min-w-0 shrink" />
-                  <span className="shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
-                    preview
+                <div className="hidden w-[min(14rem,32%)] shrink-0 flex-col justify-center gap-1 border-r border-zinc-200 px-3 py-2 sm:flex sm:px-4 dark:border-zinc-700">
+                  <div className="flex w-fit max-w-full shrink-0 items-center gap-1 self-start">
+                    <ShowroomWordmark variant="onLight" className="min-w-0 shrink" />
+                    <span className="shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
+                      preview
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+                    Concept
+                  </span>
+                  <span className="truncate text-xs font-medium text-zinc-600 dark:text-zinc-300" title={siteLabel}>
+                    {siteLabel}
                   </span>
                 </div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
-                  Concept
-                </span>
-                <span className="truncate text-xs font-medium text-zinc-600 dark:text-zinc-300" title={siteLabel}>
-                  {siteLabel}
-                </span>
-              </div>
 
-              <div className="flex min-h-[44px] min-w-0 flex-1 flex-row sm:min-h-[56px]">
-                <div className="grid min-h-0 min-w-0 flex-1 grid-cols-3 divide-x divide-zinc-200 dark:divide-zinc-700">
-                <button
-                  type="button"
-                  className={dockTrigger(expanded === "thema")}
-                  aria-expanded={expanded === "thema"}
-                  aria-controls="flyer-dock-panel"
-                  onClick={() => toggleSection("thema")}
-                >
-                  <Palette
-                    className={cn(
-                      "size-[15px] shrink-0 sm:size-[18px]",
-                      expanded === "thema"
-                        ? "text-white dark:text-zinc-900"
-                        : "text-zinc-500 dark:text-zinc-400",
+                <div className="flex min-h-[44px] min-w-0 flex-1 flex-row sm:min-h-[56px]">
+                  <div className="grid min-h-0 min-w-0 flex-1 grid-cols-2 divide-x divide-zinc-200 dark:divide-zinc-700">
+                    <button
+                      type="button"
+                      className={dockTrigger(expanded === "thema")}
+                      aria-expanded={expanded === "thema"}
+                      aria-controls="flyer-dock-panel"
+                      onClick={() => toggleSection("thema")}
+                    >
+                      <Palette
+                        className={cn(
+                          "size-[15px] shrink-0 sm:size-[18px]",
+                          expanded === "thema"
+                            ? "text-white dark:text-zinc-900"
+                            : "text-zinc-500 dark:text-zinc-400",
+                        )}
+                        aria-hidden
+                      />
+                      <span className={dockLabel}>Thema</span>
+                      {expanded === "thema" ? (
+                        <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
+                      ) : (
+                        <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
+                      )}
+                    </button>
+
+                    {showAppointmentInBar ? (
+                      <button
+                        type="button"
+                        className={dockTrigger(expanded === "afspraak")}
+                        aria-expanded={expanded === "afspraak"}
+                        aria-controls="flyer-dock-panel"
+                        onClick={() => toggleSection("afspraak")}
+                      >
+                        <Calendar
+                          className={cn(
+                            "size-[15px] shrink-0 sm:size-[18px]",
+                            expanded === "afspraak"
+                              ? "text-white dark:text-zinc-900"
+                              : "text-zinc-500 dark:text-zinc-400",
+                          )}
+                          aria-hidden
+                        />
+                        <span className={dockLabel}>{appointmentsEnabled ? "Afspraak" : "Contact"}</span>
+                        {expanded === "afspraak" ? (
+                          <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
+                        ) : (
+                          <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
+                        )}
+                      </button>
+                    ) : (
+                      <div
+                        className="flex min-h-[44px] flex-1 flex-col items-center justify-center border-l border-zinc-200 px-0.5 py-1.5 opacity-40 sm:min-h-[56px] dark:border-zinc-700"
+                        aria-hidden
+                      >
+                        <Calendar className="size-4 text-zinc-500" aria-hidden />
+                        <span className={dockLabel}>—</span>
+                      </div>
                     )}
-                    aria-hidden
-                  />
-                  <span className={dockLabel}>Thema</span>
-                  {expanded === "thema" ? (
-                    <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
-                  ) : (
-                    <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
-                  )}
-                </button>
+                  </div>
 
-                {showAppointmentInBar ? (
                   <button
                     type="button"
-                    className={dockTrigger(expanded === "afspraak")}
-                    aria-expanded={expanded === "afspraak"}
-                    aria-controls="flyer-dock-panel"
-                    onClick={() => toggleSection("afspraak")}
+                    className="flex w-11 shrink-0 flex-col items-center justify-center gap-0 border-l border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 sm:w-16 sm:gap-1 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                    onClick={() => {
+                      setExpanded(null);
+                      setStep(0);
+                      setTourOpen(true);
+                    }}
+                    aria-label="Concept-uitleg"
                   >
-                    <Calendar
-                      className={cn(
-                        "size-[15px] shrink-0 sm:size-[18px]",
-                        expanded === "afspraak"
-                          ? "text-white dark:text-zinc-900"
-                          : "text-zinc-500 dark:text-zinc-400",
-                      )}
-                      aria-hidden
-                    />
-                    <span className={dockLabel}>{appointmentsEnabled ? "Afspraak" : "Contact"}</span>
-                    {expanded === "afspraak" ? (
-                      <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
-                    ) : (
-                      <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
-                    )}
+                    <HelpCircle className="size-[15px] shrink-0 sm:size-[18px]" aria-hidden />
+                    <span className="hidden text-[9px] font-medium uppercase tracking-wider sm:inline">Info</span>
                   </button>
-                ) : (
-                  <div
-                    className="flex min-h-[44px] flex-1 flex-col items-center justify-center border-l border-zinc-200 px-0.5 py-1.5 opacity-40 sm:min-h-[56px] dark:border-zinc-700"
-                    aria-hidden
-                  >
-                    <Calendar className="size-4 text-zinc-500" aria-hidden />
-                    <span className={dockLabel}>—</span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className={dockTrigger(expanded === "bestellen")}
-                  aria-expanded={expanded === "bestellen"}
-                  aria-controls="flyer-dock-panel"
-                  onClick={() => toggleSection("bestellen")}
-                >
-                  <ShoppingBag
-                    className={cn(
-                      "size-[15px] shrink-0 sm:size-[18px]",
-                      expanded === "bestellen"
-                        ? "text-white dark:text-zinc-900"
-                        : "text-zinc-500 dark:text-zinc-400",
-                    )}
-                    aria-hidden
-                  />
-                  <span className="max-w-full whitespace-normal text-center text-[8px] font-medium uppercase leading-tight tracking-[0.1em] line-clamp-2 break-words sm:text-[11px] sm:tracking-[0.14em] sm:leading-snug">
-                    Probeer gratis
-                  </span>
-                  {expanded === "bestellen" ? (
-                    <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
-                  ) : (
-                    <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
-                  )}
-                </button>
                 </div>
-
-                <button
-                  type="button"
-                  className="flex w-11 shrink-0 flex-col items-center justify-center gap-0 border-l border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 sm:w-16 sm:gap-1 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  onClick={() => {
-                    setExpanded(null);
-                    setStep(0);
-                    setTourOpen(true);
-                  }}
-                  aria-label="Concept-uitleg"
-                >
-                  <HelpCircle className="size-[15px] shrink-0 sm:size-[18px]" aria-hidden />
-                  <span className="hidden text-[9px] font-medium uppercase tracking-wider sm:inline">Info</span>
-                </button>
               </div>
+
+              <button
+                type="button"
+                className={cn(
+                  "relative flex w-full min-h-[50px] shrink-0 touch-manipulation items-center justify-center gap-2.5 border-t border-emerald-300/40 bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 px-4 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_-8px_32px_rgba(16,185,129,0.5)] transition hover:from-emerald-300 hover:via-emerald-400 hover:to-emerald-500 hover:shadow-[0_-10px_36px_rgba(52,211,153,0.6)] active:brightness-95 sm:min-h-[54px] sm:text-base sm:tracking-[0.14em]",
+                  "dark:border-emerald-200/30 dark:from-emerald-500 dark:via-emerald-600 dark:to-emerald-700 dark:shadow-[0_-8px_36px_rgba(5,150,105,0.6)] dark:hover:from-emerald-400 dark:hover:via-emerald-500 dark:hover:to-emerald-600",
+                  expanded === "bestellen" &&
+                    "ring-2 ring-amber-200/95 ring-inset ring-offset-0 dark:ring-amber-300/85",
+                )}
+                aria-expanded={expanded === "bestellen"}
+                aria-controls="flyer-dock-panel"
+                onClick={() => toggleSection("bestellen")}
+              >
+                <ShoppingBag className="size-5 shrink-0 opacity-95 sm:size-[22px]" aria-hidden />
+                <span>Probeer gratis</span>
+                {expanded === "bestellen" ? (
+                  <ChevronUp className="absolute right-3 top-1/2 size-4 -translate-y-1/2 opacity-90 max-sm:hidden" aria-hidden />
+                ) : (
+                  <ChevronDown className="absolute right-3 top-1/2 size-4 -translate-y-1/2 opacity-90 max-sm:hidden" aria-hidden />
+                )}
+              </button>
             </div>
           </div>
         </div>

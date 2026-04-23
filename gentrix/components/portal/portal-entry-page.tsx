@@ -15,7 +15,7 @@ export async function PortalEntryPage() {
   }
 
   return (
-    <main className="mx-auto min-h-[50vh] max-w-lg px-4 py-12">
+    <main className="gentrix-ui-sharp mx-auto min-h-[50vh] max-w-lg px-4 py-12">
       <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Meerdere portalen</h1>
       <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
         Je account is gekoppeld aan meer dan één klantdossier. Kies hieronder welk portaal je wilt openen.

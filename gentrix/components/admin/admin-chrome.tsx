@@ -21,6 +21,7 @@ export function AdminChrome({ children }: AdminChromeProps) {
     pathname.startsWith("/admin/invoices") ||
     pathname.startsWith("/admin/quotes") ||
     pathname.startsWith("/admin/clients") ||
+    pathname.startsWith("/admin/flyers") ||
     pathname.startsWith("/admin/sites") ||
     pathname.startsWith("/admin/editor") ||
     pathname.startsWith("/admin/settings")
