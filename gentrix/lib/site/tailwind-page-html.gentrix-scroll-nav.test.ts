@@ -13,6 +13,7 @@ const simpleSections: TailwindSection[] = [
 describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
   it("skips AOS/GSAP libraries when output does not use them", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
+    expect(doc).toMatch(/<link rel="icon"[^>]+data:image\/svg\+xml/);
     expect(doc).not.toContain("unpkg.com/aos@2.3.4/dist/aos.css");
     expect(doc).not.toContain("unpkg.com/aos@2.3.4/dist/aos.js");
     expect(doc).not.toContain("cdn.jsdelivr.net/npm/gsap@");

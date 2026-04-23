@@ -43,7 +43,13 @@ import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-l
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
 import { STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
 import { pickStudioSiteCreditVariant } from "@/lib/site/studio-site-shell";
+import {
+  MAX_FAVICON_DATA_URL_CHARS,
+  resolvePublicSiteFaviconSvg,
+} from "@/lib/site/site-identity-favicon";
 import type { GeneratedLogoSet } from "@/types/logo";
+
+export { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/site-identity-favicon";
 
 export { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 export { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
@@ -2163,17 +2169,35 @@ export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig |
   };
 }
 
-/** Zelfde limiet als `generateMetadata` op `/site/[slug]` (te grote data-URL’s breken SSR). */
-export const MAX_FAVICON_DATA_URL_CHARS = 12_000;
-
 /**
- * `<link rel="icon">` voor geëxporteerde HTML en iframe-srcDoc wanneer er een merk-favicon is.
- * De live Next-route zet parallel `metadata.icons` (zie `app/(public)/site/[slug]/page.tsx`).
+ * `<link rel="icon">` voor geëxporteerde HTML en iframe-srcDoc.
+ * Premium `logoSet.variants.favicon` wint; anders deterministische site-identiteit (kleur + teken).
  */
-export function buildFaviconLinkTagForLogoSet(logoSet?: GeneratedLogoSet | null): string {
-  const fav = logoSet?.variants?.favicon?.trim() ?? "";
-  if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return "";
-  return `<link rel="icon" href="data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}" type="image/svg+xml"/>`;
+export function buildFaviconLinkTagForPublishedSite(input: {
+  logoSet?: GeneratedLogoSet | null;
+  displayName: string;
+  slug: string;
+  pageConfig?: TailwindPageConfig | null;
+  themePrimaryHex?: string | null;
+}): string {
+  const svg = resolvePublicSiteFaviconSvg({
+    logoFavicon: input.logoSet?.variants?.favicon,
+    displayName: input.displayName,
+    slug: input.slug,
+    pageConfig: input.pageConfig ?? null,
+    themePrimaryHex: input.themePrimaryHex ?? null,
+  });
+  const safe =
+    svg.length <= MAX_FAVICON_DATA_URL_CHARS
+      ? svg
+      : resolvePublicSiteFaviconSvg({
+          logoFavicon: undefined,
+          displayName: "G",
+          slug: "g",
+          pageConfig: null,
+          themePrimaryHex: "#4f46e5",
+        });
+  return `<link rel="icon" href="data:image/svg+xml;charset=utf-8,${encodeURIComponent(safe)}" type="image/svg+xml"/>`;
 }
 
 export type BuildTailwindSectionsBodyOptions = {
@@ -2857,7 +2881,14 @@ export function buildTailwindIframeSrcDoc(
     motionDisabled || !shouldLoadAos,
   );
   const { bodyScripts: gsapBodyScripts } = getStudioGsapHtmlFragments(motionDisabled || !shouldLoadGsap);
-  const faviconLink = buildFaviconLinkTagForLogoSet(options?.logoSet);
+  const slugForFav = options?.publishedSlug?.trim() || "preview";
+  const displayForFav = options?.navBrandLabel?.trim() || "Site";
+  const faviconLink = buildFaviconLinkTagForPublishedSite({
+    logoSet: options?.logoSet,
+    displayName: displayForFav,
+    slug: slugForFav,
+    pageConfig: pageConfig ?? null,
+  });
   const headMetaExtras = [faviconLink && `  ${faviconLink}`, themeMeta && `  ${themeMeta}`]
     .filter(Boolean)
     .join("\n");

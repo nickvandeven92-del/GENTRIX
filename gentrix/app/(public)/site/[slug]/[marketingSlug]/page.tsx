@@ -4,7 +4,7 @@ import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experien
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { readPrettyPublicUrlContext, toPrettyPublicRedirectTarget } from "@/lib/site/pretty-public-url";
-import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
+import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { resolveMarketingPageKeyForUrlSegment } from "@/lib/site/marketing-path-aliases";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
@@ -40,19 +40,16 @@ export async function generateMetadata({ params, searchParams }: MarketingSitePa
     }
     const displayName = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
     const title = `${displayName} · ${formatSlugForDisplay(resolvedSeg)}`;
-    const base = { title, description: `${displayName} — ${formatSlugForDisplay(seg)}`, ...conceptRobots };
-    const fav = bundle.payload.logoSet?.variants.favicon?.trim() ?? "";
-    if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
     return {
-      ...base,
-      icons: {
-        icon: [
-          {
-            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`,
-            type: "image/svg+xml",
-          },
-        ],
-      },
+      title,
+      description: `${displayName} — ${formatSlugForDisplay(seg)}`,
+      ...conceptRobots,
+      icons: buildNextPublishedSiteIcons({
+        logoFavicon: bundle.payload.logoSet?.variants?.favicon,
+        displayName,
+        slug,
+        pageConfig: bundle.payload.config ?? null,
+      }),
     };
   } catch {
     return { title: "Pagina", robots: { index: true, follow: true } };

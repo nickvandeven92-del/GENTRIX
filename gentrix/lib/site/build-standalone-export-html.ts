@@ -6,7 +6,7 @@ import {
 import {
   buildLucideRuntimeScriptBlock,
   buildRootCssVarsForTailwindPage,
-  buildFaviconLinkTagForLogoSet,
+  buildFaviconLinkTagForPublishedSite,
   buildTailwindSectionsBodyInnerHtml,
   STUDIO_BORDER_REVEAL_CSS,
   STUDIO_DATA_ANIMATION_CSS,
@@ -63,6 +63,8 @@ export type StandaloneExportUserAssets = {
   css?: string;
   js?: string;
   logoSet?: GeneratedLogoSet | null;
+  /** Wanneer geen `exportPublish.subfolderSlug`: toch unieke favicon (display + slug). */
+  faviconIdentity?: { displayName: string; slug: string };
   /**
    * `true`: alle publieke marketingsecties (incl. booking/shop-blokken) blijven in de DOM voor
    * `@source`-Tailwind-build; placeholders → `#`. Gebruik alleen voor CSS-compilatie, niet voor index.html.
@@ -137,7 +139,16 @@ export function buildStandaloneExportHtmlDocument(
   const uJs = userAssets?.js?.trim() ?? "";
   const userCssBlock = uCss ? `<style id="studio-user-css">\n${sanitizeUserSiteCss(uCss)}\n</style>\n  ` : "";
   const userJsBlock = uJs ? `\n${buildUserScriptTagForHtmlDocument(uJs)}` : "";
-  const faviconLink = buildFaviconLinkTagForLogoSet(userAssets?.logoSet);
+  const slugForFav =
+    userAssets?.exportPublish?.subfolderSlug?.trim() || userAssets?.faviconIdentity?.slug?.trim() || "site";
+  const displayForFav =
+    userAssets?.faviconIdentity?.displayName?.trim() || docTitle?.trim() || "Site";
+  const faviconLink = buildFaviconLinkTagForPublishedSite({
+    logoSet: userAssets?.logoSet,
+    displayName: displayForFav,
+    slug: slugForFav,
+    pageConfig: pageConfig ?? null,
+  });
   const aos = getStudioAosHtmlFragments(false);
   const gsap = getStudioGsapHtmlFragments(false);
   const siteCreditVariant = pickStudioSiteCreditVariant(

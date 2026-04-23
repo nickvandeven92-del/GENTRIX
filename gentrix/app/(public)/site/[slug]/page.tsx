@@ -4,7 +4,7 @@ import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experien
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { readPrettyPublicUrlContext } from "@/lib/site/pretty-public-url";
-import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
+import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
@@ -29,52 +29,39 @@ export async function generateMetadata({ params, searchParams }: SitePageProps):
       ? ({ robots: { index: false, follow: false } } as const)
       : ({} as const);
     const row = bundle.payload;
+    const displayName = row.clientName?.trim() || formatSlugForDisplay(slug);
     if (row.kind === "legacy") {
       return {
         title: row.site.meta.title,
         description: row.site.meta.description,
         ...conceptRobots,
+        icons: buildNextPublishedSiteIcons({ displayName, slug }),
       };
     }
-    const displayName = row.clientName?.trim() || formatSlugForDisplay(slug);
     if (row.kind === "react") {
       const title = row.doc.documentTitle?.trim() || displayName;
-      const base = {
+      return {
         title,
         description: `Website van ${displayName}`,
         ...conceptRobots,
-      };
-      const fav = row.doc.logoSet?.variants.favicon?.trim() ?? "";
-      if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
-      return {
-        ...base,
-        icons: {
-          icon: [
-            {
-              url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`,
-              type: "image/svg+xml",
-            },
-          ],
-        },
+        icons: buildNextPublishedSiteIcons({
+          logoFavicon: row.doc.logoSet?.variants?.favicon,
+          displayName,
+          slug,
+          themePrimaryHex: row.doc.theme.primary,
+        }),
       };
     }
-    const base = {
+    return {
       title: displayName,
       description: `Website van ${displayName}`,
       ...conceptRobots,
-    };
-    const fav = row.logoSet?.variants.favicon?.trim() ?? "";
-    if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
-    return {
-      ...base,
-      icons: {
-        icon: [
-          {
-            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`,
-            type: "image/svg+xml",
-          },
-        ],
-      },
+      icons: buildNextPublishedSiteIcons({
+        logoFavicon: row.logoSet?.variants?.favicon,
+        displayName,
+        slug,
+        pageConfig: row.config ?? null,
+      }),
     };
   } catch {
     return { title: "Site", robots: { index: true, follow: true } };

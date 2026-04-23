@@ -39,6 +39,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
     js: customJs,
     logoSet,
     forTailwindClassScan: true,
+    faviconIdentity: { displayName: docTitle, slug: subfolderSlug },
   });
   const stylesCss = await buildTailwindCompiledCssFromIndexHtml(projectRoot, scanHtml);
 

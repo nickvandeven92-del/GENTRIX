@@ -56,6 +56,8 @@ export type BuildTailwindCompiledCssInput = {
   customCss?: string;
   customJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  /** Optioneel; anders stabiele placeholder voor favicon in compile-HTML. */
+  faviconIdentity?: { displayName: string; slug: string };
 };
 
 /**
@@ -71,6 +73,10 @@ export async function buildTailwindCompiledCssBundle(input: BuildTailwindCompile
       css: input.customCss,
       js: input.customJs,
       logoSet: input.logoSet ?? undefined,
+      faviconIdentity: input.faviconIdentity ?? {
+        displayName: input.docTitle,
+        slug: "tailwind-compile",
+      },
     },
   );
   return buildTailwindCompiledCssFromIndexHtml(input.projectRoot, html);

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
 import { StudioWebsiteOrderClient } from "@/components/site/studio-website-order-client";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
-import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
+import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type PageProps = {
@@ -34,24 +34,31 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const title = `${displayName} · Bestellen`;
     const base = { title, description: `Bestel en betaal — ${displayName}`, ...conceptRobots };
     if (bundle.payload.kind === "tailwind") {
-      const fav = bundle.payload.logoSet?.variants.favicon?.trim() ?? "";
-      if (fav && fav.length <= MAX_FAVICON_DATA_URL_CHARS) {
-        return {
-          ...base,
-          icons: { icon: [{ url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`, type: "image/svg+xml" }] },
-        };
-      }
+      return {
+        ...base,
+        icons: buildNextPublishedSiteIcons({
+          logoFavicon: bundle.payload.logoSet?.variants?.favicon,
+          displayName,
+          slug,
+          pageConfig: bundle.payload.config ?? null,
+        }),
+      };
     }
     if (bundle.payload.kind === "react") {
-      const fav = bundle.payload.doc.logoSet?.variants.favicon?.trim() ?? "";
-      if (fav && fav.length <= MAX_FAVICON_DATA_URL_CHARS) {
-        return {
-          ...base,
-          icons: { icon: [{ url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`, type: "image/svg+xml" }] },
-        };
-      }
+      return {
+        ...base,
+        icons: buildNextPublishedSiteIcons({
+          logoFavicon: bundle.payload.doc.logoSet?.variants?.favicon,
+          displayName,
+          slug,
+          themePrimaryHex: bundle.payload.doc.theme.primary,
+        }),
+      };
     }
-    return base;
+    return {
+      ...base,
+      icons: buildNextPublishedSiteIcons({ displayName, slug }),
+    };
   } catch {
     return { title: "Bestellen", robots: { index: true, follow: true } };
   }

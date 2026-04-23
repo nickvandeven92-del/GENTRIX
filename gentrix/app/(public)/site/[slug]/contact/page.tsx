@@ -6,7 +6,7 @@ import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { readPrettyPublicUrlContext, toPrettyPublicRedirectTarget } from "@/lib/site/pretty-public-url";
-import { MAX_FAVICON_DATA_URL_CHARS } from "@/lib/site/tailwind-page-html";
+import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import {
   hasResolvedPublicContactRoute,
   resolvePublicTailwindContactPlan,
@@ -43,19 +43,16 @@ export async function generateMetadata({ params, searchParams }: ContactSitePage
     }
     const displayName = row.clientName?.trim() || formatSlugForDisplay(slug);
     const title = `${displayName} · Contact`;
-    const base = { title, description: `Neem contact op met ${displayName}`, ...conceptRobots };
-    const fav = row.logoSet?.variants.favicon?.trim() ?? "";
-    if (!fav || fav.length > MAX_FAVICON_DATA_URL_CHARS) return base;
     return {
-      ...base,
-      icons: {
-        icon: [
-          {
-            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(fav)}`,
-            type: "image/svg+xml",
-          },
-        ],
-      },
+      title,
+      description: `Neem contact op met ${displayName}`,
+      ...conceptRobots,
+      icons: buildNextPublishedSiteIcons({
+        logoFavicon: row.logoSet?.variants?.favicon,
+        displayName,
+        slug,
+        pageConfig: row.config ?? null,
+      }),
     };
   } catch {
     return { title: "Contact", robots: { index: true, follow: true } };
