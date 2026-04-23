@@ -35,7 +35,7 @@ export function ShowroomWordmark({ className, compact, variant = "showroom" }: S
         )}
         aria-hidden
       />
-      <span className="min-w-0 truncate">{PUBLIC_BRAND}</span>
+      <span className="min-w-0 truncate uppercase">{PUBLIC_BRAND}</span>
     </span>
   );
 }
