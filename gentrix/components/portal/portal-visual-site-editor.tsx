@@ -5,6 +5,7 @@ import { Check, ExternalLink, ImagePlus, Loader2, Paintbrush, Rocket, Save } fro
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
+import { resolveNavHrefToPageId } from "@/lib/portal/portal-editor-nav-href";
 import { buildPortalThemePresets, type PortalThemePreset } from "@/lib/portal/portal-theme-presets";
 
 type ThemePresetId = PortalThemePreset["id"];
@@ -59,110 +60,6 @@ type Props = {
   /** Publieke URL voor de "Open site" link en terugkoppeling na publiceren. */
   publicSiteUrl?: string | null;
 };
-
-/**
- * Synoniemen die ook server-side gebruikt worden in `matchCanonicalMarketingPageKey`.
- * Clientside gedupliceerd om geen server-only module te importeren in deze "use client".
- */
-const MARKETING_PAGE_SLUG_SYNONYMS: Record<string, readonly string[]> = {
-  assortiment: ["collectie"],
-  catalogus: ["collectie"],
-  aanbod: ["collectie"],
-  shop: ["collectie"],
-  producten: ["collectie"],
-  diensten: ["wat-wij-doen"],
-  services: ["wat-wij-doen"],
-  methode: ["werkwijze"],
-  procedure: ["werkwijze"],
-  about: ["over-ons"],
-  overons: ["over-ons"],
-  veelgestelde: ["faq"],
-  veelgesteldevragen: ["faq"],
-  help: ["faq"],
-  retour: ["service-retour"],
-  garantie: ["service-retour"],
-};
-
-function slugifySegment(value: string): string {
-  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-/** Resolveert één slug/fragment naar een editor-pagina (marketing of contact). */
-function findPageIdForSegment(seg: string, pages: PortalEditorPage[]): string | null {
-  if (!seg) return null;
-
-  if (seg === "contact") {
-    return pages.find((p) => p.id.startsWith("contact:") || p.id === "contact")?.id ?? null;
-  }
-
-  const direct = pages.find((p) => {
-    if (p.id.startsWith("marketing:")) {
-      const key = (p.id.split(":")[1] ?? "").toLowerCase();
-      return key === seg || slugifySegment(p.label) === seg;
-    }
-    return slugifySegment(p.label) === seg;
-  });
-  if (direct) return direct.id;
-
-  // Synoniem-fallback: `diensten` → marketing:wat-wij-doen, etc.
-  const synonymTargets =
-    MARKETING_PAGE_SLUG_SYNONYMS[seg] ??
-    MARKETING_PAGE_SLUG_SYNONYMS[seg.replace(/-/g, "")] ??
-    [];
-  for (const target of synonymTargets) {
-    const match = pages.find((p) => {
-      if (!p.id.startsWith("marketing:")) return false;
-      const key = (p.id.split(":")[1] ?? "").toLowerCase();
-      return key === target || slugifySegment(p.label) === target;
-    });
-    if (match) return match.id;
-  }
-  return null;
-}
-
-/**
- * Probeert een nav-link href te matchen aan een pagina-ID uit de editor.
- * Accepteert zowel pad-links (`/diensten`) als hash-links (`#diensten`), en
- * absolute URL's. Geeft null terug als de link niet naar een bekende pagina wijst.
- */
-function resolveNavHrefToPageId(href: string, pages: PortalEditorPage[]): string | null {
-  let working = href.trim();
-  if (!working) return null;
-
-  let fragment = "";
-  try {
-    if (/^https?:\/\//i.test(working)) {
-      const u = new URL(working);
-      fragment = u.hash && u.hash.length > 1 ? decodeURIComponent(u.hash.slice(1)) : "";
-      working = u.pathname || "/";
-    } else {
-      const hashIdx = working.indexOf("#");
-      if (hashIdx >= 0) {
-        fragment = decodeURIComponent(working.slice(hashIdx + 1));
-        working = working.slice(0, hashIdx);
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-
-  const path = (working.split("?")[0] ?? "").trim();
-
-  // Hash-only: `#contact`, `#diensten`, …
-  if (!path || path === "/") {
-    if (fragment) {
-      const hit = findPageIdForSegment(slugifySegment(fragment), pages);
-      if (hit) return hit;
-      if (!path) return null; // hash zonder match → laat normale scroll doorgaan
-    }
-    return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
-  }
-
-  const seg = slugifySegment(path.split("/").filter(Boolean)[0] ?? "");
-  if (!seg) return pages.find((p) => p.id.startsWith("main"))?.id ?? null;
-
-  return findPageIdForSegment(seg, pages);
-}
 
 function escapeAttr(value: string): string {
   return value
@@ -719,7 +616,9 @@ export function PortalVisualSiteEditor({
       // `#over-ons`) worden meegenomen, omdat de AI-postprocess cross-page links op de
       // homepage vaak herschrijft naar in-page hashes. Als het fragment geen bekende
       // editor-pagina matcht, laten we de default (scroll) gewoon doorgaan.
-      const navLink = target.closest("nav a[href], header a[href], [role='navigation'] a[href]") as HTMLAnchorElement | null;
+      const navLink = target.closest(
+        "nav a[href], header a[href], [role='navigation'] a[href], [role='banner'] a[href]",
+      ) as HTMLAnchorElement | null;
       if (navLink) {
         const href = navLink.getAttribute("href") ?? "";
         if (href && !/^(mailto:|tel:|javascript:)/i.test(href)) {
