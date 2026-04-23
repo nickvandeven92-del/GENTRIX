@@ -645,10 +645,9 @@ export function ConceptFlyerExperience({
               <button
                 type="button"
                 className={cn(
-                  "relative flex w-full min-h-[50px] shrink-0 touch-manipulation items-center justify-center gap-2.5 border-t border-emerald-300/40 bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 px-4 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_-8px_32px_rgba(16,185,129,0.5)] transition hover:from-emerald-300 hover:via-emerald-400 hover:to-emerald-500 hover:shadow-[0_-10px_36px_rgba(52,211,153,0.6)] active:brightness-95 sm:min-h-[54px] sm:text-base sm:tracking-[0.14em]",
-                  "dark:border-emerald-200/30 dark:from-emerald-500 dark:via-emerald-600 dark:to-emerald-700 dark:shadow-[0_-8px_36px_rgba(5,150,105,0.6)] dark:hover:from-emerald-400 dark:hover:via-emerald-500 dark:hover:to-emerald-600",
-                  expanded === "bestellen" &&
-                    "ring-2 ring-amber-200/95 ring-inset ring-offset-0 dark:ring-amber-300/85",
+                  "relative flex w-full min-h-[50px] shrink-0 touch-manipulation items-center justify-center gap-2.5 border-t border-zinc-200 bg-emerald-600 px-4 text-sm font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-emerald-500 active:bg-emerald-700 sm:min-h-[54px] sm:text-base sm:tracking-[0.14em]",
+                  "dark:border-zinc-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:active:bg-emerald-700",
+                  expanded === "bestellen" && "bg-emerald-700 hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600",
                 )}
                 aria-expanded={expanded === "bestellen"}
                 aria-controls="flyer-dock-panel"
