@@ -7,6 +7,7 @@ import {
   Gauge,
   Globe,
   LayoutList,
+  MessageCircle,
   PanelTop,
   Receipt,
   ScrollText,
@@ -36,6 +37,7 @@ export const SALES_NAV_MAIN: SalesNavItem[] = [
   { href: "/admin/invoices", label: "Facturen", icon: Receipt },
   { href: "/admin/quotes", label: "Offertes", icon: ScrollText },
   { href: "/admin/ops/tasks", label: "Taken", icon: LayoutList },
+  { href: "/admin/ops/support-inbox", label: "Support-inbox", icon: MessageCircle },
   { href: "/admin/ops/insights", label: "Inzichten", icon: Brain },
   { href: "/admin/settings", label: "Instellingen", icon: Settings },
 ];
@@ -103,6 +105,12 @@ export function pageMetaForPath(pathname: string): { title: string; subtitle: st
   }
   if (pathname.startsWith("/admin/ops/tasks")) {
     return { title: "Taken", subtitle: "Wat nu af moet." };
+  }
+  if (pathname.startsWith("/admin/ops/support-inbox")) {
+    return {
+      title: "Support-inbox",
+      subtitle: "Klantvragen uit het portaal — wachtend op antwoord.",
+    };
   }
   if (pathname.startsWith("/admin/ops/insights")) {
     return { title: "Inzichten", subtitle: "Feiten uit de database — geen gegenereerde praatjes." };

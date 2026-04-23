@@ -27,6 +27,7 @@ import {
   type StudioRightPaneMode,
 } from "@/components/admin/generation-feedback-panel";
 import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
+import { StudioSupportStrip } from "@/components/sales-os/studio-support-strip";
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { PublishedSiteView } from "@/components/site/published-site-view";
@@ -120,6 +121,14 @@ export function GeneratorForm({
   hideFaqLauncher = false,
 }: GeneratorFormProps) {
   const slugFromUrl = initialSubfolderSlug?.trim() || undefined;
+  const normalizedUrlSlug = useMemo(() => {
+    if (!slugFromUrl) return undefined;
+    try {
+      return decodeURIComponent(slugFromUrl);
+    } catch {
+      return slugFromUrl;
+    }
+  }, [slugFromUrl]);
 
   const [briefingText, setBriefingText] = useState(() => {
     if (!slugFromUrl) return "";
@@ -1096,6 +1105,11 @@ export function GeneratorForm({
         splitterTitle="Sleep naar rechts: smallere preview (tablet → mobiel); helemaal rechts verbergt de preview. Sleep naar links voor meer ruimte."
         sidebar={
           <div className="flex min-h-0 flex-1 flex-col gap-0 pr-1">
+            {normalizedUrlSlug && isValidSubfolderSlug(normalizedUrlSlug) ? (
+              <div className="mb-2 shrink-0">
+                <StudioSupportStrip subfolderSlug={normalizedUrlSlug} />
+              </div>
+            ) : null}
             {editorFocusBar}
             <div
               ref={chatScrollRef}

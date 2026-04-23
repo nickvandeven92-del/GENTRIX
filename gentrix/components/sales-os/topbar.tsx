@@ -9,6 +9,7 @@ import {
   Globe,
   Mail,
   Menu,
+  MessageCircle,
   MoreHorizontal,
   Phone,
   Plus,
@@ -36,18 +37,59 @@ type SalesTopbarProps = {
   mobileNav?: { open: boolean; onToggle: () => void };
 };
 
+type InboxSummary = {
+  totalAwaiting: number;
+  items: { threadId: string; subfolder_slug: string; subject: string; updated_at: string }[];
+};
+
 export function SalesTopbar({ onOpenSearch, mobileNav }: SalesTopbarProps) {
   const pathname = usePathname();
   const { title, subtitle } = pageMetaForPath(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const bellRef = useRef<HTMLDivElement>(null);
+  const [inbox, setInbox] = useState<InboxSummary | null>(null);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      if (!bellRef.current?.contains(e.target as Node)) setBellOpen(false);
     }
     document.addEventListener("click", onDoc);
     return () => document.removeEventListener("click", onDoc);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadInbox() {
+      try {
+        const res = await fetch("/api/admin/support-inbox-summary", { credentials: "include" });
+        const j = (await res.json()) as {
+          ok?: boolean;
+          totalAwaiting?: number;
+          items?: InboxSummary["items"];
+        };
+        if (cancelled || !j?.ok) return;
+        setInbox({
+          totalAwaiting: j.totalAwaiting ?? 0,
+          items: Array.isArray(j.items) ? j.items : [],
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+    void loadInbox();
+    const t = window.setInterval(loadInbox, 55_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void loadInbox();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   const isOpsHome = pathname === "/admin/ops" || pathname === "/admin/ops/";
@@ -130,6 +172,20 @@ export function SalesTopbar({ onOpenSearch, mobileNav }: SalesTopbarProps) {
           </button>
           {menuOpen ? (
             <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-neutral-200 bg-white py-1 dark:border-zinc-600 dark:bg-zinc-900">
+              <Link
+                href="/admin/ops/support-inbox"
+                onClick={() => setMenuOpen(false)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                <MessageCircle className="size-3.5 text-neutral-500" aria-hidden />
+                <span className="flex-1 truncate">Support-inbox</span>
+                {inbox && inbox.totalAwaiting > 0 ? (
+                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-950 dark:bg-amber-950/80 dark:text-amber-100">
+                    {inbox.totalAwaiting}
+                  </span>
+                ) : null}
+              </Link>
+              <div className="my-1 border-t border-neutral-100 dark:border-zinc-800" />
               {QUICK_ACTIONS.map((a) =>
                 a.href && !a.disabled ? (
                   <Link
@@ -158,13 +214,66 @@ export function SalesTopbar({ onOpenSearch, mobileNav }: SalesTopbarProps) {
           ) : null}
           </div>
 
-          <button
-          type="button"
-          className="flex size-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          aria-label="Meldingen"
-        >
-          <Bell className="size-4" />
-        </button>
+          <div className="relative" ref={bellRef}>
+            <button
+              type="button"
+              onClick={() => setBellOpen((o) => !o)}
+              className="relative flex size-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              aria-label={inbox && inbox.totalAwaiting > 0 ? `${inbox.totalAwaiting} open support-onderwerpen` : "Meldingen"}
+              aria-expanded={bellOpen}
+            >
+              <Bell className="size-4" />
+              {inbox && inbox.totalAwaiting > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white dark:bg-amber-600">
+                  {inbox.totalAwaiting > 9 ? "9+" : inbox.totalAwaiting}
+                </span>
+              ) : null}
+            </button>
+            {bellOpen ? (
+              <div className="absolute right-0 top-full z-50 mt-1 w-[min(100vw-2rem,20rem)] rounded-md border border-neutral-200 bg-white py-2 shadow-lg dark:border-zinc-600 dark:bg-zinc-900">
+                <div className="border-b border-neutral-100 px-3 pb-2 dark:border-zinc-800">
+                  <p className="text-xs font-semibold text-neutral-900 dark:text-zinc-50">Support</p>
+                  <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-zinc-400">
+                    Laatste bericht van de klant — wacht op antwoord.
+                  </p>
+                </div>
+                {!inbox || inbox.totalAwaiting === 0 ? (
+                  <p className="px-3 py-3 text-xs text-neutral-500 dark:text-zinc-400">Niets open.</p>
+                ) : (
+                  <ul className="max-h-64 overflow-y-auto py-1">
+                    {inbox.items.map((it) => {
+                      const enc = encodeURIComponent(it.subfolder_slug);
+                      return (
+                        <li key={it.threadId}>
+                          <Link
+                            href={`/admin/clients/${enc}#client-support-chat`}
+                            onClick={() => setBellOpen(false)}
+                            className="block px-3 py-2 hover:bg-neutral-50 dark:hover:bg-zinc-800"
+                          >
+                            <span className="block truncate text-xs font-medium text-neutral-900 dark:text-zinc-100">
+                              {it.subject}
+                            </span>
+                            <span className="mt-0.5 block font-mono text-[10px] text-neutral-500 dark:text-zinc-500">
+                              {it.subfolder_slug}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="border-t border-neutral-100 px-2 pt-1 dark:border-zinc-800">
+                  <Link
+                    href="/admin/ops/support-inbox"
+                    onClick={() => setBellOpen(false)}
+                    className="block rounded-md px-2 py-1.5 text-center text-xs font-medium text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-950/40"
+                  >
+                    Volledige inbox
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+          </div>
 
         <button
           type="button"

@@ -7,6 +7,7 @@ import {
   Columns3,
   Globe,
   LayoutList,
+  MessageCircle,
   QrCode,
   Receipt,
   ScrollText,
@@ -69,6 +70,7 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
     label: "Operatie",
     children: [
       { type: "item", label: "Taken", href: "/admin/ops/tasks", icon: LayoutList },
+      { type: "item", label: "Support-inbox", href: "/admin/ops/support-inbox", icon: MessageCircle },
       { type: "item", label: "Inzichten", href: "/admin/ops/insights", icon: Brain },
       { type: "item", label: "Vragen & antwoorden", href: "/admin/ops/werkwijze", icon: BookOpen },
     ],

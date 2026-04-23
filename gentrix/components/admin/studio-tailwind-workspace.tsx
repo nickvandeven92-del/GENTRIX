@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { FolderOpen, Pencil, Sparkles } from "lucide-react";
 import { GeneratorForm } from "@/components/admin/generator-form";
 import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
+import { StudioSupportStrip } from "@/components/sales-os/studio-support-strip";
 import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
@@ -88,10 +89,13 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
           </button>
         </div>
         <GeneratorStudioFaqLauncher iconOnly />
+        <div className="mx-1 min-w-0 flex-1">
+          <StudioSupportStrip subfolderSlug={props.subfolderSlug} className="text-[10px]" />
+        </div>
         <Link
-          href={`/admin/clients/${encodeURIComponent(props.subfolderSlug)}`}
-          title="Klantdossier openen"
-          aria-label="Klantdossier openen"
+          href={`/admin/clients/${encodeURIComponent(props.subfolderSlug)}#client-support-chat`}
+          title="Klantdossier — support"
+          aria-label="Klantdossier — support"
           className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
         >
           <FolderOpen className="size-3.5" aria-hidden />

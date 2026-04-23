@@ -141,7 +141,10 @@ export function ClientSupportPanel({ subfolderSlug, initialOpen, initialClosed }
   );
 
   return (
-    <section className="sales-os-glass-panel rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+    <section
+      id="client-support-chat"
+      className="sales-os-glass-panel scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950"
+    >
       <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Support-chat</h2>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
         Vragen uit het klantportaal verschijnen hier per onderwerp. Sluit een onderwerp om het te archiveren; het blijft vindbaar onder Archief.
