@@ -2238,6 +2238,8 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
 export type DraftSiteNavRewriteForIframe = {
   slug: string;
   token: string;
+  /** Flyer/QR-preview: `flyer=1` op alle herschreven `/site/…`-URL’s. */
+  flyer?: boolean;
   /** Lage segment → canonieke `marketingPages`-key (zelfde als contact-nav `mseg`). */
   mseg?: Record<string, string>;
 };
@@ -2258,6 +2260,7 @@ export function buildStudioSinglePageInternalNavScript(
       ? JSON.stringify({
           slug: draftSiteNavRewrite.slug.trim(),
           token: draftSiteNavRewrite.token.trim(),
+          ...(draftSiteNavRewrite.flyer ? { flyer: true } : {}),
           ...(draftSiteNavRewrite.mseg && Object.keys(draftSiteNavRewrite.mseg).length > 0
             ? { mseg: draftSiteNavRewrite.mseg }
             : {}),
@@ -2282,8 +2285,11 @@ export function buildStudioSinglePageInternalNavScript(
       function mergeQuery(out){
         out.hash=u.hash;
         out.searchParams.set("token",tok);
+        if(DRAFT_SITE_NAV_REWRITE.flyer)out.searchParams.set("flyer","1");
         u.searchParams.forEach(function(v,k){
-          if(k!=="token"&&v!=null&&String(v).length)out.searchParams.set(k,v);
+          if(k==="token")return;
+          if(k==="flyer"&&DRAFT_SITE_NAV_REWRITE.flyer)return;
+          if(v!=null&&String(v).length)out.searchParams.set(k,v);
         });
         return out.toString();
       }
@@ -2546,6 +2552,8 @@ export type BuildTailwindIframeSrcDocOptions = {
    * i.p.v. seconden een leeg scherm op trage verbindingen.
    */
   relaxedTailwindCdnLoading?: boolean;
+  /** Flyer/QR: interne `/site/…`-navigatie behoudt `flyer=1` (actiebalk op subpagina’s). */
+  flyerPreview?: boolean;
   /**
    * Optioneel: `/site/[slug]` ↔ `/site/[slug]/contact` zonder generator-output te wijzigen.
    * Vereist `pageOrigin` (typisch `window.location.origin` in de client-build van `srcDoc`).
@@ -2852,6 +2860,7 @@ export function buildTailwindIframeSrcDoc(
           ...contactSubpageNavRaw,
           draftPublicPreviewToken:
             contactSubpageNavRaw.draftPublicPreviewToken ?? options?.draftPublicPreviewToken ?? undefined,
+          flyerPreview: contactSubpageNavRaw.flyerPreview ?? options?.flyerPreview ?? undefined,
         }
       : undefined;
   const contactSubpageScript =
@@ -2874,6 +2883,7 @@ export function buildTailwindIframeSrcDoc(
       ? {
           slug: draftSlug,
           token: draftTok,
+          ...(options?.flyerPreview ? { flyer: true as const } : {}),
           ...(msegForDraft && Object.keys(msegForDraft).length > 0 ? { mseg: msegForDraft } : {}),
         }
       : null;

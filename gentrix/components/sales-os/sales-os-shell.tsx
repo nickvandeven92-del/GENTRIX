@@ -121,7 +121,10 @@ export function SalesOsShell({ children }: SalesOsShellProps) {
         )}
       >
         <div className="sales-os-print-hide">
-          <SalesTopbar onOpenSearch={onOpenSearch} onOpenMobileNav={() => setMobileNavOpen(true)} />
+          <SalesTopbar
+            onOpenSearch={onOpenSearch}
+            mobileNav={{ open: mobileNavOpen, onToggle: () => setMobileNavOpen((o) => !o) }}
+          />
         </div>
         <div
           className={cn(

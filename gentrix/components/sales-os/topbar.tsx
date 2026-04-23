@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { pageMetaForPath } from "@/components/sales-os/nav-config";
@@ -31,11 +32,11 @@ const QUICK_ACTIONS: { label: string; href?: string; icon: typeof Plus; disabled
 
 type SalesTopbarProps = {
   onOpenSearch: () => void;
-  /** Alleen < lg: opent het mobiele navigatiedrawer */
-  onOpenMobileNav?: () => void;
+  /** Alleen < lg: hamburger toggelt drawer; bij `open` toont de knop een X (sluiten). */
+  mobileNav?: { open: boolean; onToggle: () => void };
 };
 
-export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps) {
+export function SalesTopbar({ onOpenSearch, mobileNav }: SalesTopbarProps) {
   const pathname = usePathname();
   const { title, subtitle } = pageMetaForPath(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -66,14 +67,15 @@ export function SalesTopbar({ onOpenSearch, onOpenMobileNav }: SalesTopbarProps)
           SALES_OS_MAIN_MAX_CLASS,
         )}
       >
-        {onOpenMobileNav ? (
+        {mobileNav ? (
           <button
             type="button"
             className="flex size-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800 lg:hidden"
-            aria-label="Menu openen"
-            onClick={onOpenMobileNav}
+            aria-expanded={mobileNav.open}
+            aria-label={mobileNav.open ? "Menu sluiten" : "Menu openen"}
+            onClick={mobileNav.onToggle}
           >
-            <Menu className="size-5" aria-hidden />
+            {mobileNav.open ? <X className="size-5" aria-hidden /> : <Menu className="size-5" aria-hidden />}
           </button>
         ) : null}
         {isOpsHome ? (

@@ -76,6 +76,8 @@ export type ContactSubpageNavScriptInput = {
    * Oude `/preview/...`-paden in HTML worden nog herkend via `legB`/`legC`.
    */
   draftPublicPreviewToken?: string | null;
+  /** Flyer/QR: `flyer=1` op alle `postTop`-URL’s (actiebalk blijft op subpagina’s). */
+  flyerPreview?: boolean;
   /**
    * Primaire studio-host of klant-domein: sla `/site/{slug}` over en emit `/`, `/contact`, `/werkwijze`, …
    * De middleware routet deze korte paden intern terug naar `/site/{slug}/…`.
@@ -90,7 +92,14 @@ export type ContactSubpageNavScriptInput = {
 export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScriptInput): string {
   const encSlug = encodeURIComponent(input.slug);
   const tokenRaw = typeof input.draftPublicPreviewToken === "string" ? input.draftPublicPreviewToken.trim() : "";
-  const tokenQ = tokenRaw.length > 0 ? `?token=${encodeURIComponent(tokenRaw)}` : "";
+  const flyer = Boolean(input.flyerPreview);
+  const tokenQ =
+    tokenRaw.length > 0 || flyer
+      ? `?${[
+          ...(tokenRaw.length > 0 ? [`token=${encodeURIComponent(tokenRaw)}`] : []),
+          ...(flyer ? ["flyer=1"] : []),
+        ].join("&")}`
+      : "";
   const basePath = `/site/${encSlug}`;
   const contactPath = `${basePath}/contact`;
   const prevBase = tokenRaw.length > 0 ? `/preview/${encSlug}` : null;

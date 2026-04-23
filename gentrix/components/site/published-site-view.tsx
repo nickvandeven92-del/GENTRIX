@@ -51,6 +51,8 @@ type PublishedSiteViewProps = {
    * Flyer/QR-concept (`?flyer=1`): bij ontbrekende gecompileerde Tailwind geen “lege pagina” tot Play CDN klaar is.
    */
   relaxedTailwindCdnLoading?: boolean;
+  /** Flyer/QR: interne links behouden `flyer=1` zodat de actiebalk op alle subpagina’s blijft. */
+  flyerPreview?: boolean;
 };
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
@@ -67,6 +69,7 @@ export function PublishedSiteView({
   embedReactInChrome = false,
   prettyPublicUrls = false,
   relaxedTailwindCdnLoading = false,
+  flyerPreview = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
     return (
@@ -198,6 +201,7 @@ export function PublishedSiteView({
             contactSubpageNavBase={contactNavBase}
             prettyPublicUrls={prettyPublicUrls}
             relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
+            flyerPreview={flyerPreview}
           />
         </div>
       );

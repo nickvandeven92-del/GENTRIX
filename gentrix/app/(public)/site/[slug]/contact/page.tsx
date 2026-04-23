@@ -131,6 +131,7 @@ export default async function PublicClientSiteContactPage({ params, searchParams
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
         prettyPublicUrls={prettyPublicUrls}
         relaxedTailwindCdnLoading={showFlyer}
+        flyerPreview={showFlyer}
       />
     </>
   );

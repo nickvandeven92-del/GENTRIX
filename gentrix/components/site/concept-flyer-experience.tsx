@@ -140,10 +140,6 @@ export function ConceptFlyerExperience({
   const [step, setStep] = useState(0);
   const [expanded, setExpanded] = useState<DockSection | null>(null);
   const firstPreset = themePresets[0];
-  const [primary, setPrimary] = useState(() => firstPreset?.primary ?? "#fafafa");
-  const [accent, setAccent] = useState(() => firstPreset?.accent ?? "#818cf8");
-  const [background, setBackground] = useState(() => firstPreset?.background ?? "#fafafa");
-  const [text, setText] = useState(() => firstPreset?.text ?? "#0f172a");
   const [selectedFlyerThemeId, setSelectedFlyerThemeId] = useState<PortalThemePresetId | null>(
     () => firstPreset?.id ?? null,
   );
@@ -152,10 +148,6 @@ export function ConceptFlyerExperience({
   useLayoutEffect(() => {
     const p = themePresets[0];
     if (!p) return;
-    setPrimary(p.primary);
-    setAccent(p.accent);
-    setBackground(p.background);
-    setText(p.text);
     setSelectedFlyerThemeId(p.id);
     clearThemaFromRoot();
   }, [themePresets]);
@@ -278,10 +270,6 @@ export function ConceptFlyerExperience({
 
   const pickPreset = useCallback((p: FlyerPortalThemePresetRow) => {
     setSelectedFlyerThemeId(p.id);
-    setPrimary(p.primary);
-    setAccent(p.accent);
-    setBackground(p.background);
-    setText(p.text);
     applyThemaToRoot(p.primary, p.accent, p.background, p.text);
   }, []);
 
@@ -290,10 +278,6 @@ export function ConceptFlyerExperience({
     const d = themePresets[0];
     if (!d) return;
     setSelectedFlyerThemeId(d.id);
-    setPrimary(d.primary);
-    setAccent(d.accent);
-    setBackground(d.background);
-    setText(d.text);
   }, [themePresets]);
 
   const ctaClass =
@@ -440,10 +424,10 @@ export function ConceptFlyerExperience({
                     <div className="mx-auto max-w-2xl space-y-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className={sectionTitle}>Thema &amp; kleuren</p>
+                          <p className={sectionTitle}>Thema</p>
                           <p className={cn(sectionMuted, "mt-1")}>
-                            Zelfde drie opties als in het klantportaal — alleen op dit scherm, zonder de opgeslagen site te
-                            wijzigen.
+                            Zelfde varianten als in het klantportaal — alleen in deze preview; je opgeslagen site verandert
+                            niet.
                           </p>
                         </div>
                         <Sparkles className="size-5 shrink-0 text-amber-400/90" aria-hidden />
@@ -465,64 +449,6 @@ export function ConceptFlyerExperience({
                             {p.label}
                           </button>
                         ))}
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Primair
-                          <input
-                            type="color"
-                            value={primary}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setSelectedFlyerThemeId(null);
-                              setPrimary(v);
-                              applyThemaToRoot(v, accent, background, text);
-                            }}
-                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Accent
-                          <input
-                            type="color"
-                            value={accent}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setSelectedFlyerThemeId(null);
-                              setAccent(v);
-                              applyThemaToRoot(primary, v, background, text);
-                            }}
-                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Achtergrond
-                          <input
-                            type="color"
-                            value={background}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setSelectedFlyerThemeId(null);
-                              setBackground(v);
-                              applyThemaToRoot(primary, accent, v, text);
-                            }}
-                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                          Tekst
-                          <input
-                            type="color"
-                            value={text}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setSelectedFlyerThemeId(null);
-                              setText(v);
-                              applyThemaToRoot(primary, accent, background, v);
-                            }}
-                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
-                          />
-                        </label>
                       </div>
                       <button
                         type="button"
