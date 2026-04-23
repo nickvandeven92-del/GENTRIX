@@ -290,6 +290,13 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
  * Alleen ≤1023px zodat de desktop-variant (bij breed uitklappen) onaangeraakt blijft.
  */
 export const STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS = `@media (max-width: 1023px) {
+  /* Patroon 0 — onze eigen post-process marker \`.gentrix-push-drawer\` (zie
+     \`convertMobileDrawerToPushDown\`). Dit is de betrouwbaarste hook omdat die op élke
+     door de studio ge-postprocesste header zit. Utilities als \`text-2xl\`/\`text-3xl\` op
+     menu-ankers worden hier teruggebracht naar normale site-navigatie-grootte. */
+  .gentrix-push-drawer a,
+  .gentrix-push-drawer button,
+  .gentrix-push-drawer span,
   /* Patroon 1 — canonical aria-label (zoals onze AI-prompt voorschrijft). */
   [aria-label="Mobiel menu"] a,
   [aria-label="Mobile menu"] a,
@@ -310,9 +317,14 @@ export const STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS = `@media (max-width: 1023px)
   header [x-data] [x-show][class*="fixed"] button {
     font-size: 1rem !important;
     line-height: 1.4 !important;
-    letter-spacing: 0.05em;
   }
-  /* CTA's (rounded-pill / rounded-xl knoppen zoals "WHATSAPP") iets compacter. */
+  /* CTA-items (knoppen / pil-spans zoals "WHATSAPP") iets compacter; ook als ze gestyled
+     zijn via background-utilities zonder button-tag (zoals in MoSham: \`<span class="bg-...">\`). */
+  .gentrix-push-drawer a[class*="rounded-"],
+  .gentrix-push-drawer button[class*="rounded-"],
+  .gentrix-push-drawer a[class*="bg-"],
+  .gentrix-push-drawer button[class*="bg-"],
+  .gentrix-push-drawer span[class*="bg-"],
   [aria-label="Mobiel menu"] a[class*="rounded-"],
   [aria-label="Mobile menu"] a[class*="rounded-"],
   [aria-label="Mobiel menu"] button[class*="rounded-"],
@@ -321,7 +333,8 @@ export const STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS = `@media (max-width: 1023px)
   header [x-show][class*=":hidden"] button[class*="rounded-"],
   [x-show][class*="fixed"][class*="inset-0"] a[class*="rounded-"],
   [x-show][class*="fixed"][class*="inset-0"] button[class*="rounded-"] {
-    font-size: 0.9375rem !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.3 !important;
   }
 }`;
 
