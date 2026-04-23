@@ -43,7 +43,7 @@ export function SiteRenderer({ data, className, publishedSlug }: SiteRendererPro
   } as React.CSSProperties;
 
   return (
-    <div className={className} style={cssVars}>
+    <div className={className} data-gentrix-published-site-root="" style={cssVars}>
       <div className="min-h-screen bg-[var(--site-bg)] text-[var(--site-fg)] antialiased selection:bg-[var(--site-primary)]/25">
         <SiteNav site={data} publishedSlug={publishedSlug} />
         <main>

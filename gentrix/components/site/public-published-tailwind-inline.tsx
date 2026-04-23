@@ -153,6 +153,7 @@ export function PublicPublishedTailwindInline({
       {/* server-side gebouwde, DOMPurified HTML uit eigen builder */}
       <div
         className={cn("gentrix-published-root", parts.bodyClassName, className)}
+        data-gentrix-published-site-root=""
         title={docTitle}
         {...parts.bodyDataAttrs}
         dangerouslySetInnerHTML={{ __html: parts.bodyHtml }}

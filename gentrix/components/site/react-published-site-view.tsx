@@ -86,6 +86,7 @@ export function ReactPublishedSiteView({
 
   return (
     <div
+      data-gentrix-published-site-root=""
       className={cn(
         "react-published-site w-full bg-[var(--site-background)] text-[var(--site-foreground)] antialiased",
         embedded ? "min-h-[min(72vh,720px)]" : "min-h-screen",

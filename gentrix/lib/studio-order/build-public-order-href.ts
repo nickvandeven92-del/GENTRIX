@@ -14,3 +14,19 @@ export function buildPublicStudioOrderHref(
   const qs = q.toString();
   return qs ? `/site/${enc}/bestellen?${qs}` : `/site/${enc}/bestellen`;
 }
+
+/**
+ * Ingebouwde boek-SPA (`/booking-app/book/{slug}`), met dezelfde query als bestellen voor concept + flyer-flow.
+ */
+export function buildPublicStudioBookingHref(
+  slug: string,
+  opts: { previewToken?: string | null; flyer?: boolean },
+): string {
+  const enc = encodeURIComponent(slug);
+  const q = new URLSearchParams();
+  const t = opts.previewToken?.trim();
+  if (t) q.set("token", t);
+  if (opts.flyer) q.set("flyer", "1");
+  const qs = q.toString();
+  return qs ? `/booking-app/book/${enc}?${qs}` : `/booking-app/book/${enc}`;
+}
