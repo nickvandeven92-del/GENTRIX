@@ -965,9 +965,11 @@ export function PortalVisualSiteEditor({
         setSaveMsg(
           themeId === "original"
             ? "Originele kleuren hersteld en opgeslagen als concept."
-            : themeId === "dark"
-              ? "Donkere variant toegepast en opgeslagen als concept."
-              : "Warme variant toegepast en opgeslagen als concept.",
+            : themeId === "light"
+              ? "Lichte variant toegepast en opgeslagen als concept."
+              : themeId === "dark"
+                ? "Donkere variant toegepast en opgeslagen als concept."
+                : "Warme variant toegepast en opgeslagen als concept.",
         );
       } catch (error) {
         setSaveErr(error instanceof Error ? error.message : "Thema wisselen mislukt.");
@@ -1111,9 +1113,11 @@ export function PortalVisualSiteEditor({
                   <Loader2 className="size-3 animate-spin" aria-hidden />
                   {restylingThemeId === "original"
                     ? "Originele kleuren herstellen…"
-                    : restylingThemeId === "dark"
-                      ? "Donkere variant berekenen (30–60 sec)…"
-                      : "Warme variant berekenen (30–60 sec)…"}
+                    : restylingThemeId === "light"
+                      ? "Lichte variant berekenen (30–60 sec)…"
+                      : restylingThemeId === "dark"
+                        ? "Donkere variant berekenen (30–60 sec)…"
+                        : "Warme variant berekenen (30–60 sec)…"}
                 </span>
               ) : (
                 <span className="ml-2 font-normal normal-case tracking-normal text-zinc-400">
@@ -1204,9 +1208,11 @@ export function PortalVisualSiteEditor({
               <p className="max-w-sm text-sm font-medium text-zinc-800 dark:text-zinc-100">
                 {restylingThemeId === "original"
                   ? "Originele kleuren worden hersteld…"
-                  : restylingThemeId === "dark"
-                    ? "De site wordt in donkere tonen herkleurd…"
-                    : "De site wordt in warme tonen herkleurd…"}
+                  : restylingThemeId === "light"
+                    ? "De site wordt in lichte tonen herkleurd…"
+                    : restylingThemeId === "dark"
+                      ? "De site wordt in donkere tonen herkleurd…"
+                      : "De site wordt in warme tonen herkleurd…"}
               </p>
               <p className="max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
                 Dit duurt meestal 30 tot 60 seconden. Je tekst- en fotowijzigingen blijven behouden.

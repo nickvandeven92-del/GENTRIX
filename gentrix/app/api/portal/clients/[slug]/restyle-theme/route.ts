@@ -32,7 +32,7 @@ import {
 
 export const runtime = "nodejs";
 
-const themeIdSchema = z.enum(["original", "dark", "warm"]);
+const themeIdSchema = z.enum(["original", "light", "dark", "warm"]);
 
 // Voor de restyle accepteren we groter dan de studio-limiet van 24 — een volledige site
 // met contact + marketing-pages kan makkelijk 30+ secties per array aantikken.
@@ -63,6 +63,19 @@ type ClientRow = {
   draft_snapshot_id: string | null;
   generation_package?: string | null;
 };
+
+function themeLabel(id: PortalThemePresetId): string {
+  switch (id) {
+    case "original":
+      return "Origineel";
+    case "light":
+      return "Licht";
+    case "dark":
+      return "Donker";
+    case "warm":
+      return "Warm";
+  }
+}
 
 function toStrictTailwindPayload(input: {
   config: CachedThemePayload["config"];
@@ -183,12 +196,7 @@ export async function POST(request: Request, context: RouteContext) {
     const strict = toStrictTailwindPayload(cachedTarget);
     if (strict.success) {
       const docTitle = (cachedTarget.documentTitle ?? payload.documentTitle ?? clientRow.name ?? "Website").trim();
-      const label =
-        themeIdTyped === "original"
-          ? "Portaal — thema: Origineel (cache)"
-          : themeIdTyped === "dark"
-            ? "Portaal — thema: Donker (cache)"
-            : "Portaal — thema: Warm (cache)";
+      const label = `Portaal — thema: ${themeLabel(themeIdTyped)} (cache)`;
       const persist = await persistTailwindDraftForExistingClient(supabase, clientRow, strict.data, {
         snapshotSource: "editor",
         snapshotLabel: label,
@@ -347,7 +355,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const docTitle = (payload.documentTitle ?? clientRow.name ?? "Website").trim();
-    const label = themeIdTyped === "dark" ? "Portaal — thema: Donker" : "Portaal — thema: Warm";
+    const label = `Portaal — thema: ${themeLabel(themeIdTyped)}`;
 
     const persist = await persistTailwindDraftForExistingClient(supabase, clientRow, restyledStrict.data, {
       snapshotSource: "editor",

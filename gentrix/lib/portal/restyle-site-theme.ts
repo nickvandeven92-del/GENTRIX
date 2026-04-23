@@ -12,7 +12,10 @@ import {
   type TailwindSectionsPayload,
 } from "@/lib/ai/tailwind-sections-schema";
 import { sanitizeTailwindFragment } from "@/lib/site/tailwind-page-html";
-import { buildPortalThemePresets, type PortalThemePreset } from "@/lib/portal/portal-theme-presets";
+import {
+  resolvePortalThemePresetConfig,
+  type PortalThemePreset,
+} from "@/lib/portal/portal-theme-presets";
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 
@@ -234,21 +237,16 @@ async function restyleOnePageGroup(
 }
 
 /**
- * Haalt de doel-config op voor een preset. Als basis gebruiken we **altijd** de meegegeven
- * `baseConfig` (typisch de huidige payload-config); de preset-builder leidt daar donker/warm
- * van af. Voor `"original"` is er geen transformatie: we hergebruiken `baseConfig` zelf.
- *
- * Voor een lossless "Origineel → Donker → Origineel"-rondgang moet de caller de **echte**
- * originele config aanleveren (bv. door die client-side uit `basePageConfigRef` te pakken).
+ * Haalt de doel-config op voor een preset. Delegatie naar `resolvePortalThemePresetConfig`
+ * in `portal-theme-presets.ts` — die resolved **altijd**, onafhankelijk van welke alternatieven
+ * in de UI worden getoond (UI filtert de originele familie eruit; de server moet het gewoon
+ * kunnen afleiden).
  */
 export function resolvePortalThemeTargetConfig(
   baseConfig: TailwindPageConfig,
   themeId: PortalThemePresetId,
 ): TailwindPageConfig | null {
-  if (isLegacyTailwindPageConfig(baseConfig)) return null;
-  const presets = buildPortalThemePresets(baseConfig);
-  const hit = presets.find((p) => p.id === themeId);
-  return hit?.pageConfig ?? null;
+  return resolvePortalThemePresetConfig(baseConfig, themeId);
 }
 
 export async function restyleSitePayloadToTheme(options: {

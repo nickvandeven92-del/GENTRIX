@@ -7,7 +7,7 @@ import {
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import type { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { Json } from "@/lib/types/database";
-import type { PortalThemePresetId } from "@/lib/portal/restyle-site-theme";
+import type { PortalThemePresetId } from "@/lib/portal/portal-theme-presets";
 
 /**
  * Cache voor thema-varianten per klant (kolom `clients.theme_variants`).
@@ -37,13 +37,14 @@ const cachedPayloadSchema = z.object({
 
 export type CachedThemePayload = z.infer<typeof cachedPayloadSchema>;
 
-const themePresetIdSchema = z.enum(["original", "dark", "warm"]) satisfies z.ZodType<PortalThemePresetId>;
+const themePresetIdSchema = z.enum(["original", "light", "dark", "warm"]) satisfies z.ZodType<PortalThemePresetId>;
 
 const themeVariantsSchema = z.object({
   active: themePresetIdSchema.optional(),
   variants: z
     .object({
       original: cachedPayloadSchema.optional(),
+      light: cachedPayloadSchema.optional(),
       dark: cachedPayloadSchema.optional(),
       warm: cachedPayloadSchema.optional(),
     })
@@ -136,10 +137,13 @@ export function cachedToPayload(cached: CachedThemePayload): TailwindSectionsPay
 
 /**
  * Update de cache-variant voor de momenteel actieve preset na een handmatige save.
- * Wanneer `active === "original"` wissen we dark/warm: die waren afgeleid van een oudere baseline
- * en zijn na een content-wijziging niet meer representatief. Wanneer `active` een getransformeerde
- * preset is (dark/warm), laten we `original` en de andere preset met rust: de user bewerkt bewust
- * alleen deze variant. Dat houdt de "ping-pong"-UX betrouwbaar.
+ *
+ * Wanneer `active === "original"` wissen we **alle** getransformeerde slots (light/dark/warm):
+ * de originele baseline is gewijzigd, dus eerdere afgeleide varianten zijn niet meer
+ * representatief en moeten opnieuw door Claude gebouwd worden.
+ *
+ * Wanneer `active` een getransformeerde preset is (light/dark/warm), laten we `original` en de
+ * andere getransformeerde preset met rust: de user bewerkt bewust alleen deze variant.
  */
 export function applyActiveVariantSync(
   cache: ThemeVariantsCache,
@@ -148,6 +152,7 @@ export function applyActiveVariantSync(
 ): ThemeVariantsCache {
   const nextVariants: ThemeVariantsCache["variants"] = { ...cache.variants, [activeId]: payload };
   if (activeId === "original") {
+    delete nextVariants.light;
     delete nextVariants.dark;
     delete nextVariants.warm;
   }
