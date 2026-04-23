@@ -17,6 +17,7 @@ export function PortalNav({ slug, invoicesEnabled, accountEnabled }: PortalNavPr
 
   const items: { href: string; label: string }[] = [
     { href: base, label: "Dashboard" },
+    { href: `${base}/support`, label: "Support" },
     { href: `${base}/website`, label: "Website" },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen" }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account" }] : []),

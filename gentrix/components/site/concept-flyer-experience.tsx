@@ -541,7 +541,7 @@ export function ConceptFlyerExperience({
               <div className="flex min-h-[36px] items-center justify-between gap-2 border-b border-zinc-100 px-2.5 py-1.5 sm:hidden dark:border-zinc-800">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <ShowroomWordmark variant="onLight" compact className="min-w-0 max-w-[min(100%,8.5rem)] shrink" />
-                  <span className="shrink-0 text-[8px] font-medium tracking-[0.06em] text-zinc-400 dark:text-zinc-500">
+                  <span className="shrink-0 text-[8px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
                     preview
                   </span>
                 </div>
@@ -552,7 +552,7 @@ export function ConceptFlyerExperience({
               <div className="hidden w-[min(14rem,32%)] shrink-0 flex-col justify-center gap-1 border-r border-zinc-200 px-3 py-2 sm:flex sm:px-4 dark:border-zinc-700">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <ShowroomWordmark variant="onLight" className="min-w-0 flex-1" />
-                  <span className="shrink-0 self-center text-[9px] font-medium tracking-[0.06em] text-zinc-400 dark:text-zinc-500">
+                  <span className="shrink-0 self-center text-[9px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">
                     preview
                   </span>
                 </div>
@@ -640,7 +640,7 @@ export function ConceptFlyerExperience({
                     )}
                     aria-hidden
                   />
-                  <span className="max-w-full text-center text-[8px] font-medium leading-tight tracking-normal normal-case line-clamp-2 break-words sm:text-[10px] sm:leading-snug">
+                  <span className="max-w-full whitespace-normal text-center text-[8px] font-medium uppercase leading-tight tracking-[0.1em] line-clamp-2 break-words sm:text-[11px] sm:tracking-[0.14em] sm:leading-snug">
                     Probeer gratis
                   </span>
                   {expanded === "bestellen" ? (

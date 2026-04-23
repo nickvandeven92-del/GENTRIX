@@ -284,6 +284,72 @@ export type Database = {
         };
         Relationships: [];
       };
+      client_support_messages: {
+        Row: {
+          id: string;
+          thread_id: string;
+          author_kind: string;
+          body: string;
+          portal_user_id: string | null;
+          staff_user_id: string | null;
+          staff_display_name: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          author_kind: string;
+          body: string;
+          portal_user_id?: string | null;
+          staff_user_id?: string | null;
+          staff_display_name?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          author_kind?: string;
+          body?: string;
+          portal_user_id?: string | null;
+          staff_user_id?: string | null;
+          staff_display_name?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      client_support_threads: {
+        Row: {
+          id: string;
+          client_id: string;
+          status: "open" | "closed";
+          subject: string;
+          created_at: string;
+          updated_at: string;
+          closed_at: string | null;
+          closed_by_staff_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          status?: "open" | "closed";
+          subject: string;
+          created_at?: string;
+          updated_at?: string;
+          closed_at?: string | null;
+          closed_by_staff_user_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          status?: "open" | "closed";
+          subject?: string;
+          created_at?: string;
+          updated_at?: string;
+          closed_at?: string | null;
+          closed_by_staff_user_id?: string | null;
+        };
+        Relationships: [];
+      };
       client_appointments: {
         Row: {
           id: string;
@@ -1044,6 +1110,7 @@ export type Database = {
     };
     Enums: {
       client_status: ClientStatus;
+      client_support_thread_status: "open" | "closed";
     };
   };
 };
