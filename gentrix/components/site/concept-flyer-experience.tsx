@@ -640,7 +640,9 @@ export function ConceptFlyerExperience({
                     )}
                     aria-hidden
                   />
-                  <span className={dockLabel}>Bestellen</span>
+                  <span className="max-w-full text-center text-[8px] font-medium leading-tight tracking-normal normal-case line-clamp-2 break-words sm:text-[10px] sm:leading-snug">
+                    Probeer gratis
+                  </span>
                   {expanded === "bestellen" ? (
                     <ChevronUp className="size-3.5 max-sm:hidden text-zinc-300 dark:text-zinc-600" aria-hidden />
                   ) : (
