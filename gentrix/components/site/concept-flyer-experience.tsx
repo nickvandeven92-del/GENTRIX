@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Calendar, HelpCircle, Palette, ShoppingBag, X } from "lucide-react";
+import {
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  Palette,
+  ShoppingBag,
+  Sparkles,
+} from "lucide-react";
 import { PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
 import { buildPublicStudioBookingHref, buildPublicStudioOrderHref } from "@/lib/studio-order/build-public-order-href";
 import { cn } from "@/lib/utils";
@@ -90,6 +98,8 @@ const THEME_PRESETS: { id: string; label: string; primary: string; accent: strin
   { id: "contrast", label: "Contrast", primary: "#ea580c", accent: "#f97316", background: "#0a0a0a", text: "#fafafa" },
 ];
 
+type DockSection = "thema" | "afspraak" | "bestellen";
+
 export function ConceptFlyerExperience({
   siteLabel,
   slug,
@@ -121,7 +131,7 @@ export function ConceptFlyerExperience({
   const storageKey = useMemo(() => `gentrix-flyer-tour-${slug}`, [slug]);
   const [tourOpen, setTourOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [themaOpen, setThemaOpen] = useState(false);
+  const [expanded, setExpanded] = useState<DockSection | null>(null);
   const [primary, setPrimary] = useState(THEME_PRESETS[0].primary);
   const [accent, setAccent] = useState(THEME_PRESETS[0].accent);
   const [background, setBackground] = useState(THEME_PRESETS[0].background);
@@ -165,6 +175,10 @@ export function ConceptFlyerExperience({
   const hasMeetingCta = Boolean(meetingUrl || contactEmail);
   const showAppointmentInBar = appointmentsEnabled || hasMeetingCta;
 
+  const toggleSection = useCallback((s: DockSection) => {
+    setExpanded((cur) => (cur === s ? null : s));
+  }, []);
+
   const steps: { title: string; body: string }[] = [
     {
       title: "Welkom bij je concept",
@@ -189,7 +203,7 @@ export function ConceptFlyerExperience({
       : []),
     {
       title: "Volgende stap",
-      body: "Onderaan vind je knoppen voor thema, afspraak en bestellen — het scherm blijft rustig.",
+      body: "Onderaan zit een strak menu over de volle breedte: klap secties uit voor thema, afspraak en bestellen.",
     },
   ];
 
@@ -213,9 +227,9 @@ export function ConceptFlyerExperience({
     return () => window.removeEventListener("keydown", onKey);
   }, [showOverlay, finishTour]);
 
-  /** Ruimte onder de vaste balk zodat de site-inhoud niet verborgen blijft. */
+  /** Ruimte onder de dock-rail (paneel klapt omhoog en overlapt de site). */
   useEffect(() => {
-    const pad = "calc(5.25rem + env(safe-area-inset-bottom, 0px))";
+    const pad = "calc(3.75rem + env(safe-area-inset-bottom, 0px))";
     const prev = document.body.style.paddingBottom;
     document.body.style.paddingBottom = pad;
     return () => {
@@ -224,14 +238,13 @@ export function ConceptFlyerExperience({
   }, []);
 
   useEffect(() => {
-    if (!themaOpen) return;
+    if (!expanded) return;
     const onDown = (e: MouseEvent) => {
-      const chrome = flyerChromeRef.current;
-      if (chrome?.contains(e.target as Node)) return;
-      setThemaOpen(false);
+      if (flyerChromeRef.current?.contains(e.target as Node)) return;
+      setExpanded(null);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setThemaOpen(false);
+      if (e.key === "Escape") setExpanded(null);
     };
     window.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
@@ -239,7 +252,7 @@ export function ConceptFlyerExperience({
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [themaOpen]);
+  }, [expanded]);
 
   const pickPreset = useCallback((p: (typeof THEME_PRESETS)[number]) => {
     setPrimary(p.primary);
@@ -263,11 +276,18 @@ export function ConceptFlyerExperience({
   const ctaPrimaryClass =
     "rounded-lg border border-emerald-600/40 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-950 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-950/70";
 
-  const barBtn =
-    "inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-200/90 bg-white/95 px-3.5 py-2 text-sm font-medium text-zinc-800 shadow-sm backdrop-blur-sm hover:bg-zinc-50 dark:border-zinc-600/90 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:px-4";
+  const dockTrigger = (active: boolean) =>
+    cn(
+      "flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 border-l border-white/10 px-1 py-2 text-center transition-colors first:border-l-0 sm:min-h-[56px] sm:flex-row sm:gap-2 sm:px-3",
+      active
+        ? "bg-white/[0.08] text-white"
+        : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200",
+    );
 
-  const barBtnPrimary =
-    "inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-600/45 bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:px-4";
+  const dockLabel = "max-w-full truncate text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px]";
+
+  const sectionTitle = "text-sm font-semibold tracking-tight text-white";
+  const sectionMuted = "text-xs leading-relaxed text-zinc-400";
 
   return (
     <>
@@ -372,163 +392,265 @@ export function ConceptFlyerExperience({
 
       {!showOverlay ? (
         <div
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-[10050] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1"
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[10050] pb-[env(safe-area-inset-bottom,0px)]"
           role="complementary"
-          aria-label="Flyer-preview acties"
+          aria-label="Concept-preview menu"
         >
-          <div ref={flyerChromeRef} className="pointer-events-auto relative w-full max-w-3xl">
-            {themaOpen ? (
-              <div
-                className="absolute bottom-full left-0 right-0 z-10 mb-2 rounded-2xl border border-zinc-200 bg-white/98 p-4 shadow-xl backdrop-blur-md dark:border-zinc-700 dark:bg-zinc-900/98"
-                role="dialog"
-                aria-label="Thema aanpassen"
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Thema (voorbeeld)</p>
+          <div
+            ref={flyerChromeRef}
+            className="pointer-events-auto flex flex-col border-t border-white/10 bg-zinc-950/97 shadow-[0_-12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+          >
+            {/* Uitklapbaar paneel — volle breedte, inhoud per sectie */}
+            <div
+              id="flyer-dock-panel"
+              className={cn(
+                "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+                expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+              aria-hidden={!expanded}
+            >
+              <div className="min-h-0 overflow-hidden border-b border-white/5">
+                <div className="max-h-[min(56vh,520px)] overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-8 sm:py-5">
+                  {expanded === "thema" ? (
+                    <div className="mx-auto max-w-2xl space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className={sectionTitle}>Thema &amp; kleuren</p>
+                          <p className={cn(sectionMuted, "mt-1")}>
+                            Alleen op dit scherm — proberen zonder de opgeslagen site te wijzigen.
+                          </p>
+                        </div>
+                        <Sparkles className="size-5 shrink-0 text-amber-400/90" aria-hidden />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {THEME_PRESETS.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => pickPreset(p)}
+                            className={cn(
+                              "rounded-full border px-4 py-2 text-xs font-medium transition",
+                              primary === p.primary && background === p.background
+                                ? "border-amber-400/60 bg-amber-500/15 text-amber-100"
+                                : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20 hover:bg-white/10",
+                            )}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                          Primair
+                          <input
+                            type="color"
+                            value={primary}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setPrimary(v);
+                              applyThemaToRoot(v, accent, background, text);
+                            }}
+                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                          Accent
+                          <input
+                            type="color"
+                            value={accent}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setAccent(v);
+                              applyThemaToRoot(primary, v, background, text);
+                            }}
+                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                          Achtergrond
+                          <input
+                            type="color"
+                            value={background}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setBackground(v);
+                              applyThemaToRoot(primary, accent, v, text);
+                            }}
+                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                          Tekst
+                          <input
+                            type="color"
+                            value={text}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setText(v);
+                              applyThemaToRoot(primary, accent, background, v);
+                            }}
+                            className="h-11 w-full cursor-pointer rounded-lg border border-white/10 bg-zinc-900"
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetThema();
+                          setExpanded(null);
+                        }}
+                        className="w-full rounded-xl border border-white/10 py-3 text-sm font-medium text-zinc-200 transition hover:bg-white/5"
+                      >
+                        Thema terugzetten
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {expanded === "afspraak" ? (
+                    <div className="mx-auto max-w-lg space-y-4">
+                      <p className={sectionTitle}>Afspraak &amp; contact</p>
+                      <p className={sectionMuted}>
+                        {appointmentsEnabled
+                          ? "Plan direct online een tijd — dezelfde flow als op de live site."
+                          : "Neem contact op voor een persoonlijk gesprek over je concept."}
+                      </p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                        {appointmentsEnabled ? (
+                          <a
+                            href={bookingHref}
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100"
+                          >
+                            <Calendar className="size-4 shrink-0" aria-hidden />
+                            Online afspraak maken
+                          </a>
+                        ) : null}
+                        {meetingUrl ? (
+                          <a
+                            href={meetingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-medium text-white transition hover:bg-white/10"
+                          >
+                            <Calendar className="size-4 shrink-0" aria-hidden />
+                            Plan gesprek (agenda)
+                          </a>
+                        ) : !appointmentsEnabled ? (
+                          <button
+                            type="button"
+                            onClick={() => mailStudio("Persoonlijk gesprek — website concept")}
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-medium text-white transition hover:bg-white/10"
+                          >
+                            <Calendar className="size-4 shrink-0" aria-hidden />
+                            Mail voor een gesprek
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {expanded === "bestellen" ? (
+                    <div className="mx-auto max-w-lg space-y-4">
+                      <p className={sectionTitle}>Bestellen</p>
+                      <p className={sectionMuted}>
+                        Rond je pakket af of vraag een offerte — je gaat naar het studio-bestelpad met deze
+                        conceptcontext bewaard.
+                      </p>
+                      <a
+                        href={orderHref}
+                        {...(orderIsExternal ? { target: "_blank" as const, rel: "noopener noreferrer" } : {})}
+                        className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 text-base font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
+                      >
+                        <ShoppingBag className="size-5 shrink-0 opacity-95" aria-hidden />
+                        Ga door naar bestellen
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            {/* Rail — volle breedte, gelijke kolommen, geen horizontale scroll */}
+            <div className="flex min-h-[52px] w-full items-stretch sm:min-h-[56px]">
+              <div className="hidden w-[min(11rem,28%)] shrink-0 flex-col justify-center border-r border-white/10 px-3 py-2 sm:flex sm:px-4">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Concept</span>
+                <span className="truncate text-xs font-medium text-zinc-300" title={siteLabel}>
+                  {siteLabel}
+                </span>
+              </div>
+
+              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/10">
+                <button
+                  type="button"
+                  className={dockTrigger(expanded === "thema")}
+                  aria-expanded={expanded === "thema"}
+                  aria-controls="flyer-dock-panel"
+                  onClick={() => toggleSection("thema")}
+                >
+                  <Palette className="size-4 shrink-0 text-zinc-300 sm:size-[18px]" aria-hidden />
+                  <span className={dockLabel}>Thema</span>
+                  {expanded === "thema" ? (
+                    <ChevronUp className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                  ) : (
+                    <ChevronDown className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                  )}
+                </button>
+
+                {showAppointmentInBar ? (
                   <button
                     type="button"
-                    className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                    aria-label="Thema-paneel sluiten"
-                    onClick={() => setThemaOpen(false)}
+                    className={dockTrigger(expanded === "afspraak")}
+                    aria-expanded={expanded === "afspraak"}
+                    aria-controls="flyer-dock-panel"
+                    onClick={() => toggleSection("afspraak")}
                   >
-                    <X className="size-4" />
+                    <Calendar className="size-4 shrink-0 text-zinc-300 sm:size-[18px]" aria-hidden />
+                    <span className={dockLabel}>{appointmentsEnabled ? "Afspraak" : "Contact"}</span>
+                    {expanded === "afspraak" ? (
+                      <ChevronUp className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                    ) : (
+                      <ChevronDown className="size-3.5 text-zinc-500 max-sm:hidden" aria-hidden />
+                    )}
                   </button>
-                </div>
-                <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                  Alleen op dit scherm — zo kun je sfeer proberen zonder de opgeslagen site te wijzigen.
-                </p>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {THEME_PRESETS.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => pickPreset(p)}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                        primary === p.primary && background === p.background
-                          ? "border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-400 dark:bg-violet-950/50 dark:text-violet-100"
-                          : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200",
-                      )}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Primair
-                    <input
-                      type="color"
-                      value={primary}
-                      onChange={(e) => {
-                        setPrimary(e.target.value);
-                        applyThemaToRoot(e.target.value, accent, background, text);
-                      }}
-                      className="h-10 w-full cursor-pointer rounded-lg border border-zinc-200 bg-white dark:border-zinc-600"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Accent
-                    <input
-                      type="color"
-                      value={accent}
-                      onChange={(e) => {
-                        setAccent(e.target.value);
-                        applyThemaToRoot(primary, e.target.value, background, text);
-                      }}
-                      className="h-10 w-full cursor-pointer rounded-lg border border-zinc-200 bg-white dark:border-zinc-600"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Achtergrond
-                    <input
-                      type="color"
-                      value={background}
-                      onChange={(e) => {
-                        setBackground(e.target.value);
-                        applyThemaToRoot(primary, accent, e.target.value, text);
-                      }}
-                      className="h-10 w-full cursor-pointer rounded-lg border border-zinc-200 bg-white dark:border-zinc-600"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Tekst
-                    <input
-                      type="color"
-                      value={text}
-                      onChange={(e) => {
-                        setText(e.target.value);
-                        applyThemaToRoot(primary, accent, background, e.target.value);
-                      }}
-                      className="h-10 w-full cursor-pointer rounded-lg border border-zinc-200 bg-white dark:border-zinc-600"
-                    />
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetThema();
-                    setThemaOpen(false);
-                  }}
-                  className="mt-3 w-full rounded-xl border border-zinc-200 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  Thema terugzetten
-                </button>
-              </div>
-            ) : null}
+                ) : (
+                  <div
+                    className="flex min-h-[52px] flex-1 flex-col items-center justify-center border-l border-white/10 px-1 py-2 opacity-40 sm:min-h-[56px]"
+                    aria-hidden
+                  >
+                    <Calendar className="size-4 text-zinc-500" aria-hidden />
+                    <span className={dockLabel}>—</span>
+                  </div>
+                )}
 
-            <div className="flex items-center gap-2 rounded-2xl border border-zinc-200/90 bg-white/90 px-2 py-2 shadow-lg backdrop-blur-md dark:border-zinc-700/90 dark:bg-zinc-950/90 sm:gap-3 sm:px-3">
-              <span className="hidden min-w-0 flex-1 truncate pl-1 text-xs font-medium text-zinc-500 dark:text-zinc-400 sm:inline">
-                Concept-preview
-              </span>
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 overflow-x-auto sm:justify-center sm:gap-2">
                 <button
                   type="button"
-                  className={barBtn}
-                  aria-expanded={themaOpen}
-                  onClick={() => setThemaOpen((o) => !o)}
+                  className={dockTrigger(expanded === "bestellen")}
+                  aria-expanded={expanded === "bestellen"}
+                  aria-controls="flyer-dock-panel"
+                  onClick={() => toggleSection("bestellen")}
                 >
-                  <Palette className="size-4 shrink-0 opacity-85" aria-hidden />
-                  <span className="max-sm:sr-only">Thema</span>
-                </button>
-                {showAppointmentInBar ? (
-                  appointmentsEnabled ? (
-                    <a href={bookingHref} className={barBtn}>
-                      <Calendar className="size-4 shrink-0 opacity-85" aria-hidden />
-                      <span className="max-sm:sr-only">Afspraak</span>
-                    </a>
-                  ) : meetingUrl ? (
-                    <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className={barBtn}>
-                      <Calendar className="size-4 shrink-0 opacity-85" aria-hidden />
-                      <span className="max-sm:sr-only">Gesprek</span>
-                    </a>
+                  <ShoppingBag className="size-4 shrink-0 text-emerald-400/90 sm:size-[18px]" aria-hidden />
+                  <span className={cn(dockLabel, "text-emerald-100/90")}>Bestellen</span>
+                  {expanded === "bestellen" ? (
+                    <ChevronUp className="size-3.5 text-emerald-400/70 max-sm:hidden" aria-hidden />
                   ) : (
-                    <button type="button" className={barBtn} onClick={() => mailStudio("Persoonlijk gesprek — website concept")}>
-                      <Calendar className="size-4 shrink-0 opacity-85" aria-hidden />
-                      <span className="max-sm:sr-only">Gesprek</span>
-                    </button>
-                  )
-                ) : null}
-                <a
-                  href={orderHref}
-                  {...(orderIsExternal ? { target: "_blank" as const, rel: "noopener noreferrer" } : {})}
-                  className={barBtnPrimary}
-                >
-                  <ShoppingBag className="size-4 shrink-0 opacity-90" aria-hidden />
-                  <span className="max-sm:sr-only">Bestellen</span>
-                </a>
-                <button
-                  type="button"
-                  className={cn(barBtn, "border-dashed")}
-                  onClick={() => {
-                    setStep(0);
-                    setTourOpen(true);
-                  }}
-                  aria-label="Concept-uitleg"
-                >
-                  <HelpCircle className="size-4 shrink-0 opacity-85" aria-hidden />
+                    <ChevronDown className="size-3.5 text-emerald-400/70 max-sm:hidden" aria-hidden />
+                  )}
                 </button>
               </div>
+
+              <button
+                type="button"
+                className="flex w-14 shrink-0 flex-col items-center justify-center gap-1 border-l border-white/10 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200 sm:w-16"
+                onClick={() => {
+                  setExpanded(null);
+                  setStep(0);
+                  setTourOpen(true);
+                }}
+                aria-label="Concept-uitleg"
+              >
+                <HelpCircle className="size-[18px] shrink-0" aria-hidden />
+                <span className="hidden text-[9px] font-medium uppercase tracking-wider sm:inline">Info</span>
+              </button>
             </div>
           </div>
         </div>

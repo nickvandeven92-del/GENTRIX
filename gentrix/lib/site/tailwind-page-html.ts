@@ -290,21 +290,37 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
  * Alleen ≤1023px zodat de desktop-variant (bij breed uitklappen) onaangeraakt blijft.
  */
 export const STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS = `@media (max-width: 1023px) {
-  nav[aria-label="Mobiel menu"] a,
-  nav[aria-label="Mobile menu"] a,
-  nav[aria-label="Mobiel menu"] button,
-  nav[aria-label="Mobile menu"] button,
-  div[aria-label="Mobiel menu"] a,
-  div[aria-label="Mobile menu"] a,
-  div[aria-label="Mobiel menu"] button,
-  div[aria-label="Mobile menu"] button {
+  /* Patroon 1 — canonical aria-label (zoals onze AI-prompt voorschrijft). */
+  [aria-label="Mobiel menu"] a,
+  [aria-label="Mobile menu"] a,
+  [aria-label="Mobiel menu"] button,
+  [aria-label="Mobile menu"] button,
+  /* Patroon 2 — bare drawer in header zonder aria-label: \`<div class="lg:hidden" x-show="navOpen">\`. */
+  header [x-show][class*=":hidden"] a,
+  header [x-show][class*=":hidden"] button,
+  header [class*=":hidden"][x-show] a,
+  header [class*=":hidden"][x-show] button,
+  /* Patroon 3 — fullscreen sheet \`fixed inset-0 ... x-show\`, soms direct onder body geteleport. */
+  [x-show][class*="fixed"][class*="inset-0"] a,
+  [x-show][class*="fixed"][class*="inset-0"] button,
+  [x-show][class*="fixed"][class*="inset-y-0"] a,
+  [x-show][class*="fixed"][class*="inset-y-0"] button,
+  /* Patroon 4 — drawer als directe broer/zus van een hamburger-knop in dezelfde \`x-data\`-scope. */
+  header [x-data] [x-show][class*="fixed"] a,
+  header [x-data] [x-show][class*="fixed"] button {
     font-size: 1rem !important;
     line-height: 1.4 !important;
+    letter-spacing: 0.05em;
   }
-  nav[aria-label="Mobiel menu"] a[class*="rounded-"],
-  nav[aria-label="Mobile menu"] a[class*="rounded-"],
-  nav[aria-label="Mobiel menu"] button[class*="rounded-"],
-  nav[aria-label="Mobile menu"] button[class*="rounded-"] {
+  /* CTA's (rounded-pill / rounded-xl knoppen zoals "WHATSAPP") iets compacter. */
+  [aria-label="Mobiel menu"] a[class*="rounded-"],
+  [aria-label="Mobile menu"] a[class*="rounded-"],
+  [aria-label="Mobiel menu"] button[class*="rounded-"],
+  [aria-label="Mobile menu"] button[class*="rounded-"],
+  header [x-show][class*=":hidden"] a[class*="rounded-"],
+  header [x-show][class*=":hidden"] button[class*="rounded-"],
+  [x-show][class*="fixed"][class*="inset-0"] a[class*="rounded-"],
+  [x-show][class*="fixed"][class*="inset-0"] button[class*="rounded-"] {
     font-size: 0.9375rem !important;
   }
 }`;
