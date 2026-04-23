@@ -128,6 +128,11 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
         ? bundle.payload.doc.documentTitle?.trim() || formatSlugForDisplay(slug)
         : formatSlugForDisplay(slug);
 
+  const flyerTailwindPageConfig =
+    bundle.payload.kind === "tailwind" && bundle.payload.config != null && !isLegacyTailwindPageConfig(bundle.payload.config)
+      ? bundle.payload.config
+      : null;
+
   return (
     <>
       <style>{`
@@ -146,6 +151,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
           slug={slug}
           appointmentsEnabled={bundle.appointmentsEnabled}
           webshopEnabled={bundle.webshopEnabled}
+          tailwindPageConfig={flyerTailwindPageConfig}
           previewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
           preserveFlyerQuery={showFlyer}
         />
@@ -157,6 +163,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
         webshopEnabled={bundle.webshopEnabled}
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
         prettyPublicUrls={prettyPublicUrls}
+        relaxedTailwindCdnLoading={showFlyer}
       />
     </>
   );

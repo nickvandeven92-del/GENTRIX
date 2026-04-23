@@ -47,6 +47,10 @@ type PublishedSiteViewProps = {
    * strip `/site/{slug}` uit alle anchor-hrefs zodat bezoekers alleen `gentrix.nl/werkwijze` zien.
    */
   prettyPublicUrls?: boolean;
+  /**
+   * Flyer/QR-concept (`?flyer=1`): bij ontbrekende gecompileerde Tailwind geen “lege pagina” tot Play CDN klaar is.
+   */
+  relaxedTailwindCdnLoading?: boolean;
 };
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
@@ -62,6 +66,7 @@ export function PublishedSiteView({
   marketingSubpageKey = null,
   embedReactInChrome = false,
   prettyPublicUrls = false,
+  relaxedTailwindCdnLoading = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
     return (
@@ -192,6 +197,7 @@ export function PublishedSiteView({
             webshopEnabled={webshopEnabled}
             contactSubpageNavBase={contactNavBase}
             prettyPublicUrls={prettyPublicUrls}
+            relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
           />
         </div>
       );

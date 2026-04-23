@@ -2541,6 +2541,12 @@ export type BuildTailwindIframeSrcDocOptions = {
    */
   compiledTailwindCss?: string | null;
   /**
+   * Flyer/QR-concept (`?flyer=1`): zonder gecompileerde CSS laadt de Play CDN nog steeds, maar **geen**
+   * `tw-loading` / `body { visibility:hidden }` — de pagina blijft zichtbaar (eventueel kort ongestileerd)
+   * i.p.v. seconden een leeg scherm op trage verbindingen.
+   */
+  relaxedTailwindCdnLoading?: boolean;
+  /**
    * Optioneel: `/site/[slug]` ↔ `/site/[slug]/contact` zonder generator-output te wijzigen.
    * Vereist `pageOrigin` (typisch `window.location.origin` in de client-build van `srcDoc`).
    */
@@ -2817,17 +2823,21 @@ export function buildTailwindIframeSrcDoc(
 
   const compiledRaw = options?.compiledTailwindCss?.trim() ?? "";
   const useCompiledTailwind = compiledRaw.length > 0;
+  const relaxedTailwindCdn = Boolean(options?.relaxedTailwindCdnLoading) && !useCompiledTailwind;
   const compiledStyleBlock = useCompiledTailwind
     ? `<style id="studio-compiled-tailwind">\n${sanitizeCompiledTailwindCssForStyleTag(compiledRaw)}\n</style>\n`
     : "";
   const tailwindPreloadLine = useCompiledTailwind
     ? ""
     : `  <link rel="preload" href="${STUDIO_TAILWIND_PLAY_CDN_SRC}" as="script"/>\n`;
-  const foucCssBlock = useCompiledTailwind ? "" : `    ${STUDIO_TAILWIND_FOUC_HEAD_CSS}\n`;
-  const twLoadingScript = useCompiledTailwind ? "" : `<script>document.documentElement.classList.add("tw-loading")</script>\n`;
+  const foucCssBlock = useCompiledTailwind || relaxedTailwindCdn ? "" : `    ${STUDIO_TAILWIND_FOUC_HEAD_CSS}\n`;
+  const twLoadingScript =
+    useCompiledTailwind || relaxedTailwindCdn ? "" : `<script>document.documentElement.classList.add("tw-loading")</script>\n`;
   const tailwindCdnScripts = useCompiledTailwind
     ? ""
-    : `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}" onload="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)" onerror="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)"></script>
+    : relaxedTailwindCdn
+      ? `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}"></script>\n`
+      : `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}" onload="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)" onerror="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)"></script>
 <script>setTimeout(function(){var e=document.documentElement;if(e.classList.contains("tw-loading")){e.classList.remove("tw-loading");e.classList.add("tw-ready")}},4500)</script>
 `;
   const studioTailwindPlayConsoleMute = useCompiledTailwind

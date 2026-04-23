@@ -52,6 +52,8 @@ type PublicPublishedTailwindInlineProps = {
    * intern terug naar `/site/{slug}/…`.
    */
   prettyPublicUrls?: boolean;
+  /** Flyer/QR-preview: geen body-visibility lock op Tailwind Play CDN. */
+  relaxedTailwindCdnLoading?: boolean;
 };
 
 function deriveSSROrigin(): string {
@@ -78,6 +80,7 @@ export function PublicPublishedTailwindInline({
   contactSubpageNavBase = null,
   navBrandLabel = null,
   prettyPublicUrls = false,
+  relaxedTailwindCdnLoading = false,
 }: PublicPublishedTailwindInlineProps) {
   const filtered = filterSectionsForPublicSite(sections);
   const iframeDocumentPathname = publicSiteIframeDocumentPathname(
@@ -105,6 +108,7 @@ export function PublicPublishedTailwindInline({
       previewScriptOrigin: ssrOrigin || undefined,
       navBrandLabel: navBrandLabel?.trim() || undefined,
       iframeDocumentPathname,
+      relaxedTailwindCdnLoading,
       ...(contactSubpageNav ? { contactSubpageNav } : {}),
     });
     if (ssrOrigin) fullHtml = rewriteStudioDevOriginsInHtml(fullHtml, ssrOrigin);

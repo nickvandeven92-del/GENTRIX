@@ -9,6 +9,7 @@ import {
   resolvePublishedSitePayloadJson,
 } from "@/lib/data/resolve-site-payload-json";
 import { ensureTailwindCompiledCssOnPublishedPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { persistPublicTailwindCompiledCssBestEffort } from "@/lib/data/persist-public-tailwind-compiled-css";
 import { previewSecretsEqual } from "@/lib/preview/preview-secret-crypto";
 import {
   publishedPayloadFromSiteJson,
@@ -624,18 +625,27 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
     const beforeEnsure =
       payload.kind === "tailwind" &&
       (payload.tailwindCompiledCss == null || payload.tailwindCompiledCss.trim() === "");
-    payload = await ensureTailwindCompiledCssOnPublishedPayload(payload, data.name);
+    payload = await ensureTailwindCompiledCssOnPublishedPayload(payload, data.name, { compileBudgetMs: 0 });
     if (
-      process.env.NODE_ENV === "development" &&
       beforeEnsure &&
       payload.kind === "tailwind" &&
       payload.tailwindCompiledCss != null &&
       payload.tailwindCompiledCss.trim() !== ""
     ) {
-      devLogPublishedSite(
-        slug,
-        "tailwindCompiledCss ontbrak in DB; server-build toegevoegd voor deze request (opslaan in studio schrijft voortaan mee).",
-      );
+      await persistPublicTailwindCompiledCssBestEffort({
+        subfolderSlug: slug,
+        conceptAccess,
+        draftSnapshotId: data.draft_snapshot_id?.trim() ?? null,
+        publishedSnapshotId: data.published_snapshot_id?.trim() ?? null,
+        siteDataJson: data.site_data_json,
+        tailwindCompiledCss: payload.tailwindCompiledCss,
+      });
+      if (process.env.NODE_ENV === "development") {
+        devLogPublishedSite(
+          slug,
+          "tailwindCompiledCss ontbrak in DB; server-build uitgevoerd en teruggeschreven naar snapshot/site_data_json.",
+        );
+      }
     }
     const appointmentsEnabled = Boolean(data.appointments_enabled);
     const webshopEnabled = Boolean(data.webshop_enabled);

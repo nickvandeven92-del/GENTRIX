@@ -11,16 +11,24 @@ function projectRootDir(): string {
 }
 
 /**
- * On-the-fly Tailwind CLI-build bij ontbrekende `tailwindCompiledCss` kan op serverless **lang** duren
- * en houdt `loading.tsx` vast. Na deze deadline: payload ongewijzigd → iframe valt terug op Play CDN.
- * Override: `PUBLISHED_SITE_TAILWIND_COMPILE_TIMEOUT_MS` (1000–55000), default 10000.
+ * On-the-fly Tailwind CLI-build bij ontbrekende `tailwindCompiledCss` kan op serverless **lang** duren.
+ * Standaard **55s** (max); `compileBudgetMs: 0` wacht zonder timeout tot de CLI klaar is (publieke preview).
+ * Override: `PUBLISHED_SITE_TAILWIND_COMPILE_TIMEOUT_MS` (1000–55000), alleen als geen expliciete budget-optie.
  */
 function publishedSiteTailwindCompileBudgetMs(): number {
   const raw = process.env.PUBLISHED_SITE_TAILWIND_COMPILE_TIMEOUT_MS?.trim();
-  const n = raw ? Number(raw) : 10_000;
-  if (!Number.isFinite(n)) return 10_000;
+  const n = raw ? Number(raw) : 55_000;
+  if (!Number.isFinite(n)) return 55_000;
   return Math.min(55_000, Math.max(1_000, Math.floor(n)));
 }
+
+export type EnsureTailwindCompiledCssOptions = {
+  /**
+   * `0` = geen timeout (wacht op volledige CLI-build). Anders milliseconden cap (serverless‑vriendelijk).
+   * Publieke `/site`‑preview gebruikt `0` zodat er geen Play CDN‑fallback nodig is.
+   */
+  compileBudgetMs?: number;
+};
 
 function raceWithTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => void): Promise<T | null> {
   if (ms <= 0) return promise.then((v) => v);
@@ -79,27 +87,34 @@ export async function attachCompiledTailwindCssToPayload(
 }
 
 /**
- * Vult ontbrekende `tailwindCompiledCss` (oude snapshots / mislukte build bij opslag) zodat de iframe geen
- * Tailwind Play CDN laadt. Schrijft niet terug naar de database.
+ * Vult ontbrekende `tailwindCompiledCss` (oude snapshots / mislukte build bij opslag) zodat de preview geen
+ * Tailwind Play CDN nodig heeft. Optioneel schrijft de caller CSS terug naar Supabase (`persistPublic…`).
  */
 export async function ensureTailwindCompiledCssOnPublishedPayload(
   payload: PublishedSitePayload,
   documentTitle: string,
+  options?: EnsureTailwindCompiledCssOptions,
 ): Promise<PublishedSitePayload> {
   if (payload.kind !== "tailwind") return payload;
   if (payload.tailwindCompiledCss != null && payload.tailwindCompiledCss.trim() !== "") return payload;
   const tw = tailwindSectionsPayloadFromPublishedTailwind(payload);
   const title = documentTitle.trim() || payload.clientName.trim() || "Website";
-  const budget = publishedSiteTailwindCompileBudgetMs();
-  const withCss = await raceWithTimeout(
-    attachCompiledTailwindCssToPayload(tw, title),
-    budget,
-    () => {
-      console.warn(
-        `[ensureTailwindCompiledCssOnPublishedPayload] compile > ${budget}ms — skip (Tailwind Play CDN in viewer). Zet compiled CSS bij publish of verhoog PUBLISHED_SITE_TAILWIND_COMPILE_TIMEOUT_MS.`,
-      );
-    },
-  );
+  const budgetOpt = options?.compileBudgetMs;
+  const budget =
+    budgetOpt === 0 ? 0 : budgetOpt != null && Number.isFinite(budgetOpt) ? Math.max(1_000, Math.floor(budgetOpt)) : publishedSiteTailwindCompileBudgetMs();
+
+  const withCss =
+    budget === 0
+      ? await attachCompiledTailwindCssToPayload(tw, title)
+      : await raceWithTimeout(
+          attachCompiledTailwindCssToPayload(tw, title),
+          budget,
+          () => {
+            console.warn(
+              `[ensureTailwindCompiledCssOnPublishedPayload] compile > ${budget}ms — skip (Tailwind Play CDN in viewer). Zet compiled CSS bij publish, of gebruik compileBudgetMs: 0 op het publieke pad.`,
+            );
+          },
+        );
   if (!withCss) return payload;
   const css = withCss.tailwindCompiledCss?.trim();
   if (!css) return payload;

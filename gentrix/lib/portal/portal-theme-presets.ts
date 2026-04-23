@@ -18,6 +18,24 @@ import {
 export type PortalThemeFamilyId = "light" | "dark" | "warm";
 export type PortalThemePresetId = "original" | PortalThemeFamilyId;
 
+/**
+ * Minimale baseline wanneer er geen geldige master-config is (legacy / andere payloads):
+ * de flyer toont dan alsnog dezelfde drie portaal-labels + kleurlogica als in het klantportaal.
+ */
+export const PORTAL_FLYER_THEME_BASELINE: MasterPromptPageConfig = {
+  style: " ",
+  font: "ui-sans-serif, system-ui, sans-serif",
+  theme: {
+    primary: "#4f46e5",
+    accent: "#818cf8",
+    secondary: "#64748b",
+    background: "#fafafa",
+    textColor: "#0f172a",
+    textMuted: "#64748b",
+    contrastLevel: "medium",
+  },
+};
+
 export type PortalThemePreset = {
   id: PortalThemePresetId;
   label: string;
@@ -278,4 +296,35 @@ export function buildPortalThemePresets(pageConfig?: TailwindPageConfig | null):
   });
 
   return [originalPreset, ...alternativePresets];
+}
+
+/** Rij voor flyer-preview: zelfde ids/labels als `buildPortalThemePresets`, met platte kleuren voor CSS-vars. */
+export type FlyerPortalThemePresetRow = {
+  id: PortalThemePresetId;
+  label: string;
+  description: string;
+  primary: string;
+  accent: string;
+  background: string;
+  text: string;
+};
+
+export function buildFlyerPortalThemePresetRows(
+  pageConfig?: TailwindPageConfig | null,
+): FlyerPortalThemePresetRow[] {
+  const base: TailwindPageConfig =
+    pageConfig && !isLegacyTailwindPageConfig(pageConfig) ? pageConfig : PORTAL_FLYER_THEME_BASELINE;
+  return buildPortalThemePresets(base).map((preset) => {
+    const cfg = preset.pageConfig as MasterPromptPageConfig;
+    const t = cfg.theme;
+    return {
+      id: preset.id,
+      label: preset.label,
+      description: preset.description,
+      primary: normalizeHex(t.primary, "#1f2937"),
+      accent: normalizeHex(t.accent, "#c08a4a"),
+      background: normalizeHex(t.background, "#ffffff"),
+      text: normalizeHex(t.textColor, "#0f172a"),
+    };
+  });
 }

@@ -12,6 +12,7 @@ import {
   resolvePublicTailwindContactPlan,
 } from "@/lib/site/tailwind-contact-subpage";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
+import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 
 type ContactSitePageProps = {
   params: Promise<{ slug: string }>;
@@ -105,6 +106,8 @@ export default async function PublicClientSiteContactPage({ params, searchParams
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
   const siteLabel = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
+  const flyerTailwindPageConfig =
+    bundle.payload.config != null && !isLegacyTailwindPageConfig(bundle.payload.config) ? bundle.payload.config : null;
 
   return (
     <>
@@ -114,6 +117,7 @@ export default async function PublicClientSiteContactPage({ params, searchParams
           slug={slug}
           appointmentsEnabled={bundle.appointmentsEnabled}
           webshopEnabled={bundle.webshopEnabled}
+          tailwindPageConfig={flyerTailwindPageConfig}
           previewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
           preserveFlyerQuery={showFlyer}
         />
@@ -126,6 +130,7 @@ export default async function PublicClientSiteContactPage({ params, searchParams
         publicSiteTailwindPath="contact"
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
         prettyPublicUrls={prettyPublicUrls}
+        relaxedTailwindCdnLoading={showFlyer}
       />
     </>
   );

@@ -10,7 +10,13 @@ import {
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
+import type { TailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import { PUBLIC_STUDIO_CONTACT_EMAIL } from "@/lib/constants";
+import {
+  buildFlyerPortalThemePresetRows,
+  type FlyerPortalThemePresetRow,
+  type PortalThemePresetId,
+} from "@/lib/portal/portal-theme-presets";
 import { buildPublicStudioBookingHref, buildPublicStudioOrderHref } from "@/lib/studio-order/build-public-order-href";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +25,8 @@ type ConceptFlyerExperienceProps = {
   slug: string;
   appointmentsEnabled: boolean;
   webshopEnabled: boolean;
+  /** Master Tailwind `config` van de site — zelfde basis als portaal-thema’s (Origineel + 2 varianten). */
+  tailwindPageConfig?: TailwindPageConfig | null;
   /** Concept-previewtoken (zelfde als `?token=` op de site) voor link naar bestelpagina. */
   previewToken?: string | null;
   /** `flyer=1` behouden op bestel-URL (flyer-flow). */
@@ -92,12 +100,6 @@ function clearThemaFromRoot() {
   }
 }
 
-const THEME_PRESETS: { id: string; label: string; primary: string; accent: string; background: string; text: string }[] = [
-  { id: "zacht", label: "Zacht", primary: "#4f46e5", accent: "#818cf8", background: "#fafafa", text: "#18181b" },
-  { id: "fris", label: "Fris", primary: "#059669", accent: "#34d399", background: "#f0fdf4", text: "#064e3b" },
-  { id: "contrast", label: "Contrast", primary: "#ea580c", accent: "#f97316", background: "#0a0a0a", text: "#fafafa" },
-];
-
 type DockSection = "thema" | "afspraak" | "bestellen";
 
 export function ConceptFlyerExperience({
@@ -105,6 +107,7 @@ export function ConceptFlyerExperience({
   slug,
   appointmentsEnabled,
   webshopEnabled,
+  tailwindPageConfig = null,
   previewToken = null,
   preserveFlyerQuery = false,
 }: ConceptFlyerExperienceProps) {
@@ -129,14 +132,33 @@ export function ConceptFlyerExperience({
   );
 
   const storageKey = useMemo(() => `gentrix-flyer-tour-${slug}`, [slug]);
+  const themePresets = useMemo(
+    () => buildFlyerPortalThemePresetRows(tailwindPageConfig ?? null),
+    [tailwindPageConfig],
+  );
   const [tourOpen, setTourOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [expanded, setExpanded] = useState<DockSection | null>(null);
-  const [primary, setPrimary] = useState(THEME_PRESETS[0].primary);
-  const [accent, setAccent] = useState(THEME_PRESETS[0].accent);
-  const [background, setBackground] = useState(THEME_PRESETS[0].background);
-  const [text, setText] = useState(THEME_PRESETS[0].text);
+  const firstPreset = themePresets[0];
+  const [primary, setPrimary] = useState(() => firstPreset?.primary ?? "#fafafa");
+  const [accent, setAccent] = useState(() => firstPreset?.accent ?? "#818cf8");
+  const [background, setBackground] = useState(() => firstPreset?.background ?? "#fafafa");
+  const [text, setText] = useState(() => firstPreset?.text ?? "#0f172a");
+  const [selectedFlyerThemeId, setSelectedFlyerThemeId] = useState<PortalThemePresetId | null>(
+    () => firstPreset?.id ?? null,
+  );
   const flyerChromeRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const p = themePresets[0];
+    if (!p) return;
+    setPrimary(p.primary);
+    setAccent(p.accent);
+    setBackground(p.background);
+    setText(p.text);
+    setSelectedFlyerThemeId(p.id);
+    clearThemaFromRoot();
+  }, [themePresets]);
 
   /* Flyer-rondleiding: session vóór eerste paint lezen (voorkomt overlay-flash). */
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -203,7 +225,7 @@ export function ConceptFlyerExperience({
       : []),
     {
       title: "Volgende stap",
-      body: "Onderaan zit een strak menu over de volle breedte: klap secties uit voor thema, afspraak en bestellen.",
+      body: "Onderaan zit een strak menu over de volle breedte: klap secties uit voor thema (zelfde keuzes als in het klantportaal), afspraak en bestellen.",
     },
   ];
 
@@ -254,7 +276,8 @@ export function ConceptFlyerExperience({
     };
   }, [expanded]);
 
-  const pickPreset = useCallback((p: (typeof THEME_PRESETS)[number]) => {
+  const pickPreset = useCallback((p: FlyerPortalThemePresetRow) => {
+    setSelectedFlyerThemeId(p.id);
     setPrimary(p.primary);
     setAccent(p.accent);
     setBackground(p.background);
@@ -264,12 +287,14 @@ export function ConceptFlyerExperience({
 
   const resetThema = useCallback(() => {
     clearThemaFromRoot();
-    const d = THEME_PRESETS[0];
+    const d = themePresets[0];
+    if (!d) return;
+    setSelectedFlyerThemeId(d.id);
     setPrimary(d.primary);
     setAccent(d.accent);
     setBackground(d.background);
     setText(d.text);
-  }, []);
+  }, [themePresets]);
 
   const ctaClass =
     "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700";
@@ -417,20 +442,22 @@ export function ConceptFlyerExperience({
                         <div>
                           <p className={sectionTitle}>Thema &amp; kleuren</p>
                           <p className={cn(sectionMuted, "mt-1")}>
-                            Alleen op dit scherm — proberen zonder de opgeslagen site te wijzigen.
+                            Zelfde drie opties als in het klantportaal — alleen op dit scherm, zonder de opgeslagen site te
+                            wijzigen.
                           </p>
                         </div>
                         <Sparkles className="size-5 shrink-0 text-amber-400/90" aria-hidden />
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {THEME_PRESETS.map((p) => (
+                        {themePresets.map((p) => (
                           <button
                             key={p.id}
                             type="button"
+                            title={p.description}
                             onClick={() => pickPreset(p)}
                             className={cn(
                               "rounded-full border px-4 py-2 text-xs font-medium transition",
-                              primary === p.primary && background === p.background
+                              selectedFlyerThemeId === p.id
                                 ? "border-amber-400/60 bg-amber-500/15 text-amber-100"
                                 : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20 hover:bg-white/10",
                             )}
@@ -447,6 +474,7 @@ export function ConceptFlyerExperience({
                             value={primary}
                             onChange={(e) => {
                               const v = e.target.value;
+                              setSelectedFlyerThemeId(null);
                               setPrimary(v);
                               applyThemaToRoot(v, accent, background, text);
                             }}
@@ -460,6 +488,7 @@ export function ConceptFlyerExperience({
                             value={accent}
                             onChange={(e) => {
                               const v = e.target.value;
+                              setSelectedFlyerThemeId(null);
                               setAccent(v);
                               applyThemaToRoot(primary, v, background, text);
                             }}
@@ -473,6 +502,7 @@ export function ConceptFlyerExperience({
                             value={background}
                             onChange={(e) => {
                               const v = e.target.value;
+                              setSelectedFlyerThemeId(null);
                               setBackground(v);
                               applyThemaToRoot(primary, accent, v, text);
                             }}
@@ -486,6 +516,7 @@ export function ConceptFlyerExperience({
                             value={text}
                             onChange={(e) => {
                               const v = e.target.value;
+                              setSelectedFlyerThemeId(null);
                               setText(v);
                               applyThemaToRoot(primary, accent, background, v);
                             }}

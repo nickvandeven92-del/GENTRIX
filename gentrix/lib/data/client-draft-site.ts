@@ -101,7 +101,7 @@ export async function getParsedSiteDraftBySlug(slug: string): Promise<ParsedStor
     if (parsed.tailwindCompiledCss != null && parsed.tailwindCompiledCss.trim() !== "") return parsed;
     const payload = publishedPayloadFromSiteJson(raw, row.name, row.generation_package);
     if (!payload || payload.kind !== "tailwind") return parsed;
-    const ensured = await ensureTailwindCompiledCssOnPublishedPayload(payload, row.name);
+    const ensured = await ensureTailwindCompiledCssOnPublishedPayload(payload, row.name, { compileBudgetMs: 0 });
     if (
       ensured.kind !== "tailwind" ||
       ensured.tailwindCompiledCss == null ||
@@ -129,7 +129,7 @@ export async function getDraftPublishedSitePayloadBySlug(slug: string): Promise<
     });
     const payload = publishedPayloadFromSiteJson(raw, row.name, row.generation_package);
     if (!payload) return null;
-    return ensureTailwindCompiledCssOnPublishedPayload(payload, row.name);
+    return ensureTailwindCompiledCssOnPublishedPayload(payload, row.name, { compileBudgetMs: 0 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) return null;
