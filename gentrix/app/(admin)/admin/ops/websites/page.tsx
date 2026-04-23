@@ -11,20 +11,21 @@ export default async function SalesOpsWebsitesPage() {
   const items = await listWebsiteOpsWithClients();
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
-      <p className="text-[11px] text-neutral-500">
-        Operationele status uit <code className="text-neutral-600">website_ops_state</code>. Publiceren gebruikt de
-        bestaande publish-API (geen wijziging aan de AI-engine).
-      </p>
-      <p className="text-sm">
-        <Link href="/admin/ops/studio" className="font-medium text-neutral-900 underline-offset-2 hover:underline">
-          Site-studio
-        </Link>
-        {" · "}
-        <Link href="/admin/sites" className="font-medium text-neutral-900 underline-offset-2 hover:underline">
-          Alle sites
-        </Link>
-      </p>
+    <div className="mx-auto max-w-[1400px] space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-600">
+        <p className="leading-snug">Volledig fase-bord (briefing → live).</p>
+        <p className="flex shrink-0 flex-wrap gap-x-2 font-medium">
+          <Link href="/admin/ops/studio" className="text-neutral-900 underline-offset-2 hover:underline">
+            Site-studio
+          </Link>
+          <span className="text-neutral-300" aria-hidden>
+            ·
+          </span>
+          <Link href="/admin/sites" className="text-neutral-900 underline-offset-2 hover:underline">
+            Alle sites
+          </Link>
+        </p>
+      </div>
       <WebsiteProductionBoard items={items} />
     </div>
   );

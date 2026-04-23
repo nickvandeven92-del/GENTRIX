@@ -35,23 +35,23 @@ export function OpsDealFollowUps({
   const fullTotal = totalCount ?? rows.length;
   const extra = fullTotal - rows.length;
   const shell = cockpit
-    ? "rounded-xl bg-neutral-50/30 py-5 ring-1 ring-neutral-950/[0.04]"
+    ? "rounded-lg bg-neutral-50/30 py-3 ring-1 ring-neutral-950/[0.04]"
     : "overflow-hidden rounded-lg border border-neutral-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)]";
-  const headPad = cockpit ? "px-5 pb-4" : "border-b border-neutral-200 px-4 py-3";
-  const listPad = cockpit ? "px-5" : "px-4";
+  const headPad = cockpit ? "px-4 pb-2" : "border-b border-neutral-200 px-4 py-3";
+  const listPad = cockpit ? "px-4" : "px-4";
 
   if (rows.length === 0) {
     return (
       <section id="deal-opvolging" className={shell}>
         <div className={headPad}>
           <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Deal-opvolging</h2>
-          <p className="mt-2 text-[15px] font-medium text-neutral-900">Geen geplande opvolging</p>
-          <p className="mt-1 text-[12px] text-neutral-500">
-            Vastgelegde stappen op een deal verschijnen hier (niet onder Openstaande taken — dat zijn aparte taken).
+          <p className="mt-1 text-sm font-medium text-neutral-900">Geen geplande opvolging</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">
+            Deal-stappen hier; losse werkitems staan bij Taken.
           </p>
           <Link
             href="/admin/ops/deals"
-            className="mt-3 inline-block text-[12px] font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
+            className="mt-2 inline-block text-[11px] font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-4 hover:decoration-neutral-900"
           >
             Naar deals
           </Link>
@@ -66,8 +66,8 @@ export function OpsDealFollowUps({
     <section id="deal-opvolging" className={shell}>
       <div className={headPad}>
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Deal-opvolging</h2>
-        <p className="mt-1 text-[12px] text-neutral-500">
-          Volgende stap en opvolgdatum per open deal (ook na &apos;vastleggen&apos; op de dealpagina).
+        <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">
+          Volgende stap en opvolgdatum per open deal.
         </p>
       </div>
       <ul className={cn("divide-y divide-neutral-100/90", listPad)}>

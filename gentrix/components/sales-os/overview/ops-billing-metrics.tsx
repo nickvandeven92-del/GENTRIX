@@ -15,11 +15,11 @@ export function OpsBillingMetrics({
   openQuotesCount,
 }: OpsBillingMetricsProps) {
   return (
-    <section aria-label="Financieel overzicht" className="rounded-xl border border-neutral-200/80 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+    <section aria-label="Financieel overzicht" className="rounded-lg border border-neutral-200/80 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Financieel</h2>
-          <p className="mt-1 text-[13px] text-neutral-600">Cashflow en openstaande posten — geen boekhouding.</p>
+          <p className="mt-0.5 text-xs leading-snug text-neutral-600">Cashflow en open posten.</p>
         </div>
         <div className="flex flex-wrap gap-3 text-[12px]">
           <Link href="/admin/invoices" className="font-medium text-neutral-900 underline underline-offset-2">

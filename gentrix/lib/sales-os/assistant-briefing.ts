@@ -97,14 +97,14 @@ export function buildAssistantBriefing(input: {
   const summary =
     parts.length > 0
       ? `Vandaag: ${parts.join(" · ")}.`
-      : "Vandaag: geen harde waarschuwingen volgens de huidige regels — houd de pijplijn en levering bij.";
+      : "Vandaag: geen harde waarschuwingen volgens de huidige regels — houd pijplijn en klanten bij (zie snelknoppen).";
 
   const jumpLinks: AssistantBriefingJump[] = [
     { label: "Prioriteiten", href: "/admin/ops#prioriteiten" },
     { label: "Taken", href: "/admin/ops/tasks" },
     { label: "Pijplijn", href: "/admin/ops#pipeline" },
     { label: "Gezondheid", href: "/admin/ops#gezondheid" },
-    { label: "Levering", href: "/admin/ops#levering" },
+    { label: "Website-bord", href: "/admin/ops/websites#levering" },
   ];
 
   let weekLine: string | null = null;

@@ -35,19 +35,19 @@ export function ClientHealthBoard({ rows }: { rows: ClientHealthViewRow[] }) {
   });
 
   return (
-    <section id="gezondheid" aria-label="Klantgezondheid" className="scroll-mt-8 space-y-4">
+    <section id="gezondheid" aria-label="Klantgezondheid" className="scroll-mt-8 space-y-2">
       <div>
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">Klanten</h2>
-        <p className="mt-1 text-xl font-semibold tracking-tight text-neutral-950 dark:text-zinc-50 md:text-2xl">Gezondheid</p>
-        <p className="mt-1 max-w-lg text-[13px] text-neutral-500 dark:text-zinc-400">
-          Churn-risico en score uit clients + website_ops — context en snelle acties per rij.
+        <p className="mt-0.5 text-lg font-semibold tracking-tight text-neutral-950 dark:text-zinc-50 md:text-xl">Gezondheid</p>
+        <p className="mt-0.5 max-w-lg text-xs leading-snug text-neutral-500 dark:text-zinc-400">
+          Churn, betaling en context — acties per rij.
         </p>
       </div>
       <div className="sales-os-table-shell divide-y divide-neutral-100 rounded-2xl ring-1 ring-neutral-950/[0.04] dark:divide-zinc-700/80 dark:ring-white/10">
         {sorted.map((c) => (
           <div
             key={c.id}
-            className="grid grid-cols-[1fr_auto] items-start gap-3 px-4 py-3.5 transition-colors hover:bg-neutral-50/50 dark:hover:bg-white/5 sm:grid-cols-[minmax(0,1.1fr)_repeat(5,minmax(0,1fr))_auto] xl:grid-cols-[minmax(0,1fr)_repeat(5,minmax(0,0.85fr))_minmax(0,10.5rem)_minmax(0,7.25rem)]"
+            className="grid grid-cols-[1fr_auto] items-start gap-2 px-3 py-2.5 transition-colors hover:bg-neutral-50/50 dark:hover:bg-white/5 sm:grid-cols-[minmax(0,1.1fr)_repeat(5,minmax(0,1fr))_auto] xl:grid-cols-[minmax(0,1fr)_repeat(5,minmax(0,0.85fr))_minmax(0,10.5rem)_minmax(0,7.25rem)]"
           >
             <div className="min-w-0 sm:col-span-1">
               <p className="truncate text-[13px] font-semibold text-neutral-950 dark:text-zinc-50">{c.name}</p>

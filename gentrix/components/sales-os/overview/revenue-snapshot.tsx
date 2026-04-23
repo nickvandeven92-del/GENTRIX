@@ -32,12 +32,12 @@ export function RevenueSnapshot({ metrics, variant = "default" }: RevenueSnapsho
 
   if (variant === "cockpit") {
     return (
-      <section className="rounded-xl bg-neutral-50/30 py-5 ring-1 ring-neutral-950/[0.04]">
-        <div className="px-5 pb-4">
+      <section className="rounded-lg bg-neutral-50/30 py-3 ring-1 ring-neutral-950/[0.04]">
+        <div className="px-4 pb-2">
           <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Omzet</h2>
-          <p className="mt-1 text-[12px] text-neutral-500">Alleen wat uit de database volgt.</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">Open deals en recente gewonnen.</p>
         </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 px-5">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4">
           {rows.map((m) => (
             <div key={m.label}>
               <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">{m.label}</p>

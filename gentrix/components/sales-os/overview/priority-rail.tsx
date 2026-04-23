@@ -17,7 +17,7 @@ function severityStyles(s: OpsPrioritySignal["severity"]) {
 export function PriorityRail({ items }: { items: OpsPrioritySignal[] }) {
   return (
     <section id="prioriteiten" aria-label="Prioriteiten" className="scroll-mt-8">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">Prioriteiten</h2>
         <span className="text-[11px] text-neutral-400">
           Regels: churn, live+betaling, deals vast in fase, betalingen, sites, leads
@@ -29,7 +29,7 @@ export function PriorityRail({ items }: { items: OpsPrioritySignal[] }) {
           return (
             <div
               key={p.id}
-              className="group flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-white/60 dark:hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+              className="group flex flex-col gap-1.5 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
               <div className="flex min-w-0 flex-1 gap-3">
                 <div className={cn("mt-0.5 h-8 w-0.5 shrink-0 rounded-full", st.bar)} aria-hidden />

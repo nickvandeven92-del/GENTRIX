@@ -53,12 +53,12 @@ export function OpsOpenTasks({ tasks, variant = "default" }: OpsOpenTasksProps) 
   }
 
   const shell = cockpit
-    ? "rounded-xl bg-neutral-50/30 py-5 ring-1 ring-neutral-950/[0.04]"
+    ? "rounded-lg bg-neutral-50/30 py-3 ring-1 ring-neutral-950/[0.04]"
     : "overflow-hidden rounded-lg border border-neutral-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)]";
 
   const headBorder = cockpit ? "" : "border-b border-neutral-200";
-  const headPad = cockpit ? "px-5 pb-4" : "border-b border-neutral-200 px-4 py-3";
-  const listPad = cockpit ? "px-5" : "px-4";
+  const headPad = cockpit ? "px-4 pb-2" : "border-b border-neutral-200 px-4 py-3";
+  const listPad = cockpit ? "px-4" : "px-4";
 
   if (tasks.length === 0) {
     return (

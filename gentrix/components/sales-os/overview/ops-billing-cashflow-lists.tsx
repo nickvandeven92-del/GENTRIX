@@ -11,11 +11,11 @@ type Props = {
 
 export function OpsBillingCashflowLists({ recentSent, dueSoon, expiringQuotes }: Props) {
   return (
-    <div className="grid gap-8 lg:grid-cols-3">
-      <section className="rounded-xl border border-neutral-200/80 bg-white p-4">
+    <div className="grid gap-3 lg:grid-cols-3">
+      <section className="rounded-lg border border-neutral-200/80 bg-white p-3">
         <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Recent verzonden</h3>
-        <p className="mt-1 text-[12px] text-neutral-500">Facturen met status Verzonden.</p>
-        <ul className="mt-3 space-y-2">
+        <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">Status verzonden.</p>
+        <ul className="mt-2 space-y-1.5">
           {recentSent.length === 0 ? (
             <li className="text-[12px] text-neutral-400">—</li>
           ) : (
@@ -34,10 +34,10 @@ export function OpsBillingCashflowLists({ recentSent, dueSoon, expiringQuotes }:
         </ul>
       </section>
 
-      <section className="rounded-xl border border-neutral-200/80 bg-white p-4">
+      <section className="rounded-lg border border-neutral-200/80 bg-white p-3">
         <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Bijna vervallen</h3>
-        <p className="mt-1 text-[12px] text-neutral-500">Openstaand, verval binnen 14 dagen.</p>
-        <ul className="mt-3 space-y-2">
+        <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">Open, verval binnen 14 dagen.</p>
+        <ul className="mt-2 space-y-1.5">
           {dueSoon.length === 0 ? (
             <li className="text-[12px] text-neutral-400">—</li>
           ) : (
@@ -58,10 +58,10 @@ export function OpsBillingCashflowLists({ recentSent, dueSoon, expiringQuotes }:
         </ul>
       </section>
 
-      <section className="rounded-xl border border-neutral-200/80 bg-white p-4">
+      <section className="rounded-lg border border-neutral-200/80 bg-white p-3">
         <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Offertes lopen af</h3>
-        <p className="mt-1 text-[12px] text-neutral-500">Concept of verzonden, geldig tot binnen 14 dagen.</p>
-        <ul className="mt-3 space-y-2">
+        <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">Geldig tot binnen 14 dagen.</p>
+        <ul className="mt-2 space-y-1.5">
           {expiringQuotes.length === 0 ? (
             <li className="text-[12px] text-neutral-400">—</li>
           ) : (

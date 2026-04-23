@@ -44,13 +44,13 @@ export function PipelineSection({
     .reduce((a, d) => a + d.value_cents, 0);
 
   return (
-    <section id="pipeline" className="scroll-mt-8 space-y-6">
+    <section id="pipeline" className="scroll-mt-8 space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">Pijplijn</h2>
           <p className="mt-1 text-xl font-semibold tracking-tight text-neutral-950 dark:text-zinc-50 md:text-2xl">Deals</p>
-          <p className="mt-1 max-w-lg text-[13px] text-neutral-500 dark:text-zinc-400">
-            Fasen uit sales_deals — wijzigen gaat direct naar de database.
+          <p className="mt-0.5 max-w-lg text-xs leading-snug text-neutral-500 dark:text-zinc-400">
+            Open deals per fase; wijzigingen worden direct opgeslagen.
           </p>
         </div>
         <div className="flex rounded-lg bg-neutral-100/80 p-0.5 dark:bg-zinc-800/80">
@@ -80,8 +80,8 @@ export function PipelineSection({
       {tab === "pipeline" ? (
         <PipelineBoardClient initialDeals={deals} assistContext={assistContext} />
       ) : (
-        <div className="sales-os-forecast-shell rounded-xl bg-neutral-50/40 p-5 ring-1 ring-neutral-950/[0.04] dark:bg-zinc-900/50 dark:ring-white/10">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="sales-os-forecast-shell rounded-lg bg-neutral-50/40 p-4 ring-1 ring-neutral-950/[0.04] dark:bg-zinc-900/50 dark:ring-white/10">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">Toegezegd (gewonnen)</p>
               <p className="mt-2 text-2xl font-semibold tabular-nums text-neutral-950">
@@ -107,8 +107,8 @@ export function PipelineSection({
               <p className="mt-1 text-[11px] text-neutral-500">Open met at_risk</p>
             </div>
           </div>
-          <p className="mt-6 border-t border-neutral-200/60 pt-4 text-[11px] text-neutral-400">
-            Filters (eigenaar, periode) kunnen later op dezelfde dataset.
+          <p className="mt-3 border-t border-neutral-200/60 pt-2 text-[10px] text-neutral-400">
+            Filters volgen later op dezelfde dataset.
           </p>
         </div>
       )}

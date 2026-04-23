@@ -53,12 +53,17 @@ export function WebsiteProductionBoard({ items }: { items: WebsiteOpsWithClient[
     "mt-2 w-full rounded-md border-0 bg-neutral-100/80 py-1.5 pl-2 text-[11px] text-neutral-900 focus:ring-1 focus:ring-neutral-950/15";
 
   return (
-    <section id="levering" aria-label="Website-levering" className="scroll-mt-8 min-w-0 space-y-4">
+    <section
+      id="levering"
+      aria-label="Website-levering"
+      title="Operationele status (website_ops_state); horizontaal scrollen binnen dit blok."
+      className="scroll-mt-8 min-w-0 space-y-2"
+    >
       <div>
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">Websites</h2>
-        <p className="mt-1 text-xl font-semibold tracking-tight text-neutral-950 md:text-2xl">Levering</p>
-        <p className="mt-1 max-w-lg text-[13px] text-neutral-500">
-          Status uit website_ops_state — horizontaal scrollen alleen in dit blok.
+        <p className="mt-0.5 text-lg font-semibold tracking-tight text-neutral-950 md:text-xl">Levering</p>
+        <p className="mt-0.5 max-w-lg text-xs leading-snug text-neutral-500">
+          Van briefing tot live; scroll horizontaal in het bord hieronder.
         </p>
       </div>
 
@@ -80,7 +85,7 @@ export function WebsiteProductionBoard({ items }: { items: WebsiteOpsWithClient[
                     "shrink-0 border-l border-neutral-200/50 px-3 first:border-l-0 first:pl-2",
                   )}
                 >
-                  <div className="mb-3">
+                  <div className="mb-1.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-400 dark:text-zinc-500">
                       {OPS_STATUS_LABELS[stage]}
                     </p>
@@ -88,14 +93,14 @@ export function WebsiteProductionBoard({ items }: { items: WebsiteOpsWithClient[
                   </div>
                   <div
                     className={cn(
-                      "flex max-h-[min(70vh,520px)] flex-col gap-2 overflow-y-auto pr-0.5 sales-os-scroll-x",
+                      "flex max-h-[min(60vh,420px)] flex-col gap-1.5 overflow-y-auto pr-0.5 sales-os-scroll-x",
                       col.length > 4 && "pb-1",
                     )}
                   >
                     {col.map((w) => (
                       <article
                         key={w.id}
-                        className="sales-os-card-glass shrink-0 rounded-xl bg-white p-3 ring-1 ring-neutral-950/[0.06] transition-shadow hover:ring-neutral-950/[0.1]"
+                        className="sales-os-card-glass shrink-0 rounded-lg bg-white p-2.5 ring-1 ring-neutral-950/[0.06] transition-shadow hover:ring-neutral-950/[0.1]"
                       >
                         <Link
                           href={`/admin/editor/${encodeURIComponent(w.subfolder_slug)}`}
@@ -175,7 +180,7 @@ export function WebsiteProductionBoard({ items }: { items: WebsiteOpsWithClient[
                         </div>
                       </article>
                     ))}
-                    {col.length === 0 ? <p className="py-8 text-center text-[10px] text-neutral-300">—</p> : null}
+                    {col.length === 0 ? <p className="py-2 text-center text-[10px] text-neutral-300">—</p> : null}
                   </div>
                 </div>
               );

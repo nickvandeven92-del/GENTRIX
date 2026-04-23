@@ -31,17 +31,17 @@ export function OpsCockpitHero({ priorities, revenue, openTasksCount, dealFollow
   ] as const;
 
   return (
-    <header className="border-b border-neutral-200/50 pb-8 dark:border-white/10">
+    <header className="border-b border-neutral-200/50 pb-4 dark:border-white/10">
       {/* Grid i.p.v. flex-row: bij flex vocht de rechterkolom (shrink-0 + brede grid-inhoud) met flex-1+min-w-0 links
           om ruimte → linkerkolom werd een smalle spleet met overlap. Twee gelijke sporen geeft altijd leesbare breedte. */}
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-10 xl:gap-12">
+      <div className="grid gap-5 lg:grid-cols-2 lg:items-center lg:gap-6 xl:gap-8">
         <div className="min-w-0 max-w-2xl space-y-3 xl:max-w-none">
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">Vandaag</p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-neutral-950 dark:text-zinc-50 md:text-4xl">
             Commandocentrum
           </h1>
-          <p className="text-pretty text-[15px] leading-relaxed text-neutral-500 dark:text-zinc-400">
-            Je cockpit voor leads, deals, sites en opvolging — één overzicht, verkoop eerst.
+          <p className="text-pretty text-sm leading-snug text-neutral-500 dark:text-zinc-400">
+            Leads, deals, sites en opvolging in één overzicht.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             {actions.map(({ href, label, icon: Icon }) => (
@@ -64,7 +64,7 @@ export function OpsCockpitHero({ priorities, revenue, openTasksCount, dealFollow
           </div>
         </div>
 
-        <div className="grid min-w-0 w-full gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid min-w-0 w-full gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-neutral-400 dark:text-zinc-500">Signalen</p>
             <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", summary.tone)}>{summary.label}</p>

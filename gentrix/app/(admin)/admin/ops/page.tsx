@@ -5,7 +5,7 @@ import { OpsOpenTasks } from "@/components/sales-os/overview/ops-open-tasks";
 import { RevenueSnapshot } from "@/components/sales-os/overview/revenue-snapshot";
 import { PipelineSection } from "@/components/sales-os/overview/pipeline-section";
 import { ClientHealthBoard } from "@/components/sales-os/overview/client-health-board";
-import { WebsiteProductionBoard } from "@/components/sales-os/overview/website-production-board";
+import { OpsWebsiteDeliveryStrip } from "@/components/sales-os/overview/ops-website-delivery-strip";
 import { listAdminClients } from "@/lib/data/list-admin-clients";
 import { listSalesDeals } from "@/lib/data/sales-deals";
 import { listSalesTasks } from "@/lib/data/sales-tasks";
@@ -111,7 +111,7 @@ export default async function SalesOpsOverviewPage() {
   const dealFollowUpsShown = dealFollowUps.slice(0, 15);
 
   return (
-    <div className="w-full min-w-0 space-y-10 pb-20 md:space-y-12 md:pb-24">
+    <div className="w-full min-w-0 space-y-5 pb-12 md:space-y-6 md:pb-16">
       <OpsCockpitHero
         priorities={priority}
         revenue={revenue}
@@ -138,7 +138,7 @@ export default async function SalesOpsOverviewPage() {
 
       <OpsDealFollowUps rows={dealFollowUpsShown} totalCount={dealFollowUpCount} variant="cockpit" />
 
-      <div className="grid gap-12 lg:grid-cols-12 lg:gap-14">
+      <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
         <div className="lg:col-span-7">
           <OpsOpenTasks tasks={openTasks} variant="cockpit" />
         </div>
@@ -149,9 +149,9 @@ export default async function SalesOpsOverviewPage() {
 
       <PipelineSection deals={deals} assistContext={pipelineAssist} />
 
-      <div className="space-y-16 border-t border-neutral-100 pt-16 dark:border-white/10">
+      <div className="space-y-6 border-t border-neutral-200/80 pt-6 dark:border-white/10">
         <ClientHealthBoard rows={healthRows} />
-        <WebsiteProductionBoard items={websiteOps} />
+        <OpsWebsiteDeliveryStrip items={websiteOps} />
       </div>
     </div>
   );

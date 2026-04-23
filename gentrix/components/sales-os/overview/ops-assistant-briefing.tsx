@@ -7,9 +7,9 @@ export function OpsAssistantBriefing({ briefing }: { briefing: AssistantBriefing
     <aside
       id="assistent"
       aria-label="Dagelijkse assistent-samenvatting"
-      className="scroll-mt-8 rounded-xl bg-gradient-to-br from-neutral-50 to-neutral-100/80 px-4 py-4 ring-1 ring-neutral-950/[0.06] sm:px-5 sm:py-4"
+      className="scroll-mt-8 rounded-lg bg-gradient-to-br from-neutral-50 to-neutral-100/80 px-3 py-3 ring-1 ring-neutral-950/[0.06] sm:px-4"
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="flex min-w-0 gap-3">
           <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-950 text-white">
             <Sparkles className="size-3.5 opacity-95" aria-hidden />
