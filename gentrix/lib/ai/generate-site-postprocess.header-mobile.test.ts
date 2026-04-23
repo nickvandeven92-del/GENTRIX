@@ -3,6 +3,7 @@ import {
   buildGentrixMenuIconToggle,
   convertMobileDrawerToPushDown,
   repairHeaderMobileMenuButton,
+  sliceFirstSiteChromeNavBlock,
 } from "@/lib/ai/generate-site-postprocess";
 
 describe("buildGentrixMenuIconToggle", () => {
@@ -30,6 +31,27 @@ describe("buildGentrixMenuIconToggle", () => {
     expect(html).toContain(`x-show="!menuOpen"`);
     expect(html).toContain(`x-show="menuOpen"`);
     expect(html).not.toContain("navOpen");
+  });
+});
+
+describe("sliceFirstSiteChromeNavBlock", () => {
+  it("kiest de eerste `<header>` als die voor `role=banner` staat", () => {
+    const html = `<div role="banner" class="x"><header class="a"><button></button></header></div>`;
+    const s = sliceFirstSiteChromeNavBlock(html);
+    expect(s?.block.startsWith("<header")).toBe(true);
+  });
+
+  it("valt terug op buitenste `<div role=\"banner\">` zonder `<header>`", () => {
+    const html = `<div role="banner" class="sticky bg-black text-white" x-data="{ navOpen: false }">
+  <div class="flex justify-between p-4"><span>Logo</span>
+  <button type="button" class="md:hidden flex gap-2" aria-label="Menu"></button></div>
+  <div x-show="navOpen" class="fixed inset-0 z-50 lg:hidden">drawer</div>
+</div>`;
+    const s = sliceFirstSiteChromeNavBlock(html);
+    expect(s?.block.includes(`role="banner"`)).toBe(true);
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toContain("gentrix-menu-icon");
+    expect(out).toContain("@click");
   });
 });
 

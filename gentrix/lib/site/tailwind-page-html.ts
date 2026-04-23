@@ -2433,6 +2433,38 @@ export function buildStudioSinglePageInternalNavScript(
     if(p.indexOf("/site/")!==0)return 0;
     return p.split("/").filter(Boolean).length;
   }
+  /** SSR iframe-doc = /site/{slug}/contact of marketing; depth ≥ 3 = niet op landings-URL. */
+  function isPublishedTailwindSubpage(){
+    try{
+      var cur=(IFRAME_DOC_PATH||"").split("?")[0].split("#")[0];
+      if(cur.indexOf("/site/")!==0)return false;
+      return sitePublicPathDepth(cur)>=3;
+    }catch(_){return false;}
+  }
+  /** Pretty host: browserpad is /, /contact, … — niet /site/{slug}/…. */
+  function isPrettyPublicSiteHost(){
+    try{return (window.location.pathname||"").indexOf("/site/")!==0;}catch(_){return true;}
+  }
+  /* Landings-URL: intern /site/slug of pretty host root + zelfde query (token/flyer). */
+  function computePublicHomeLandingAbsHref(){
+    var o=(STUDIO_TOP_ORIGIN&&STUDIO_TOP_ORIGIN.length)?STUDIO_TOP_ORIGIN:window.location.origin;
+    var search="";
+    try{search=window.location&&window.location.search?window.location.search:"";}catch(_){}
+    if(isPrettyPublicSiteHost()){
+      try{
+        var u=new URL("/",o);
+        if(search)u.search=search.charAt(0)==="?"?search.slice(1):search;
+        return u.toString();
+      }catch(_){return o+"/"+(search||"");}
+    }
+    var internal=computeStudioBrandLandingAbsHref();
+    if(internal)return internal;
+    try{
+      var u2=new URL("/",o);
+      if(search)u2.search=search.charAt(0)==="?"?search.slice(1):search;
+      return u2.toString();
+    }catch(__){return o+"/";}
+  }
   function mustNavigateTopForLandingLink(targetPathname){
     var cur=IFRAME_DOC_PATH;
     if(!cur||!targetPathname)return false;
@@ -2552,6 +2584,10 @@ export function buildStudioSinglePageInternalNavScript(
           e.preventDefault();
           var sh=u.hash&&u.hash.length>1?u.hash.slice(1):"";
           if(pn==="/"||pn===""){
+            if(isPublishedTailwindSubpage()){
+              navigateTopUrl(e,computePublicHomeLandingAbsHref());
+              return;
+            }
             window.scrollTo({top:0,behavior:"smooth"});
             return;
           }
@@ -2592,6 +2628,10 @@ export function buildStudioSinglePageInternalNavScript(
     }
     if(path==="/"||path===""){
       e.preventDefault();
+      if(isPublishedTailwindSubpage()){
+        navigateTopUrl(e,computePublicHomeLandingAbsHref());
+        return;
+      }
       window.scrollTo({top:0,behavior:"smooth"});
       return;
     }

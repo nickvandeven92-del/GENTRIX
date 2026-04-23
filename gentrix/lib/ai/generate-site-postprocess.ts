@@ -261,7 +261,9 @@ function htmlHasSideDrawerElement(html: string): boolean {
 
 function menuButtonHintScore(attrs: string): number {
   let score = 0;
-  if (/\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs)) score += 6;
+  if (/\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs) || /\bmax-(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs)) {
+    score += 6;
+  }
   if (/\baria-label\s*=\s*["'][^"']*(?:menu|enu|hamburger|burger|open|openen|sluit|close|navigat)/i.test(attrs)) {
     score += 6;
   }
@@ -486,11 +488,19 @@ function normalizeMobileMenuButtonHiddenClassesInAttrs(attrs: string): string {
 
 function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
   if (menuButtonHintScore(attrs) >= 6) return true;
+  const hasBreakpointHide =
+    /\b(?:lg|md|sm|xl|2xl):hidden\b/i.test(attrs) || /\bmax-(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs);
+  const layoutish =
+    /\bflex\b/i.test(attrs) ||
+    /\bgrid\b/i.test(attrs) ||
+    /\bitems-center\b/i.test(attrs) ||
+    /\bjustify-(?:center|between|end)\b/i.test(attrs);
+  const spaced = /\bgap-/.test(attrs) || /\bspace-[xy]-/.test(attrs) || /\bplace-(?:content|items)-/.test(attrs);
   return (
-    /\b(?:lg|md|sm|xl):hidden\b/i.test(attrs) &&
+    hasBreakpointHide &&
     /\baria-label\s*=\s*["'][^"']*(?:menu|Menu|enu|hamburger)/i.test(attrs) &&
-    /\bflex\b/i.test(attrs) &&
-    /\bgap-/.test(attrs)
+    layoutish &&
+    spaced
   );
 }
 
@@ -524,7 +534,55 @@ function isHeaderBackgroundDark(blob: string): boolean {
 }
 
 /**
- * Normaliseert de mobiele menuknop in de eerste `<header>`:
+ * Eerste top-chrome in het fragment: `<header>…</header>` of buitenste `<div role="banner">…</div>`.
+ * Zonder match faalt menu-reparatie volledig — veel AI-markup gebruikt alleen `role="banner"`.
+ */
+export function sliceFirstSiteChromeNavBlock(html: string): { block: string; start: number; end: number } | null {
+  const walkBalanced = (openIndex: number, local: string): { block: string; start: number; end: number } | null => {
+    const tagRe = new RegExp(`<\\/?${local}\\b[^>]*>`, "gi");
+    tagRe.lastIndex = openIndex;
+    let depth = 0;
+    let m: RegExpExecArray | null;
+    while ((m = tagRe.exec(html)) !== null) {
+      const isClose = new RegExp(`^</${local}`, "i").test(m[0]);
+      if (isClose) depth -= 1;
+      else depth += 1;
+      if (depth === 0) {
+        return { block: html.slice(openIndex, m.index + m[0].length), start: openIndex, end: m.index + m[0].length };
+      }
+    }
+    return null;
+  };
+
+  const headerOpen = /<header\b[^>]*>/i.exec(html);
+  if (headerOpen?.index !== undefined) {
+    const w = walkBalanced(headerOpen.index, "header");
+    if (w) return w;
+  }
+
+  const bannerOpen = /<div\b[^>]*\brole\s*=\s*["']banner["'][^>]*>/i.exec(html);
+  if (bannerOpen?.index !== undefined) {
+    const w = walkBalanced(bannerOpen.index, "div");
+    if (w) return w;
+  }
+
+  return null;
+}
+
+function injectNavStateScopeOnChromeBlock(h: string, stateKey: string): string {
+  const scopeAttrs = ` x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false"`;
+  let out = h.replace(/<header\b((?:(?!\bx-data\s*=)[^>])*)>/i, `<header$1${scopeAttrs}>`);
+  if (out !== h) return out;
+  out = h.replace(
+    /<div\b((?:(?!\bx-data\s*=)[^>])*\brole\s*=\s*["']banner["'](?:(?!\bx-data\s*=)[^>])*)>/i,
+    `<div$1${scopeAttrs}>`,
+  );
+  if (out !== h) return out;
+  return injectNavStateScope(h, stateKey);
+}
+
+/**
+ * Normaliseert de mobiele menuknop in de eerste site-chrome (`<header>` of buitenste `<div role="banner">`):
  *   - zorgt voor een `@click`-toggle op de juiste Alpine-state,
  *   - vervangt inhoud die géén echte hamburger↔× twee-staten-toggle is door de premium
  *     `gentrix-menu-icon` (drie streepjes ↔ kruisje, vloeiend overgaan).
@@ -535,11 +593,10 @@ function isHeaderBackgroundDark(blob: string): boolean {
  * een correcte twee-staten-toggle hebben met rust.
  */
 export function repairHeaderMobileMenuButton(html: string): string {
-  const headerRe = /<header\b[^>]*>[\s\S]*?<\/header>/i;
-  const hm = html.match(headerRe);
-  if (!hm || hm.index === undefined) return html;
+  const sliced = sliceFirstSiteChromeNavBlock(html);
+  if (!sliced) return html;
 
-  const fullHeader = hm[0];
+  const fullHeader = sliced.block;
   const probe = html.slice(0, Math.min(html.length, 120_000));
   const stateKey =
     extractFirstNavToggleKeyFromInteractiveMarkup(probe) ??
@@ -552,7 +609,7 @@ export function repairHeaderMobileMenuButton(html: string): string {
     !/\bx-data\s*=/i.test(probe) &&
     /\bx-show\s*=\s*["'][^"']*\b(?:navOpen|menuOpen)\b/i.test(h)
   ) {
-    h = injectNavStateScope(h, stateKey);
+    h = injectNavStateScopeOnChromeBlock(h, stateKey);
   }
 
   const next = h.replace(/<button(\b[^>]*)>([\s\S]*?)<\/button>/gi, (full, attrs: string, inner: string) => {
@@ -588,10 +645,11 @@ export function repairHeaderMobileMenuButton(html: string): string {
       extraClasses.push("gentrix-menu-repaired");
     }
     if (needsIcon) {
-      // Alleen de *`<header>`-tag zelf* inspecteren voor de achtergrondkleur — niet de kinderen,
-      // anders detecteert een donkere drawer (`bg-stone-900`) de header foutief als donker.
-      const headerOpenTag = /<header\b[^>]*>/i.exec(h)?.[0] ?? "";
-      const blob = `${headerOpenTag}\n${nextAttrs}`;
+      // Alleen de *chrome-root* (header of `div[role=banner]`) inspecteren voor achtergrondkleur —
+      // niet de kinderen, anders detecteert een donkere drawer (`bg-stone-900`) de balk foutief als donker.
+      const chromeOpenTag =
+        /<header\b[^>]*>/i.exec(h)?.[0] ?? /<div\b[^>]*\brole\s*=\s*["']banner["'][^>]*>/i.exec(h)?.[0] ?? "";
+      const blob = `${chromeOpenTag}\n${nextAttrs}`;
       const darkNav = isHeaderBackgroundDark(blob);
       if (!darkNav) {
         // Lichte/neutrale header: een `text-white` op de button zou onzichtbaar zijn → forceer donker.
@@ -627,8 +685,8 @@ export function repairHeaderMobileMenuButton(html: string): string {
   if (next === fullHeader) return html;
   // Als een button werd gerepareerd maar de header nog steeds geen x-data heeft, injecteer de scope.
   // Voorbeeld: sanitizer stripte zowel x-data als x-show — de @click werkt anders niet (Alpine-scope miss).
-  const repaired = !/\bx-data\s*=/i.test(probe) ? injectNavStateScope(next, stateKey) : next;
-  return html.slice(0, hm.index) + repaired + html.slice(hm.index + fullHeader.length);
+  const repaired = !/\bx-data\s*=/i.test(probe) ? injectNavStateScopeOnChromeBlock(next, stateKey) : next;
+  return html.slice(0, sliced.start) + repaired + html.slice(sliced.end);
 }
 
 /**
@@ -646,10 +704,9 @@ export function repairHeaderMobileMenuButton(html: string): string {
  * als kind van de header. Dat dekt het hele scherm af → logo valt weg, hero wordt niet geduwd.
  */
 export function convertMobileDrawerToPushDown(html: string): string {
-  const headerRe = /<header\b[^>]*>[\s\S]*?<\/header>/i;
-  const hm = html.match(headerRe);
-  if (!hm || hm.index === undefined) return html;
-  const fullHeader = hm[0];
+  const sliced = sliceFirstSiteChromeNavBlock(html);
+  if (!sliced) return html;
+  const fullHeader = sliced.block;
 
   const drawerOpenRe =
     /<(div|nav|aside)(\b[^>]*\bx-show\s*=\s*["'][^"']*\b(?:navOpen|menuOpen|mobileOpen|menuVisible|mobileMenuOpen|drawerOpen|sheetOpen)\b[^"']*["'][^>]*)>/gi;
@@ -750,7 +807,7 @@ export function convertMobileDrawerToPushDown(html: string): string {
   });
 
   if (next === fullHeader) return html;
-  return html.slice(0, hm.index) + next + html.slice(hm.index + fullHeader.length);
+  return html.slice(0, sliced.start) + next + html.slice(sliced.end);
 }
 
 /**

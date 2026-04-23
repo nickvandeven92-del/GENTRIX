@@ -48,7 +48,7 @@ export default async function SupportInboxPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        href={`/admin/clients/${enc}#client-support-chat`}
+                        href={`/admin/clients/${enc}/support`}
                         className="inline-flex rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Naar dossier

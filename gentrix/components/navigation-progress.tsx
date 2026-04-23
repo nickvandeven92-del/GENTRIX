@@ -52,6 +52,8 @@ export function NavigationProgress() {
     const onClick = (e: MouseEvent) => {
       const anchor = (e.target as Element)?.closest("a");
       if (!anchor) return;
+      /** Publieke klant-site + flyer-chrome: geen studio-balk boven de site. */
+      if (anchor.closest("[data-gentrix-published-site-root], .gentrix-ui-sharp")) return;
       const href = anchor.getAttribute("href");
       if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
       // Negeer externe links en modifier-klikken (nieuwe tab etc.)
@@ -95,7 +97,7 @@ export function NavigationProgress() {
         inset: "0 0 auto 0",
         height: "2px",
         width: `${width}%`,
-        background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 60%, #ec4899 100%)",
+        background: "rgb(24 24 27)",
         zIndex: 9999,
         pointerEvents: "none",
         transformOrigin: "left",
@@ -104,7 +106,7 @@ export function NavigationProgress() {
             ? "width 0.15s cubic-bezier(0.4,0,1,1), opacity 0.3s ease 0.15s"
             : "width 0.18s cubic-bezier(0.4,0,0.2,1)",
         opacity: width >= 100 && !active ? 0 : 1,
-        boxShadow: "0 0 6px 0 rgba(139,92,246,0.5)",
+        boxShadow: "0 0 4px 0 rgba(24,24,27,0.25)",
       }}
     />
   );

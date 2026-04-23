@@ -93,7 +93,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
           <StudioSupportStrip subfolderSlug={props.subfolderSlug} className="text-[10px]" />
         </div>
         <Link
-          href={`/admin/clients/${encodeURIComponent(props.subfolderSlug)}#client-support-chat`}
+          href={`/admin/clients/${encodeURIComponent(props.subfolderSlug)}/support`}
           title="Klantdossier — support"
           aria-label="Klantdossier — support"
           className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"

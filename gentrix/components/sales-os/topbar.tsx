@@ -246,7 +246,7 @@ export function SalesTopbar({ onOpenSearch, mobileNav }: SalesTopbarProps) {
                       return (
                         <li key={it.threadId}>
                           <Link
-                            href={`/admin/clients/${enc}#client-support-chat`}
+                            href={`/admin/clients/${enc}/support`}
                             onClick={() => setBellOpen(false)}
                             className="block px-3 py-2 hover:bg-neutral-50 dark:hover:bg-zinc-800"
                           >

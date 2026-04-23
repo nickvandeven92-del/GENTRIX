@@ -11,6 +11,7 @@ import {
   FileText,
   Globe,
   LayoutDashboard,
+  MessageCircle,
   PanelTop,
   QrCode,
   Receipt,
@@ -47,6 +48,12 @@ export function ClientDossierShell({
 
   const nav = [
     { href: base, label: "Overzicht", icon: LayoutDashboard, match: (p: string) => p === base },
+    {
+      href: `${base}/support`,
+      label: "Support-chat",
+      icon: MessageCircle,
+      match: (p: string) => p.startsWith(`${base}/support`),
+    },
     { href: `${base}/invoices`, label: "Facturen", icon: Receipt, match: (p: string) => p.startsWith(`${base}/invoices`) },
     { href: `${base}/quotes`, label: "Offertes", icon: ScrollText, match: (p: string) => p.startsWith(`${base}/quotes`) },
     { href: `${base}/deals`, label: "Deals", icon: Briefcase, match: (p: string) => p.startsWith(`${base}/deals`) },

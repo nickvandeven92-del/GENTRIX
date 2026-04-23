@@ -60,7 +60,7 @@ export function StudioSupportStrip({ subfolderSlug, className, pollMs = 45_000 }
   }
 
   const enc = encodeURIComponent(subfolderSlug);
-  const dossierHref = `/admin/clients/${enc}#client-support-chat`;
+  const dossierHref = `/admin/clients/${enc}/support`;
   const inboxHref = "/admin/ops/support-inbox";
 
   return (

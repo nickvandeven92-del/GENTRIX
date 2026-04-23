@@ -23,10 +23,9 @@ import { AdminPortalInvoiceRowLink } from "@/components/admin/billing/admin-port
 import { AdminBookingAgendaSummary } from "@/components/admin/admin-booking-agenda-summary";
 import { ClientPortalModulesCard } from "@/components/admin/client-portal-modules-card";
 import { ClientDossierNotes } from "@/components/admin/client-dossier-notes";
-import { ClientSupportPanel } from "@/components/admin/client-support-panel";
+import { ClientSupportChatHashRedirect } from "@/components/admin/client-support-chat-hash-redirect";
 import { getClientCommercialBySlug } from "@/lib/data/get-client-commercial-by-slug";
 import { listClientDossierNotes } from "@/lib/data/list-client-dossier-notes";
-import { listClientSupportThreads } from "@/lib/data/list-client-support-threads";
 import { listInvoices } from "@/lib/data/list-invoices";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
@@ -64,12 +63,10 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   const row = await getClientCommercialBySlug(decoded);
   if (!row) notFound();
 
-  const [summary, recentInvoices, dossierNotes, supportOpen, supportClosed] = await Promise.all([
+  const [summary, recentInvoices, dossierNotes] = await Promise.all([
     getClientFinancialSummary(row.id),
     listInvoices({ clientId: row.id }).then((all) => all.slice(0, 5)),
     listClientDossierNotes(row.id),
-    listClientSupportThreads(row.id, "open"),
-    listClientSupportThreads(row.id, "closed"),
   ]);
 
   const enc = encodeURIComponent(row.subfolder_slug);
@@ -82,6 +79,8 @@ export default async function ClientOverviewPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
+      <ClientSupportChatHashRedirect supportHref={`${base}/support`} />
+
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Openstaand</p>
@@ -165,12 +164,6 @@ export default async function ClientOverviewPage({ params }: PageProps) {
       </section>
 
       <ClientDossierNotes subfolderSlug={row.subfolder_slug} initialNotes={dossierNotes} />
-
-      <ClientSupportPanel
-        subfolderSlug={row.subfolder_slug}
-        initialOpen={supportOpen}
-        initialClosed={supportClosed}
-      />
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Commerciële velden en domein beheer je onder{" "}
