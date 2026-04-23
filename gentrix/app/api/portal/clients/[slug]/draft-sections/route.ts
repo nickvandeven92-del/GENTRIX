@@ -15,6 +15,12 @@ import { isValidSubfolderSlug } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isPostgrestUnknownColumnError } from "@/lib/supabase/postgrest-unknown-column";
 import { SNAPSHOT_DOCUMENT_TITLE_MAX } from "@/lib/site/project-snapshot-constants";
+import {
+  applyActiveVariantSync,
+  payloadToCached,
+  readThemeVariantsCache,
+  writeThemeVariantsCache,
+} from "@/lib/portal/theme-variants-cache";
 
 const patchBodySchema = z.object({
   documentTitle: z.string().min(1).max(SNAPSHOT_DOCUMENT_TITLE_MAX).optional(),
@@ -185,6 +191,21 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!persist.ok) {
     return NextResponse.json({ ok: false, error: persist.error }, { status: persist.status });
+  }
+
+  // Thema-cache synchroniseren: de zojuist gesavede draft vertegenwoordigt de actieve preset.
+  // - Als actief = "original": wis dark/warm (die waren afgeleid van een oudere baseline).
+  // - Als actief = "dark"/"warm": update alleen die ene variant; andere blijven staan.
+  // Niet-fataal bij falen: een save is al gelukt.
+  const cacheRead = await readThemeVariantsCache(supabase, row.id);
+  if (cacheRead.supported) {
+    const activeId = cacheRead.cache.active ?? "original";
+    const nextCache = applyActiveVariantSync(
+      cacheRead.cache,
+      activeId,
+      payloadToCached(strictPayload, applied.documentTitleOut),
+    );
+    await writeThemeVariantsCache(supabase, row.id, nextCache);
   }
 
   revalidatePath(`/portal/${encodeURIComponent(slug)}/website`);

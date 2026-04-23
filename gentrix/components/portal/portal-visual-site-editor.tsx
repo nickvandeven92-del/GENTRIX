@@ -45,6 +45,13 @@ type Props = {
   documentTitle: string;
   pages: PortalEditorPage[];
   pageConfig?: TailwindPageConfig | null;
+  /**
+   * De originele (pre-thema) pageConfig uit `clients.theme_variants.original.config`.
+   * Wordt gebruikt om de thema-swatches (Donker/Warm) af te leiden uit het onveranderde palet
+   * i.p.v. uit de huidige — mogelijk al getransformeerde — draft-config. Zonder dit zouden de
+   * swatches na een eerdere restyle compound raken (Warm-van-warm, Dark-van-warm, ...).
+   */
+  originalPageConfig?: TailwindPageConfig | null;
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
@@ -281,6 +288,7 @@ export function PortalVisualSiteEditor({
   documentTitle,
   pages,
   pageConfig,
+  originalPageConfig,
   userCss,
   userJs,
   logoSet,
@@ -290,10 +298,13 @@ export function PortalVisualSiteEditor({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const iframeCleanupRef = useRef<(() => void) | null>(null);
-  const basePageConfigRef = useRef<TailwindPageConfig | null>(pageConfig ?? null);
-  // Mount-time snapshot van sections per pagina — gebruikt als "Origineel"-baseline.
-  // Bevriezen op eerste mount zodat een restyle de baseline niet overschrijft.
-  const originalPagesRef = useRef<PortalEditorPage[]>(pages);
+  // Swatch-baseline: voorkeur voor de server-side opgeslagen originele pageConfig (uit
+  // `clients.theme_variants.original.config`). Pas wanneer er nog geen cache-entry is (klant heeft
+  // nog nooit een thema toegepast), vallen we terug op de huidige `pageConfig` ? die is dan per
+  // definitie ook de originele.
+  const basePageConfigRef = useRef<TailwindPageConfig | null>(
+    originalPageConfig ?? pageConfig ?? null,
+  );
   // Ref zodat bindIframeEditor altijd de laatste onSelectPage aanroept zonder circulaire deps
   const onSelectPageRef = useRef<((pageId: string) => Promise<void>) | null>(null);
 
@@ -1018,27 +1029,13 @@ export function PortalVisualSiteEditor({
 
         const currentPayload = buildRestylePayloadFromPages(snapshotPageStates, baselineConfig);
 
-        // Voor "Origineel": stuur ook de mount-time baseline mee — daarmee rollback de server
-        // exact terug naar de bij-page-load opgeslagen versie (geen Claude-call nodig).
-        let originalPayloadForBody: ReturnType<typeof buildRestylePayloadFromPages> | undefined;
-        if (themeId === "original" && basePageConfigRef.current) {
-          const originalPageStates: Record<string, EditableSection[]> = Object.fromEntries(
-            originalPagesRef.current.map((page) => [page.id, page.sections]),
-          );
-          originalPayloadForBody = buildRestylePayloadFromPages(
-            originalPageStates,
-            basePageConfigRef.current,
-          );
-        }
-
+        // De server owned de "origineel"-baseline via `clients.theme_variants` (lazy-captured op
+        // eerste restyle, en daarna nooit meer overschreven door dark/warm). Dark/warm-varianten
+        // worden server-side gecached zodat terug-schakelen tussen presets geen Claude-call vergt.
         const res = await fetch(`/api/portal/clients/${enc}/restyle-theme`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            themeId,
-            payload: currentPayload,
-            ...(originalPayloadForBody ? { originalPayload: originalPayloadForBody } : {}),
-          }),
+          body: JSON.stringify({ themeId, payload: currentPayload }),
         });
 
         const json = (await res.json()) as {

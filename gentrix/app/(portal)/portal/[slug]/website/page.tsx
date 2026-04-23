@@ -6,6 +6,7 @@ import { getDraftPublishedSitePayloadBySlug, getDraftSiteJsonBySlug } from "@/li
 import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { loadTailwindPayloadFromDraftJson } from "@/lib/portal/portal-draft-section-mutate";
 import { getRequestOrigin } from "@/lib/site/request-origin";
+import { readOriginalPageConfigForSlug } from "@/lib/portal/theme-variants-cache-server";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,12 @@ export default async function PortalWebsitePage({ params }: Props) {
   const origin = await getRequestOrigin();
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${encodeURIComponent(decoded)}` : `/site/${encodeURIComponent(decoded)}`;
 
+  // Voor de theme-swatches: lees de "origineel"-config uit de cache zodat Donker/Warm-swatches
+  // altijd worden afgeleid uit het onveranderde palet, niet uit een al-getransformeerde huidige draft.
+  const originalPageConfig = loadedDraft.ok && draftPayload?.kind === "tailwind"
+    ? await readOriginalPageConfigForSlug(decoded).catch(() => null)
+    : null;
+
   return (
     <main>
       <div className="mb-6">
@@ -94,6 +101,7 @@ export default async function PortalWebsitePage({ params }: Props) {
           documentTitle={loadedDraft.documentTitle ?? client.name}
           pages={editorPages}
           pageConfig={draftPayload.config}
+          originalPageConfig={originalPageConfig ?? undefined}
           userCss={draftPayload.customCss}
           userJs={draftPayload.customJs}
           logoSet={draftPayload.logoSet}

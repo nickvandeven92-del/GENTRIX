@@ -64,6 +64,8 @@ export type Database = {
           flyer_public_token: string | null;
           /** Flyerstudio: teksten + presets (JSON). */
           flyer_studio_json: Json | null;
+          /** Portaal thema-cache (origineel/donker/warm) — lazy gevuld bij eerste restyle. */
+          theme_variants: Json | null;
           /** Gezet wanneer commercieel dossier is losgekoppeld; site-tenant blijft bestaan. */
           commercial_unlinked_at: string | null;
           /** Uitgebreide billing-status voor incasso-opvolging. */
@@ -137,6 +139,7 @@ export type Database = {
           preview_secret?: string | null;
           flyer_public_token?: string | null;
           flyer_studio_json?: Json | null;
+          theme_variants?: Json | null;
           commercial_unlinked_at?: string | null;
           billing_status?: string;
           mollie_customer_id?: string | null;
@@ -204,6 +207,7 @@ export type Database = {
           preview_secret?: string | null;
           flyer_public_token?: string | null;
           flyer_studio_json?: Json | null;
+          theme_variants?: Json | null;
           commercial_unlinked_at?: string | null;
           billing_status?: string;
           mollie_customer_id?: string | null;

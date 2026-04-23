@@ -281,6 +281,35 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
 }`;
 
 /**
+ * Sommige AI-modellen gebruiken `text-2xl`/`text-3xl`/`text-4xl` op de links en CTA's in hun
+ * mobiele drawer. Dat overheerst de rest van de typografie en voelt niet als "website-nav".
+ * Cap daarom de font-grootte binnen `nav[aria-label="Mobiel menu"]` (en varianten) naar de
+ * standaard body/nav-grootte. Dit mapt 1-op-1 met wat de AI-prompt als canonical aria-label
+ * voorschrijft (zie `interactive-alpine-prompt.ts` → “Mobiel menu — contrast”).
+ *
+ * Alleen ≤1023px zodat de desktop-variant (bij breed uitklappen) onaangeraakt blijft.
+ */
+export const STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS = `@media (max-width: 1023px) {
+  nav[aria-label="Mobiel menu"] a,
+  nav[aria-label="Mobile menu"] a,
+  nav[aria-label="Mobiel menu"] button,
+  nav[aria-label="Mobile menu"] button,
+  div[aria-label="Mobiel menu"] a,
+  div[aria-label="Mobile menu"] a,
+  div[aria-label="Mobiel menu"] button,
+  div[aria-label="Mobile menu"] button {
+    font-size: 1rem !important;
+    line-height: 1.4 !important;
+  }
+  nav[aria-label="Mobiel menu"] a[class*="rounded-"],
+  nav[aria-label="Mobile menu"] a[class*="rounded-"],
+  nav[aria-label="Mobiel menu"] button[class*="rounded-"],
+  nav[aria-label="Mobile menu"] button[class*="rounded-"] {
+    font-size: 0.9375rem !important;
+  }
+}`;
+
+/**
  * Alleen in de HTML-editor bij **Mobiel**-preview (`data-gentrix-studio-mobile` op `<html>`).
  * Veel AI-headers: desktop-`nav` met links blijft `flex` op smalle breedte naast de hamburger.
  * Verberg de eerste directe `nav` onder `header` als er een menuknop (aria-label met “menu”) in de header zit.
@@ -2861,6 +2890,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel=
     ${animationCss}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
+    ${STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
