@@ -83,6 +83,11 @@ export type ContactSubpageNavScriptInput = {
    * De middleware routet deze korte paden intern terug naar `/site/{slug}/…`.
    */
   prettyPublicUrls?: boolean;
+  /**
+   * Standaard `STUDIO_PUBLIC_NAV_MESSAGE_SOURCE` (publieke /site-embed). In de HTML-editor: zelfde als
+   * `STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE` zodat de parent de preview schakelt i.p.v. te navigeren.
+   */
+  iframeNavMessageSource?: string;
 };
 
 /**
@@ -118,9 +123,10 @@ export function buildContactSubpageCaptureNavScript(input: ContactSubpageNavScri
       ? `${origin}/${encodeURIComponent(k)}`
       : `${origin}${basePath}/${encodeURIComponent(k)}${tokenQ}`;
   }
+  const navMsgSrc = input.iframeNavMessageSource?.trim() || STUDIO_PUBLIC_NAV_MESSAGE_SOURCE;
   const cfg = {
     origin,
-    src: STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
+    src: navMsgSrc,
     view: input.view,
     basePath,
     prevBase,

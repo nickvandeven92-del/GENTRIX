@@ -18,11 +18,11 @@ export function applyAdminDashboardThemeToDocument(theme?: AdminDashboardTheme):
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   root.classList.remove(...THEME_CLASSES, "dark");
-  root.classList.add("admin-theme-light");
+  root.classList.add("admin-theme-light", "gentrix-ui-sharp");
 }
 
 export function clearAdminDashboardThemeFromDocument(): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.classList.remove(...THEME_CLASSES, "dark");
+  root.classList.remove(...THEME_CLASSES, "dark", "gentrix-ui-sharp");
 }

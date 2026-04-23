@@ -26,6 +26,29 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/*
+ * Dashboard / CRM / flyer-actiebalk: rechte hoeken.
+ * Tailwind v4 `rounded-sm` … `rounded-4xl` en gerelateerde hoeken gebruiken --radius-* theme tokens.
+ * `rounded-full` blijft rond (avatars, pills waar expliciet gekozen).
+ * Alleen `.rounded` (basis) gebruikt een vaste rem — die zetten we hier ook op 0 binnen de scope.
+ */
+.gentrix-ui-sharp {
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+}
+
+@layer utilities {
+  .gentrix-ui-sharp .rounded {
+    border-radius: 0;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

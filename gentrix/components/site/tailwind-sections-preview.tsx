@@ -18,6 +18,7 @@ import {
 import { isStudioPreviewPostMessage } from "@/lib/site/preview-post-message";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
+import type { ContactSubpageNavScriptInput } from "@/lib/site/tailwind-contact-subpage";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +83,15 @@ type TailwindSectionsPreviewProps = {
   compiledTailwindCss?: string | null;
   /** Korte merknaam in de auto-geïnjecteerde top-navbar (niet `config.style`). */
   navBrandLabel?: string | null;
+  /**
+   * Alleen `SiteHtmlEditor`: home/contact/marketing in dezelfde iframe, `postMessage` wisselt alleen
+   * de preview in de admin (niet de hele `window`).
+   */
+  contactSubpageNavForHtmlEditor?: ContactSubpageNavScriptInput | null;
+  /** Huidig iframe-pad: moet de actieve (sub)route matchen, anders faalt o.a. de home-knop. */
+  iframeDocumentPathname?: string | null;
+  /** Zet `STUDIO_HTML_EDITOR_IFRAME_NAV` i.p.v. `studio-public-nav` in het iframe. */
+  studioHtmlEditorParentNav?: boolean;
 };
 
 export function TailwindSectionsPreview({
@@ -105,6 +115,9 @@ export function TailwindSectionsPreview({
   viewportMode = "auto",
   compiledTailwindCss,
   navBrandLabel,
+  contactSubpageNavForHtmlEditor = null,
+  iframeDocumentPathname: iframeDocumentPathnameProp = null,
+  studioHtmlEditorParentNav = false,
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -177,6 +190,13 @@ export function TailwindSectionsPreview({
         compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
         previewScriptOrigin: previewScriptOrigin || undefined,
         navBrandLabel: navBrandLabel?.trim() || undefined,
+        ...(contactSubpageNavForHtmlEditor
+          ? { contactSubpageNav: contactSubpageNavForHtmlEditor }
+          : {}),
+        ...(iframeDocumentPathnameProp != null && String(iframeDocumentPathnameProp).trim() !== ""
+          ? { iframeDocumentPathname: String(iframeDocumentPathnameProp).trim() }
+          : {}),
+        ...(studioHtmlEditorParentNav ? { studioHtmlEditorParentNav: true } : {}),
       }),
     [
       previewSections,
@@ -194,6 +214,9 @@ export function TailwindSectionsPreview({
       compiledTailwindCss,
       previewScriptOrigin,
       navBrandLabel,
+      contactSubpageNavForHtmlEditor,
+      iframeDocumentPathnameProp,
+      studioHtmlEditorParentNav,
     ],
   );
 

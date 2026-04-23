@@ -244,10 +244,18 @@ export function ConceptFlyerExperience({
 
   /** Ruimte onder de dock-rail (paneel klapt omhoog en overlapt de site). */
   useEffect(() => {
-    const pad = "calc(3.75rem + env(safe-area-inset-bottom, 0px))";
+    const smMq = window.matchMedia("(min-width: 640px)");
     const prev = document.body.style.paddingBottom;
-    document.body.style.paddingBottom = pad;
+    const apply = () => {
+      const pad = smMq.matches
+        ? "calc(3.75rem + env(safe-area-inset-bottom, 0px))"
+        : "calc(5.25rem + env(safe-area-inset-bottom, 0px))";
+      document.body.style.paddingBottom = pad;
+    };
+    apply();
+    smMq.addEventListener("change", apply);
     return () => {
+      smMq.removeEventListener("change", apply);
       document.body.style.paddingBottom = prev;
     };
   }, []);
@@ -288,19 +296,19 @@ export function ConceptFlyerExperience({
 
   const dockTrigger = (active: boolean) =>
     cn(
-      "flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 border-l border-zinc-200 px-1 py-2 text-center transition-colors first:border-l-0 sm:min-h-[56px] sm:flex-row sm:gap-2 sm:px-3 dark:border-zinc-700",
+      "flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0 border-l border-zinc-200 px-0.5 py-1.5 text-center transition-colors first:border-l-0 sm:min-h-[56px] sm:flex-row sm:gap-2 sm:px-3 sm:py-2 dark:border-zinc-700",
       active
         ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
         : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
     );
 
-  const dockLabel = "max-w-full truncate text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px]";
+  const dockLabel = "max-w-full truncate text-[9px] font-medium uppercase tracking-[0.1em] sm:text-[11px] sm:tracking-[0.14em]";
 
   const sectionTitle = "text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50";
   const sectionMuted = "text-xs leading-relaxed text-zinc-600 dark:text-zinc-400";
 
   return (
-    <>
+    <div className="gentrix-ui-sharp">
       {showOverlay ? (
         <div
           className="fixed inset-0 z-[10060] flex items-end justify-center bg-black/45 p-4 sm:items-center"
@@ -441,7 +449,7 @@ export function ConceptFlyerExperience({
                             title={p.description}
                             onClick={() => pickPreset(p)}
                             className={cn(
-                              "rounded-full border px-4 py-2 text-xs font-medium transition",
+                              "rounded-none border px-4 py-2 text-xs font-medium transition",
                               selectedFlyerThemeId === p.id
                                 ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
                                 : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-700",
@@ -527,11 +535,11 @@ export function ConceptFlyerExperience({
               </div>
             </div>
 
-            {/* Rail — volle breedte, gelijke kolommen, geen horizontale scroll */}
-            <div className="flex min-h-[52px] w-full flex-col items-stretch sm:min-h-[56px] sm:flex-row">
-              <div className="flex items-center justify-between gap-2 border-b border-zinc-100 px-3 py-2 sm:hidden dark:border-zinc-800">
-                <ShowroomWordmark variant="onLight" compact className="max-w-[min(100%,12rem)]" />
-                <span className="max-w-[50%] truncate text-right text-[11px] font-medium text-zinc-500 dark:text-zinc-400" title={siteLabel}>
+            {/* Rail — mobiel: titelregel + één rij (3 knoppen + help); vanaf sm: sidebar | rij zoals voorheen */}
+            <div className="flex min-h-0 w-full flex-col items-stretch sm:min-h-[56px] sm:flex-row">
+              <div className="flex min-h-[36px] items-center justify-between gap-2 border-b border-zinc-100 px-2.5 py-1.5 sm:hidden dark:border-zinc-800">
+                <ShowroomWordmark variant="onLight" compact className="max-w-[min(100%,11rem)]" />
+                <span className="min-w-0 max-w-[55%] truncate text-right text-[10px] font-medium text-zinc-500 dark:text-zinc-400" title={siteLabel}>
                   {siteLabel}
                 </span>
               </div>
@@ -545,7 +553,8 @@ export function ConceptFlyerExperience({
                 </span>
               </div>
 
-              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-zinc-200 dark:divide-zinc-700">
+              <div className="flex min-h-[44px] min-w-0 flex-1 flex-row sm:min-h-[56px]">
+                <div className="grid min-h-0 min-w-0 flex-1 grid-cols-3 divide-x divide-zinc-200 dark:divide-zinc-700">
                 <button
                   type="button"
                   className={dockTrigger(expanded === "thema")}
@@ -555,7 +564,7 @@ export function ConceptFlyerExperience({
                 >
                   <Palette
                     className={cn(
-                      "size-4 shrink-0 sm:size-[18px]",
+                      "size-[15px] shrink-0 sm:size-[18px]",
                       expanded === "thema"
                         ? "text-white dark:text-zinc-900"
                         : "text-zinc-500 dark:text-zinc-400",
@@ -580,7 +589,7 @@ export function ConceptFlyerExperience({
                   >
                     <Calendar
                       className={cn(
-                        "size-4 shrink-0 sm:size-[18px]",
+                        "size-[15px] shrink-0 sm:size-[18px]",
                         expanded === "afspraak"
                           ? "text-white dark:text-zinc-900"
                           : "text-zinc-500 dark:text-zinc-400",
@@ -596,7 +605,7 @@ export function ConceptFlyerExperience({
                   </button>
                 ) : (
                   <div
-                    className="flex min-h-[52px] flex-1 flex-col items-center justify-center border-l border-zinc-200 px-1 py-2 opacity-40 sm:min-h-[56px] dark:border-zinc-700"
+                    className="flex min-h-[44px] flex-1 flex-col items-center justify-center border-l border-zinc-200 px-0.5 py-1.5 opacity-40 sm:min-h-[56px] dark:border-zinc-700"
                     aria-hidden
                   >
                     <Calendar className="size-4 text-zinc-500" aria-hidden />
@@ -613,7 +622,7 @@ export function ConceptFlyerExperience({
                 >
                   <ShoppingBag
                     className={cn(
-                      "size-4 shrink-0 sm:size-[18px]",
+                      "size-[15px] shrink-0 sm:size-[18px]",
                       expanded === "bestellen"
                         ? "text-white dark:text-zinc-900"
                         : "text-zinc-500 dark:text-zinc-400",
@@ -627,25 +636,26 @@ export function ConceptFlyerExperience({
                     <ChevronDown className="size-3.5 max-sm:hidden text-zinc-400 dark:text-zinc-500" aria-hidden />
                   )}
                 </button>
-              </div>
+                </div>
 
-              <button
-                type="button"
-                className="flex w-14 shrink-0 flex-col items-center justify-center gap-1 border-l border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 sm:w-16 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                onClick={() => {
-                  setExpanded(null);
-                  setStep(0);
-                  setTourOpen(true);
-                }}
-                aria-label="Concept-uitleg"
-              >
-                <HelpCircle className="size-[18px] shrink-0" aria-hidden />
-                <span className="hidden text-[9px] font-medium uppercase tracking-wider sm:inline">Info</span>
-              </button>
+                <button
+                  type="button"
+                  className="flex w-11 shrink-0 flex-col items-center justify-center gap-0 border-l border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 sm:w-16 sm:gap-1 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  onClick={() => {
+                    setExpanded(null);
+                    setStep(0);
+                    setTourOpen(true);
+                  }}
+                  aria-label="Concept-uitleg"
+                >
+                  <HelpCircle className="size-[15px] shrink-0 sm:size-[18px]" aria-hidden />
+                  <span className="hidden text-[9px] font-medium uppercase tracking-wider sm:inline">Info</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

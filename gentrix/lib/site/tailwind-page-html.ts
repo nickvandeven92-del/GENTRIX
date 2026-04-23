@@ -33,7 +33,10 @@ import {
   type ContactSubpageNavScriptInput,
 } from "@/lib/site/tailwind-contact-subpage";
 import { buildMarketingSlugSegmentResolutionMap } from "@/lib/site/marketing-path-aliases";
-import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
+import {
+  STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE,
+  STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
+} from "@/lib/site/studio-public-nav-message";
 import { sanitizeCompiledTailwindCssForStyleTag } from "@/lib/site/compiled-tailwind-css-sanitize";
 import { replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 import { rewriteStudioPreviewExternalScripts } from "@/lib/site/studio-preview-lib-registry";
@@ -2249,6 +2252,8 @@ export function buildStudioSinglePageInternalNavScript(
   iframeDocPath?: string | null,
   /** Parent-`origin` (Next `/site`-pagina); nodig voor `postMessage`-target en absolute boek-URL’s in srcDoc-iframe. */
   topPageOrigin?: string | null,
+  /** Publiek: `studio-public-nav`. HTML-editor: `gentrix-studio-html-editor-iframe-nav` (geen `location.assign` in parent). */
+  navMessageSource: string = STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
 ): string {
   const topOriginJson = JSON.stringify((topPageOrigin ?? "").trim());
   const draftJson =
@@ -2269,7 +2274,7 @@ export function buildStudioSinglePageInternalNavScript(
   const iframeDocPathJson = JSON.stringify((iframeDocPath ?? "").trim());
   return `<script>
 (function(){
-  var STUDIO_NAV=${JSON.stringify(STUDIO_PUBLIC_NAV_MESSAGE_SOURCE)};
+  var STUDIO_NAV=${JSON.stringify(navMessageSource)};
   var DRAFT_SITE_NAV_REWRITE=${draftJson};
   var IFRAME_DOC_PATH=${iframeDocPathJson};
   var STUDIO_TOP_ORIGIN=${topOriginJson};
@@ -2427,11 +2432,34 @@ export function buildStudioSinglePageInternalNavScript(
       if(!href||/^(mailto:|tel:|javascript:)/i.test(href))return;
       try{
         var pBlank;
-        if(/^https?:\\/\\//i.test(href)){pBlank=(new URL(href)).pathname||"";}
-        else{pBlank=splitHashQuery(href).path;}
-        if(isBookingOnlyPath(pBlank)){
-          e.preventDefault();
-          navigateTop(e,a);
+        if(/^https?:\\/\\//i.test(href)){
+          var uBl=new URL(href);
+          pBlank=uBl.pathname||"";
+          if(isBookingOnlyPath(pBlank)||pBlank.indexOf("/site/")===0){
+            e.preventDefault();
+            navigateTop(e,a);
+            return;
+          }
+          if((STUDIO_TOP_ORIGIN&&uBl.origin===STUDIO_TOP_ORIGIN)||uBl.origin===window.location.origin){
+            if(isAppShellPath(pBlank))return;
+            if(isBoekOrWinkelPath(pBlank)){
+              e.preventDefault();
+              navigateTop(e,a);
+              return;
+            }
+          }
+        }else{
+          pBlank=splitHashQuery(href).path;
+          if(isBookingOnlyPath(pBlank)||pBlank.indexOf("/site/")===0){
+            e.preventDefault();
+            navigateTop(e,a);
+            return;
+          }
+          if(isBoekOrWinkelPath(pBlank)){
+            e.preventDefault();
+            navigateTop(e,a);
+            return;
+          }
         }
       }catch(__){}
       return;
@@ -2589,6 +2617,11 @@ export type BuildTailwindIframeSrcDocOptions = {
    * Zonder dit blijft een home-link op een subpagina hangen in iframe-scroll i.p.v. echte navigatie.
    */
   iframeDocumentPathname?: string | null;
+  /**
+   * `true` in `SiteHtmlEditor`: `postMessage` met `STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE` zodat de
+   * admin niet naar `/site/…` navigeert; alleen de preview wisselt.
+   */
+  studioHtmlEditorParentNav?: boolean;
 };
 
 /**
@@ -2974,7 +3007,12 @@ ${scrollRevealScript}${scrollBorderScript}${gsapBodyScripts}${aosBodyScripts}
 ${STUDIO_NAV_SCROLL_CONTRAST_SCRIPT}
 ${STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT}
 ${contactSubpageScript}
-${buildStudioSinglePageInternalNavScript(draftSiteNavRewrite, iframeDocPathForScript, previewOriginTrimmed || null)}
+${buildStudioSinglePageInternalNavScript(
+    draftSiteNavRewrite,
+    iframeDocPathForScript,
+    previewOriginTrimmed || null,
+    options?.studioHtmlEditorParentNav ? STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE : STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
+  )}
 ${bridge}
 ${userJsBlock}
 </body>

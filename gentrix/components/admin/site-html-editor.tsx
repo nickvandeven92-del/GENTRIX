@@ -41,10 +41,53 @@ import {
 } from "@/lib/editor/site-history-reducer";
 import { formatSlugForDisplay, isValidSubfolderSlug } from "@/lib/slug";
 import { buildStudioSiteOpenPreviewUrl } from "@/lib/site/build-studio-site-open-preview-url";
+import { STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE } from "@/lib/site/studio-public-nav-message";
+import {
+  type ContactSubpageNavScriptInput,
+  contactNavCaptureFragmentId,
+  hasResolvedPublicContactRoute,
+  landingSectionIdsForPublicSubpageNav,
+  publicSiteIframeDocumentPathname,
+  resolvePublicTailwindContactPlan,
+  selectTailwindSectionsForPublicView,
+} from "@/lib/site/tailwind-contact-subpage";
 import { cn } from "@/lib/utils";
 
 /** Debounce na laatste wijziging (undo/AI/…) voordat concept naar Supabase gaat — vergelijkbaar met Lovable. */
 const AUTOSAVE_DEBOUNCE_MS = 2500;
+
+type SiteHtmlEditorPreviewRoute =
+  | { kind: "landing" }
+  | { kind: "contact" }
+  | { kind: "marketing"; slug: string };
+
+function parseEditorPreviewRoute(
+  href: string,
+  siteSlug: string,
+  marketingPageKeys: string[],
+  pageOrigin: string,
+): SiteHtmlEditorPreviewRoute {
+  let u: URL;
+  try {
+    u = new URL(href, pageOrigin);
+  } catch {
+    return { kind: "landing" };
+  }
+  const p = u.pathname;
+  const enc = encodeURIComponent(siteSlug);
+  const base = `/site/${enc}`;
+  if (p === base || p === `${base}/`) return { kind: "landing" };
+  if (p === `${base}/contact` || p === `${base}/contact/`) return { kind: "contact" };
+  if (p.startsWith(`${base}/`)) {
+    const rest = p.slice(base.length + 1);
+    const seg = decodeURIComponent((rest.split("/")[0] || "").split("?")[0] || "");
+    if (!seg) return { kind: "landing" };
+    const lower = seg.toLowerCase();
+    const key = marketingPageKeys.find((k) => k.toLowerCase() === lower);
+    if (key) return { kind: "marketing", slug: key };
+  }
+  return { kind: "landing" };
+}
 
 const studioIconBtn =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-40 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900";
@@ -114,6 +157,8 @@ export function SiteHtmlEditor({
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [autoSaving, setAutoSaving] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  /** Welke (sub)pagina de rechter preview toont; nav in iframe wisselt alleen de preview. */
+  const [previewRoute, setPreviewRoute] = useState<SiteHtmlEditorPreviewRoute>({ kind: "landing" });
   /** Live preview: iframe-viewport (zie `TailwindSectionsPreview.viewportMode`). */
   const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("auto");
   const [stepsOpen, setStepsOpen] = useState(false);
@@ -163,13 +208,88 @@ export function SiteHtmlEditor({
 
   const persistFingerprint = useMemo(() => JSON.stringify({ p: payload, status }), [payload, status]);
 
+  const contactPlan = useMemo(
+    () => resolvePublicTailwindContactPlan(sections, contactSections),
+    [sections, contactSections],
+  );
+
+  const previewSections = useMemo(() => {
+    if (previewRoute.kind === "contact" && hasResolvedPublicContactRoute(contactPlan)) {
+      return selectTailwindSectionsForPublicView(sections, "contact", contactPlan);
+    }
+    if (previewRoute.kind === "marketing" && marketingPages) {
+      const sub = marketingPages[previewRoute.slug];
+      if (sub && sub.length > 0) return sub;
+    }
+    return selectTailwindSectionsForPublicView(sections, "landing", contactPlan);
+  }, [previewRoute, sections, contactPlan, contactSections, marketingPages]);
+
   const composePlan: ComposePublicMarketingPlan | null = useMemo(() => {
-    const sectionIdsOrdered = sections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
+    const sectionIdsOrdered = previewSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
     if (initialSiteIr != null) {
       return { siteIr: { ...initialSiteIr, sectionIdsOrdered } };
     }
     return { sectionIdsOrdered };
-  }, [sections, initialSiteIr]);
+  }, [previewSections, initialSiteIr]);
+
+  const contactSubpageNavForHtmlEditor: ContactSubpageNavScriptInput | null = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    if (!subfolderSlug.trim() || sections.length === 0) return null;
+    const landIds = landingSectionIdsForPublicSubpageNav(sections, contactPlan);
+    const mks = Object.keys(marketingPages ?? {});
+    if (landIds.length === 0 && mks.length === 0) return null;
+    const view =
+      previewRoute.kind === "contact"
+        ? "contact"
+        : previewRoute.kind === "marketing"
+          ? "marketing"
+          : "landing";
+    return {
+      pageOrigin: window.location.origin,
+      slug: subfolderSlug,
+      view,
+      contactSectionId: contactNavCaptureFragmentId(contactPlan),
+      landingSectionIds: landIds,
+      marketingSlugs: mks,
+      activeMarketingSlug: previewRoute.kind === "marketing" ? previewRoute.slug : undefined,
+      draftPublicPreviewToken: draftPublicPreviewToken ?? undefined,
+      iframeNavMessageSource: STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE,
+    };
+  }, [
+    subfolderSlug,
+    sections,
+    contactPlan,
+    marketingPages,
+    previewRoute,
+    draftPublicPreviewToken,
+  ]);
+
+  const iframeDocumentPathname = useMemo(
+    () =>
+      publicSiteIframeDocumentPathname(subfolderSlug, {
+        view:
+          previewRoute.kind === "contact"
+            ? "contact"
+            : previewRoute.kind === "marketing"
+              ? "marketing"
+              : "landing",
+        activeMarketingSlug: previewRoute.kind === "marketing" ? previewRoute.slug : undefined,
+      }),
+    [subfolderSlug, previewRoute],
+  );
+
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin && e.origin !== "null") return;
+      const d = e.data as { source?: string; href?: string };
+      if (!d || d.source !== STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE || typeof d.href !== "string") return;
+      const keys = Object.keys(marketingPages ?? {});
+      setPreviewRoute(parseEditorPreviewRoute(d.href, subfolderSlug, keys, window.location.origin));
+      setPreviewKey((k) => k + 1);
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [subfolderSlug, marketingPages]);
 
   const canUndo = hist.index > 0;
   const canRedo = hist.index < hist.entries.length - 1;
@@ -183,6 +303,7 @@ export function SiteHtmlEditor({
     setSaveMsg(null);
     setSaveError(null);
     setAutoSaveError(null);
+    setPreviewRoute({ kind: "landing" });
     setPreviewKey((k) => k + 1);
   }
 
@@ -192,6 +313,7 @@ export function SiteHtmlEditor({
     setSaveMsg(null);
     setSaveError(null);
     setAutoSaveError(null);
+    setPreviewRoute({ kind: "landing" });
     setPreviewKey((k) => k + 1);
   }
 
@@ -200,6 +322,7 @@ export function SiteHtmlEditor({
     setSaveMsg(null);
     setSaveError(null);
     setAutoSaveError(null);
+    setPreviewRoute({ kind: "landing" });
     setPreviewKey((k) => k + 1);
   }
 
@@ -663,6 +786,7 @@ export function SiteHtmlEditor({
                 });
                 setSaveMsg(null);
                 setSaveError(null);
+                setPreviewRoute({ kind: "landing" });
                 setPreviewKey((k) => k + 1);
               }}
             />
@@ -774,7 +898,7 @@ export function SiteHtmlEditor({
               <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
                 <TailwindSectionsPreview
                   key={`${previewKey}-${previewViewportMode}`}
-                  sections={sections}
+                  sections={previewSections}
                   pageConfig={config}
                   userCss={customCss}
                   userJs={customJs}
@@ -793,6 +917,9 @@ export function SiteHtmlEditor({
                   autoResizeFromPostMessage
                   documentHeightMode="panel"
                   maxMeasuredHeight={3200}
+                  studioHtmlEditorParentNav
+                  contactSubpageNavForHtmlEditor={contactSubpageNavForHtmlEditor}
+                  iframeDocumentPathname={iframeDocumentPathname}
                 />
               </div>
             </div>
