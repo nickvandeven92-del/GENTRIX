@@ -31,6 +31,7 @@ import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { publicLiveBookingHref } from "@/lib/site/studio-section-visibility";
 import { cn } from "@/lib/utils";
 import { AdminPosthogDossierCard } from "@/components/admin/admin-posthog-dossier-card";
+import { getClientPosthogSummary } from "@/lib/data/get-client-posthog-summary";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -64,10 +65,11 @@ export default async function ClientOverviewPage({ params }: PageProps) {
   const row = await getClientCommercialBySlug(decoded);
   if (!row) notFound();
 
-  const [summary, recentInvoices, dossierNotes] = await Promise.all([
+  const [summary, recentInvoices, dossierNotes, posthogCrm] = await Promise.all([
     getClientFinancialSummary(row.id),
     listInvoices({ clientId: row.id }).then((all) => all.slice(0, 5)),
     listClientDossierNotes(row.id),
+    getClientPosthogSummary(row.id),
   ]);
 
   const enc = encodeURIComponent(row.subfolder_slug);
@@ -122,7 +124,7 @@ export default async function ClientOverviewPage({ params }: PageProps) {
         </div>
       </section>
 
-      <AdminPosthogDossierCard siteSlug={row.subfolder_slug} />
+      <AdminPosthogDossierCard siteSlug={row.subfolder_slug} crm={posthogCrm} />
 
       <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Bedrijf & contact</h2>

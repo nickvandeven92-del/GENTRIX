@@ -27,6 +27,13 @@ export function posthogAppBaseUrl(): string {
   return posthogQueryApiBase() ?? "https://eu.posthog.com";
 }
 
+/** Voor admin/CRM-kaart zonder live PostHog-call (project-id in env). */
+export function getPosthogProjectBaseUrlForLinks(): string | null {
+  const pid = projectId();
+  if (!pid) return null;
+  return `${posthogAppBaseUrl()}/project/${pid}`;
+}
+
 function projectId(): string | null {
   const p = (process.env.POSTHOG_PROJECT_ID ?? "").trim();
   return p.length > 0 ? p : null;
@@ -186,68 +193,77 @@ function buildSignals(
   return s;
 }
 
+/**
+ * Zelfde data als in het dossier; **niet** gecached — gebruik voor cron/CRM-sync.
+ */
+export async function fetchPosthogDossierData(siteSlug: string): Promise<PosthogDossierViewModel> {
+  if (!isPlausibleClientSlug(siteSlug)) {
+    return { kind: "error", message: "Ongeldige site-slug." };
+  }
+  if (!personalApiKey() || !projectId()) {
+    return {
+      kind: "unconfigured",
+      message:
+        "Zet POSTHOG_PERSONAL_API_KEY en POSTHOG_PROJECT_ID in de server-omgeving. Optioneel: POSTHOG_API_HOST (standaard afgeleid van NEXT_PUBLIC_POSTHOG_HOST). Publieke events gaan wél al naar PostHog als NEXT_PUBLIC_POSTHOG_KEY gezet is.",
+    };
+  }
+  const es = escapeHogqlString(siteSlug);
+  const appBase = posthogAppBaseUrl();
+  const pid = projectId()!;
+
+  try {
+    const [summary, recent] = await Promise.all([runHogQuery(buildEventSummaryQuery(es)), runHogQuery(buildRecentQuery(es))]);
+    const sc = summary.columns;
+    const sr = summary.rows[0] ?? [];
+    const idxPage = colIndex(sc, "c_page");
+    const idxSess = colIndex(sc, "c_sess");
+    const idxScroll = colIndex(sc, "c_scroll_deep");
+    const pageViews = Number(sr[idxPage >= 0 ? idxPage : 0] ?? 0) || 0;
+    const sessionsStarted = Number(sr[idxSess >= 0 ? idxSess : 1] ?? 0) || 0;
+    const scrollMilestones = Number(sr[idxScroll >= 0 ? idxScroll : 2] ?? 0) || 0;
+
+    const rc = recent.columns;
+    const evI = colIndex(rc, "event");
+    const tsI = colIndex(rc, "ts");
+    const pkI = colIndex(rc, "page_key");
+    const pthI = colIndex(rc, "path");
+    const parsed: PosthogDossierEventRow[] = (recent.rows ?? []).map((r) => ({
+      event: asStr(r[evI >= 0 ? evI : 0]),
+      at: asStr(r[tsI >= 0 ? tsI : 1]),
+      pageKey: (r[pkI >= 0 ? pkI : 2] as string | null) && String(r[pkI >= 0 ? pkI : 2]).length ? asStr(r[pkI >= 0 ? pkI : 2]) : null,
+      path: (r[pthI >= 0 ? pthI : 3] as string | null) && String(r[pthI >= 0 ? pthI : 3]).length ? asStr(r[pthI >= 0 ? pthI : 3]) : null,
+    })).filter((e) => e.event.length > 0);
+    const last = parsed[0] ?? null;
+    const lastIso = last
+      ? (() => {
+          const d = new Date(last.at);
+          return Number.isNaN(d.getTime()) ? null : d.toISOString();
+        })()
+      : null;
+
+    const posthogProjectBase = `${appBase}/project/${pid}`;
+
+    return {
+      kind: "ok",
+      siteSlug,
+      lookbackDays: LOOKBACK_DAYS,
+      lastEventAt: lastIso,
+      posthogProjectBaseUrl: posthogProjectBase,
+      posthogOpenFiltersUrl: `${posthogProjectBase}/activity/explore`,
+      pageViews,
+      sessionsStarted,
+      scrollMilestones,
+      recent: parsed.slice(0, 20),
+      signals: buildSignals(pageViews, sessionsStarted, scrollMilestones, last, parsed),
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { kind: "error", message: `PostHog-query faalde. Controleer key, project-id en rechten (Query). ${msg.slice(0, 200)}` };
+  }
+}
+
 export const getPosthogDossierForClientSlug = cache(
   async function getPosthogDossierForClientSlug(siteSlug: string): Promise<PosthogDossierViewModel> {
-    if (!isPlausibleClientSlug(siteSlug)) {
-      return { kind: "error", message: "Ongeldige site-slug." };
-    }
-    if (!personalApiKey() || !projectId()) {
-      return {
-        kind: "unconfigured",
-        message:
-          "Zet POSTHOG_PERSONAL_API_KEY en POSTHOG_PROJECT_ID in de server-omgeving. Optioneel: POSTHOG_API_HOST (standaard afgeleid van NEXT_PUBLIC_POSTHOG_HOST). Publieke events gaan wél al naar PostHog als NEXT_PUBLIC_POSTHOG_KEY gezet is.",
-      };
-    }
-    const es = escapeHogqlString(siteSlug);
-    const appBase = posthogAppBaseUrl();
-    const pid = projectId()!;
-
-    try {
-      const [summary, recent] = await Promise.all([runHogQuery(buildEventSummaryQuery(es)), runHogQuery(buildRecentQuery(es))]);
-      const sc = summary.columns;
-      const sr = summary.rows[0] ?? [];
-      const idxPage = colIndex(sc, "c_page");
-      const idxSess = colIndex(sc, "c_sess");
-      const idxScroll = colIndex(sc, "c_scroll_deep");
-      const pageViews = Number(sr[idxPage >= 0 ? idxPage : 0] ?? 0) || 0;
-      const sessionsStarted = Number(sr[idxSess >= 0 ? idxSess : 1] ?? 0) || 0;
-      const scrollMilestones = Number(sr[idxScroll >= 0 ? idxScroll : 2] ?? 0) || 0;
-
-      const rc = recent.columns;
-      const evI = colIndex(rc, "event");
-      const tsI = colIndex(rc, "ts");
-      const pkI = colIndex(rc, "page_key");
-      const pthI = colIndex(rc, "path");
-      const parsed: PosthogDossierEventRow[] = (recent.rows ?? []).map((r) => ({
-        event: asStr(r[evI >= 0 ? evI : 0]),
-        at: asStr(r[tsI >= 0 ? tsI : 1]),
-        pageKey: (r[pkI >= 0 ? pkI : 2] as string | null) && String(r[pkI >= 0 ? pkI : 2]).length ? asStr(r[pkI >= 0 ? pkI : 2]) : null,
-        path: (r[pthI >= 0 ? pthI : 3] as string | null) && String(r[pthI >= 0 ? pthI : 3]).length ? asStr(r[pthI >= 0 ? pthI : 3]) : null,
-      })).filter((e) => e.event.length > 0);
-      const last = parsed[0] ?? null;
-      const lastIso = last ? (() => {
-        const d = new Date(last.at);
-        return Number.isNaN(d.getTime()) ? null : d.toISOString();
-      })() : null;
-
-      const posthogProjectBase = `${appBase}/project/${pid}`;
-
-      return {
-        kind: "ok",
-        siteSlug,
-        lookbackDays: LOOKBACK_DAYS,
-        lastEventAt: lastIso,
-        posthogProjectBaseUrl: posthogProjectBase,
-        posthogOpenFiltersUrl: `${posthogProjectBase}/activity/explore`,
-        pageViews,
-        sessionsStarted,
-        scrollMilestones,
-        recent: parsed.slice(0, 20),
-        signals: buildSignals(pageViews, sessionsStarted, scrollMilestones, last, parsed),
-      };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { kind: "error", message: `PostHog-query faalde. Controleer key, project-id en rechten (Query). ${msg.slice(0, 200)}` };
-    }
+    return fetchPosthogDossierData(siteSlug);
   },
 );
