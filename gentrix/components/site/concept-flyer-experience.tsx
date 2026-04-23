@@ -290,9 +290,10 @@ export function ConceptFlyerExperience({
   }, [themePresets]);
 
   const ctaClass =
-    "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700";
+    "rounded-none border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700";
+  /** Primaire CTA: zelfde zink/neutral toon als studio-admin (geen emerald — hoort bij Gentrix-chrome). */
   const ctaPrimaryClass =
-    "rounded-lg border border-emerald-600/40 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-950 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-950/70";
+    "rounded-none border border-zinc-900 bg-zinc-900 px-3 py-2 text-xs font-medium text-white hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white";
 
   const dockTrigger = (active: boolean) =>
     cn(
@@ -318,7 +319,7 @@ export function ConceptFlyerExperience({
           onClick={() => finishTour()}
         >
           <div
-            className="pointer-events-auto w-full max-w-md touch-manipulation rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+            className="pointer-events-auto w-full max-w-md touch-manipulation rounded-none border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -367,7 +368,7 @@ export function ConceptFlyerExperience({
                 {step > 0 ? (
                   <button
                     type="button"
-                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                    className="rounded-none border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
                     onClick={(e) => {
                       e.stopPropagation();
                       setStep((s) => Math.max(0, s - 1));
@@ -379,7 +380,7 @@ export function ConceptFlyerExperience({
                 {step < steps.length - 1 ? (
                   <button
                     type="button"
-                    className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                    className="rounded-none bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       setStep((s) => s + 1);
@@ -390,7 +391,7 @@ export function ConceptFlyerExperience({
                 ) : (
                   <button
                     type="button"
-                    className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                    className="rounded-none bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       finishTour();
@@ -465,7 +466,7 @@ export function ConceptFlyerExperience({
                           resetThema();
                           setExpanded(null);
                         }}
-                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="w-full rounded-none border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
                         Thema terugzetten
                       </button>
@@ -484,7 +485,7 @@ export function ConceptFlyerExperience({
                         {appointmentsEnabled ? (
                           <a
                             href={bookingHref}
-                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100"
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-none bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100"
                           >
                             <Calendar className="size-4 shrink-0" aria-hidden />
                             Online afspraak maken
@@ -495,7 +496,7 @@ export function ConceptFlyerExperience({
                             href={meetingUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-none border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <Calendar className="size-4 shrink-0" aria-hidden />
                             Plan gesprek (agenda)
@@ -504,7 +505,7 @@ export function ConceptFlyerExperience({
                           <button
                             type="button"
                             onClick={() => mailStudio("Persoonlijk gesprek — website concept")}
-                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-none border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <Calendar className="size-4 shrink-0" aria-hidden />
                             Mail voor een gesprek
@@ -524,7 +525,7 @@ export function ConceptFlyerExperience({
                       <a
                         href={orderHref}
                         {...(orderIsExternal ? { target: "_blank" as const, rel: "noopener noreferrer" } : {})}
-                        className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 text-base font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500"
+                        className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-none border border-zinc-900 bg-zinc-900 px-6 text-base font-semibold text-white shadow-lg shadow-black/25 transition hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:shadow-black/15 dark:hover:bg-white"
                       >
                         <ShoppingBag className="size-5 shrink-0 opacity-95" aria-hidden />
                         Ga door naar bestellen

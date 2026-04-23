@@ -111,8 +111,9 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
       <div className="relative z-50 mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
         <a
           href={logoHomeHref}
+          data-studio-brand-mark="1"
           className="group flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--site-bg)]"
-                  onClick={(e) => handleNavLinkClick(e, logoHomeHref)}
+          onClick={(e) => handleNavLinkClick(e, logoHomeHref)}
         >
           {nav.logoImageUrl ? (
             <>

@@ -2378,9 +2378,9 @@ export function buildStudioSinglePageInternalNavScript(
     if(p==="/booking-app/book"||p.indexOf("/booking-app/book/")===0)return true;
     return false;
   }
-  function navigateTop(e,a){
+  function navigateTopUrl(e,absHref){
     e.preventDefault();
-    var url=rewriteDraftSiteNavUrl(a.href);
+    var url=rewriteDraftSiteNavUrl(absHref);
     if(window.top!==window){
       try{
         if(window.parent&&window.parent!==window){
@@ -2392,7 +2392,37 @@ export function buildStudioSinglePageInternalNavScript(
       try{window.top.location.assign(url);return;}catch(_){}
       try{window.open(url,"_top");return;}catch(_){}
     }
-    try{window.location.assign(url);}catch(_){window.location.assign(a.getAttribute("href"));}
+    try{window.location.assign(url);}catch(_){}
+  }
+  function navigateTop(e,a){
+    navigateTopUrl(e,a.href);
+  }
+  function isStudioBrandLogoLink(a){
+    try{
+      return !!(a&&a.closest&&(a.closest("[data-studio-brand-mark]")||a.getAttribute("data-studio-brand-mark")));
+    }catch(_){return false;}
+  }
+  function computeStudioLandingPathnameForBrand(){
+    var cur=IFRAME_DOC_PATH||"";
+    if(!cur){
+      try{cur=window.location.pathname||"";}catch(_){cur="";}
+    }
+    var p=(cur.split("?")[0]||"").split("#")[0];
+    if(p.indexOf("/site/")!==0)return "";
+    var parts=p.split("/").filter(Boolean);
+    if(parts.length<2)return "";
+    return "/site/"+parts[1];
+  }
+  function computeStudioBrandLandingAbsHref(){
+    var pathOnly=computeStudioLandingPathnameForBrand();
+    if(!pathOnly)return "";
+    var origin=(STUDIO_TOP_ORIGIN&&STUDIO_TOP_ORIGIN.length)?STUDIO_TOP_ORIGIN:"";
+    var search="";
+    try{search=window.location&&window.location.search?window.location.search:"";}catch(_){}
+    try{
+      var base=origin||window.location.origin;
+      return new URL(pathOnly+search,base).toString();
+    }catch(_){return (origin||"")+pathOnly+search;}
   }
   function slugifyNavKey(s){
     return (s||"").toString().toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
@@ -2489,6 +2519,10 @@ export function buildStudioSinglePageInternalNavScript(
       return;
     }
     if(!href||/^(mailto:|tel:|javascript:)/i.test(href))return;
+    if(isStudioBrandLogoLink(a)){
+      var land=computeStudioBrandLandingAbsHref();
+      if(land){navigateTopUrl(e,land);return;}
+    }
     if(href.charAt(0)==="#")return;
     var pqApp=splitHashQuery(href);
     if(isAppShellPath(pqApp.path)){navigateTop(e,a);return;}

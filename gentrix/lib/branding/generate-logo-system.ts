@@ -45,7 +45,8 @@ Regels:
 - Geen extra drop-shadows, filters, gradients of 3D op deze merk-SVG's.
 - Behoud aspect ratio (\`w-auto h-8\` of \`h-9\`); niet rekken.
 - Gebruik **niet** tegelijk een ander fictief logo naast deze set.
-- Zet op de **directe wrapper** rond het merk (div of a) het attribuut \`data-studio-brand-mark="1"\` zodat de studio weet dat het logo aanwezig is.
+- Zet op de **directe wrapper** rond het merk (div of a) het attribuut \`data-studio-brand-mark="1"\` zodat de studio weet dat het logo aanwezig is; zelfde attribuut op **elke** merk-link (header én footer).
+- De merk-link gebruikt \`href="__STUDIO_SITE_BASE__"\` (niet alleen \`#top\`) zodat een klik op elke subpagina terug naar de landingspagina gaat.
 - \`aria-label\` op link-wrapper rond het logo: "${alt}".
 
 Gebruiknotities: ${logo.metadata.usageNotes.join(" ")}`;

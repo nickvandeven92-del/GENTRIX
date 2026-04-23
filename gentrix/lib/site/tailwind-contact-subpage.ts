@@ -231,6 +231,13 @@ document.addEventListener("click",function(e){
   if(a.getAttribute("target")==="_blank")return;
   var raw=(a.getAttribute("href")||"").trim();
   if(!raw||/^(mailto:|tel:|javascript:)/i.test(raw))return;
+  /* Merklogo: altijd naar landings-URL (zelfde als CFG.baseAbs), ook bij #top / hash-only in opgeslagen HTML. */
+  if(a.closest("[data-studio-brand-mark]")||a.getAttribute("data-studio-brand-mark")){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    postTop(CFG.baseAbs);
+    return;
+  }
   if(CFG.view==="marketing"){
     var lidM={};
     for(var im=0;im<CFG.lids.length;im++)lidM[normFrag(CFG.lids[im])]=true;

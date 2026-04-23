@@ -6,11 +6,12 @@ import {
 } from "@/lib/ai/generate-site-postprocess";
 
 describe("buildGentrixMenuIconToggle", () => {
-  it("bouwt twee SVG-staten (hamburger + X) met x-show en x-cloak op de X", () => {
+  it("bouwt twee SVG-staten (hamburger + X) met x-show (zonder x-cloak/x-transition op de SVG's)", () => {
     const html = buildGentrixMenuIconToggle("navOpen");
     expect(html).toContain(`x-show="!navOpen"`);
     expect(html).toContain(`x-show="navOpen"`);
-    expect(html).toContain("x-cloak");
+    expect(html).not.toContain("x-cloak");
+    expect(html).not.toContain("x-transition:");
     expect(html).toContain("gentrix-menu-icon");
     expect(html).toContain("<svg");
     expect(html).toContain(`stroke="currentColor"`);
@@ -80,8 +81,16 @@ describe("repairHeaderMobileMenuButton", () => {
   });
 
   it("laat een knop met onze eigen gentrix-menu-icon toggle ongewijzigd", () => {
-    const html = `<header x-data="{ navOpen: false }"><button type="button" class="lg:hidden gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen"><span class="gentrix-menu-icon"><svg x-show="!navOpen"></svg><svg x-show="navOpen" x-cloak></svg></span></button></header>`;
+    const html = `<header x-data="{ navOpen: false }"><button type="button" class="lg:hidden gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen"><span class="gentrix-menu-icon"><svg x-show="!navOpen"></svg><svg x-show="navOpen"></svg></span></button></header>`;
     expect(repairHeaderMobileMenuButton(html)).toBe(html);
+  });
+
+  it("verwijdert x-cloak / x-transition uit bestaande gentrix-menu-icon (upgrade oude export)", () => {
+    const html = `<header x-data="{ navOpen: false }"><button type="button" class="lg:hidden" aria-label="Menu" @click="navOpen = !navOpen"><span class="gentrix-menu-icon"><svg x-show="!navOpen" x-transition:enter="transition"></svg><svg x-show="navOpen" x-cloak x-transition:leave="transition"></svg></span></button></header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).not.toContain("x-cloak");
+    expect(out).not.toContain("x-transition:");
+    expect(out).toContain(`x-show="navOpen"`);
   });
 
   it("verwijdert `md:hidden` op de menuknop wanneer ook `lg:hidden` staat (anders verdwijnt de knop vanaf 768px)", () => {
@@ -94,6 +103,17 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).not.toMatch(/\bmd:hidden\b/);
     expect(out).toContain("lg:hidden");
     expect(out).toContain("gentrix-menu-icon");
+  });
+
+  it("vervangt losse `md:hidden` op de menuknop door `lg:hidden` als er nog geen lg-gate staat", () => {
+    const html = `<header x-data="{ navOpen: false }" class="bg-white">
+  <button type="button" class="md:hidden flex flex-col gap-[5px] p-2 gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen">
+    <span class="gentrix-menu-icon"><svg x-show="!navOpen"></svg><svg x-show="navOpen"></svg></span>
+  </button>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).not.toMatch(/\bmd:hidden\b/);
+    expect(out).toMatch(/\blg:hidden\b/);
   });
 
   it("vervangt AI-output met losse x-show spans in een flex-col parent (MOSHAM-case)", () => {

@@ -31,6 +31,8 @@
  * Tailwind v4 `rounded-sm` … `rounded-4xl` en gerelateerde hoeken gebruiken --radius-* theme tokens.
  * `rounded-full` blijft rond (avatars, pills waar expliciet gekozen).
  * Alleen `.rounded` (basis) gebruikt een vaste rem — die zetten we hier ook op 0 binnen de scope.
+ * Extra utilities: sommige Tailwind-builds binden `rounded-lg` / `rounded-xl` vast i.p.v. via tokens;
+ * dan vangen we die hier af zodat CRM / flyer-chrome echt rechthoekig blijft (`rounded-full` blijft rond).
  */
 .gentrix-ui-sharp {
   --radius-xs: 0;
@@ -44,6 +46,14 @@
 }
 
 @layer utilities {
+  .gentrix-ui-sharp .rounded-xs,
+  .gentrix-ui-sharp .rounded-sm,
+  .gentrix-ui-sharp .rounded-md,
+  .gentrix-ui-sharp .rounded-lg,
+  .gentrix-ui-sharp .rounded-xl,
+  .gentrix-ui-sharp .rounded-2xl,
+  .gentrix-ui-sharp .rounded-3xl,
+  .gentrix-ui-sharp .rounded-4xl,
   .gentrix-ui-sharp .rounded {
     border-radius: 0;
   }

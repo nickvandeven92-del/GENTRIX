@@ -318,9 +318,10 @@ export function CinematicNav({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <a
             href={homeHref}
+            data-studio-brand-mark="1"
             className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-900 sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             style={fontSerifLogo}
-                      onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
+            onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
           >
             {logoText}
           </a>
@@ -372,8 +373,9 @@ export function CinematicNav({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <a
             href={homeHref}
+            data-studio-brand-mark="1"
             className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg rounded-sm text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-                        onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
+            onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
             style={fontSerifLogo}
           >
             {logoText}
@@ -446,8 +448,9 @@ export function CinematicNav({
         <div className="flex w-full items-center justify-between gap-3 lg:contents">
           <a
             href={homeHref}
+            data-studio-brand-mark="1"
             className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950/90"
-                        onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
+            onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
             style={fontSerifLogo}
           >
             {logoText}

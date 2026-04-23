@@ -422,27 +422,21 @@ const stateKey =
  *   knop waardoor twee gedraaide spans *naast* elkaar belanden en je geen X krijgt maar "| |".
  * - SVG is visueel identiek ongeacht de klassen op de button-parent — werkt ook in `flex flex-col gap-x`.
  * - `stroke="currentColor"` erft de tekstkleur van de knop (die we elders al licht/donker normaliseren).
- * - `x-cloak` op de X voorkomt flicker vóór Alpine-init.
+ * - Geen `x-transition` / `x-cloak` op deze SVG's: op sommige browsers blijft het kruis anders onzichtbaar
+ *   (halve transitie, `[x-cloak]{display:none!important}` i.c.m. Alpine-volgorde).
  * - `pointer-events-none` stuurt de klik altijd door naar de button.
  */
 export function buildGentrixMenuIconToggle(stateKey: string): string {
-  const sharedTransition =
-    `x-transition:enter="transition ease-out duration-150"` +
-    ` x-transition:enter-start="opacity-0 scale-90"` +
-    ` x-transition:enter-end="opacity-100 scale-100"` +
-    ` x-transition:leave="transition ease-in duration-100"` +
-    ` x-transition:leave-start="opacity-100 scale-100"` +
-    ` x-transition:leave-end="opacity-0 scale-90"`;
   const svgBase =
     `class="absolute inset-0 h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
   const hamburger =
-    `<svg x-show="!${stateKey}" ${sharedTransition} ${svgBase} aria-hidden="true">` +
+    `<svg x-show="!${stateKey}" ${svgBase} aria-hidden="true">` +
     `<line x1="4" y1="7" x2="20" y2="7"/>` +
     `<line x1="4" y1="12" x2="20" y2="12"/>` +
     `<line x1="4" y1="17" x2="20" y2="17"/>` +
     `</svg>`;
   const cross =
-    `<svg x-show="${stateKey}" x-cloak ${sharedTransition} ${svgBase} aria-hidden="true">` +
+    `<svg x-show="${stateKey}" ${svgBase} aria-hidden="true">` +
     `<line x1="6" y1="6" x2="18" y2="18"/>` +
     `<line x1="18" y1="6" x2="6" y2="18"/>` +
     `</svg>`;
@@ -462,15 +456,30 @@ function innerHasHamburgerXToggle(inner: string, stateKey: string): boolean {
   return closed.test(inner) && openOnly.test(inner);
 }
 
+/** Oudere exports + Edge: `x-cloak` / `x-transition` op de toggles kan het kruis permanent verbergen. */
+function stripAlpineVisualBlockersFromGentrixMenuIconInner(html: string): string {
+  if (!/\bgentrix-menu-icon\b/.test(html)) return html;
+  return html
+    .replace(/\s+x-cloak\b/gi, "")
+    .replace(/\s*x-transition(?::[a-z-]+)?="[^"]*"/gi, "")
+    .replace(/\s*x-transition(?::[a-z-]+)?='[^']*'/gi, "");
+}
+
 /**
- * Modellen zetten soms `md:hidden` én `lg:hidden` op dezelfde menuknop. `md:hidden` verbergt vanaf 768px,
- * waardoor hamburger én kruis op tablet/desktop verdwijnen. `lg:hidden` alleen is het gebruikelijke
- * patroon (zichtbaar tot het grote breakpoint).
+ * Modellen zetten soms `md:hidden` op de menuknop. Dat verbergt vanaf 768px — dan zie je geen hamburger
+ * en geen kruis op tablet. Oplossing: (1) `md:hidden` + `lg:hidden` → `lg:hidden` alleen;
+ * (2) alleen `md:hidden` → `lg:hidden` (zelfde bedoeling als “mobiel tot lg-breakpoint”).
  */
-function dropMdHiddenWhenLgHiddenOnButtonAttrs(attrs: string): string {
+function normalizeMobileMenuButtonHiddenClassesInAttrs(attrs: string): string {
   return attrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/gi, (full, q: string, c: string) => {
-    if (!/\bmd:hidden\b/.test(c) || !/\blg:hidden\b/.test(c)) return full;
-    const next = c.replace(/\bmd:hidden\b/g, "").replace(/\s+/g, " ").trim();
+    if (!/\bmd:hidden\b/.test(c)) return full;
+    let next = c;
+    if (/\blg:hidden\b/.test(c)) {
+      next = c.replace(/\bmd:hidden\b/g, "");
+    } else {
+      next = c.replace(/\bmd:hidden\b/g, "lg:hidden");
+    }
+    next = next.replace(/\s+/g, " ").trim();
     return `class=${q}${next}${q}`;
   });
 }
@@ -549,20 +558,22 @@ export function repairHeaderMobileMenuButton(html: string): string {
   const next = h.replace(/<button(\b[^>]*)>([\s\S]*?)<\/button>/gi, (full, attrs: string, inner: string) => {
     if (!isLikelyHeaderMobileMenuButton(attrs)) return full;
 
-    const trimmed = inner.replace(/<!--[\s\S]*?-->/g, "").trim();
+    const withoutComments = inner.replace(/<!--[\s\S]*?-->/g, "");
+    const innerCleaned = stripAlpineVisualBlockersFromGentrixMenuIconInner(withoutComments);
+    const stripChangedInner = innerCleaned !== withoutComments;
+    const trimmed = innerCleaned.trim();
     const hasProperToggle = innerHasHamburgerXToggle(trimmed, stateKey);
 
     const needsClick = !/(?:@click|x-on:click)\s*=/.test(attrs);
     const needsIcon = !hasProperToggle;
     if (!needsClick && !needsIcon) {
-      const normalizedAttrs = dropMdHiddenWhenLgHiddenOnButtonAttrs(attrs);
-      if (normalizedAttrs !== attrs) {
-        return `<button${normalizedAttrs}>${inner}</button>`;
-      }
-      return full;
+      const normalizedAttrs = normalizeMobileMenuButtonHiddenClassesInAttrs(attrs);
+      if (normalizedAttrs === attrs && !stripChangedInner) return full;
+      const body = stripChangedInner ? innerCleaned : inner;
+      return `<button${normalizedAttrs}>${body}</button>`;
     }
 
-    let nextAttrs = dropMdHiddenWhenLgHiddenOnButtonAttrs(attrs);
+    let nextAttrs = normalizeMobileMenuButtonHiddenClassesInAttrs(attrs);
     if (needsClick) {
       nextAttrs = `${nextAttrs} @click="${stateKey} = !${stateKey}"`;
       if (!/\baria-expanded\s*=/.test(nextAttrs)) {
@@ -609,7 +620,7 @@ export function repairHeaderMobileMenuButton(html: string): string {
       }
     }
 
-    const nextInner = needsIcon ? buildGentrixMenuIconToggle(stateKey) : inner;
+    const nextInner = needsIcon ? buildGentrixMenuIconToggle(stateKey) : stripChangedInner ? innerCleaned : inner;
     return `<button${nextAttrs}>${nextInner}</button>`;
   });
 
