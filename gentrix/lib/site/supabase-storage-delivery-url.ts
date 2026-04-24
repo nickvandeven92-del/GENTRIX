@@ -229,12 +229,12 @@ function extractFirstTailwindBgUrlSupabase(html: string): TailwindBgUrlHit | nul
 }
 
 /**
- * Eerste Tailwind `bg-[url(https://*.supabase.co/…)]` op de hero → full-bleed `<img>`,
+ * Eerste Tailwind arbitrary `bg-[url]` (Supabase-host) op de hero → full-bleed `<img>`,
  * zodat `srcset`/LCP-hints werken (achtergrond-CSS heeft geen responsive images).
  */
 export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
   if (heroHasSupabaseObjectCoverImg(html)) {
-    /** Voorkom dubbele fetch: hero heeft al `<img>`, maar model kan óók `bg-[url(...)]` laten staan. */
+    /** Voorkom dubbele fetch: naast hero-IMG kan het model nog een Tailwind arbitrary background-url op de sectie hebben — die strippen we. */
     let out = html;
     let next = stripFirstTailwindSupabaseBgUrlToken(out);
     while (next !== out) {

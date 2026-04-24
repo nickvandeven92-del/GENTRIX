@@ -656,7 +656,7 @@ Beperkt palet: wit/off-white basis + 1???2 primaire tinten (bijv. zwart + ??n si
     id: "gradient_vibrant",
     label: "Gradient / Vibrant design",
     designLanguage: `**DESIGNTAAL: GRADIENT / VIBRANT** (richtlijn ??? briefing wint bij conflict)
-- **Achtergronden:** \`bg-gradient-to-br\`, \`via-\`, \`from-\`/\`to-\`; mag **mesh-achtig** met meerdere stops of zachte radiale blobs (\`bg-[radial-gradient(...)]\` via style als nodig).
+- **Achtergronden:** \`bg-gradient-to-br\`, \`via-\`, \`from-\`/\`to-\`; mag **mesh-achtig** met meerdere stops of zachte radiale blobs (\`bg-[radial-gradient(…)]\` via style als nodig).
 - **Tekst op gradient:** \`bg-clip-text text-transparent\` op koppen of contrasterende lichte tekst met dunne outline/shadow voor leesbaarheid.
 - **Energie:** verzadigde kleuren, mag **contrasterend** (oranje/roze/paars/cyaan combinaties); niet per se ???corporate blue???.
 - **Secties:** wissel gradient-intensiteit ??? soms rustig neutraal blok ertussen zodat het niet triggert.
@@ -681,8 +681,8 @@ Zwart, wit, ??n felle accent (geel, rood, fel groen); optioneel fel blauw; geen 
     label: "Cyberpunk / Futuristic",
     designLanguage: `**DESIGNTAAL: CYBERPUNK / FUTURISTIC** (richtlijn ??? briefing wint bij conflict)
 - **Basis:** diep donker (\`bg-zinc-950\`, \`bg-[#0a0a0f]\`, near-black blue/purple).
-- **Accenten:** neon **cyan, magenta, lime, electric purple** ??? \`drop-shadow\` / \`shadow-[0_0_24px_rgba(...)]\` spaarzaam op koppen of knippen.
-- **Raster/lijnen:** subtiele \`bg-[linear-gradient(...)]\` grid met lage opacity; geen onleesbare drukte. **Geen** bewegende laser standaard ??? alleen als de briefing dat **expliciet** vraagt (zie ?3).
+- **Accenten:** neon **cyan, magenta, lime, electric purple** ??? \`drop-shadow\` / \`shadow-[0_0_24px_rgba(…)]\` spaarzaam op koppen of knippen.
+- **Raster/lijnen:** subtiele \`bg-[linear-gradient(…)]\` grid met lage opacity; geen onleesbare drukte. **Geen** bewegende laser standaard ??? alleen als de briefing dat **expliciet** vraagt (zie ?3).
 - **Typografie:** futuristic sans (\`tracking-wide\`, \`uppercase\` labels); mag mono voor data-achtige regels.
 - **UI:** scherpe of licht afgeronde knoppen met glow; glass **mag** als secundair accent op donker.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
