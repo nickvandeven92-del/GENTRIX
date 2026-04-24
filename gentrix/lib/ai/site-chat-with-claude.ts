@@ -37,6 +37,89 @@ const chatResponseSchema = z.object({
   config: masterPromptPageConfigSchema.optional(),
 });
 
+/** Als het model alleen \`sectionUpdates\`-rijen als JSON-root-array stuurt (zonder \`reply\`). */
+const SITE_CHAT_FALLBACK_REPLY_FROM_MODEL_PATCH =
+  "Ik heb je wijzigingen in de preview verwerkt. Hieronder kun je de site opnieuw bekijken.";
+
+function isPlainRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function looksLikeSectionUpdateRow(v: unknown): boolean {
+  if (!isPlainRecord(v)) return false;
+  const { index, html } = v;
+  return (
+    typeof index === "number" &&
+    Number.isFinite(index) &&
+    Number.isInteger(index) &&
+    index >= 0 &&
+    typeof html === "string" &&
+    html.length > 0
+  );
+}
+
+/**
+ * Herstelt veelvoorkomende model-missers vóór Zod-validatie (o.a. root-array met patchrijen,
+ * of één response-object per ongeluk in een array gewikkeld).
+ */
+export function normalizeSiteChatModelJsonValue(parsed: unknown): unknown {
+  if (!Array.isArray(parsed)) return parsed;
+
+  if (parsed.length === 1 && isPlainRecord(parsed[0])) {
+    const o = parsed[0]!;
+    if ("reply" in o || "sectionUpdates" in o || "config" in o) {
+      return o;
+    }
+  }
+
+  if (parsed.length >= 1 && parsed.every(looksLikeSectionUpdateRow)) {
+    return {
+      reply: SITE_CHAT_FALLBACK_REPLY_FROM_MODEL_PATCH,
+      sectionUpdates: parsed,
+    };
+  }
+
+  return parsed;
+}
+
+/** Geen Zod- of JSON-jargon: korte uitleg voor studio-gebruikers. */
+function humanizeSiteChatSchemaFailure(err: z.ZodError): string {
+  for (const issue of err.issues) {
+    const pathKey = issue.path.join(".");
+    const msg = issue.message.toLowerCase();
+    if (
+      pathKey === "" &&
+      (msg.includes("object") || msg.includes("obj")) &&
+      (msg.includes("array") || msg.includes("lijst"))
+    ) {
+      return "De assistent gaf een losse lijst terwijl er één vast antwoordformaat nodig is. Probeer dezelfde vraag nog een keer — vaak lukt het direct daarna. Tip: noem de sectie (bijv. FAQ) en wat er moet komen.";
+    }
+    if (issue.path[0] === "reply" || pathKey === "reply") {
+      return "Het antwoord van de assistent miste de korte uitleg voor jou. Probeer dezelfde vraag opnieuw; een tweede poging lost dit meestal op.";
+    }
+    if (issue.path[0] === "sectionUpdates") {
+      return "De voorgestelde paginablokken waren niet goed te verwerken. Zeg kort welke sectie en wat er moet veranderen, en probeer opnieuw.";
+    }
+    if (issue.path[0] === "config") {
+      return "De voorgestelde thema-instellingen waren niet geldig. Beschrijf je wens in gewone taal opnieuw (zonder technische codes).";
+    }
+  }
+  return "We konden het antwoord van de assistent niet op de preview toepassen. Probeer dezelfde vraag nog een keer, of herformuleer in één zin wat je wilt.";
+}
+
+function humanizeSiteChatMergeFailure(raw: string): string {
+  const idxMatch = raw.match(/sectie-index (\d+).*?0 t\/m (\d+)/);
+  if (idxMatch) {
+    const maxIdx = Number(idxMatch[2]);
+    const n = maxIdx + 1;
+    return `Het voorstel verwees naar een pagina-onderdeel dat hier niet bestaat (deze pagina heeft ${n} sectie${n === 1 ? "" : "s"}). Probeer opnieuw.`;
+  }
+  if (raw.includes("Dubbele sectie-index")) {
+    return "Het antwoord bevatte twee keer hetzelfde paginablok. Probeer de vraag opnieuw.";
+  }
+  return raw;
+}
+
 export type SiteChatTurn = z.infer<typeof chatTurnSchema>;
 
 export type SiteChatResult =
@@ -212,7 +295,8 @@ OUTPUT: uitsluitend **één** JSON-object, geen markdown-fences eromheen:
   "reply": "je antwoord aan de gebruiker",
   "sectionUpdates": [ { "index": 0, "html": "..." } ]  // optioneel; alleen gewijzigde indices
   "config": { ... }    // optioneel; ${configRule}
-}`;
+}
+- **Nooit** het hele antwoord als alleen een JSON-array (\`[ ... ]\`) beginnen — ook niet als die alleen sectie-updates bevat. Een array mag alleen **binnen** het object bij \`sectionUpdates\` staan, nooit als buitenste wrapper.`;
 }
 
 export function processSiteChatFromModelText(
@@ -224,20 +308,20 @@ export function processSiteChatFromModelText(
 ): SiteChatResult {
   const parsedResult = parseModelJsonObject(modelText);
   if (!parsedResult.ok) {
-    const truncated = stopReason === "max_tokens" ? " Antwoord mogelijk afgekapt (max_tokens)." : "";
+    const truncated = stopReason === "max_tokens" ? " Het antwoord was mogelijk te lang en afgekapt." : "";
     return {
       ok: false,
-      error: `Antwoord is geen geldige JSON.${truncated}`,
+      error: `We konden het antwoord van de assistent niet verwerken.${truncated} Probeer dezelfde vraag opnieuw; bij een afgekapt antwoord: vraag om een kleinere wijziging per keer.`,
       rawText: modelText,
     };
   }
-  const parsed = parsedResult.value;
+  const parsed = normalizeSiteChatModelJsonValue(parsedResult.value);
 
   const validated = chatResponseSchema.safeParse(parsed);
   if (!validated.success) {
     return {
       ok: false,
-      error: `JSON voldoet niet aan het schema: ${validated.error.message}`,
+      error: humanizeSiteChatSchemaFailure(validated.error),
       rawText: modelText,
     };
   }
@@ -255,7 +339,7 @@ export function processSiteChatFromModelText(
     if (bad) {
       return {
         ok: false,
-        error: `Het model wijzigde sectie-index ${bad.index}, maar deze beurt was beperkt tot: ${allowedSectionIndices.join(", ")}.`,
+        error: `De assistent wilde ook sectie ${bad.index + 1} aanpassen, maar deze ronde was alleen bedoeld voor sectie(s): ${allowedSectionIndices.map((i) => i + 1).join(", ")}. Stel je vraag opnieuw of wacht tot de hele pagina weer meedoet.`,
         rawText: modelText,
       };
     }
@@ -291,7 +375,7 @@ export function processSiteChatFromModelText(
 
   const mergeResult = mergeTailwindSectionUpdates(sections, sectionUpdates ?? []);
   if (!mergeResult.ok) {
-    return { ok: false, error: mergeResult.error, rawText: modelText };
+    return { ok: false, error: humanizeSiteChatMergeFailure(mergeResult.error), rawText: modelText };
   }
 
   return { ok: true, reply, sections: mergeResult.sections, config: nextConfig };

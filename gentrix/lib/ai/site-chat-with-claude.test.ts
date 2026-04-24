@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { processSiteChatFromModelText, resolveSiteChatTargetIndices } from "@/lib/ai/site-chat-with-claude";
+import {
+  normalizeSiteChatModelJsonValue,
+  processSiteChatFromModelText,
+  resolveSiteChatTargetIndices,
+} from "@/lib/ai/site-chat-with-claude";
 import type { SiteChatTurn } from "@/lib/ai/site-chat-with-claude";
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 
@@ -36,7 +40,10 @@ describe("processSiteChatFromModelText scoped validation", () => {
     });
     const r = processSiteChatFromModelText(json, twoSections, null, null, [0]);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain("sectie-index 1");
+    if (!r.ok) {
+      expect(r.error).toContain("sectie 2");
+      expect(r.error).not.toMatch(/invalid_type|Zod|JSON voldoet/i);
+    }
   });
 
   it("accepteert updates binnen scope", () => {
@@ -47,5 +54,42 @@ describe("processSiteChatFromModelText scoped validation", () => {
     const r = processSiteChatFromModelText(json, twoSections, null, null, [0]);
     expect(r.ok).toBe(true);
     if (r.ok && r.sections) expect(r.sections[0]?.html).toContain("ok");
+  });
+});
+
+describe("normalizeSiteChatModelJsonValue", () => {
+  it("wrapt een root-array met alleen patch-rijen (index + html) in reply + sectionUpdates", () => {
+    const n = normalizeSiteChatModelJsonValue([
+      { index: 0, html: "<section id=\"hero\">x</section>" },
+      { index: 1, html: "<section id=\"footer\">y</section>" },
+    ]);
+    expect(n).toEqual(
+      expect.objectContaining({
+        reply: expect.stringMatching(/preview|verwerkt/i),
+        sectionUpdates: expect.arrayContaining([
+          expect.objectContaining({ index: 0 }),
+          expect.objectContaining({ index: 1 }),
+        ]),
+      }),
+    );
+  });
+
+  it("pakt één chat-object uit een per ongeluk gewikkelde enkelvoudige array", () => {
+    const inner = {
+      reply: "Klaar.",
+      sectionUpdates: [{ index: 0, html: "<section id=\"hero\">z</section>" }],
+    };
+    expect(normalizeSiteChatModelJsonValue([inner])).toEqual(inner);
+  });
+});
+
+describe("processSiteChatFromModelText leesbare fouten", () => {
+  it("geeft geen technisch schema-jargon bij een JSON-lijst als root", () => {
+    const r = processSiteChatFromModelText('["alleen","strings"]', twoSections, null, null, null);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).not.toMatch(/invalid_type|expected object|Zod|schema:/i);
+      expect(r.error.length).toBeGreaterThan(20);
+    }
   });
 });

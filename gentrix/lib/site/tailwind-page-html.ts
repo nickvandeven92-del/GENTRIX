@@ -1943,6 +1943,7 @@ export function sanitizeTailwindFragment(html: string): string {
       "alt",
       "target",
       "rel",
+      "title",
       "id",
       "role",
       "aria-label",
@@ -2012,6 +2013,9 @@ export function sanitizeTailwindFragment(html: string): string {
       "data-studio-feature-zone",
       /** Ankers / secties in client-HTML. */
       "data-section",
+      /** Server-inject: zwevende WhatsApp-launcher (`generate-site-postprocess`). */
+      "data-gentrix-floating-whatsapp",
+      "data-gentrix-wa-launcher",
       /** Portal visuele editor: section wrappers moeten de sanitizer overleven. */
       "data-portal-section-key",
       "data-portal-section-name",
