@@ -168,6 +168,19 @@ export function GeneratorForm({
   const [generatedTailwind, setGeneratedTailwind] = useState<GeneratedTailwindPage | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [pipelineFeedback, setPipelineFeedback] = useState<GenerationPipelineFeedback | null>(null);
+
+  /** Auto-detect gegenereerde modules op basis van sectie-id's (voorkomt gefilterde preview). */
+  const detectedModuleFlags = useMemo(() => {
+    if (!generatedTailwind) {
+      return { appointmentsEnabled: false, webshopEnabled: false };
+    }
+    const hasBooking = generatedTailwind.sections.some((s) => s.id?.trim().toLowerCase() === "booking");
+    const hasShop = generatedTailwind.sections.some((s) => s.id?.trim().toLowerCase() === "shop");
+    return {
+      appointmentsEnabled: hasBooking,
+      webshopEnabled: hasShop,
+    };
+  }, [generatedTailwind]);
   const [designRationale, setDesignRationale] = useState<string | null>(null);
   const [designRationaleLoading, setDesignRationaleLoading] = useState(false);
   const [designRationaleSkipReason, setDesignRationaleSkipReason] = useState<string | null>(null);
@@ -1521,8 +1534,8 @@ export function GeneratorForm({
                       className="min-h-0 flex-1"
                       publishedSlug={slugFromUrl}
                       draftPublicPreviewToken={draftPublicPreviewToken}
-                      appointmentsEnabled={appointmentsEnabled}
-                      webshopEnabled={webshopEnabled}
+                      appointmentsEnabled={detectedModuleFlags.appointmentsEnabled}
+                      webshopEnabled={detectedModuleFlags.webshopEnabled}
                     />
                   </div>
                 )
