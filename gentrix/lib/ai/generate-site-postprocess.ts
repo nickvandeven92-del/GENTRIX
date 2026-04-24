@@ -17,6 +17,7 @@ import {
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/strip-unsplash-urls";
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
+import { addDefaultLazyLoadingToBelowFoldSectionImages } from "@/lib/site/html-img-lazy-default";
 import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
   promoteHeroSupabaseBackgroundUrlToImg,
@@ -1730,7 +1731,7 @@ export function postProcessClaudeTailwindPage(
     validIds.add(id);
   }
 
-  const sectionsLinked = withIds.map((row) => {
+  const sectionsLinked = withIds.map((row, sectionIndex) => {
     const html0 = withRootIdOnSectionHtml(row.html, row.id);
     const html0b = repairSamePagePathHrefsInHtml(html0, validIds, cross);
     const html1 = repairInternalLinksInHtml(html0b, validIds, cross);
@@ -1742,16 +1743,20 @@ export function postProcessClaudeTailwindPage(
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html2d = stripStudioMarqueeMarkupFromHtml(html2c);
-    const html3 =
-      row.id === "hero"
-        ? addHeroLcpImageHints(
-            addResponsiveSrcsetToHeroSupabaseRenderImages(
-              promoteHeroSupabaseBackgroundUrlToImg(
-                rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2d)),
-              ),
-            ),
-          )
-        : html2d;
+    let html3: string;
+    if (row.id === "hero") {
+      html3 = addHeroLcpImageHints(
+        addResponsiveSrcsetToHeroSupabaseRenderImages(
+          promoteHeroSupabaseBackgroundUrlToImg(
+            rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2d)),
+          ),
+        ),
+      );
+    } else {
+      /** Eerste sectie vaak (deels) above-the-fold; vanaf sectie 2 standaard lazy voor bandbreedte. */
+      html3 =
+        sectionIndex > 0 ? addDefaultLazyLoadingToBelowFoldSectionImages(html2d) : html2d;
+    }
     return { ...row, html: html3 };
   });
 

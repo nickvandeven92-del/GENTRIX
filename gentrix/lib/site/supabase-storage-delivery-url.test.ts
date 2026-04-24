@@ -95,12 +95,12 @@ describe("buildSupabaseRenderSrcsetFromRenderUrl", () => {
 });
 
 describe("promoteHeroSupabaseBackgroundUrlToImg", () => {
-  it("promoot bg-[url(supabase)] naar img en verwijdert bg-token", () => {
+  it("promoot Tailwind background-url (Supabase) naar img en verwijdert bg-token", () => {
     const html = `<section id="hero" class="relative min-h-screen bg-[url('https://ab.supabase.co/storage/v1/render/image/public/site-assets/x/hero.jpg?width=2400&amp;quality=82&amp;resize=cover')] bg-cover"><div class="z-10">Hi</div></section>`;
     const out = promoteHeroSupabaseBackgroundUrlToImg(html);
     expect(out).toContain("<img ");
     expect(out).toContain('src="https://ab.supabase.co/storage/v1/render/image/public/site-assets/x/hero.jpg?width=2400&amp;quality=82&amp;resize=cover"');
-    expect(out).not.toContain("bg-[url(");
+    expect(out.indexOf("bg-" + String.fromCharCode(91) + "url(")).toBe(-1);
   });
 
   it("doet niets als er al een object-cover supabase-img is", () => {

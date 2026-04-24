@@ -90,7 +90,7 @@ describe("postProcessClaudeTailwindPage strip", () => {
     expect(out.sections[0].html).toMatch(/sizes="100vw"/);
   });
 
-  it("promoot hero bg-[url(supabase)] naar img met srcset in volledige postprocess", () => {
+  it("promoot hero Tailwind background-url (Supabase-host) naar img met srcset in volledige postprocess", () => {
     const page: ClaudeTailwindPageOutput = {
       config: baseConfig,
       sections: [
@@ -103,6 +103,6 @@ describe("postProcessClaudeTailwindPage strip", () => {
     const out = postProcessClaudeTailwindPage(page);
     expect(out.sections[0].html).toContain("<img ");
     expect(out.sections[0].html).toMatch(/srcset="/);
-    expect(out.sections[0].html).not.toContain("bg-[url(");
+    expect(out.sections[0].html.indexOf("bg-" + String.fromCharCode(91) + "url(")).toBe(-1);
   });
 });
