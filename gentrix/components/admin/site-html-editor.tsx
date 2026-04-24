@@ -309,12 +309,12 @@ export function SiteHtmlEditor({
       JSON.stringify({
         route: previewRoute,
         sectionIds: previewSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i)),
-        cfgTheme: config?.theme,
+        config,
         customCss,
         customJs,
         hasCompiledCss: Boolean(previewCompiledCss?.trim()),
       }),
-    [previewRoute, previewSections, config?.theme, customCss, customJs, previewCompiledCss],
+    [previewRoute, previewSections, config, customCss, customJs, previewCompiledCss],
   );
 
   useEffect(() => {
