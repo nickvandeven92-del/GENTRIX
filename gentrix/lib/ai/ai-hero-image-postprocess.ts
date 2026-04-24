@@ -7,6 +7,8 @@ import type {
   TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
+import { tryEncodeHeroRasterAsWebp } from "@/lib/ai/hero-raster-encode-webp";
+import { SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE } from "@/lib/site/site-assets-storage-upload";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
@@ -570,14 +572,19 @@ async function uploadRasterToSiteAssets(
   subfolderSlug?: string | null,
 ): Promise<string | null> {
   try {
+    const encoded = await tryEncodeHeroRasterAsWebp(bytes, mime);
+    const uploadBytes = encoded?.bytes ?? bytes;
+    const uploadMime: StudioHeroImageRasterMime = encoded?.mime ?? mime;
+
     const supabase = createServiceRoleClient();
     const folder = storageFolderForGeneration(subfolderSlug);
     const id = randomBytes(8).toString("hex");
-    const ext = fileExtForHeroMime(mime);
+    const ext = fileExtForHeroMime(uploadMime);
     const path = `${folder}/ai-hero/${Date.now()}-${id}.${ext}`;
-    const { error } = await supabase.storage.from("site-assets").upload(path, bytes, {
-      contentType: mime,
+    const { error } = await supabase.storage.from("site-assets").upload(path, uploadBytes, {
+      contentType: uploadMime,
       upsert: false,
+      cacheControl: SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE,
     });
     if (error) {
       console.warn("[ai-hero] Storage upload failed:", error.message);

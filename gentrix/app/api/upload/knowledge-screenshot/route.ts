@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
+import { SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE } from "@/lib/site/site-assets-storage-upload";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.storage.from("site-assets").upload(path, buf, {
       contentType: type,
       upsert: false,
+      cacheControl: SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE,
     });
 
     if (error) {

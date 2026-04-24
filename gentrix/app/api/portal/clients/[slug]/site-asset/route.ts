@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { checkPortalRateLimit } from "@/lib/api/portal-rate-limit";
 import { requirePortalApiAccessForSlug } from "@/lib/auth/require-portal-api-access";
+import { SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE } from "@/lib/site/site-assets-storage-upload";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -62,6 +63,7 @@ export async function POST(request: Request, context: RouteContext) {
     const { error } = await supabase.storage.from("site-assets").upload(path, buf, {
       contentType: file.type || "application/octet-stream",
       upsert: false,
+      cacheControl: SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE,
     });
 
     if (error) {

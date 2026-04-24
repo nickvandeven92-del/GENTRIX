@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
   }
   const upstream = STUDIO_PREVIEW_LIB_UPSTREAM[name as keyof typeof STUDIO_PREVIEW_LIB_UPSTREAM];
   const res = await fetch(upstream, {
-    next: { revalidate: 86_400 },
+    /** Gelijk aan browser Cache-Control: upstream is vastgepind op versie in URL. */
+    next: { revalidate: 2_592_000 },
     headers: { Accept: "*/*" },
   });
   if (!res.ok) {
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": isCss ? "text/css; charset=utf-8" : "application/javascript; charset=utf-8",
-      "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+      "Cache-Control": "public, max-age=2592000, stale-while-revalidate=31536000",
       ...STUDIO_PREVIEW_LIB_CORS_HEADERS,
     },
   });
