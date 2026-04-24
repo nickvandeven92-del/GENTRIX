@@ -156,6 +156,10 @@ export function SiteHtmlEditor({
   const [autoSaveHint, setAutoSaveHint] = useState<string | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [previewCompiledCss, setPreviewCompiledCss] = useState<string | null>(() => {
+    const css = initialTailwindCompiledCss?.trim();
+    return css && css.length > 0 ? css : null;
+  });
   const [previewKey, setPreviewKey] = useState(0);
   /** Welke (sub)pagina de rechter preview toont; nav in iframe wisselt alleen de preview. */
   const [previewRoute, setPreviewRoute] = useState<SiteHtmlEditorPreviewRoute>({ kind: "landing" });
@@ -189,6 +193,7 @@ export function SiteHtmlEditor({
   const lastSavedFingerprintRef = useRef("");
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistInFlightRef = useRef(false);
+  const previewInitResetDoneRef = useRef(false);
 
   const payload = useMemo(
     () =>
@@ -205,6 +210,41 @@ export function SiteHtmlEditor({
       }) satisfies Record<string, unknown>,
     [sections, config, customCss, customJs, initialLogoSet, pageType, contactSections, marketingPages],
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch("/api/admin/tailwind-compile-preview", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documentTitle: initialName.trim() || subfolderSlug,
+              payload,
+            }),
+            signal: controller.signal,
+          });
+          const json = (await res.json()) as {
+            ok?: boolean;
+            tailwindCompiledCss?: string;
+          };
+          const nextCss = json.ok && json.tailwindCompiledCss?.trim() ? json.tailwindCompiledCss.trim() : null;
+          setPreviewCompiledCss(nextCss);
+        } catch (e) {
+          if ((e as Error).name === "AbortError") return;
+          // Fallback naar Play CDN zodat preview classes niet op stale CSS blijven hangen.
+          setPreviewCompiledCss(null);
+        }
+      })();
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [payload, initialName, subfolderSlug]);
 
   const persistFingerprint = useMemo(() => JSON.stringify({ p: payload, status }), [payload, status]);
 
@@ -263,6 +303,29 @@ export function SiteHtmlEditor({
     previewRoute,
     draftPublicPreviewToken,
   ]);
+
+  const previewContentFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        route: previewRoute,
+        sectionIds: previewSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i)),
+        cfgTheme: config?.theme,
+        customCss,
+        customJs,
+        hasCompiledCss: Boolean(previewCompiledCss?.trim()),
+      }),
+    [previewRoute, previewSections, config?.theme, customCss, customJs, previewCompiledCss],
+  );
+
+  useEffect(() => {
+    // Eerste mount + inhoudswijzigingen: iframe herladen zodat de preview bovenaan start.
+    if (!previewInitResetDoneRef.current) {
+      previewInitResetDoneRef.current = true;
+      setPreviewKey((k) => k + 1);
+      return;
+    }
+    setPreviewKey((k) => k + 1);
+  }, [previewContentFingerprint]);
 
   const iframeDocumentPathname = useMemo(
     () =>
@@ -909,7 +972,7 @@ export function SiteHtmlEditor({
                   webshopEnabled={webshopEnabled}
                   composePlan={composePlan}
                   viewportMode={previewViewportMode}
-                  compiledTailwindCss={initialTailwindCompiledCss}
+                  compiledTailwindCss={previewCompiledCss}
                   navBrandLabel={initialName.trim() || subfolderSlug}
                   title={`Preview ${subfolderSlug}`}
                   className="h-full min-h-0 w-full rounded-none border-0 bg-white"
