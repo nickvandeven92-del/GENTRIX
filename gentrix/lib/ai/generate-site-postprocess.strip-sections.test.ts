@@ -89,4 +89,20 @@ describe("postProcessClaudeTailwindPage strip", () => {
     expect(out.sections[0].html).toMatch(/srcset="/);
     expect(out.sections[0].html).toMatch(/sizes="100vw"/);
   });
+
+  it("promoot hero bg-[url(supabase)] naar img met srcset in volledige postprocess", () => {
+    const page: ClaudeTailwindPageOutput = {
+      config: baseConfig,
+      sections: [
+        {
+          id: "hero",
+          html: `<section id="hero" class="relative min-h-screen bg-[url('https://xy.supabase.co/storage/v1/object/public/site-assets/h/photo.jpg')] bg-cover text-white"><p>Hello</p></section>`,
+        },
+      ],
+    };
+    const out = postProcessClaudeTailwindPage(page);
+    expect(out.sections[0].html).toContain("<img ");
+    expect(out.sections[0].html).toMatch(/srcset="/);
+    expect(out.sections[0].html).not.toContain("bg-[url(");
+  });
 });

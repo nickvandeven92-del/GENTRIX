@@ -7,6 +7,8 @@
  * Image transformations moeten in het Supabase-project aan staan (Pro).
  */
 
+import { findHtmlOpenTagEnd } from "@/lib/site/html-open-tag";
+
 const SUPABASE_OBJECT_PUBLIC_IMAGE_RE =
   /https:\/\/[a-z0-9][a-z0-9-]{0,61}\.supabase\.co\/storage\/v1\/object\/public\/[^\s"'<>)]+\.(?:jpe?g|png|webp|avif)/gi;
 
@@ -178,6 +180,75 @@ export function buildSupabaseRenderSrcsetFromRenderUrl(
 
 function escapeHtmlAttrAmpersands(value: string): string {
   return value.replace(/&/g, "&amp;");
+}
+
+function decodeAttrUrl(url: string): string {
+  return url.replace(/&amp;/g, "&").replace(/&#38;/g, "&");
+}
+
+function escapeHtmlAttrDoubleQuoted(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
+/** Er staat al een duidelijke hero-foto als `<img>` met Supabase-render + object-cover. */
+function heroHasSupabaseObjectCoverImg(html: string): boolean {
+  return (
+    /<img\b[^>]*\/storage\/v1\/render\/image\/public\/[^"'>\s]+["'][^>]*\bobject-(?:cover|contain)\b/i.test(html) ||
+    /<img\b[^>]*\bobject-(?:cover|contain)\b[^>]*\/storage\/v1\/render\/image\/public\//i.test(html)
+  );
+}
+
+type TailwindBgUrlHit = { token: string; url: string; index: number };
+
+function extractFirstTailwindBgUrlSupabase(html: string): TailwindBgUrlHit | null {
+  const quoted = /bg-\[url\((["'])(https:\/\/[^"']*\.supabase\.co[^"']*)\1\)\]/;
+  const m = quoted.exec(html);
+  if (m?.index !== undefined) {
+    return { token: m[0], url: m[2], index: m.index };
+  }
+  const unquoted = /bg-\[url\((https:\/\/[^)\s]*\.supabase\.co[^)]*)\)\]/;
+  const m2 = unquoted.exec(html);
+  if (m2?.index !== undefined) {
+    return { token: m2[0], url: m2[1], index: m2.index };
+  }
+  return null;
+}
+
+/**
+ * Eerste Tailwind `bg-[url(https://*.supabase.co/…)]` op de hero → full-bleed `<img>`,
+ * zodat `srcset`/LCP-hints werken (achtergrond-CSS heeft geen responsive images).
+ */
+export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
+  if (heroHasSupabaseObjectCoverImg(html)) return html;
+  const hit = extractFirstTailwindBgUrlSupabase(html);
+  if (!hit) return html;
+
+  const rawUrl = decodeAttrUrl(hit.url).trim();
+  if (!rawUrl.includes(".supabase.co/storage/")) return html;
+  const pathNoQuery = (rawUrl.split("?")[0] ?? "").toLowerCase();
+  if (pathNoQuery.includes("favicon")) return html;
+  if (!/\.(jpe?g|png|webp|avif)(\?|$)/i.test(pathNoQuery)) return html;
+
+  const tagStart = html.lastIndexOf("<", hit.index);
+  if (tagStart < 0) return html;
+
+  const withoutBg = html.slice(0, hit.index) + html.slice(hit.index + hit.token.length);
+  let openEnd = findHtmlOpenTagEnd(withoutBg, tagStart);
+  let openTag = withoutBg.slice(tagStart, openEnd);
+
+  if (/<section\b/i.test(openTag) && !/\b(?:relative|absolute|fixed)\b/i.test(openTag)) {
+    if (/\bclass="/i.test(openTag)) {
+      openTag = openTag.replace(/\bclass="/i, 'class="relative ');
+    } else {
+      openTag = openTag.replace(/<section\b/i, '<section class="relative"');
+    }
+  }
+
+  const patched = withoutBg.slice(0, tagStart) + openTag + withoutBg.slice(openEnd);
+  const insertAt = tagStart + openTag.length;
+  const srcEsc = escapeHtmlAttrDoubleQuoted(rawUrl);
+  const img = `<img class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover" src="${srcEsc}" alt="" decoding="async" aria-hidden="true" />`;
+  return patched.slice(0, insertAt) + img + patched.slice(insertAt);
 }
 
 /**

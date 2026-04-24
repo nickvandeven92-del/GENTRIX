@@ -19,6 +19,7 @@ import {
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
 import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
+  promoteHeroSupabaseBackgroundUrlToImg,
   rewriteSupabaseStorageObjectUrlsForWebDelivery,
 } from "@/lib/site/supabase-storage-delivery-url";
 
@@ -1745,7 +1746,9 @@ export function postProcessClaudeTailwindPage(
       row.id === "hero"
         ? addHeroLcpImageHints(
             addResponsiveSrcsetToHeroSupabaseRenderImages(
-              rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2d)),
+              promoteHeroSupabaseBackgroundUrlToImg(
+                rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2d)),
+              ),
             ),
           )
         : html2d;

@@ -3,6 +3,7 @@ import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
   buildSupabaseRenderSrcsetFromRenderUrl,
   inferHeroImgSizesFromAttrs,
+  promoteHeroSupabaseBackgroundUrlToImg,
   qualityForSrcsetWidth,
   rewriteSupabaseStorageObjectUrlsForWebDelivery,
   supabaseStorageObjectUrlToRenderUrl,
@@ -90,6 +91,21 @@ describe("buildSupabaseRenderSrcsetFromRenderUrl", () => {
 
   it("geeft null voor geen render-URL", () => {
     expect(buildSupabaseRenderSrcsetFromRenderUrl("https://example.com/a.jpg")).toBeNull();
+  });
+});
+
+describe("promoteHeroSupabaseBackgroundUrlToImg", () => {
+  it("promoot bg-[url(supabase)] naar img en verwijdert bg-token", () => {
+    const html = `<section id="hero" class="relative min-h-screen bg-[url('https://ab.supabase.co/storage/v1/render/image/public/site-assets/x/hero.jpg?width=2400&amp;quality=82&amp;resize=cover')] bg-cover"><div class="z-10">Hi</div></section>`;
+    const out = promoteHeroSupabaseBackgroundUrlToImg(html);
+    expect(out).toContain("<img ");
+    expect(out).toContain('src="https://ab.supabase.co/storage/v1/render/image/public/site-assets/x/hero.jpg?width=2400&amp;quality=82&amp;resize=cover"');
+    expect(out).not.toContain("bg-[url(");
+  });
+
+  it("doet niets als er al een object-cover supabase-img is", () => {
+    const html = `<section class="relative"><img class="object-cover" src="https://ab.supabase.co/storage/v1/render/image/public/site-assets/a.jpg?width=100" alt=""/><div class="bg-[url('https://ab.supabase.co/storage/v1/render/image/public/site-assets/b.jpg')]"></div></section>`;
+    expect(promoteHeroSupabaseBackgroundUrlToImg(html)).toBe(html);
   });
 });
 
