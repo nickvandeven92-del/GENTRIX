@@ -56,4 +56,37 @@ describe("postProcessClaudeTailwindPage strip", () => {
     expect(out.sections[0].html).not.toContain("studio-marquee");
     expect(out.sections[0].html).not.toContain("studio-marquee-track");
   });
+
+  it("zet fetchpriority op eerste grote hero-afbeelding", () => {
+    const page: ClaudeTailwindPageOutput = {
+      config: baseConfig,
+      sections: [
+        {
+          id: "hero",
+          html:
+            '<section id="hero" class="relative"><img class="w-8 h-8" src="/logo.png" alt=""/><img class="absolute inset-0 h-full w-full object-cover" src="/hero.jpg" alt=""/></section>',
+        },
+      ],
+    };
+    const out = postProcessClaudeTailwindPage(page);
+    expect(out.sections[0].html).toMatch(/object-cover[^>]*fetchpriority="high"/);
+    expect(out.sections[0].html).not.toMatch(/w-8 h-8[^>]*fetchpriority/);
+  });
+
+  it("zet Supabase object/public hero-src om naar render/image", () => {
+    const page: ClaudeTailwindPageOutput = {
+      config: baseConfig,
+      sections: [
+        {
+          id: "hero",
+          html: `<section id="hero"><img class="w-full h-full object-cover" src="https://abcdxyz.supabase.co/storage/v1/object/public/site-assets/p/hero.jpg" alt=""/></section>`,
+        },
+      ],
+    };
+    const out = postProcessClaudeTailwindPage(page);
+    expect(out.sections[0].html).toContain("/storage/v1/render/image/public/");
+    expect(out.sections[0].html).not.toContain("/storage/v1/object/public/");
+    expect(out.sections[0].html).toMatch(/srcset="/);
+    expect(out.sections[0].html).toMatch(/sizes="100vw"/);
+  });
 });

@@ -6,8 +6,9 @@ type PublishedTailwindAssetsProps = {
 };
 
 /**
- * Preconnects voor gepubliceerde Tailwind-sites (Alpine/Lucide/fonts).
- * Tailwind Play CDN-preconnect alleen als de iframe nog JIT via cdn.tailwindcss.com laadt.
+ * Resource hints voor de iframe: max. één `preconnect` (Lighthouse: >4 preconnects schaadt).
+ * Font-hints staan al in de iframe-/export-`<head>`; hier geen dubbele fonts.
+ * jsDelivr (Alpine/Lucide): alleen `dns-prefetch` — lichter dan preconnect.
  */
 export function PublishedTailwindAssets({ preconnectTailwindPlayCdn = true }: PublishedTailwindAssetsProps) {
   return (
@@ -25,9 +26,7 @@ export function PublishedTailwindAssets({ preconnectTailwindPlayCdn = true }: Pu
       }}
     >
       {preconnectTailwindPlayCdn ? <link rel="preconnect" href="https://cdn.tailwindcss.com" /> : null}
-      <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
     </div>
   );
 }

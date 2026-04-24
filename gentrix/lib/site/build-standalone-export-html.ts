@@ -161,8 +161,8 @@ export function buildStandaloneExportHtmlDocument(
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${escapeHtmlText(docTitle)}</title>
-  ${faviconLink ? `  ${faviconLink}\n  ` : ""}${themeMeta}${styleBlock}<link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  ${faviconLink ? `  ${faviconLink}\n  ` : ""}${themeMeta}${styleBlock}<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com"/>
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}

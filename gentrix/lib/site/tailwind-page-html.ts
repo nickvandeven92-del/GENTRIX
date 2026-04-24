@@ -3095,8 +3095,8 @@ const iframeShellAttr = `${isPreviewIframe ? ` data-gentrix-studio-iframe="1"` :
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
-${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com"/>
   <link href="${fontLink}" rel="stylesheet"/>
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}

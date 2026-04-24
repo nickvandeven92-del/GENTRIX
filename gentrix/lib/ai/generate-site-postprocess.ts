@@ -17,6 +17,10 @@ import {
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/strip-unsplash-urls";
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
+import {
+  addResponsiveSrcsetToHeroSupabaseRenderImages,
+  rewriteSupabaseStorageObjectUrlsForWebDelivery,
+} from "@/lib/site/supabase-storage-delivery-url";
 
 function sectionNameToStableId(sectionName: string, index: number): string {
   const base = sectionName
@@ -1457,6 +1461,47 @@ function hasHeroViewportMinHeightClass(classStr: string): boolean {
 }
 
 /**
+ * Eerste grote hero-`<img>` (object-cover, viewport-hoogte, of absolute full-bleed) krijgt
+ * LCP-vriendelijke attributen. Kleine vierkantjes (typische logo's) worden overgeslagen.
+ */
+function addHeroLcpImageHints(html: string): string {
+  let replaced = false;
+  return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
+    if (replaced) return full;
+    if (/\bfetchpriority\s*=/i.test(attrs)) return full;
+    const insetFullBleed =
+      /\b(?:absolute|fixed)\b/i.test(attrs) &&
+      /\binset-0\b/i.test(attrs) &&
+      /\bw-full\b/i.test(attrs) &&
+      /\bh-full\b/i.test(attrs);
+    const looksPhoto =
+      /\bobject-(?:cover|contain)\b/i.test(attrs) ||
+      /\bmin-h-(?:screen|\[)/i.test(attrs) ||
+      /\bh-screen\b/i.test(attrs) ||
+      /\bmax-h-\[?\d/i.test(attrs) ||
+      insetFullBleed;
+    const tinySquare =
+      /\bw-(?:6|7|8|9|10|11|12|14|16)\b/.test(attrs) &&
+      /\bh-(?:6|7|8|9|10|11|12|14|16)\b/.test(attrs);
+    if (!looksPhoto || tinySquare) return full;
+    replaced = true;
+    let a = attrs.trim();
+    if (/\bloading\s*=\s*["']lazy["']/i.test(a)) {
+      a = a.replace(/\bloading\s*=\s*["']lazy["']/i, 'loading="eager"');
+    } else if (!/\bloading\s*=/i.test(a)) {
+      a = `${a} loading="eager"`;
+    }
+    if (!/\bdecoding\s*=/i.test(a)) {
+      a = `${a} decoding="async"`;
+    }
+    if (!/\bfetchpriority\s*=/i.test(a)) {
+      a = `${a} fetchpriority="high"`;
+    }
+    return `<img ${a}>`;
+  });
+}
+
+/**
  * Voegt minimale hero-viewport-hoogte toe als het model geen `min-h-*` (behalve min-h-0) zette.
  * Voorkomt het patroon: smalle gekleurde strook + groot leeg wit gebied in het iframe.
  */
@@ -1696,7 +1741,14 @@ export function postProcessClaudeTailwindPage(
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html2d = stripStudioMarqueeMarkupFromHtml(html2c);
-    const html3 = row.id === "hero" ? ensureHeroRootMinViewportClass(html2d) : html2d;
+    const html3 =
+      row.id === "hero"
+        ? addHeroLcpImageHints(
+            addResponsiveSrcsetToHeroSupabaseRenderImages(
+              rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2d)),
+            ),
+          )
+        : html2d;
     return { ...row, html: html3 };
   });
 

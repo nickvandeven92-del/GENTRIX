@@ -31,9 +31,24 @@ function parseAllowedDevOrigins(): string[] {
   ];
 }
 
+const LONG_CACHE_IMMUTABLE = "public, max-age=31536000, immutable";
+const LONG_CACHE_FINGERPRINTED = "public, max-age=31536000, stale-while-revalidate=86400";
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: LONG_CACHE_IMMUTABLE }],
+      },
+      {
+        source: "/booking-app/assets/:path*",
+        headers: [{ key: "Cache-Control", value: LONG_CACHE_IMMUTABLE }],
+      },
+      {
+        source: "/icons/:path*",
+        headers: [{ key: "Cache-Control", value: LONG_CACHE_FINGERPRINTED }],
+      },
       {
         source: "/:path*",
         headers: SECURITY_HEADERS,
@@ -66,6 +81,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/render/image/public/**" },
     ],
   },
 };
