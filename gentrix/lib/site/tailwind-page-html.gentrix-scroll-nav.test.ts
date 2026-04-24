@@ -43,7 +43,7 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toMatch(/<html[^>]*\bdata-gentrix-scroll-nav-fallback="1"/);
     expect(doc).toMatch(/data-gentrix-scroll-nav/);
-    expect(doc).toMatch(/rgb\(8 16 34 \/ 0\.(72|74)\)/);
+    expect(doc).toMatch(/rgb\(8 16 34 \/ 0\.44\)/);
   });
 
   it("does not enable gentrix scroll-nav fallback for non-home slugs", () => {

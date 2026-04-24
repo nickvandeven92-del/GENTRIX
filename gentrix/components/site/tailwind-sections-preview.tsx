@@ -86,7 +86,7 @@ type TailwindSectionsPreviewProps = {
   viewportMode?: "auto" | "mobile" | "desktop";
   /** Server-build Tailwind CSS: gezet → geen Play CDN in srcDoc (minder console-warnings bij remount). */
   compiledTailwindCss?: string | null;
-  /** Korte merknaam in de auto-geïnjecteerde top-navbar (niet `config.style`). */
+  /** Korte merknaam voor favicon-titel / shell (niet `config.style`). */
   navBrandLabel?: string | null;
   /**
    * Alleen `SiteHtmlEditor`: home/contact/marketing in dezelfde iframe, `postMessage` wisselt alleen

@@ -1241,6 +1241,30 @@ nav.studio-nav-tone-light button span[class*="bg-white"] {
   background-color: var(--studio-nav-auto-fg) !important;
 }
 /*
+ * .studio-nav-tone-light zet de hele <header> op donkere voorgrond voor contrast op lichte hero’s.
+ * Mobiele sheets/drawers zitten DOM-gewijs in de header maar zijn vrijwel altijd donker — dan worden
+ * Lucide-sluiticonen (stroke currentColor) en links onzichtbaar. Zet dit vlak expliciet terug naar licht.
+ */
+header.studio-nav-tone-light :is(nav[aria-label="Mobiel menu"], nav[aria-label="Mobile menu"], div[aria-label="Mobiel menu"], div[aria-label="Mobile menu"], #site-mobile-sheet) :is(a, button, span, li, label) {
+  color: rgb(248 250 252) !important;
+}
+header.studio-nav-tone-light :is(nav[aria-label="Mobiel menu"], nav[aria-label="Mobile menu"], div[aria-label="Mobiel menu"], div[aria-label="Mobile menu"], #site-mobile-sheet) svg {
+  color: rgb(248 250 252) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+/* Menutoggle met expliciet wit (hamburger ↔ X) boven donkere hero: niet overschrijven met tone-light. */
+header.studio-nav-tone-light button.text-white,
+header.studio-nav-tone-light button[class*="text-white"] {
+  color: rgb(248 250 252) !important;
+}
+header.studio-nav-tone-light button.text-white svg,
+header.studio-nav-tone-light button[class*="text-white"] svg {
+  color: rgb(248 250 252) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+/*
  * Alleen expliciet gemarkeerde GENTRIX primary nav:
  * - top van pagina: transparant (geen witte balk over hero)
  * - na scroll: subtiele frosted laag voor leesbaarheid
@@ -1346,11 +1370,11 @@ header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
 header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"],
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] {
-  background-color: rgb(8 16 34 / 0.72) !important;
-  border-color: rgb(148 163 184 / 0.28) !important;
-  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.36) !important;
-  backdrop-filter: blur(10px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
+  background-color: rgb(8 16 34 / 0.44) !important;
+  border-color: rgb(148 163 184 / 0.22) !important;
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.2) !important;
+  backdrop-filter: blur(12px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto,
@@ -1360,11 +1384,11 @@ header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] .mx-auto,
 header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > .mx-auto,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] .mx-auto,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > .mx-auto {
-  background-color: rgb(8 16 34 / 0.72) !important;
-  border-color: rgb(148 163 184 / 0.26) !important;
-  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.3) !important;
-  backdrop-filter: blur(10px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
+  background-color: rgb(8 16 34 / 0.44) !important;
+  border-color: rgb(148 163 184 / 0.2) !important;
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.16) !important;
+  backdrop-filter: blur(12px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
@@ -2741,9 +2765,7 @@ export type BuildTailwindIframeSrcDocOptions = {
    * Alpine niet blokkeert in sandboxed `srcDoc`.
    */
   previewScriptOrigin?: string | null;
-  /**
-   * Korte merknaam voor de geïnjecteerde auto-navbar (niet `config.style` — dat is een briefing).
-   */
+  /** Korte merknaam: o.a. favicon-titel en site-credit-variant; logo-SVG via brand-fallback in bestaande header. */
   navBrandLabel?: string | null;
   /**
    * Pathname van deze pagina zoals in de parent (`/site/{slug}`, marketing-subroute, `/contact`).

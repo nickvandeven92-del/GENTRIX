@@ -48,7 +48,7 @@ type PublicPublishedTailwindProps = {
   webshopEnabled?: boolean;
   /** Zonder `pageOrigin` — die zet de client in `useEffect` vóór `buildTailwindIframeSrcDoc`. */
   contactSubpageNavBase?: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null;
-  /** Korte merknaam voor de auto-topnavbar (klantnaam); niet `documentTitle` met subpagina-suffix. */
+  /** Korte merknaam (klantnaam) voor favicon/shell; niet `documentTitle` met subpagina-suffix. */
   navBrandLabel?: string | null;
   /**
    * Server-side pre-computed srcDoc (RSC via `NEXT_PUBLIC_SITE_URL`).
