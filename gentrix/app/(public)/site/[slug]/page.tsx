@@ -6,6 +6,10 @@ import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { readPrettyPublicUrlContext } from "@/lib/site/pretty-public-url";
 import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
+import {
+  computePublicSiteShellColors,
+  publicSiteShellGlobalCssBlock,
+} from "@/lib/site/public-site-shell-inline-style";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 
 type SitePageProps = {
@@ -85,32 +89,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
   const hasCompiledTailwindCss =
     bundle.payload.kind === "tailwind" && Boolean(bundle.payload.tailwindCompiledCss?.trim());
   const flyerRelaxedTailwindCdn = showFlyer && !hasCompiledTailwindCss;
-  const shell = (() => {
-    const p = bundle.payload;
-
-    if (p.kind === "tailwind") {
-      const cfg = p.config != null && !isLegacyTailwindPageConfig(p.config) ? p.config : undefined;
-      const bg = cfg?.theme?.background?.trim() || cfg?.theme?.primary?.trim() || "#ffffff";
-      const fg = cfg?.theme?.textColor?.trim() || "#171717";
-      return { bg, fg };
-    }
-
-    if (p.kind === "react") {
-      return {
-        bg: p.doc?.theme?.background?.trim() || "#ffffff",
-        fg: p.doc?.theme?.foreground?.trim() || "#171717",
-      };
-    }
-
-    if (p.kind === "legacy") {
-      return {
-        bg: (p.site as { theme?: { background?: string; foreground?: string } })?.theme?.background?.trim() || "#ffffff",
-        fg: (p.site as { theme?: { background?: string; foreground?: string } })?.theme?.foreground?.trim() || "#171717",
-      };
-    }
-
-    return { bg: "#ffffff", fg: "#171717" };
-  })();
+  const shell = computePublicSiteShellColors(bundle.payload);
   const siteLabel =
     bundle.payload.kind === "tailwind"
       ? bundle.payload.clientName?.trim() || formatSlugForDisplay(slug)
@@ -125,16 +104,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
 
   return (
     <>
-      <style>{`
-        :root{
-          --public-site-shell-bg:${shell.bg};
-          --public-site-shell-fg:${shell.fg};
-        }
-        html,body{
-          background:${shell.bg}!important;
-          color:${shell.fg}!important;
-        }
-      `}</style>
+      <style>{publicSiteShellGlobalCssBlock(shell)}</style>
       <PublishedSiteView
         payload={bundle.payload}
         publishedSlug={slug}

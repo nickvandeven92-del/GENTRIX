@@ -13,6 +13,10 @@ import {
 } from "@/lib/site/tailwind-contact-subpage";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
+import {
+  computePublicSiteShellColors,
+  publicSiteShellGlobalCssBlock,
+} from "@/lib/site/public-site-shell-inline-style";
 
 type ContactSitePageProps = {
   params: Promise<{ slug: string }>;
@@ -108,8 +112,11 @@ export default async function PublicClientSiteContactPage({ params, searchParams
   const flyerTailwindPageConfig =
     bundle.payload.config != null && !isLegacyTailwindPageConfig(bundle.payload.config) ? bundle.payload.config : null;
 
+  const shell = computePublicSiteShellColors(bundle.payload);
+
   return (
     <>
+      <style>{publicSiteShellGlobalCssBlock(shell)}</style>
       <PublishedSiteView
         payload={bundle.payload}
         publishedSlug={slug}

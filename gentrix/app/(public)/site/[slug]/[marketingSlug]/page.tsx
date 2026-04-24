@@ -8,6 +8,10 @@ import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { resolveMarketingPageKeyForUrlSegment } from "@/lib/site/marketing-path-aliases";
 import { decodeRouteSlugParam, formatSlugForDisplay } from "@/lib/slug";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
+import {
+  computePublicSiteShellColors,
+  publicSiteShellGlobalCssBlock,
+} from "@/lib/site/public-site-shell-inline-style";
 
 type MarketingSitePageProps = {
   params: Promise<{ slug: string; marketingSlug: string }>;
@@ -101,8 +105,11 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
   const flyerTailwindPageConfig =
     bundle.payload.config != null && !isLegacyTailwindPageConfig(bundle.payload.config) ? bundle.payload.config : null;
 
+  const shell = computePublicSiteShellColors(bundle.payload);
+
   return (
     <>
+      <style>{publicSiteShellGlobalCssBlock(shell)}</style>
       <PublishedSiteView
         payload={bundle.payload}
         publishedSlug={slug}
