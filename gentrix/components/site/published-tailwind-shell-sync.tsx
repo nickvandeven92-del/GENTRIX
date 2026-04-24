@@ -14,17 +14,11 @@ export function PublishedTailwindShellSync(opts: {
   useLayoutEffect(() => {
     const attrs = publishedTailwindInlineHtmlShellAttrs(opts);
     const html = document.documentElement;
-    const previous = new Map<string, string | null>();
     for (const [k, v] of Object.entries(attrs)) {
-      previous.set(k, html.getAttribute(k));
       html.setAttribute(k, v);
     }
-    return () => {
-      for (const [k, old] of previous) {
-        if (old === null) html.removeAttribute(k);
-        else html.setAttribute(k, old);
-      }
-    };
+    /** Geen restore op unmount: tussen App Router-soft navigaties (home → contact) viel
+     * `data-gentrix-studio-iframe` kort weg → shell-CSS schakelde uit → zichtbare flits, vooral op Safari. */
   }, [syncKey]);
   return null;
 }
