@@ -88,7 +88,8 @@ export async function attachCompiledTailwindCssToPayload(
 
 /**
  * Eén extra poging na korte pauze als de eerste CLI-build leeg blijft (serverless/ephemeral FS-flakes).
- * Geldt alleen bij `compileBudgetMs: 0` (publiek `/site`): minder Play CDN op **alle** clients, i.c. merkbaar op WebKit.
+ * Gebruikt door `ensureTailwindCompiledCssOnPublishedPayload` (budget 0) én door **persist/generator** zodat
+ * snapshots zelden zonder `tailwindCompiledCss` in de DB landen.
  */
 async function attachCompiledTailwindWithColdStartRetry(
   tw: TailwindSectionsPayload,
@@ -99,6 +100,15 @@ async function attachCompiledTailwindWithColdStartRetry(
   await new Promise((r) => setTimeout(r, 220));
   out = await attachCompiledTailwindCssToPayload(tw, title);
   return out;
+}
+
+/** Zelfde dubbele compile-poging als het publieke `/site`-pad — aanroepen vóór snapshot naar Supabase. */
+export async function attachCompiledTailwindCssToPayloadWithColdStartRetry(
+  payload: TailwindSectionsPayload,
+  documentTitle: string,
+): Promise<TailwindSectionsPayload> {
+  const title = documentTitle.trim() || "Website";
+  return attachCompiledTailwindWithColdStartRetry(payload, title);
 }
 
 /**

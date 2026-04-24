@@ -38,7 +38,7 @@ describe("postProcessClaudeTailwindPage strip", () => {
       ],
     };
     const out = postProcessClaudeTailwindPage(page);
-    expect(out.sections.map((s) => s.id)).toEqual(["hero", "footer", "floating-whatsapp"]);
+    expect(out.sections.map((s) => s.id)).toEqual(["hero", "footer"]);
   });
 
   it("haalt inline studio-marquee uit sectie-HTML", () => {

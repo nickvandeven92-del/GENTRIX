@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { createAnonServerClient } from "@/lib/supabase/anon-server";
@@ -522,7 +523,8 @@ export function publishedSiteTag(slug: string): string {
 
 /**
  * Gecachede variant van `fetchActiveClientRow` — Vercel Data Cache, 60 seconden.
- * Alleen voor live sites (geen preview-token). Elke unieke slug heeft zijn eigen cache-entry.
+ * Ook bij `?token=`-requests: zelfde pad als live zodat actieve slugs niet elke hit uncached Supabase doen.
+ * `revalidateTag("published-site")` bij publiceren/persist bust de entry.
  */
 const fetchActiveClientRowCached = unstable_cache(
   (slug: string) => fetchActiveClientRow(slug),
@@ -533,12 +535,6 @@ const fetchActiveClientRowCached = unstable_cache(
   },
 );
 
-/**
- * Publieke site (`status = active`) óf **concept/gepauzeerd** met geldige `?token=` (zelfde routes als live, niet indexeerbaar).
- * Server-side met service role; fallback anon als key ontbreekt.
- *
- * Wrapped in `cache()` zodat `generateMetadata` + page in dezelfde request **één** Supabase-roundtrip doen.
- */
 export type PublishedSiteBundle = {
   payload: PublishedSitePayload;
   /** `false` = boekingslinks en booking-sectie worden op `/site/{slug}` verborgen. */
@@ -550,25 +546,28 @@ export type PublishedSiteBundle = {
   conceptPreviewToken?: string | null;
 };
 
-export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlug(
+/**
+ * Zware bundle-load (DB + resolve + optionele Tailwind-build) — achter `unstable_cache` per `(slug, token)`.
+ */
+async function loadPublishedSiteBundleFromOrigin(
   slug: string,
-  previewToken?: string | null,
+  previewToken: string | null,
 ): Promise<PublishedSiteBundle | null> {
   try {
-    const isPreview = Boolean(previewToken?.trim());
-    const activeRow = isPreview ? await fetchActiveClientRow(slug) : await fetchActiveClientRowCached(slug);
+    const activeRow = await fetchActiveClientRowCached(slug);
     let data = activeRow.data;
     const { error } = activeRow;
 
     let conceptAccess = false;
     let conceptTokenOut: string | null = null;
 
-    if (!error && !data && previewToken?.trim()) {
-      const draft = await fetchConceptDraftSiteRow(slug, previewToken);
+    const tokenTrim = previewToken?.trim() ?? "";
+    if (!error && !data && tokenTrim) {
+      const draft = await fetchConceptDraftSiteRow(slug, tokenTrim);
       if (!draft.error && draft.data) {
         data = draft.data;
         conceptAccess = true;
-        conceptTokenOut = previewToken.trim();
+        conceptTokenOut = tokenTrim;
       }
     }
 
@@ -584,7 +583,7 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
     if (!data) {
       devLogPublishedSite(
         slug,
-        previewToken?.trim()
+        tokenTrim
           ? "Geen actieve of geldige concept-site voor deze slug/token."
           : "Geen actieve rij: slug, status 'active', en schema (na migratie) controleren.",
       );
@@ -660,4 +659,31 @@ export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlu
   } catch {
     return null;
   }
+}
+
+const loadPublishedSiteBundleCached = unstable_cache(
+  async (slug: string, cacheTokenKey: string, previewToken: string | null) => {
+    return await loadPublishedSiteBundleFromOrigin(slug, previewToken);
+  },
+  ["published-site-bundle"],
+  { revalidate: 60, tags: ["published-site"] },
+);
+
+/**
+ * Publieke site (`status = active`) óf **concept/gepauzeerd** met geldige `?token=` (zelfde routes als live, niet indexeerbaar).
+ * Server-side met service role; fallback anon als key ontbreekt.
+ *
+ * Wrapped in `cache()` zodat `generateMetadata` + page in dezelfde request **één** Supabase-roundtrip doen.
+ */
+export const getPublishedSiteBySlug = cache(async function getPublishedSiteBySlug(
+  slug: string,
+  previewToken?: string | null,
+): Promise<PublishedSiteBundle | null> {
+  const tokenTrim = previewToken?.trim() ?? "";
+  const tokenForLoader = tokenTrim.length > 0 ? tokenTrim : null;
+  const cacheTokenKey = tokenForLoader
+    ? createHash("sha256").update(tokenForLoader).digest("hex").slice(0, 48)
+    : "live";
+
+  return await loadPublishedSiteBundleCached(slug, cacheTokenKey, tokenForLoader);
 });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
-import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { attachCompiledTailwindCssToPayloadWithColdStartRetry } from "@/lib/data/tailwind-compiled-css-attach";
 
 /** Zelfde Tailwind CLI-build als bij opslaan / `ensureTailwindCompiledCssOnPublishedPayload` (max ~60s op serverless). */
 export const maxDuration = 60;
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   void _existing;
 
   try {
-    const withCss = await attachCompiledTailwindCssToPayload(payloadWithoutStoredCss, docTitle);
+    const withCss = await attachCompiledTailwindCssToPayloadWithColdStartRetry(payloadWithoutStoredCss, docTitle);
     const css = withCss.tailwindCompiledCss?.trim();
     if (!css) {
       return NextResponse.json(

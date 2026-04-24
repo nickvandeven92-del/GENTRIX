@@ -1563,77 +1563,6 @@ const MAX_CLICKABLE_CONTACT_ANCHORS_PER_CANON = 2;
 
 const TEL_OR_WA_ANCHOR_RE = /<a\b[^>]*\bhref\s*=\s*(["'])(tel:[^"']*|https?:\/\/wa\.me\/[^"']+)\1[^>]*>[\s\S]*?<\/a>/gi;
 
-/** Canonieke zwevende WhatsApp-launcher (server postprocess); idempotent + na tel/wa-dedupe. */
-export const STUDIO_FLOATING_WHATSAPP_SECTION_ID = "floating-whatsapp";
-
-function sectionListAlreadyHasStudioFloatingWhatsApp(
-  sections: readonly { id?: string; html?: string }[],
-): boolean {
-  for (const s of sections) {
-    const id = (s.id ?? "").trim().toLowerCase();
-    if (id === STUDIO_FLOATING_WHATSAPP_SECTION_ID) return true;
-    if (typeof s.html === "string" && /\bdata-gentrix-floating-whatsapp\s*=\s*["']1["']/i.test(s.html)) return true;
-  }
-  return false;
-}
-
-/**
- * Eerste bruikbare `wa.me` / `tel:` uit de (reeds gelinkte) secties → `https://wa.me/<digits>`.
- * Anders `__STUDIO_CONTACT_PATH__` (zelfde contract als overige contact-CTA's).
- */
-function extractFirstWhatsAppLaunchHrefFromSections(sections: readonly { html: string }[]): string {
-  for (const s of sections) {
-    const re = new RegExp(TEL_OR_WA_ANCHOR_RE.source, "gi");
-    re.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(s.html)) !== null) {
-      const hrefAttr = m[2];
-      const key = canonicalTelOrWaMeHrefKey(hrefAttr);
-      if (!key) continue;
-      if (key.startsWith("wa:")) return `https://wa.me/${key.slice(3)}`;
-      if (key.startsWith("tel:")) return `https://wa.me/${key.slice(4)}`;
-    }
-  }
-  return STUDIO_CONTACT_PATH_PLACEHOLDER;
-}
-
-function buildStudioFloatingWhatsAppSectionRow(
-  sectionsAfterDedupe: ClaudeTailwindPageOutput["sections"],
-  config: ClaudeTailwindPageOutput["config"],
-): ClaudeTailwindPageOutput["sections"][number] | null {
-  if (sectionListAlreadyHasStudioFloatingWhatsApp(sectionsAfterDedupe)) return null;
-
-  const href = extractFirstWhatsAppLaunchHrefFromSections(sectionsAfterDedupe);
-  const isContactFallback = href === STUDIO_CONTACT_PATH_PLACEHOLDER;
-  const theme =
-    config != null && typeof config === "object" && "theme" in config
-      ? (config as { theme?: { primary?: string; accent?: string } }).theme
-      : undefined;
-  const ringHex =
-    typeof theme?.primary === "string" && /^#[0-9a-fA-F]{3,8}$/.test(theme.primary.trim())
-      ? theme.primary.trim()
-      : "#128C7E";
-
-  const aria = isContactFallback ? "Neem contact op" : "WhatsApp — start een gesprek";
-  const title = isContactFallback ? "Neem contact op" : "Chat via WhatsApp";
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-7 w-7 shrink-0" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.881 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>`;
-
-  const html = `<div data-gentrix-floating-whatsapp="1" class="pointer-events-none fixed bottom-5 right-5 z-[450] sm:bottom-6 sm:right-6 print:hidden">
-  <a data-gentrix-wa-launcher="1" href="${href}" target="_blank" rel="noopener noreferrer" title="${title.replace(/"/g, "&quot;")}" aria-label="${aria.replace(/"/g, "&quot;")}" class="pointer-events-auto group relative flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl shadow-emerald-900/30 ring-2 ring-white/45 transition-transform duration-200 ease-out will-change-transform hover:scale-110 hover:shadow-2xl active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80" style="--gentrix-wa-ring:${ringHex}">
-    <span class="pointer-events-none absolute -inset-1 rounded-full bg-[#25D366]/40 motion-safe:animate-ping motion-reduce:hidden" aria-hidden="true"></span>
-    <span class="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none" style="box-shadow:0 0 0 6px color-mix(in srgb, var(--gentrix-wa-ring) 35%, transparent)"></span>
-    ${svg}
-  </a>
-</div>`;
-
-  return {
-    id: STUDIO_FLOATING_WHATSAPP_SECTION_ID,
-    name: "WhatsApp (zwevend)",
-    html: withRootIdOnSectionHtml(html, STUDIO_FLOATING_WHATSAPP_SECTION_ID),
-  };
-}
-
 /**
  * Stabiele sleutel voor dedupe: `tel:` + alleen cijfers, of `wa:` + cijfers uit pad.
  * Andere href's blijven buiten scope.
@@ -1772,9 +1701,7 @@ export function postProcessClaudeTailwindPage(
   });
 
   const sectionsDeduped = dedupeExcessTelAndWhatsAppAnchorsAcrossSections(sectionsLinked);
-  const floatingRow = buildStudioFloatingWhatsAppSectionRow(sectionsDeduped, page.config);
-  const sectionsWithFloating = floatingRow ? [...sectionsDeduped, floatingRow] : sectionsDeduped;
-  const sectionsSticky = enforceStickyPrimaryTailwindChromeAcrossSections(sectionsWithFloating);
+  const sectionsSticky = enforceStickyPrimaryTailwindChromeAcrossSections(sectionsDeduped);
   const sectionsGentrixNav = options?.gentrixScrollNav
     ? enforceGentrixScrollNavMarkerAcrossSections(sectionsSticky)
     : sectionsSticky;

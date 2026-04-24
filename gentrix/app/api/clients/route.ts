@@ -14,7 +14,7 @@ import { mapSnapshotSourceToCreatedBy } from "@/lib/site/snapshot-created-by";
 import type { SiteSnapshotSource } from "@/lib/site/site-project-model";
 import { ensureClientPreviewSecret } from "@/lib/data/ensure-client-preview-secret";
 import { tryMarkLatestGenerationRunOutcome } from "@/lib/data/log-site-generation-run";
-import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { attachCompiledTailwindCssToPayloadWithColdStartRetry } from "@/lib/data/tailwind-compiled-css-attach";
 import { ensureCanonicalModuleSectionsForCrmFlags } from "@/lib/site/append-booking-section-to-payload";
 import { getPublicAppUrl } from "@/lib/site/public-app-url";
 import { projectSnapshotFromTailwindPayload, projectSnapshotToJson } from "@/lib/site/project-snapshot-io";
@@ -25,6 +25,7 @@ import {
   BRIEFING_EXPLICIT_WEBSHOP_SIGNAL,
   industryProfileIncludesCanonicalShopSection,
 } from "@/lib/ai/site-generation-industry-data";
+import { revalidatePublishedSiteBundleCacheForSlug } from "@/lib/data/revalidate-published-site-bundle-cache";
 
 /** Tailwind CLI-build bij opslaan kan enkele seconden duren (Vercel/serverless). */
 export const maxDuration = 60;
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: navPayloadIssue }, { status: 422 });
     }
     const docTitle = parsed.data.name?.trim() || "Website";
-    const withCss = await attachCompiledTailwindCssToPayload(twParsed.data, docTitle);
+    const withCss = await attachCompiledTailwindCssToPayloadWithColdStartRetry(twParsed.data, docTitle);
     const twStored = tailwindSectionsPayloadSchema.safeParse(withCss);
     if (!twStored.success) {
       return NextResponse.json(
@@ -366,6 +367,7 @@ export async function POST(request: Request) {
           displayName: parsed.data.name,
           webshopEnabled: resolvedWebshopEnabled,
         });
+        revalidatePublishedSiteBundleCacheForSlug(parsed.data.subfolder_slug);
         return NextResponse.json({
           ok: true,
           data: {
@@ -399,6 +401,7 @@ export async function POST(request: Request) {
       webshopEnabled: resolvedWebshopEnabled,
     });
 
+    revalidatePublishedSiteBundleCacheForSlug(parsed.data.subfolder_slug);
     return NextResponse.json({
       ok: true,
       data: {

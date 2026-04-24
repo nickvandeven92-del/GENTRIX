@@ -1,7 +1,8 @@
+import { revalidatePublishedSiteBundleCacheForSlug } from "@/lib/data/revalidate-published-site-bundle-cache";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
-import { attachCompiledTailwindCssToPayload } from "@/lib/data/tailwind-compiled-css-attach";
+import { attachCompiledTailwindCssToPayloadWithColdStartRetry } from "@/lib/data/tailwind-compiled-css-attach";
 import { ensureCanonicalModuleSectionsForCrmFlags } from "@/lib/site/append-booking-section-to-payload";
 import {
   projectSnapshotFromTailwindPayload,
@@ -74,7 +75,7 @@ export async function persistTailwindDraftForExistingClient(
   }
 
   const docTitle = options.documentTitle?.trim() || existing.name?.trim() || "Website";
-  const withCss = await attachCompiledTailwindCssToPayload(tailwindPayload, docTitle);
+  const withCss = await attachCompiledTailwindCssToPayloadWithColdStartRetry(tailwindPayload, docTitle);
   const withCanonicalModules = ensureCanonicalModuleSectionsForCrmFlags(withCss, flags);
   const navPayloadIssue = describeTailwindMarketingNavPayloadIssues({
     sections: withCanonicalModules.sections,
@@ -224,10 +225,12 @@ export async function persistTailwindDraftForExistingClient(
 
   if (ptrErr) {
     if (isPostgrestUnknownColumnError(ptrErr, "draft_snapshot_id")) {
+      revalidatePublishedSiteBundleCacheForSlug(existing.subfolder_slug);
       return { ok: true, snapshot_id: snapRow.id };
     }
     return { ok: false, error: `Pointers bijwerken mislukt: ${ptrErr.message}`, status: 500 };
   }
 
+  revalidatePublishedSiteBundleCacheForSlug(existing.subfolder_slug);
   return { ok: true, snapshot_id: snapRow.id };
 }
