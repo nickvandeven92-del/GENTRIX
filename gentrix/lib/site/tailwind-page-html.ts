@@ -1643,9 +1643,10 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
 </script>`;
 
 /**
- * Veel gegenereerde hero's wrappen de primaire `<header class="sticky …">` in `overflow-hidden` (Tailwind).
- * Dan is de scroll-container de hero i.p.v. de viewport — de balk scrollt mee i.p.v. te kleven.
- * Alleen eerste sticky header in de eerste `section[data-section]`; zet tussenliggende overflow op `visible`.
+ * Veel gegenereerde hero's wrappen de primaire `<header class="sticky …">` in `overflow-hidden` (Tailwind),
+ * soms ook de buitenste `section[data-section]`-wrapper. Dan is de scroll-container die sectie i.p.v. de
+ * viewport — de balk scrollt mee tot het einde van de hero. Zet overflow op `visible` op alle ancestors
+ * tot en met de eerste `section[data-section]` (daar stoppen we; verder omhoog niet aanpassen).
  */
 export const STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT = `<script>
 (function(){
@@ -1660,11 +1661,13 @@ export const STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT = `<script>
       if(!hdr)return;
       var cur=hdr.parentElement;
       while(cur&&cur!==document.body){
-        if(cur.matches&&cur.matches("section[data-section]"))break;
         var st=window.getComputedStyle(cur);
         if(truncates(st.overflowX,st.overflowY)){
           cur.style.setProperty("overflow","visible","important");
         }
+        /* Stop ná overflow-fix: eerste section[data-section]-wrapper had soms zelf overflow-hidden;
+         * eerder braken we vóór de fix → sticky werkte alleen tot einde hero. */
+        if(cur.matches&&cur.matches("section[data-section]"))break;
         cur=cur.parentElement;
       }
     }catch(_){}

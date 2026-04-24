@@ -255,12 +255,15 @@ export function SiteHtmlEditor({
 
   const persistFingerprint = useMemo(() => JSON.stringify({ p: payload, status }), [payload, status]);
 
+  /** Zelfde contract als `PublishedSiteView`: `siteIr` én `sectionIdsOrdered` — IR-volgorde wint in compose, anders fallback op snapshot-volgorde. */
   const composePlanForFullSite = useMemo((): ComposePublicMarketingPlan | null => {
-    if (initialSiteIr != null) return { siteIr: initialSiteIr };
     const ord =
       initialSectionIdsOrdered?.filter((id) => typeof id === "string" && id.trim().length > 0) ?? [];
-    if (ord.length > 0) return { sectionIdsOrdered: ord };
-    return null;
+    if (initialSiteIr == null && ord.length === 0) return null;
+    return {
+      ...(initialSiteIr != null ? { siteIr: initialSiteIr } : {}),
+      ...(ord.length > 0 ? { sectionIdsOrdered: ord } : {}),
+    };
   }, [initialSiteIr, initialSectionIdsOrdered]);
 
   const modulePreviewFlags = useMemo(
