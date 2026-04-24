@@ -1738,7 +1738,9 @@ export function postProcessClaudeTailwindPage(
     const html2 = mergeDuplicateClassOnChromeTags(html1);
     const html2b = fixAlpineNavToggleDefaultsInXData(html2);
     const html2c0 = repairBrokenMobileDrawer(html2b);
-    const html2c0b = convertMobileDrawerToPushDown(html2c0);
+    /** Zelfde stap als in `sanitizeTailwindFragment` (na drawer-repair, vóór push-down): anders blijft AI-markup met `flex-col` + gedraaide spans in de DB staan totdat er gesanitized wordt. */
+    const html2c0a = repairHeaderMobileMenuButton(html2c0);
+    const html2c0b = convertMobileDrawerToPushDown(html2c0a);
     const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0b);
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);

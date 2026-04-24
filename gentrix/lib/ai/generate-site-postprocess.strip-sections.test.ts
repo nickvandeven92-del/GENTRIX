@@ -105,4 +105,24 @@ describe("postProcessClaudeTailwindPage strip", () => {
     expect(out.sections[0].html).toMatch(/srcset="/);
     expect(out.sections[0].html.indexOf("bg-" + String.fromCharCode(91) + "url(")).toBe(-1);
   });
+
+  it("repareert mobiele hamburger/X in postProcess (MoSham flex-col patroon blijft niet in DB-HTML staan)", () => {
+    const moshamLike = `<header class="sticky top-0 z-50 bg-[#f5e6cb]" x-data="{ navOpen: false }">
+  <button type="button" class="md:hidden flex flex-col gap-[5px] p-2" aria-label="Menu" @click="navOpen = !navOpen">
+    <span x-show="!navOpen" class="block w-6 h-0.5 bg-[#1c130d]"></span>
+    <span x-show="!navOpen" class="block w-6 h-0.5 bg-[#1c130d]"></span>
+    <span x-show="!navOpen" class="block w-6 h-0.5 bg-[#1c130d]"></span>
+    <span x-show="navOpen" class="block w-6 h-0.5 bg-[#1c130d] rotate-45 translate-y-[7px]"></span>
+    <span x-show="navOpen" class="block w-6 h-0.5 bg-[#1c130d] -rotate-45"></span>
+  </button>
+</header>`;
+    const page: ClaudeTailwindPageOutput = {
+      config: baseConfig,
+      sections: [{ id: "hero", html: `<section id="hero">${moshamLike}<p>content</p></section>` }],
+    };
+    const out = postProcessClaudeTailwindPage(page);
+    expect(out.sections[0].html).toContain("gentrix-menu-icon");
+    expect(out.sections[0].html).toContain("<line");
+    expect(out.sections[0].html).not.toContain("translate-y-[7px]");
+  });
 });

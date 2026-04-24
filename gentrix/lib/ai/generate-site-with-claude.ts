@@ -20,6 +20,9 @@ import {
   MASTER_PROMPT_CONFIG_STYLE_MAX,
   mapClaudeMarketingSiteOutputToSections,
   mapClaudeOutputToSections,
+  slugifyToSectionId,
+  type ClaudeTailwindMarketingSiteOutput,
+  type ClaudeTailwindPageOutput,
   type GeneratedTailwindPage,
   type MasterPromptPageConfig,
   type TailwindSection,
@@ -2250,6 +2253,51 @@ function shouldEnableGentrixScrollNav(promptOptions?: GenerateSitePromptOptions)
   return slug === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
 }
 
+function tailwindSectionsToClaudeRows(sections: readonly TailwindSection[]): ClaudeTailwindPageOutput["sections"] {
+  return sections.map((s, i) => ({
+    id: s.id?.trim() ? s.id.trim() : slugifyToSectionId(s.sectionName, i),
+    html: s.html,
+    name: s.sectionName,
+  }));
+}
+
+/**
+ * `postProcessClaudeTailwindPage` draait al in `finalizeGenerateSiteFromClaudeText`, vóór
+ * {@link applyAiHeroImageToGeneratedPage}. De geïnjecteerde hero-`<img>` krijgt dan geen
+ * Supabase-render-URL/srcset/LCP-hints. Herhaal dezelfde postprocess na late HTML-mutaties.
+ */
+function repostProcessTailwindAfterLateMutations(
+  data: GeneratedTailwindPage,
+  promptOptions?: GenerateSitePromptOptions,
+): GeneratedTailwindPage {
+  const gentrixScrollNav = shouldEnableGentrixScrollNav(promptOptions);
+
+  if (data.contactSections != null && data.contactSections.length > 0) {
+    const page: ClaudeTailwindMarketingSiteOutput = {
+      config: data.config,
+      sections: tailwindSectionsToClaudeRows(data.sections),
+      contactSections: tailwindSectionsToClaudeRows(data.contactSections),
+      ...(data.marketingPages != null && Object.keys(data.marketingPages).length > 0
+        ? {
+            marketingPages: Object.fromEntries(
+              Object.entries(data.marketingPages).map(([k, secs]) => [k, tailwindSectionsToClaudeRows(secs)]),
+            ),
+          }
+        : {}),
+    };
+    const processed = postProcessClaudeTailwindMarketingSite(page, { gentrixScrollNav });
+    return { ...data, ...mapClaudeMarketingSiteOutputToSections(processed) };
+  }
+
+  const single: ClaudeTailwindPageOutput = {
+    config: data.config,
+    sections: tailwindSectionsToClaudeRows(data.sections),
+  };
+  const processed = postProcessClaudeTailwindPage(single, { gentrixScrollNav });
+  const mapped = mapClaudeOutputToSections(processed);
+  return { ...data, sections: mapped.sections, config: mapped.config };
+}
+
 function finalizeGenerateSiteFromClaudeText(
   textBody: string,
   stop_reason: string | null,
@@ -2517,6 +2565,8 @@ export async function executeGenerateSitePhase2(
       preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
     }),
   };
+
+  data = repostProcessTailwindAfterLateMutations(data, promptOptions);
 
   if (process.env.NODE_ENV === "development") {
     const joined = data.sections.map((s) => s.html).join("\n");
@@ -3100,6 +3150,8 @@ export function createGenerateSiteReadableStream(
             preserveLayoutUpgrade: Boolean(promptOptions?.preserveLayoutUpgrade),
           }),
         };
+
+        data = repostProcessTailwindAfterLateMutations(data, promptOptions);
 
         if (process.env.NODE_ENV === "development") {
           const joined = data.sections.map((s) => s.html).join("\n");
