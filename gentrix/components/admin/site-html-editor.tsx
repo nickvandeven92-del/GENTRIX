@@ -32,7 +32,11 @@ import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panel
 import { SiteAiChatPanel } from "@/components/admin/site-ai-chat-panel";
 import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
 import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
-import type { ComposePublicMarketingPlan } from "@/lib/site/public-site-composition";
+import {
+  composePublicMarketingTailwindSections,
+  type ComposePublicMarketingPlan,
+} from "@/lib/site/public-site-composition";
+import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
 import {
   createInitialSiteHistory,
@@ -113,6 +117,8 @@ type SiteHtmlEditorProps = {
   webshopEnabled?: boolean;
   /** Uit concept-snapshot: compose-preview + optioneel opnieuw meesturen bij POST. */
   initialSiteIr?: SiteIrV1 | null;
+  /** Compose-volgorde uit snapshot (`composition`); zelfde bron als `/site` wanneer geen volledige IR. */
+  initialSectionIdsOrdered?: string[];
   /** Alleen concept: iframe-nav zet `?token=` op `/site/…`-links (zelfde als publieke concept-URL). */
   draftPublicPreviewToken?: string | null;
   /** Gecompileerde Tailwind uit snapshot — preview zonder Play CDN als aanwezig. */
@@ -135,6 +141,7 @@ export function SiteHtmlEditor({
   appointmentsEnabled = true,
   webshopEnabled = true,
   initialSiteIr = null,
+  initialSectionIdsOrdered,
   draftPublicPreviewToken = null,
   initialTailwindCompiledCss = null,
 }: SiteHtmlEditorProps) {
@@ -248,34 +255,63 @@ export function SiteHtmlEditor({
 
   const persistFingerprint = useMemo(() => JSON.stringify({ p: payload, status }), [payload, status]);
 
+  const composePlanForFullSite = useMemo((): ComposePublicMarketingPlan | null => {
+    if (initialSiteIr != null) return { siteIr: initialSiteIr };
+    const ord =
+      initialSectionIdsOrdered?.filter((id) => typeof id === "string" && id.trim().length > 0) ?? [];
+    if (ord.length > 0) return { sectionIdsOrdered: ord };
+    return null;
+  }, [initialSiteIr, initialSectionIdsOrdered]);
+
+  const modulePreviewFlags = useMemo(
+    () => ({ appointmentsEnabled, webshopEnabled }),
+    [appointmentsEnabled, webshopEnabled],
+  );
+
+  /** Zelfde pipeline als `PublishedSiteView`: eerst publieke compose, daarna landing/contact-selectie. */
+  const composedPublicSections = useMemo(
+    () =>
+      composePublicMarketingTailwindSections(
+        filterSectionsForPublicSite(sections),
+        modulePreviewFlags,
+        composePlanForFullSite ?? undefined,
+      ),
+    [sections, modulePreviewFlags, composePlanForFullSite],
+  );
+
   const contactPlan = useMemo(
-    () => resolvePublicTailwindContactPlan(sections, contactSections),
-    [sections, contactSections],
+    () => resolvePublicTailwindContactPlan(composedPublicSections, contactSections),
+    [composedPublicSections, contactSections],
   );
 
   const previewSections = useMemo(() => {
     if (previewRoute.kind === "contact" && hasResolvedPublicContactRoute(contactPlan)) {
-      return selectTailwindSectionsForPublicView(sections, "contact", contactPlan);
+      return selectTailwindSectionsForPublicView(composedPublicSections, "contact", contactPlan);
     }
     if (previewRoute.kind === "marketing" && marketingPages) {
       const sub = marketingPages[previewRoute.slug];
-      if (sub && sub.length > 0) return sub;
+      if (sub && sub.length > 0) {
+        return composePublicMarketingTailwindSections(
+          filterSectionsForPublicSite(sub),
+          modulePreviewFlags,
+          composePlanForFullSite ?? undefined,
+        );
+      }
     }
-    return selectTailwindSectionsForPublicView(sections, "landing", contactPlan);
-  }, [previewRoute, sections, contactPlan, contactSections, marketingPages]);
-
-  const composePlan: ComposePublicMarketingPlan | null = useMemo(() => {
-    const sectionIdsOrdered = previewSections.map((s, i) => s.id ?? slugifyToSectionId(s.sectionName, i));
-    if (initialSiteIr != null) {
-      return { siteIr: { ...initialSiteIr, sectionIdsOrdered } };
-    }
-    return { sectionIdsOrdered };
-  }, [previewSections, initialSiteIr]);
+    return selectTailwindSectionsForPublicView(composedPublicSections, "landing", contactPlan);
+  }, [
+    previewRoute,
+    composedPublicSections,
+    contactPlan,
+    marketingPages,
+    modulePreviewFlags,
+    composePlanForFullSite,
+  ]);
 
   const contactSubpageNavForHtmlEditor: ContactSubpageNavScriptInput | null = useMemo(() => {
     if (typeof window === "undefined") return null;
-    if (!subfolderSlug.trim() || sections.length === 0) return null;
-    const landIds = landingSectionIdsForPublicSubpageNav(sections, contactPlan);
+    if (!subfolderSlug.trim() || composedPublicSections.length === 0) return null;
+    const landIds = landingSectionIdsForPublicSubpageNav(composedPublicSections, contactPlan);
     const mks = Object.keys(marketingPages ?? {});
     if (landIds.length === 0 && mks.length === 0) return null;
     const view =
@@ -297,7 +333,7 @@ export function SiteHtmlEditor({
     };
   }, [
     subfolderSlug,
-    sections,
+    composedPublicSections,
     contactPlan,
     marketingPages,
     previewRoute,
@@ -970,7 +1006,7 @@ export function SiteHtmlEditor({
                   draftPublicPreviewToken={draftPublicPreviewToken}
                   appointmentsEnabled={appointmentsEnabled}
                   webshopEnabled={webshopEnabled}
-                  composePlan={composePlan}
+                  skipPublicMarketingCompose
                   viewportMode={previewViewportMode}
                   compiledTailwindCss={previewCompiledCss}
                   navBrandLabel={initialName.trim() || subfolderSlug}

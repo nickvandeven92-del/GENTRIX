@@ -1791,6 +1791,7 @@ export function buildDefaultClaudeMarketingContactSectionRow(
   html: string;
 } {
   const links = marketingSlugs
+    .filter((slug) => slug.trim().toLowerCase() !== "faq")
     .map((slug) => {
       const s = slug.trim().toLowerCase();
       const label = marketingPageNavLabel(s);

@@ -4,4 +4,7 @@
  *
  * Dit bestand is bewaard voor backward-compatibility maar wordt niet meer actief gebruikt.
  */
-export type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
+export type {
+  BriefingClientFollowUp,
+  GenerationPipelineFeedback,
+} from "@/lib/ai/generate-site-with-claude";

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
+import { ConceptFlyerExperienceLazy } from "@/components/site/concept-flyer-experience-lazy";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
@@ -102,14 +102,27 @@ export default async function PublicClientSiteContactPage({ params, searchParams
   }
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
+  const hasCompiledTailwindCss = Boolean(bundle.payload.tailwindCompiledCss?.trim());
+  const flyerRelaxedTailwindCdn = showFlyer && !hasCompiledTailwindCss;
   const siteLabel = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
   const flyerTailwindPageConfig =
     bundle.payload.config != null && !isLegacyTailwindPageConfig(bundle.payload.config) ? bundle.payload.config : null;
 
   return (
     <>
+      <PublishedSiteView
+        payload={bundle.payload}
+        publishedSlug={slug}
+        appointmentsEnabled={bundle.appointmentsEnabled}
+        webshopEnabled={bundle.webshopEnabled}
+        publicSiteTailwindPath="contact"
+        draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+        prettyPublicUrls={prettyPublicUrls}
+        relaxedTailwindCdnLoading={flyerRelaxedTailwindCdn}
+        flyerPreview={showFlyer}
+      />
       {showFlyer ? (
-        <ConceptFlyerExperience
+        <ConceptFlyerExperienceLazy
           siteLabel={siteLabel}
           slug={slug}
           appointmentsEnabled={bundle.appointmentsEnabled}
@@ -119,17 +132,6 @@ export default async function PublicClientSiteContactPage({ params, searchParams
           preserveFlyerQuery={showFlyer}
         />
       ) : null}
-      <PublishedSiteView
-        payload={bundle.payload}
-        publishedSlug={slug}
-        appointmentsEnabled={bundle.appointmentsEnabled}
-        webshopEnabled={bundle.webshopEnabled}
-        publicSiteTailwindPath="contact"
-        draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
-        prettyPublicUrls={prettyPublicUrls}
-        relaxedTailwindCdnLoading={showFlyer}
-        flyerPreview={showFlyer}
-      />
     </>
   );
 }

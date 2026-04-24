@@ -1,11 +1,60 @@
 "use client";
 
-import { Brain, Clock, Loader2, Sparkles } from "lucide-react";
+import { Brain, Clock, Loader2, MessageCircleQuestion, Sparkles } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import { formatDesignContractHumanSummaryNl } from "@/lib/ai/design-contract-human-summary";
 import { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
-import type { GenerationPipelineFeedback } from "@/lib/ai/generate-site-with-claude";
+import type {
+  BriefingClientFollowUp,
+  GenerationPipelineFeedback,
+} from "@/lib/ai/generate-site-with-claude";
 import { briefGenerationActivityLabel } from "@/lib/studio/brief-generation-activity-label";
+
+function ClientFollowUpSection({ followUp }: { followUp: BriefingClientFollowUp }) {
+  return (
+    <section
+      className="rounded-lg border border-amber-200/90 bg-amber-50/70 p-3 dark:border-amber-900/45 dark:bg-amber-950/30"
+      aria-labelledby="gentrix-client-followup-heading"
+    >
+      <h3
+        id="gentrix-client-followup-heading"
+        className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-950 dark:text-amber-100"
+      >
+        <MessageCircleQuestion className="size-3.5 shrink-0" aria-hidden />
+        Vervolg voor jouw briefing
+      </h3>
+      <p className="mt-1 text-[11px] font-medium leading-snug text-amber-950 dark:text-amber-50">{followUp.headline}</p>
+      {followUp.intro ? (
+        <p className="mt-1.5 text-xs leading-relaxed text-amber-950/90 dark:text-amber-100/90">{followUp.intro}</p>
+      ) : null}
+      <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-900/80 dark:text-amber-200/85">
+        Handige vragen (beantwoord ze in je volgende briefing)
+      </p>
+      <ul className="mt-1 list-inside list-disc space-y-1 text-xs leading-relaxed text-amber-950 dark:text-amber-50">
+        {followUp.questions.map((q, i) => (
+          <li key={i}>{q}</li>
+        ))}
+      </ul>
+      {followUp.suggestionChips && followUp.suggestionChips.length > 0 ? (
+        <>
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-amber-900/80 dark:text-amber-200/85">
+            Voorbeeldzinnen (kopieer wat past)
+          </p>
+          <ul className="mt-1 space-y-1">
+            {followUp.suggestionChips.map((chip, i) => (
+              <li
+                key={i}
+                className="rounded-md border border-amber-200/80 bg-white/90 px-2 py-1.5 font-mono text-[11px] leading-snug text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-50"
+              >
+                {chip}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
 
 export type GenerationDetailsBodyProps = {
   feedback: GenerationPipelineFeedback | null;
@@ -133,6 +182,8 @@ export function GenerationDetailsBody({
             </>
           )}
         </section>
+
+        {interpreted?.clientFollowUp ? <ClientFollowUpSection followUp={interpreted.clientFollowUp} /> : null}
 
         <section className="rounded-lg border border-violet-200/80 bg-violet-50/50 p-3 dark:border-violet-900/50 dark:bg-violet-950/30">
           <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-violet-900 dark:text-violet-200">

@@ -268,7 +268,7 @@ ${pi.marketingPageSlugs?.length ? `- **Verplichte marketing-routes (JSON):** \`m
   const strictLandingBlock =
     pi?.strictLandingPageContract === true
       ? `=== ONE-PAGER STUDIO-CONTRACT (deze run) ===
-- Behoud **exact ${pi.sections?.length ?? "3–4"}** landings-secties met **dezelfde \`id\`'s in dezelfde volgorde** als pass 1 (${strictOrderLine}). **Geen** \`faq\` op \`sections\` — FAQ blijft op \`marketingPages["faq"]\` indien aanwezig.
+- Behoud **exact ${pi.sections?.length ?? "3–4"}** landings-secties met **dezelfde \`id\`'s in dezelfde volgorde** als pass 1 (${strictOrderLine}). **Geen** \`faq\` op \`sections\` — FAQ blijft op \`marketingPages["faq"]\` indien aanwezig; **FAQ-link alleen in de footer**, niet in \`<header>\`; op de FAQ-pagina **inklapbare Q/A** (\`<details><summary>\` of Alpine).
 - **Geen** \`studio-marquee\`, \`studio-marquee-track\` of \`<marquee>\` in de HTML — verwijder die als ze voorkomen.
 - **Eind-CTA** hoort in \`footer\`; geen aparte \`cta\`-sectie toevoegen.
 

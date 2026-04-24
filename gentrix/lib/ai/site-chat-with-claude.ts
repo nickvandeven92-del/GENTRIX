@@ -146,7 +146,7 @@ function buildClaudeMessages(
 
 === Scope (deze beurt) ===
 Volledige HTML staat alleen onder **targetSections**. **sectionIndex** somt alle secties zonder HTML (context voor ankertjes en volgorde).
-In \`sectionUpdates\` mag je **uitsluitend** deze indices wijzigen: ${scopedIndices.join(", ")}. Geen wijzigingen aan andere secties — ook niet voor “kleine” consistentie-fixes. Algemene thema/kleuren via \`config\` blijft toegestaan als de gebruiker dat expliciet vraagt.
+In \`sectionUpdates\` mag je **uitsluitend** deze indices wijzigen: ${scopedIndices.join(", ")}. Geen wijzigingen aan andere secties — ook niet voor “kleine” consistentie-fixes. Algemene thema/kleuren via \`config\` blijft toegestaan bij **gewone taal** over sfeer/look (ook zonder woorden als “thema” of “kleurcode”).
 `
       : "";
   const tailText = `${last.content}${attach}\n\n---\nHuidige website (JSON)${scopedIndices != null && scopedIndices.length > 0 ? " — beperkte scope voor deze beurt" : " — alle secties"}:\n${JSON.stringify(payload)}\n---${scopedBlock}`;
@@ -184,7 +184,7 @@ function buildStudioModulePromptBlock(flags: SiteChatStudioModuleFlags | undefin
 function buildChatSystemPrompt(legacy: boolean, studioModuleFlags?: SiteChatStudioModuleFlags): string {
   const configRule = legacy
     ? `Als je \`sections\` wijzigt: geen \`config\` in je antwoord (legacy-site).`
-    : `Als de gebruiker kleuren/thema wil: je mag \`config\` (master: style, theme, font) meesturen. Anders weglaten.`;
+    : `Als de gebruiker in **gewone taal** andere sfeer/kleuren/typografie wil (ook vage termen als “warmer”, “luxe”, “strakker”): mag je \`config\` (master: style, theme, font) meesturen en HTML daarop afstemmen — **zonder** dat ze fontnamen of hex hoeven te noemen. Anders weglaten.`;
 
   const moduleBlock = buildStudioModulePromptBlock(studioModuleFlags);
   const moduleSection = moduleBlock ? `\n\n${moduleBlock}\n` : "";
@@ -195,8 +195,10 @@ ${getAlpineInteractivityPromptBlock()}
 ${moduleSection}
 GEDRAG:
 - Beantwoord helder in \`reply\` (markdown toegestaan in plain text).
-- **Consultatie eerst (sterk aanbevolen):** bij **vage, creatieve of grote ontwerpverzoeken** (nieuwe hero, andere sfeer/huisstijl, herschikken van secties, “luxer”, “anders”, enkele woorden zonder context): reageer in **dezelfde beurt** met **2 tot 4 gerichte vragen** (doelgroep, gewenste sfeer, wat mag wél/niet weg, mobiel vs. desktop-prioriteit, referentie). Laat in die beurt \`sectionUpdates\` en \`config\` **weg** — tenzij de gebruiker expliciet vraagt om **directe uitvoering** (bijv. “doe maar”, “implementeer”, “voer uit”, “geen vragen”, “fix dit”).
-- **Direct uitvoeren mag** bij kleine, eenduidige technische verzoeken (bv. sticky header, contrast, typo, één class wijzigen) als de scope helder is; voeg hoogstens **één** korte verduidelijkingsvraag toe als er echt risico op verkeerde interpretatie is.
+- **Stijl in gewone taal → direct uitvoeren:** korte sfeer- of look-opdrachten (“warmer”, “luxer”, “strakker zakelijk”, “rustiger”, “moderner”, “meer contrast”, “zachtere kleuren”, “professioneler”, “uitnodigender knoppen”, …) zet je **zelf** om naar \`sectionUpdates\` + zo nodig \`config\` (typografie, palet, spacing). De gebruiker hoeft **geen** lettertype, hex of Tailwind-termen te noemen. Leg in \`reply\` kort uit wat je deed (menselijk, geen jargon-storm).
+- **Consultatie eerst** alleen bij **grote, open ontwerp-herschikkingen** waar zonder context echt gevaar is voor verkeerde richting (bv. “compleet andere site”, “nieuwe opzet met andere secties”, “andere branche”, “alles anders” zonder enige hint): dan mag je **1 tot 2** gerichte vragen stellen **of** — als de gebruiker duidelijk uitvoering wil — direct een redelijke eerste versie leveren. **Niet** standaard 2–4 vragen bij eenvoudige sfeer-tweaks.
+- **Twee gelijke interpretaties:** als de wens **inhoudelijk tegenstrijdig** is of twee richtingen even plausibel zijn (zonder dat “luxer/strakker” dat is — daar voer je uit), stel **één** heldere vraag **of** geef in \`reply\` **2–3 korte opties** (A / B / C) in begrijpelijke taal; laat \`sectionUpdates\` weg tot de gebruiker kiest **tenzij** ze “kies jij”, “doe maar” of “implementeer” zeggen — dan kies jij de beste default en voer uit.
+- **Direct uitvoeren** ook bij kleine technische verzoeken (sticky header, contrast, typo, één class); hoogstens **één** korte vraag bij echt risico op verkeerde interpretatie.
 - Wijzig de site **alleen** als de gebruiker uitvoering wil of het verzoek zo concreet is dat wachten onzin is. Bij een puur inhoudelijke vraag zonder wijziging: laat \`sectionUpdates\` en \`config\` weg.
 - **Streaming / leesvolgorde:** de UI toont het begin van \`reply\` al terwijl de rest van het antwoord nog binnenkomt. Begin \`reply\` daarom **niet** met formuleringen als “Het is klaar”, “Is nu gemaakt”, “Heb ik gedaan” of andere **voltooide** boodschap als eerste zin. Als je wél \`sectionUpdates\` meestuurt: begin met korte context of intentie (bijv. “Ik pas dit toe in de preview:”), werk daarna uit, en **sluit af** met een korte technische samenvatting (wat is waar aangepast). Zo voelt het niet alsof er “al klaar” wordt gezegd vóór de wijziging zichtbaar is.
 - Als je HTML wijzigt: gebruik \`sectionUpdates\`: alleen objecten voor secties die **echt** veranderen, elk met \`index\` (zoals in de JSON) en volledige nieuwe \`html\` voor die sectie. Voorbeeld: alleen navbar → één update; alleen footer → één update. **Nooit** ongewijzigde secties opnieuw uitschrijven. Bevat het user-JSON een **Scope**-blok met toegestane indices, mag je **alleen** die indices in \`sectionUpdates\` gebruiken.

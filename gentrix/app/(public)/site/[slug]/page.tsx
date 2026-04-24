@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
+import { ConceptFlyerExperienceLazy } from "@/components/site/concept-flyer-experience-lazy";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { readPrettyPublicUrlContext } from "@/lib/site/pretty-public-url";
@@ -82,6 +82,9 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
   const prettyCtx = await readPrettyPublicUrlContext();
   const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
+  const hasCompiledTailwindCss =
+    bundle.payload.kind === "tailwind" && Boolean(bundle.payload.tailwindCompiledCss?.trim());
+  const flyerRelaxedTailwindCdn = showFlyer && !hasCompiledTailwindCss;
   const shell = (() => {
     const p = bundle.payload;
 
@@ -132,8 +135,18 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
           color:${shell.fg}!important;
         }
       `}</style>
+      <PublishedSiteView
+        payload={bundle.payload}
+        publishedSlug={slug}
+        appointmentsEnabled={bundle.appointmentsEnabled}
+        webshopEnabled={bundle.webshopEnabled}
+        draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
+        prettyPublicUrls={prettyPublicUrls}
+        relaxedTailwindCdnLoading={flyerRelaxedTailwindCdn}
+        flyerPreview={showFlyer}
+      />
       {showFlyer ? (
-        <ConceptFlyerExperience
+        <ConceptFlyerExperienceLazy
           siteLabel={siteLabel}
           slug={slug}
           appointmentsEnabled={bundle.appointmentsEnabled}
@@ -143,16 +156,6 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
           preserveFlyerQuery={showFlyer}
         />
       ) : null}
-      <PublishedSiteView
-        payload={bundle.payload}
-        publishedSlug={slug}
-        appointmentsEnabled={bundle.appointmentsEnabled}
-        webshopEnabled={bundle.webshopEnabled}
-        draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
-        prettyPublicUrls={prettyPublicUrls}
-        relaxedTailwindCdnLoading={showFlyer}
-        flyerPreview={showFlyer}
-      />
     </>
   );
 }

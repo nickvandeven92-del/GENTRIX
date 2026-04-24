@@ -73,6 +73,11 @@ type TailwindSectionsPreviewProps = {
   /** Optioneel: snapshot-volgorde + Site IR (editor/live-parity); geen layout-presets. */
   composePlan?: ComposePublicMarketingPlan | null;
   /**
+   * `SiteHtmlEditor`: secties zijn al door `composePublicMarketingTailwindSections` (zelfde als `/site`);
+   * geen tweede compose in de preview (voorkomt drift).
+   */
+  skipPublicMarketingCompose?: boolean;
+  /**
    * Studio-editor: viewport / breakpoints in de iframe.
    * - `auto`: breakpoints volgen de **preview-paneelbreedte** (sleepbalk) — naadloos tablet/telefoon zonder horizontale scrollbar.
    * - `mobile`: smalle telefoonbreedte + `device-width` (mobiele Tailwind-breakpoints).
@@ -112,6 +117,7 @@ export function TailwindSectionsPreview({
   appointmentsEnabled = true,
   webshopEnabled = true,
   composePlan = null,
+  skipPublicMarketingCompose = false,
   viewportMode = "auto",
   compiledTailwindCss,
   navBrandLabel,
@@ -163,15 +169,17 @@ export function TailwindSectionsPreview({
 
   const previewSections = useMemo(
     () =>
-      composePublicMarketingTailwindSections(
-        filterSectionsForPublicSite(sections),
-        {
-          appointmentsEnabled,
-          webshopEnabled,
-        },
-        composePlan ?? undefined,
-      ),
-    [sections, appointmentsEnabled, webshopEnabled, composePlan],
+      skipPublicMarketingCompose
+        ? sections
+        : composePublicMarketingTailwindSections(
+            filterSectionsForPublicSite(sections),
+            {
+              appointmentsEnabled,
+              webshopEnabled,
+            },
+            composePlan ?? undefined,
+          ),
+    [sections, appointmentsEnabled, webshopEnabled, composePlan, skipPublicMarketingCompose],
   );
 
   const srcDoc = useMemo(
@@ -284,6 +292,18 @@ export function TailwindSectionsPreview({
       key={`studio-preview-${String(previewMatchParentWindowBreakpoints)}-${String(studioMobileEditorFrame)}-${viewportMode}`}
       ref={iframeRef}
       title={title}
+      onLoad={() => {
+        try {
+          const w = iframeRef.current?.contentWindow;
+          if (!w) return;
+          w.scrollTo(0, 0);
+          const d = w.document;
+          if (d?.documentElement) d.documentElement.scrollTop = 0;
+          if (d?.body) d.body.scrollTop = 0;
+        } catch {
+          /* srcDoc sandbox: sommige browsers beperken parent→iframe; geen harde fout */
+        }
+      }}
       className={cn(
         "border-0 bg-white",
         previewMatchParentWindowBreakpoints ? "max-w-none shrink-0" : "w-full",

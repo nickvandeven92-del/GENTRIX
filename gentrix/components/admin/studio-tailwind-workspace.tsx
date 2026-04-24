@@ -36,6 +36,8 @@ export type StudioTailwindWorkspaceProps = {
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
   initialSiteIr?: SiteIrV1 | null;
+  /** Zelfde compose-volgorde als `/site` (snapshot `composition` / IR). */
+  initialSectionIdsOrdered?: string[];
   draftPublicPreviewToken?: string | null;
   /** Uit snapshot: inline in iframe-preview i.p.v. Play CDN. */
   initialTailwindCompiledCss?: string | null;
@@ -120,6 +122,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
             appointmentsEnabled={props.appointmentsEnabled ?? true}
             webshopEnabled={props.webshopEnabled ?? true}
             initialSiteIr={props.initialSiteIr ?? null}
+            initialSectionIdsOrdered={props.initialSectionIdsOrdered}
             draftPublicPreviewToken={props.draftPublicPreviewToken ?? null}
             initialTailwindCompiledCss={props.initialTailwindCompiledCss ?? null}
           />

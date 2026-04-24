@@ -21,7 +21,7 @@ import { buildPublicStudioBookingHref, buildPublicStudioOrderHref } from "@/lib/
 import { ShowroomWordmark } from "@/components/public/showroom-wordmark";
 import { cn } from "@/lib/utils";
 
-type ConceptFlyerExperienceProps = {
+export type ConceptFlyerExperienceProps = {
   siteLabel: string;
   slug: string;
   appointmentsEnabled: boolean;

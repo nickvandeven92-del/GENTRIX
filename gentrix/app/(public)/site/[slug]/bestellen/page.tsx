@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ConceptFlyerExperience } from "@/components/site/concept-flyer-experience";
+import { ConceptFlyerExperienceLazy } from "@/components/site/concept-flyer-experience-lazy";
 import { StudioWebsiteOrderClient } from "@/components/site/studio-website-order-client";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
 import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
@@ -91,8 +91,9 @@ export default async function PublicStudioSiteOrderPage({ params, searchParams }
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
+      <StudioWebsiteOrderClient slug={slug} siteLabel={siteLabel} previewToken={previewToken.trim()} backHref={backHref} />
       {showFlyer ? (
-        <ConceptFlyerExperience
+        <ConceptFlyerExperienceLazy
           siteLabel={siteLabel}
           slug={slug}
           appointmentsEnabled={bundle.appointmentsEnabled}
@@ -101,7 +102,6 @@ export default async function PublicStudioSiteOrderPage({ params, searchParams }
           preserveFlyerQuery={showFlyer}
         />
       ) : null}
-      <StudioWebsiteOrderClient slug={slug} siteLabel={siteLabel} previewToken={previewToken.trim()} backHref={backHref} />
     </div>
   );
 }

@@ -40,6 +40,7 @@ import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { describeTailwindMarketingNavPayloadIssues } from "@/lib/site/tailwind-marketing-nav-consistency";
 import {
   collectMarketingNavScanHtml,
+  validateMarketingFaqLinkNotInHeader,
   validateMarketingPageContent,
   validateMarketingPageLinks,
   validateMarketingPagePlanNavCoverage,
@@ -100,6 +101,15 @@ export type { IndustryProfile } from "@/lib/ai/site-generation-industry-data";
 /** Waar de gekozen stijl vandaan komt ??? handig voor debugging. */
 export type StyleDetectionSource = "explicit_stijl_line" | "keyword_match" | "none";
 
+/** Vervolgfeedback wanneer de briefing ruimte laat voor interpretatie — zichtbaar in de studio-UI (geen extra modelronde). */
+export type BriefingClientFollowUp = {
+  headline: string;
+  intro?: string;
+  questions: string[];
+  /** Korte richtingen die de gebruiker aan de briefing kan toevoegen (geen techniek). */
+  suggestionChips?: string[];
+};
+
 export type GenerationPipelineFeedback = {
   model: string;
   interpreted: {
@@ -136,8 +146,77 @@ export type GenerationPipelineFeedback = {
       briefingImageUrls: number;
       extractChars: number;
     };
+    /** Optioneel: concrete vervolgvragen / suggesties voor de klant (generator blijft wél doorlopen). */
+    clientFollowUp?: BriefingClientFollowUp;
   };
 };
+
+/**
+ * Heuristiek: wanneer tonen we vervolgvragen vóór/during interpretatie in de UI.
+ * Los van het model — voorspelbaar en zonder extra API-latency.
+ */
+export function buildBriefingClientFollowUp(
+  businessName: string,
+  description: string,
+  detectedIndustry: IndustryProfile | null,
+): BriefingClientFollowUp | undefined {
+  const d = description.trim();
+  const n = businessName.trim();
+  const undecided = isStudioUndecidedBrandName(n);
+  const len = d.length;
+
+  const playful = /\b(speels|playful|vrolijk|fun|grappig)\b/i.test(d);
+  const strictBiz = /\b(strak\s*zakelijk|ultra\s*zakelijk|corporate|formeel|nuchter|serieuze\s+uitstraling)\b/i.test(d);
+  if (playful && strictBiz && len < 500) {
+    return {
+      headline: "Tegenstrijdige sfeer in de briefing",
+      intro: "Je vraagt zowel iets speels als iets heel strak/zakelijk. Kies één hoofdrichting — of licht toe wat waar moet gelden (bijv. speels in tekst, strak in layout).",
+      questions: ["Wat is belangrijker: warm/benaderbaar of strak/professioneel?", "Waar mag het vooral ‘los’: alleen in taal, of ook in vorm?"],
+      suggestionChips: ["Vooral warm en benaderbaar", "Vooral strak en zakelijk", "Speelse tekst, strakke vorm"],
+    };
+  }
+
+  if (len === 0) {
+    return {
+      headline: "Geen briefingtekst",
+      intro: "Voeg minstens een paar zinnen toe: wat je doet, voor wie, en wat bezoekers moeten doen.",
+      questions: ["Wat is je belangrijkste dienst of product?", "Welke actie wil je (bellen, mailen, boeken, kopen)?"],
+      suggestionChips: ["We zijn een lokale dienstverlener", "We verkopen producten online", "We plannen afspraken"],
+    };
+  }
+
+  if (len < 50) {
+    return {
+      headline: "Briefing is erg kort",
+      intro: "De generator gaat door met redelijke aannames. Met een paar extra zinnen wordt het resultaat meestal veel scherper.",
+      questions: [
+        "Wat doen jullie precies (één tot twee zinnen)?",
+        "Wat moet een bezoeker vooral doen op de site (bellen, mailen, boeken, offerte)?",
+      ],
+      suggestionChips: ["Lokaal / atelier / winkel", "Zakelijk / B2B", "Online afspraken of reserveringen"],
+    };
+  }
+
+  if (!detectedIndustry && len < 160) {
+    return {
+      headline: "Branche niet met zekerheid herkend",
+      intro: "Noem kort je sector (bv. installateur, salon, coach, horeca, webshop) — dan sluiten secties en tone beter aan.",
+      questions: ["In welke regio of stad werken jullie vooral?", "Welk gevoel past bij jullie merk (warm, strak, luxe, speels)?"],
+      suggestionChips: ["We zijn een fysieke winkel of salon", "We komen bij klanten aan huis", "We verkopen vooral online"],
+    };
+  }
+
+  if (undecided && len < 100) {
+    return {
+      headline: "Merknaam nog niet vast",
+      intro: "De generator mag een werknaam verzinnen; als je een vaste merknaam wilt, zet die in het veld Bedrijfsnaam of in de briefing.",
+      questions: ["Hoe moet de merknaam ongeveer klinken (kort, luxe, speels, traditioneel)?", "Mag de naam Engels of alleen Nederlands zijn?"],
+      suggestionChips: ["Liever een vaste merknaam: …", "Mag kort en modern klinken", "Traditioneel en betrouwbaar"],
+    };
+  }
+
+  return undefined;
+}
 
 /**
  * Tekst voor branche- en sectie-detectie: **bedrijfsnaam + briefing** samen.
@@ -1229,11 +1308,15 @@ function buildMarketingSlugContentHintsLines(slugs: readonly string[]): string {
     if (s === "wat-wij-doen") {
       lines.push("- **`wat-wij-doen`:** uitgebreid aanbod/diensten ??? **niet** de homepage-features herhalen.");
     } else if (s === "werkwijze") {
-      lines.push("- **`werkwijze`:** proces in stappen ??? **niet** dezelfde beknopte uitleg als op de landing.");
+      lines.push(
+        "- **`werkwijze`:** proces in stappen ??? **niet** dezelfde beknopte uitleg als op de landing. **Geen tweede primaire contact-knop** (`href=\"__STUDIO_CONTACT_PATH__\"` met vol oranje/accent-button) halverwege of bij de laatste stap (bv. “oplevering & nazorg”) **als** je onderaan al een vaste afsluitband “Neem contact op” / “Contact opnemen” hebt — hou **die ene** onderste knop; in tussentappen alleen tekst of secundaire outline, geen dubbele dezelfde CTA.",
+      );
     } else if (s === "over-ons") {
       lines.push("- **`over-ons`:** verhaal, team of waarden ??? **niet** opnieuw de homepage-hero.");
     } else if (s === "faq") {
-      lines.push("- **`faq`:** meer detail dan een eventuele korte FAQ op de homepage.");
+      lines.push(
+        "- **`faq`:** volledige Q/A-pagina; **geen** kale vragenlijst. **Per vraag:** inklapbaar blok met **antwoord** in de markup — voorkeur \`<details class=\"…\"><summary class=\"…\">Vraag</summary><div class=\"…\"><p>Antwoord</p></div></details>\` (werkt zonder JS), of Alpine (\`x-data\`, \`@click\`, \`x-show\`) met dezelfde UX. **Verboden:** alleen koppen/regels zonder verborgen/uitklapbaar antwoorddeel.",
+      );
     } else if (s === "collectie") {
       lines.push("- **`collectie`:** assortiment of productlijnen ??? gericht op kiezen/kopen.");
     } else if (s === "service-retour") {
@@ -1314,7 +1397,7 @@ function buildMarketingMultiPageOperationalTail(
 - Top-level keys: \`config\`, \`sections\`, \`marketingPages\`, \`contactSections\` ??? **alle vier** aanwezig.
 - \`marketingPages\`: **exact** deze ${uniqueSlugCount} key(s), geen extra, geen misser: ${slugList}.
 - Per key: **minstens 2** secties met unieke \`id\`'s op die pagina + genoeg zichtbare tekst (geen lege shells).
-- Nav (landing + elke subpagina): elke key minstens **één** keer als \`href="__STUDIO_SITE_BASE__/<key>"\`.
+- Nav (landing + elke subpagina): elke marketing-key **behalve** \`faq\` minstens **één** keer in de **top-\`<header>\`** als \`href="__STUDIO_SITE_BASE__/<key>"\`. **\`faq\`:** **niet** in de header — alleen in de **footer** van de landingspagina (\`sections\` met \`id: "footer"\`) als link \`href="__STUDIO_SITE_BASE__/faq"\`.
 
 `;
 
@@ -1333,7 +1416,8 @@ ${slugHints}
 - **Verboden op landings-\`sections\` en op elke \`marketingPages[*]\`:** elk \`<form>\` (ook geen newsletter-mini). Alleen \`contactSections\` mag formulieren.
 - **Sectie-ankers:** binnen **??n pagina** (\`sections\` of ??n key van \`marketingPages\`) gebruik je \`href="#???"\` alleen naar \`id\`'s die **op diezelfde pagina** bestaan.
 - **Cross-pagina (verplicht):** subpagina???s via ${hrefExamples} en \`href="__STUDIO_CONTACT_PATH__"\` voor Contact. **Verboden:** zelf \`/site/???\`, \`/contact\`, of losse paden verzinnen; **verboden** \`#???\` in de nav voor inhoud die op een marketing-subroute staat.
-- **Zelfde header op elke pagina:** herhaal **dezelfde** \`<header>\`/nav-structuur (zelfde \`__STUDIO_SITE_BASE__/???\` + \`__STUDIO_CONTACT_PATH__\`) bovenaan **landing**, elke \`marketingPages\`-pagina, en \`contactSections\` ??? elke marketing-key moet **minstens ??n keer** in die nav als \`__STUDIO_SITE_BASE__/<slug>\` voorkomen.
+- **Dubbele contact-CTA op ??n marketing-subpagina:** buiten \`<header>\` mag **hoogstens ??n** primaire **accent**-knop naar \`__STUDIO_CONTACT_PATH__\` (zelfde grote button-stijl) ??? typisch alleen in de **slotsectie**. Geen tweede “direct contact” / “neem contact op”-knop hoger in de inhoud (stappen, oplevering); gebruik daar desnoods \`<a class=\"???text-sm underline???\">\` of verwijs naar de onderste band.
+- **Zelfde header op elke pagina:** herhaal **dezelfde** \`<header>\`/nav-structuur (zelfde \`__STUDIO_SITE_BASE__/???\` + \`__STUDIO_CONTACT_PATH__\`) bovenaan **landing**, elke \`marketingPages\`-pagina, en \`contactSections\` ??? elke marketing-key **behalve** \`faq\` minstens **??n keer** in die nav als \`__STUDIO_SITE_BASE__/<slug>\`. **Geen** \`__STUDIO_SITE_BASE__/faq\` in \`<header>\` ??? FAQ alleen in de **footer** op de landing.
 - **Verboden:** \`href="#"\`, lege \`href\`, verzonnen \`__STUDIO_SITE_BASE__/???\` slugs buiten deze keys.
 - **Studio-placeholders (alleen letterlijk deze strings):** \`__STUDIO_SITE_BASE__\`, \`__STUDIO_PORTAL_PATH__\`, \`__STUDIO_BOOKING_PATH__\`, \`__STUDIO_SHOP_PATH__\`, \`__STUDIO_CONTACT_PATH__\` ??? volgens module-instructies uit ?0B.
 - **WhatsApp:** alleen \`https://wa.me/???\` als een nummer in de briefing staat; anders link naar \`__STUDIO_CONTACT_PATH__\`.
@@ -1555,7 +1639,7 @@ function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
 
 function buildStrictLandingPageComposerMarkdown(sectionIds: readonly string[]): string {
   const n = sectionIds.length;
-  const faqDetect = `**FAQ (landings-\`sections\`):** de homepage heeft **geen** \`faq\`-rij ? maximaal **${HOMEPAGE_SECTION_BUDGET_MAX}** secties. **Wel:** als naam+briefing FAQ-trefwoorden bevat **of** het brancheprofiel FAQ relevant vindt (\`compactLandingDefaultFaq\`, ?), bouw dan een volledige FAQ-pagina onder \`marketingPages["faq"]\` en zet **FAQ** in de hoofdnav als link naar \`__STUDIO_SITE_BASE__/faq\` (geen \`#faq\` op de landing).`;
+  const faqDetect = `**FAQ (landings-\`sections\`):** de homepage heeft **geen** \`faq\`-rij ? maximaal **${HOMEPAGE_SECTION_BUDGET_MAX}** secties. **Wel:** als naam+briefing FAQ-trefwoorden bevat **of** het brancheprofiel FAQ relevant vindt (\`compactLandingDefaultFaq\`, ?), bouw dan een volledige FAQ-pagina onder \`marketingPages["faq"]\` met **inklapbare Q/A** (zie 3B). **Verboden:** link naar \`__STUDIO_SITE_BASE__/faq\` in de **top-\`<header>\` / hoofdnav** — zet **FAQ** alleen in de **footer** (linkkolom) met \`href="__STUDIO_SITE_BASE__/faq"\` (geen \`#faq\` op de landing).`;
 
   if (n === 3) {
     return `
@@ -1596,7 +1680,7 @@ ${faqDetect}
 
 **Verboden:** scrollende tickers; secties \`about\`, \`team\`, \`pricing\`, \`shop\`, \`gallery\`, \`testimonials\`, \`faq\` op \`sections\`.
 
-**Nav-ankers:** \`#hero\`, \`#stats\` of \`#brands\`, \`#features\`, \`#steps\`, \`#footer\` ? geen \`#over-ons\`; FAQ via \`__STUDIO_SITE_BASE__/faq\` indien van toepassing.
+**Nav-ankers:** \`#hero\`, \`#stats\` of \`#brands\`, \`#features\`, \`#steps\`, \`#footer\` ? geen \`#over-ons\`; **FAQ** alleen als footer-link \`__STUDIO_SITE_BASE__/faq\` (niet in \`<header>\`).
 
 **Herhaling-check:** elke sectie een eigen rol; geen dubbele trust- of werkwijze-stroken.
 `;
@@ -1604,7 +1688,7 @@ ${faqDetect}
 
   const countLine = "**4** rijen in `sections` (exact deze volgorde)";
   const navAnchors = "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#footer`";
-  const tailList = `4. \`footer\` ??? **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op \`sections\` in deze studio-run ??? FAQ hoort op de marketing-subpagina \`faq\` (en in de nav via \`__STUDIO_SITE_BASE__/faq\`).`;
+  const tailList = `4. \`footer\` ??? **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op \`sections\` in deze studio-run ??? FAQ hoort op de marketing-subpagina \`faq\`; **link FAQ in deze footer** met \`href="__STUDIO_SITE_BASE__/faq"\` ??? **niet** in de topnav/\`<header>\`.`;
 
   return `
 === STRIKTE LANDINGS ? STUDIO (min. 3, max. ${HOMEPAGE_SECTION_BUDGET_MAX} secties op de homepage; vaste volgorde) ===
@@ -1624,7 +1708,7 @@ ${tailList}
 
 **Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie; een \`faq\`-sectie op \`sections\`.
 
-**Nav-ankers:** alleen ${navAnchors} ??? **geen** \`#over-ons\`; link naar FAQ via \`__STUDIO_SITE_BASE__/faq\` wanneer \`marketingPages\` een \`faq\`-key heeft.
+**Nav-ankers:** alleen ${navAnchors} ??? **geen** \`#over-ons\`; **FAQ** alleen in de **footer** via \`__STUDIO_SITE_BASE__/faq\` wanneer \`marketingPages\` een \`faq\`-key heeft (niet in \`<header>\`).
 
 
 **Herhaling-check (concept):** elke sectie unieke rol; twee blokken met dezelfde boodschap ??? het zwakkere schrappen.
@@ -1641,11 +1725,12 @@ function buildMarqueeForbiddenPromptLine(): string {
  */
 function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean): string {
   const multiPageLine = marketingMultiPage
-    ? `- **Multi-page homepage:** houd \`sections\` bondig (**max. ${HOMEPAGE_SECTION_BUDGET_MAX}** secties in deze studio-run); **geen** volledige ???over ons???-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben ??? verwijs met ??n zin + link.\n`
+    ? `- **Multi-page homepage:** houd \`sections\` bondig (**max. ${HOMEPAGE_SECTION_BUDGET_MAX}** secties in deze studio-run); **geen** volledige ???over ons???-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben ??? verwijs met ??n zin + link.
+- **Marketing-subpagina (\`marketingPages\`):** zelfde regel als hierboven voor **contact**: **geen** twee keer dezelfde **primaire** contact-knop (vol accentvlak naar \`__STUDIO_CONTACT_PATH__\`) op ??n route ??? ??n slot-CTA is genoeg; tussendoor geen tweede “direct contact”-knop.\n`
     : "";
   return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
 - **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt ??? wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
-- **CTA-schaarsheid:** naast de nav: **??n** primaire knoppenrij in de hero + **hoogstens ??n** extra conversieband v??r de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.
+- **CTA-schaarsheid:** naast de nav: **??n** primaire knoppenrij in de hero + **hoogstens ??n** extra conversieband v??r de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.${marketingMultiPage ? " Op elke **marketing-subroute** idem: **hoogstens ??n** primaire contact-knop in de body buiten de header (meestal onderaan)." : ""}
 - **Praktische info (tel / bellen / WhatsApp / uren):** **??n** duidelijke bron op de pagina (footer of \`#contact\`) + optioneel **??n** extra compacte CTA (zelfde nummer mag, maar **geen** vijfde herhaling van dezelfde urenzin in bodyteksten). Identieke openingstijden als proza in een split-sectie **en** in de footer = **fout** ??? laat ??n variant staan.
 - **Tekstvolume:** geen ???lappen tekst??? om secties vol te maken ??? volg **COPY ??? MINDER IS MEER** (hero en USP-kaarten extreem kort).
 - **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** externe stock op marketing/landingspagina's; andere secties = typografie/gradient of **spaarzame klantfoto** (zie **Beeld (studio)** ??? g??n volsite-raster).
@@ -1665,7 +1750,7 @@ function buildLandingOutputQualityGuardsMarkdown(input: {
 }): string {
   if (input.preserve) return "";
   const multiPageLine = input.marketingMultiPage
-    ? "- **Multi-page:** een subpagina in \`marketingPages\` mag een eigen koppenblok hebben, maar **herhaal niet** op de **homepage** dezelfde hoofdbelofte + dezelfde primaire knoppen als een tweede ???landing-hero???; gebruik de subroute voor detail en link ernaar.\n"
+    ? "- **Multi-page:** een subpagina in \`marketingPages\` mag een eigen koppenblok hebben, maar **herhaal niet** op de **homepage** dezelfde hoofdbelofte + dezelfde primaire knoppen als een tweede ???landing-hero???; gebruik de subroute voor detail en link ernaar. **Geen dubbele primaire contact-knop** (`__STUDIO_CONTACT_PATH__`) op ??n subpagina-body (stappen + slot-CTA): **??n** volle contact-knop is genoeg.\n"
     : "";
   const strictLine =
     input.strictLanding && !input.ultraCompactLanding
@@ -1824,6 +1909,12 @@ export function buildWebsiteGenerationUserPrompt(
   return `Je genereert **??n** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**??n** one-pager (`sections`)"}. Maak een **professionele, onderscheidende** site die past bij de briefing ??? **niet** anoniem-veilig; je hebt ruimte voor sterk ontwerp.
 ${multipageJsonCritical}
 
+=== ROL: JIJ BENT DE DESIGNER; DE TEKST IS VAN DE KLANT ===
+- **Context / branche** (hieronder) schrijft een **klant**, geen webdesigner: informeel, kort, incompleet of zonder vaktermen is **normaal**.
+- Jij bent de **senior website- en merkdesigner**: je **vertaalt** wat ze zeggen — ook alleen sfeerwoorden ("warm", "strak", "betrouwbaar", "luxe", "rustig", "modern") — naar **concrete** keuzes: \`config\` (kleuren, \`font\`-stack, vibe), typografie in de HTML, layout, ritme en copy-structuur. De klant hoeft **geen** lettertypen, hex-kleuren of Tailwind-termen te noemen; jij kiest professioneel passende defaults die bij hun woorden en sector passen.
+- Briefing is dun of vaag: lever toch **één coherente, geloofwaardige** site en vul redelijk aan (secties, hiërarchie, CTA) op basis van branche en wat wél genoemd is. Blijf strikt binnen **CONTENT AUTHORITY** verderop: geen verzonnen prijzen, cijfers, reviews of garanties.
+- **Tegenstrijdige klantwensen** (bv. tegelijk “ultra speels” en “strak corporate” zonder nuance): kies **één** dominante hoofdrichting die het meest logisch is bij de sector; voorkom een ongelooflijke mix. De studio kan de klant apart om verduidelijking vragen — jouw output blijft één consistent ontwerp.
+
 ${buildStudioBrandNameUserPromptBlock(businessName)}
 Context / branche: ${description}
 ${SITE_GENERATION_DESIGN_CONTRACT_SLOT}
@@ -1870,7 +1961,7 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 
 **Vrijheid:** ${strictLanding && strictLandingSectionIds ? `Binnen de **${strictLandingSectionIds.length}** vaste landings-secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij ??? **geen** wijziging van volgorde of \`id\`'s.` : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led ??? allemaal toegestaan)."}
 
-**Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie ?3B"}) + contact` : "one-pager"}):** **??n** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `Voor elke marketing-key: **uitsluitend** \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie ?3B"}); **geen** \`#???\`-nav naar inhoud die op een subroute staat. ` : ""}Op **??n** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **??n** vaste floating knop. **Positie:** \`sticky top-0\` + \`z-*\` op de primaire \`<header>\`/\`<nav>\` (geen \`fixed\` top-bar); verder **vorm vrij** (pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Nav-contrast:** zie technische prompt ??? **nooit** witte tekst op lichte nav-zonder contrast; test mentaal: zijn links leesbaar? **Navbar vs split-hero:** plaats \`<header>\`/\`<nav>\` **niet** in dezelfde twee-koloms-split als de hero (half licht/half donker) ??? gebruik een **volle-breedte** balk met **??n** achtergrond boven de hero-split. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of ??n wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen ??? anders blijven streepjes en ?? vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
+**Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie ?3B"}) + contact` : "one-pager"}):** **??n** globale nav met **merk/bedrijfsnaam** en bruikbare links. ${marketingMultiPage ? `In de **top-\`<header>\`**: voor elke marketing-key **behalve** \`faq\` een link \`__STUDIO_SITE_BASE__/<slug>\` (slugs: ${mpKeysLine || "zie ?3B"}); **\`faq\` niet** in de header ??? FAQ-link in de **footer** van de landing. **Geen** \`#???\`-nav naar inhoud die op een subroute staat. ` : ""}Op **??n** pagina: \`href="#sectie-id"\` alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\`. **Geen tweede** volledige menu. Primaire CTA mag in de nav en/of **??n** vaste floating knop. **Positie:** \`sticky top-0\` + \`z-*\` op de primaire \`<header>\`/\`<nav>\` (geen \`fixed\` top-bar); verder **vorm vrij** (pill, blur, Alpine scroll). Hamburger = zelfde nav, geen duplicaat. **Nav-contrast:** zie technische prompt ??? **nooit** witte tekst op lichte nav-zonder contrast; test mentaal: zijn links leesbaar? **Navbar vs split-hero:** plaats \`<header>\`/\`<nav>\` **niet** in dezelfde twee-koloms-split als de hero (half licht/half donker) ??? gebruik een **volle-breedte** balk met **??n** achtergrond boven de hero-split. **Verboden:** een permanente rechter/ linker zij-navigatiekolom (\`fixed top-0 right-0 h-full\` of \`fixed ... left-0 ... h-full\`) die op desktop zichtbaar blijft naast de hoofdnav. **Mobiel uitklapmenu:** standaard **gesloten** (Alpine \`open\`/\`menuOpen\`/\`navOpen\` start op \`false\`); geen fullscreen overlay bij eerste load. **\`x-data\` op \`<header>\`** (of ??n wrapper rond knop + sheet + beide iconen) zodat hamburger/\`x-show\` dezelfde scope delen ??? anders blijven streepjes en ?? vaak **tegelijk** zichtbaar. **Niet** leveren zonder zichtbare site-nav boven de vouw.
 
 **???n site, ??n systeem:** kies **??n** duidelijke typografie-hi?rarchie (bijv. ??n sans-familie door de hele pagina, of **??n** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is ??? dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`???\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
@@ -2006,6 +2097,11 @@ export async function prepareGenerateSiteClaudeCall(
   const homepagePlan = buildMinimalHomepagePlan(sectionIds);
 
   const detectedIndustry = detectIndustry(industryProbe);
+  const clientFollowUp = buildBriefingClientFollowUp(
+    businessName.trim(),
+    description.trim(),
+    detectedIndustry,
+  );
   const styleResolved = resolveStyleDetection(description);
   /** Voorheen `minimalPrompt`; altijd volledige user + system prompt (betere variatie/Denklijn). */
   const minimalPrompt = false;
@@ -2073,6 +2169,7 @@ export async function prepareGenerateSiteClaudeCall(
             },
           }
         : {}),
+      ...(clientFollowUp ? { clientFollowUp } : {}),
     },
   };
 
@@ -2238,6 +2335,10 @@ function finalizeGenerateSiteFromClaudeText(
         error: `Nav mist minstens ??n link per marketingpagina. Ontbrekend in nav: ${miss}.`,
         rawText: textBody,
       };
+    }
+    const faqNavCheck = validateMarketingFaqLinkNotInHeader(validated.data.marketingPages, navHtml);
+    if (!faqNavCheck.valid && faqNavCheck.error) {
+      return { ok: false, error: faqNavCheck.error, rawText: textBody };
     }
     const contentCheck = validateMarketingPageContent(validated.data.marketingPages);
     if (!contentCheck.valid) {

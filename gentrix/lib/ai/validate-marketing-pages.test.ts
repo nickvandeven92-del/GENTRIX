@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   collectMarketingNavScanHtml,
+  marketingFaqHtmlHasDisclosurePattern,
+  validateMarketingFaqLinkNotInHeader,
   validateMarketingPageContent,
   validateMarketingPageLinks,
   validateMarketingPagePlanNavCoverage,
@@ -43,6 +45,54 @@ describe("validateMarketingPagePlanNavCoverage", () => {
     expect(r.valid).toBe(false);
     expect(r.missingInNav).toContain("wat-wij-doen");
   });
+
+  it("does not require faq in nav when other keys are linked", () => {
+    const nav =
+      '<a href="__STUDIO_SITE_BASE__/wat-wij-doen">D</a><footer><a href="__STUDIO_SITE_BASE__/faq">FAQ</a></footer>';
+    const pages = {
+      faq: [
+        { id: "a", html: "<section><details><summary>Q</summary><p>A</p></details></section>" },
+        { id: "b", html: "<section>x</section>" },
+      ],
+      "wat-wij-doen": [
+        { id: "c", html: "<section></section>" },
+        { id: "d", html: "<section></section>" },
+      ],
+    };
+    expect(validateMarketingPagePlanNavCoverage(pages, nav).valid).toBe(true);
+  });
+});
+
+describe("validateMarketingFaqLinkNotInHeader", () => {
+  it("passes when faq href is only outside header", () => {
+    const html =
+      '<header><nav><a href="__STUDIO_SITE_BASE__/wat-wij-doen">X</a></nav></header><footer><a href="__STUDIO_SITE_BASE__/faq">FAQ</a></footer>';
+    const r = validateMarketingFaqLinkNotInHeader({ faq: [], "wat-wij-doen": [] }, html);
+    expect(r.valid).toBe(true);
+  });
+
+  it("fails when faq link appears inside header", () => {
+    const html = '<header><a href="__STUDIO_SITE_BASE__/faq">FAQ</a></header><footer></footer>';
+    const r = validateMarketingFaqLinkNotInHeader({ faq: [] }, html);
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/header/i);
+  });
+});
+
+describe("marketingFaqHtmlHasDisclosurePattern", () => {
+  it("detects native details/summary", () => {
+    expect(
+      marketingFaqHtmlHasDisclosurePattern(
+        "<section><details><summary>Vraag</summary><p>Antwoord</p></details></section>",
+      ),
+    ).toBe(true);
+  });
+
+  it("detects Alpine-style accordion after header strip", () => {
+    const h =
+      '<header><nav>top</nav></header><div x-data="{open:null}"><button type="button" @click="open = open === 1 ? null : 1">q</button><div x-show="open === 1">antwoord</div></div>';
+    expect(marketingFaqHtmlHasDisclosurePattern(h)).toBe(true);
+  });
 });
 
 describe("validateMarketingPageContent", () => {
@@ -53,6 +103,19 @@ describe("validateMarketingPageContent", () => {
     const r = validateMarketingPageContent(pages);
     expect(r.valid).toBe(false);
     expect(r.errors.some((e) => e.includes("minimaal 2 secties"))).toBe(true);
+  });
+
+  it("fails faq page without disclosure pattern", () => {
+    const longText = "x".repeat(350);
+    const pages = {
+      faq: [
+        { id: "a", html: `<section><h2>Vraag 1</h2><p>${longText}</p></section>` },
+        { id: "b", html: `<section><h2>Vraag 2</h2><p>${longText}</p></section>` },
+      ],
+    };
+    const r = validateMarketingPageContent(pages);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some((e) => e.includes("inklapbaar") || e.includes("details"))).toBe(true);
   });
 });
 

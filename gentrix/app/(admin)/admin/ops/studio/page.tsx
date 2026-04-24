@@ -54,6 +54,7 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
           initialSiteIr={parsed.siteIr ?? null}
+          initialSectionIdsOrdered={parsed.sectionIdsOrdered}
           draftPublicPreviewToken={draftPublicPreviewToken}
           initialTailwindCompiledCss={parsed.tailwindCompiledCss ?? null}
         />

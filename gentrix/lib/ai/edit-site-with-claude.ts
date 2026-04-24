@@ -105,6 +105,12 @@ function buildEditStaticBlock(): string {
 
 ${getAlpineInteractivityPromptBlock()}
 
+=== TAAL VAN DE GEBRUIKER (geen designer-jargon vereist) ===
+- De gebruiker is **geen** front-end developer: schrijft in **gewoon Nederlands** (kort, informeel, vaag mag).
+- **Vertaal** opdrachten als “warmer”, “luxe(r)”, “strakker”, “rustiger”, “moderner”, “klassieker”, “meer uitnodigend”, “meer contrast”, “zachtere kleuren”, “professioneler”, “persoonlijker”, “minder druk”, “opvallendere knoppen” zelf naar **concrete** Tailwind-markup + zo nodig een bijpassend \`config\`-object (thema, \`font\`-stack, stijl-aspecten). **Niet** terugvragen welk lettertype of welke hex-kleur — kies zelf passende, professionele defaults die bij de formulering passen.
+- Als één zin **twee even waarschijnlijke** richtingen heeft (bijv. “anders” zonder enige hint): kies de meest logische interpretatie bij de huidige sector/look en **voer die uit** — geen “wacht op specificatie”: lever nuttige \`sectionUpdates\` (en zo nodig \`config\`) zodra de opdracht enigszins uitvoerbaar is.
+- **Tegenstrijdige wensen in één zin** (bv. tegelijk “maximaal speels” en “strak corporate”): kies **één** hoofdlijn die bij de bestaande site past; voer die uit. (In de **site-chat** kan de gebruiker wel eerst opties krijgen — hier lever je JSON.)
+
 === TECHNISCHE REGELS ===
 - Geldige HTML in elk \`html\`-veld: geen \`<script>\` of \`<style>\` in het fragment, geen klassieke inline event-handlers (\`onclick=\`), geen \`javascript:\` links; Alpine-attributen (\`x-*\`, \`@\`, \`:\`) wel volgens het blok hierboven.
 - Afbeeldingen: alleen **https** (eigen of klant-URL's; geen generieke stock-services tenzij de briefing dat expliciet noemt).
@@ -198,7 +204,7 @@ ${JSON.stringify(currentPayload)}
 
   const configRule = legacy
     ? `De huidige \`config\` is **legacy** (themeName, primaryColor, …). Je mag **geen** nieuwe \`config\` in je antwoord zetten — alleen \`sectionUpdates\` voor HTML-wijzigingen.`
-    : `Als de gebruiker **expliciet** kleuren, typografie of algemene stijl (\`config\`) wil wijzigen, mag je een volledig \`config\`-object meesturen (master-formaat: style, font, \`theme\` met minstens primary/accent en optioneel secondary, background, textColor, textMuted, vibe, typographyStyle, borderRadius, shadowScale, spacingScale, secundaire tinten). Anders laat je \`config\` weg.`;
+    : `Als de gebruiker **in gewone taal** vraagt om andere sfeer, kleuren, typografie of “look” (ook zonder woorden als “font” of “hex”), mag je een volledig \`config\`-object meesturen (master-formaat: style, font, \`theme\` met minstens primary/accent en optioneel secondary, background, textColor, textMuted, vibe, typographyStyle, borderRadius, shadowScale, spacingScale, secundaire tinten) **en** de relevante sectie-HTML daarop afstemmen. Bij puur lokale copy-/layout-tweaks zonder thema-impact: laat \`config\` weg.`;
 
   const dynamicText = `**Indices:** secties in de JSON hierboven hebben \`index\` 0 t/m ${sections.length - 1}. Elk item in \`sectionUpdates\` heeft \`index\` (integer) + volledige nieuwe \`html\` voor **die ene** sectie. Meerdere secties wijzigen mag, maar **geen dubbele index** in \`sectionUpdates\`.
 
@@ -242,8 +248,8 @@ export async function editSiteWithClaude(
 
   const editorInstruction =
     scoped != null
-      ? "Je bent een nauwkeurige front-end editor. Deze opdracht heeft een **beperkte scope**: wijzig alleen secties die in de prompt als target staan; geen andere indices in sectionUpdates."
-      : "Je bent een nauwkeurige front-end editor. Je wijzigt alleen wat gevraagd wordt; in JSON lever je minimaal sectionUpdates (alleen gewijzigde indices) en volgt het outputformaat exact.";
+      ? "Je bent een nauwkeurige front-end editor. Deze opdracht heeft een **beperkte scope**: wijzig alleen secties die in de prompt als target staan; geen andere indices in sectionUpdates. De gebruiker spreekt **gewoon Nederlands** — jij **interpreteert** vage sfeer- en stijlwensen naar concrete markup en zo nodig \`config\`."
+      : "Je bent een nauwkeurige front-end editor. Je wijzigt alleen wat gevraagd wordt; in JSON lever je minimaal sectionUpdates (alleen gewijzigde indices) en volgt het outputformaat exact. De gebruiker spreekt **gewoon Nederlands** — jij **interpreteert** vage sfeer- en stijlwensen (geen technische specificatie nodig) naar concrete Tailwind + zo nodig \`config\`.";
 
   const systemBlocks: TextBlockParam[] = [];
   if (knowledge) {
