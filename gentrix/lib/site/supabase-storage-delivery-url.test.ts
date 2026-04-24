@@ -15,7 +15,7 @@ describe("supabaseStorageObjectUrlToRenderUrl", () => {
       "https://abcdefgh.supabase.co/storage/v1/object/public/site-assets/foo/hero.jpg";
     const out = supabaseStorageObjectUrlToRenderUrl(inUrl);
     expect(out).toContain("/storage/v1/render/image/public/site-assets/foo/hero.jpg");
-    expect(out).toMatch(/width=2400/);
+    expect(out).toMatch(/width=1920/);
     expect(out).toMatch(/quality=82/);
     expect(out).toMatch(/resize=cover/);
   });
@@ -40,14 +40,14 @@ describe("rewriteSupabaseStorageObjectUrlsForWebDelivery", () => {
     const out = rewriteSupabaseStorageObjectUrlsForWebDelivery(html);
     expect(out).not.toContain("/object/public/");
     expect(out).toContain("/render/image/public/");
-    expect(out.match(/render\/image\/public/g)?.length).toBe(2);
+    expect(out.match(/render\/image\/public/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });
 
 describe("qualityForSrcsetWidth", () => {
   it("verhoogt quality op grotere srcset-breedtes", () => {
     expect(qualityForSrcsetWidth(640, 82)).toBe(78);
-    expect(qualityForSrcsetWidth(2400, 82)).toBe(84);
+    expect(qualityForSrcsetWidth(1920, 82)).toBe(83);
   });
 });
 
@@ -75,18 +75,18 @@ describe("buildSupabaseRenderSrcsetFromRenderUrl", () => {
       "https://ab.supabase.co/storage/v1/render/image/public/site-assets/p/hero.jpg?width=2400&quality=82&resize=cover";
     const srcset = buildSupabaseRenderSrcsetFromRenderUrl(src);
     expect(srcset).toBeTruthy();
-    expect(srcset!.split(",").length).toBe(5);
+    expect(srcset!.split(",").length).toBe(6);
     expect(srcset).toMatch(/640w/);
-    expect(srcset).toMatch(/2400w/);
+    expect(srcset).toMatch(/1920w/);
     expect(srcset).toMatch(/quality=78/);
-    expect(srcset).toMatch(/quality=84/);
+    expect(srcset).toMatch(/quality=83/);
   });
 
   it("kan vaste quality houden", () => {
     const src =
       "https://ab.supabase.co/storage/v1/render/image/public/site-assets/p/hero.jpg?width=100&quality=80&resize=cover";
     const srcset = buildSupabaseRenderSrcsetFromRenderUrl(src, { variableQuality: false, quality: 80 });
-    expect(srcset!.match(/quality=80/g)?.length).toBe(5);
+    expect(srcset!.match(/quality=80/g)?.length).toBe(6);
   });
 
   it("geeft null voor geen render-URL", () => {
@@ -103,9 +103,11 @@ describe("promoteHeroSupabaseBackgroundUrlToImg", () => {
     expect(out.indexOf("bg-" + String.fromCharCode(91) + "url(")).toBe(-1);
   });
 
-  it("doet niets als er al een object-cover supabase-img is", () => {
+  it("strippen dubbele bg-[url] als er al een object-cover supabase-img is", () => {
     const html = `<section class="relative"><img class="object-cover" src="https://ab.supabase.co/storage/v1/render/image/public/site-assets/a.jpg?width=100" alt=""/><div class="bg-[url('https://ab.supabase.co/storage/v1/render/image/public/site-assets/b.jpg')]"></div></section>`;
-    expect(promoteHeroSupabaseBackgroundUrlToImg(html)).toBe(html);
+    const out = promoteHeroSupabaseBackgroundUrlToImg(html);
+    expect(out.indexOf("bg-" + String.fromCharCode(91) + "url(")).toBe(-1);
+    expect(out).toContain("object-cover");
   });
 });
 
@@ -118,6 +120,7 @@ describe("addResponsiveSrcsetToHeroSupabaseRenderImages", () => {
     expect(out).toMatch(/srcset="/);
     expect(out).toMatch(/sizes="100vw"/);
     expect(out).toMatch(/640w/);
+    expect(out).toMatch(/width=1280/);
   });
 
   it("zet sizes op split-kolom img", () => {

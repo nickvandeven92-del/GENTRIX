@@ -12,8 +12,14 @@ import { findHtmlOpenTagEnd } from "@/lib/site/html-open-tag";
 const SUPABASE_OBJECT_PUBLIC_IMAGE_RE =
   /https:\/\/[a-z0-9][a-z0-9-]{0,61}\.supabase\.co\/storage\/v1\/object\/public\/[^\s"'<>)]+\.(?:jpe?g|png|webp|avif)/gi;
 
-/** Viewport-breedtes voor `srcset` (max. 2500 px volgens Supabase-limiet). */
-export const SUPABASE_HERO_SRCSET_WIDTHS = [640, 960, 1280, 1920, 2400] as const;
+/** Viewport-breedtes voor `srcset` (max. 2500 px volgens Supabase-limiet; geen 2400 — te zwaar als default-`src`). */
+export const SUPABASE_HERO_SRCSET_WIDTHS = [640, 828, 960, 1280, 1600, 1920] as const;
+
+/**
+ * Default `src` na `srcset`-injectie: mobile-first LCP (niet de grootste variant — sommige clients
+ * hangen kort aan `src`; 2400px was te zwaar in Lighthouse).
+ */
+export const SUPABASE_HERO_LCP_SRC_WIDTH = 1280;
 
 /** Tailwind default `max-w-*` → px (16px rem) voor `sizes`. */
 const MAX_W_TOKEN_TO_PX: Record<string, number> = {
@@ -30,7 +36,7 @@ const MAX_W_TOKEN_TO_PX: Record<string, number> = {
 };
 
 export type SupabaseImageDeliveryOptions = {
-  /** Max. lange zijde voor enkelvoudige `src` (default 2400). */
+  /** Max. lange zijde voor enkelvoudige `src` (default 1920). */
   width?: number;
   quality?: number;
   resize?: "cover" | "contain" | "fill";
@@ -88,7 +94,7 @@ export function supabaseStorageObjectUrlToRenderUrl(
   raw: string,
   opts?: SupabaseImageDeliveryOptions,
 ): string {
-  const width = opts?.width ?? 2400;
+  const width = opts?.width ?? 1920;
   const quality = opts?.quality ?? 82;
   const resize = opts?.resize ?? "cover";
   if (!raw.includes(".supabase.co/storage/v1/object/public/")) return raw;
@@ -193,12 +199,20 @@ function escapeHtmlAttrDoubleQuoted(value: string): string {
 /** Er staat al een duidelijke hero-foto als `<img>` met Supabase-render + object-cover. */
 function heroHasSupabaseObjectCoverImg(html: string): boolean {
   return (
-    /<img\b[^>]*\/storage\/v1\/render\/image\/public\/[^"'>\s]+["'][^>]*\bobject-(?:cover|contain)\b/i.test(html) ||
-    /<img\b[^>]*\bobject-(?:cover|contain)\b[^>]*\/storage\/v1\/render\/image\/public\//i.test(html)
+    /<img\b[^>]*\/storage\/v1\/(?:render\/image|object)\/public\/[^"'>\s]+["'][^>]*\bobject-(?:cover|contain)\b/i.test(
+      html,
+    ) ||
+    /<img\b[^>]*\bobject-(?:cover|contain)\b[^>]*\/storage\/v1\/(?:render\/image|object)\/public\//i.test(html)
   );
 }
 
 type TailwindBgUrlHit = { token: string; url: string; index: number };
+
+function stripFirstTailwindSupabaseBgUrlToken(html: string): string {
+  const hit = extractFirstTailwindBgUrlSupabase(html);
+  if (!hit) return html;
+  return html.slice(0, hit.index) + html.slice(hit.index + hit.token.length);
+}
 
 function extractFirstTailwindBgUrlSupabase(html: string): TailwindBgUrlHit | null {
   const quoted = /bg-\[url\((["'])(https:\/\/[^"']*\.supabase\.co[^"']*)\1\)\]/;
@@ -219,7 +233,16 @@ function extractFirstTailwindBgUrlSupabase(html: string): TailwindBgUrlHit | nul
  * zodat `srcset`/LCP-hints werken (achtergrond-CSS heeft geen responsive images).
  */
 export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
-  if (heroHasSupabaseObjectCoverImg(html)) return html;
+  if (heroHasSupabaseObjectCoverImg(html)) {
+    /** Voorkom dubbele fetch: hero heeft al `<img>`, maar model kan óók `bg-[url(...)]` laten staan. */
+    let out = html;
+    let next = stripFirstTailwindSupabaseBgUrlToken(out);
+    while (next !== out) {
+      out = next;
+      next = stripFirstTailwindSupabaseBgUrlToken(out);
+    }
+    return out;
+  }
   const hit = extractFirstTailwindBgUrlSupabase(html);
   if (!hit) return html;
 
@@ -276,9 +299,9 @@ export function addResponsiveSrcsetToHeroSupabaseRenderImages(html: string): str
       variableQuality: true,
     });
     if (!srcset) return full;
-    const maxW = SUPABASE_HERO_SRCSET_WIDTHS[SUPABASE_HERO_SRCSET_WIDTHS.length - 1] ?? 2400;
-    const fallbackQ = qualityForSrcsetWidth(maxW, baseQuality);
-    const srcFallback = supabaseRenderUrlWithParams(src, { width: maxW, quality: fallbackQ });
+    const srcW = SUPABASE_HERO_LCP_SRC_WIDTH;
+    const fallbackQ = qualityForSrcsetWidth(srcW, baseQuality);
+    const srcFallback = supabaseRenderUrlWithParams(src, { width: srcW, quality: fallbackQ });
     const newSrcAttr = `src=${q}${srcFallback}${q}`;
     const nextAttrs = attrs.replace(/\bsrc\s*=\s*(["'])[^"']*\1/i, newSrcAttr).trim();
     const srcsetEscaped = escapeHtmlAttrAmpersands(srcset);

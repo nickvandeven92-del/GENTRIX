@@ -1,24 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { publicBookingIframeSrcFromNavHref } from "@/lib/site/public-booking-modal-url";
+import {
+  isPublishedSiteSoftNavTarget,
+  isSameDocumentInPageAnchorNav,
+} from "@/lib/site/published-site-soft-nav";
+import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
 import { STUDIO_PUBLIC_NAV_MESSAGE_SOURCE } from "@/lib/site/studio-public-nav-message";
 
+function runWithViewTransition(fn: () => void): void {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
+  if (typeof doc.startViewTransition === "function") {
+    doc.startViewTransition(fn);
+  } else {
+    fn();
+  }
+}
+
 /**
- * Bridge voor publieke sites — twee taken:
+ * Bridge voor publieke sites — taken:
  *
  * 1. **Boek-modal**: klikken op `/boek/...`-links openen een modal i.p.v. navigeren.
- *    Werkt zowel voor directe DOM-klikken (inline render) als postMessage (legacy iframe).
+ * 2. **Legacy iframe postMessage**: luistert naar `STUDIO_PUBLIC_NAV_MESSAGE_SOURCE` berichten.
+ * 3. **Optioneel SPA-gevoel** (`publishedSiteSoftNav`): interne site-links → `router.push`
+ *    + View Transitions; Alpine/Lucide opnieuw via {@link PublishedTailwindInlineClientEffects}.
  *
- * 2. **Legacy iframe postMessage**: luistert naar `STUDIO_PUBLIC_NAV_MESSAGE_SOURCE` berichten
- *    voor portaal/editor-iframes die nog via postMessage navigeren.
- *
- * Reguliere interne `<a>`-links laten we met rust: de browser doet native full-page navigation
- * — dat houdt de oude pagina zichtbaar tot de nieuwe klaar is (SSR + `revalidate` cache = instant-gevoel).
- * Alpine/Tailwind/etc. herinitialiseren zo betrouwbaar bij elke navigatie.
+ * Zonder soft-nav-context: native volledige document-navigatie (betrouwbaar voor willekeurige scripts).
  */
-export function PublishedTailwindNavBridge({ children }: { children: ReactNode }) {
+export function PublishedTailwindNavBridge({
+  children,
+  publishedSiteSoftNav = null,
+}: {
+  children: ReactNode;
+  /** Alleen gezet op publieke inline multipage/contact-routes — dan client-side App Router-nav. */
+  publishedSiteSoftNav?: PublishedSiteSoftNavContext | null;
+}) {
+  const router = useRouter();
   const [bookingModalSrc, setBookingModalSrc] = useState<string | null>(null);
   const closeBookingModal = useCallback(() => setBookingModalSrc(null), []);
 
@@ -34,6 +54,36 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
     }
     return false;
   }, []);
+
+  const trySoftNavigate = useCallback(
+    (absolute: string): boolean => {
+      if (!publishedSiteSoftNav) return false;
+      try {
+        const u = new URL(absolute, window.location.href);
+        if (u.origin !== window.location.origin) return false;
+        /** Zelfde document + ander fragment: browser laat anker-scroll lopen. */
+        if (isSameDocumentInPageAnchorNav(u)) return false;
+        if (!isPublishedSiteSoftNavTarget(u, publishedSiteSoftNav)) return false;
+        const dest = `${u.pathname}${u.search}${u.hash}`;
+        const cur = new URL(window.location.href);
+        if (
+          u.origin === cur.origin &&
+          u.pathname === cur.pathname &&
+          u.search === cur.search &&
+          u.hash === cur.hash
+        ) {
+          return false;
+        }
+        runWithViewTransition(() => {
+          router.push(dest);
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [publishedSiteSoftNav, router],
+  );
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -57,11 +107,15 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
       }
       if (tryOpenBooking(absolute)) {
         e.preventDefault();
+        return;
+      }
+      if (trySoftNavigate(absolute)) {
+        e.preventDefault();
       }
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [tryOpenBooking]);
+  }, [tryOpenBooking, trySoftNavigate]);
 
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
@@ -72,6 +126,7 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
       try {
         const u = new URL(d.href, window.location.origin);
         if (u.origin !== window.location.origin) return;
+        if (trySoftNavigate(u.toString())) return;
         window.location.assign(u.pathname + u.search + u.hash);
       } catch {
         /* ignore */
@@ -79,7 +134,7 @@ export function PublishedTailwindNavBridge({ children }: { children: ReactNode }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [tryOpenBooking]);
+  }, [tryOpenBooking, trySoftNavigate]);
 
   useEffect(() => {
     if (!bookingModalSrc) return;

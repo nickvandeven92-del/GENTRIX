@@ -11,7 +11,9 @@ import {
   type ContactSubpageNavScriptInput,
   publicSiteIframeDocumentPathname,
 } from "@/lib/site/tailwind-contact-subpage";
+import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
 import { PublishedTailwindAssets } from "@/components/site/published-tailwind-assets";
+import { PublishedTailwindInlineClientEffects } from "@/components/site/published-tailwind-inline-client-effects";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { PublishedTailwindShellSync } from "@/components/site/published-tailwind-shell-sync";
 import { cn } from "@/lib/utils";
@@ -25,8 +27,8 @@ import { cn } from "@/lib/utils";
  * – Head-inhoud (compiled Tailwind CSS, meta, script-tags) wordt via `dangerouslySetInnerHTML`
  *   in een `<style>`-container gezet — browser parseert dit bij SSR-response en past alle regels toe
  * – Body-inhoud komt in een wrapper-div; scripts runnen omdat de browser ze bij initial parse ziet
- * – Elke navigatie is een full SSR page-load → Alpine/Tailwind/etc. herinitialiseren betrouwbaar
- *   én de browser houdt de oude pagina zichtbaar tot de nieuwe klaar is (geen flash)
+ * – Standaard: full SSR page-load. Met {@link PublishedSiteSoftNavContext} via de nav-bridge:
+ *   App Router `router.push` + Alpine/Lucide-resync voor een SPA-achtiger gevoel.
  *
  * Isolatie-risico's zijn laag omdat `/site/[slug]` in de eigen `(public)` route-group zit:
  * admin/portaal hebben een eigen layout en delen geen DOM met de publieke site-routes.
@@ -56,6 +58,8 @@ type PublicPublishedTailwindInlineProps = {
   relaxedTailwindCdnLoading?: boolean;
   /** Flyer/QR: `flyer=1` op interne navigatie (actiebalk op subpagina’s). */
   flyerPreview?: boolean;
+  /** Multipage/contact: client-side navigatie + morph (View Transitions) i.p.v. volledige document-load. */
+  publishedSiteSoftNav?: PublishedSiteSoftNavContext | null;
 };
 
 function deriveSSROrigin(): string {
@@ -84,6 +88,7 @@ export function PublicPublishedTailwindInline({
   prettyPublicUrls = false,
   relaxedTailwindCdnLoading = false,
   flyerPreview = false,
+  publishedSiteSoftNav = null,
 }: PublicPublishedTailwindInlineProps) {
   const filtered = filterSectionsForPublicSite(sections);
   const iframeDocumentPathname = publicSiteIframeDocumentPathname(
@@ -142,8 +147,10 @@ export function PublicPublishedTailwindInline({
     .map(([k, v]) => `e.setAttribute(${JSON.stringify(k)},${JSON.stringify(v)});`)
     .join("")}}catch(_){}})();`;
 
+  const bodyFingerprint = `${filtered.map((s) => s.id ?? "").join("\0")}|${parts.bodyHtml.length}`;
+
   return (
-    <PublishedTailwindNavBridge>
+    <PublishedTailwindNavBridge publishedSiteSoftNav={publishedSiteSoftNav}>
       <Script
         id="gentrix-published-tailwind-html-shell"
         strategy="beforeInteractive"
@@ -166,6 +173,7 @@ export function PublicPublishedTailwindInline({
         {...parts.bodyDataAttrs}
         dangerouslySetInnerHTML={{ __html: parts.bodyHtml }}
       />
+      <PublishedTailwindInlineClientEffects bodyFingerprint={bodyFingerprint} />
     </PublishedTailwindNavBridge>
   );
 }

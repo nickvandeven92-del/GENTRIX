@@ -20,6 +20,7 @@ import { ensureFooterAppendedFromLanding } from "@/lib/site/ensure-footer-on-sub
 import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
 import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
+import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -206,6 +207,8 @@ export function PublishedSiteView({
     if (visibility === "public") {
       const slugForA = publishedSlug?.trim() ?? "";
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
+      const publishedSiteSoftNav: PublishedSiteSoftNavContext | null =
+        slugForA && contactNavBase ? { siteSlug: slugForA, prettyPublicUrls } : null;
       return (
         <div className={cn("relative flex w-full flex-1 flex-col", className)}>
           {slugForA ? (
@@ -236,6 +239,7 @@ export function PublishedSiteView({
             prettyPublicUrls={prettyPublicUrls}
             relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
             flyerPreview={flyerPreview}
+            publishedSiteSoftNav={publishedSiteSoftNav}
           />
         </div>
       );
