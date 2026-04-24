@@ -71,6 +71,23 @@ describe("ai-hero-image-postprocess", () => {
     expect(out).toMatch(/class="[^"]*\brelative\b/);
   });
 
+  it("injectAiHeroImageIntoHeroSectionHtml: responsive-set met srcset/sizes", () => {
+    const html = `<section id="hero" class="min-h-screen overflow-hidden"><div class="p-8">Hi</div></section>`;
+    const inject = {
+      variants: [
+        { width: 640, url: "https://ab.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/stem/640.webp" },
+        { width: 1280, url: "https://ab.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/stem/1280.webp" },
+      ],
+      defaultSrc: "https://ab.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/stem/1280.webp",
+    };
+    const out = injectAiHeroImageIntoHeroSectionHtml(html, inject);
+    expect(out).toContain("srcset=");
+    expect(out).toContain("sizes=");
+    expect(out).toContain("640w");
+    expect(out).toContain("1280w");
+    expect(out).toMatch(/fetchpriority="high"/);
+  });
+
   it("injectAiHeroImageIntoHeroSectionHtml split-grid: img in eerste kolom, gradient uit class", () => {
     const html = `<section id="hero" class="relative grid min-h-screen grid-cols-1 md:grid-cols-2">
       <div class="min-h-[50vh] bg-gradient-to-br from-stone-400 to-stone-200"></div>

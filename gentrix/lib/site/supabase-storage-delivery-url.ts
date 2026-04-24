@@ -122,12 +122,29 @@ export function supabaseStorageObjectUrlToRenderUrl(
 /**
  * Vervangt alle Supabase object/public-afbeeldings-URL's in een HTML-string (hero, `url()`, src).
  */
+/**
+ * Publish-time AI-hero-set: `…/ai-hero/<stem>/<intrinsicW>.webp` — geen `render/image`-rewrite;
+ * browser kiest via `srcset`.
+ */
+export function isPreoptimizedAiHeroPublishVariantObjectUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (!u.hostname.endsWith(".supabase.co")) return false;
+    const p = u.pathname;
+    if (!p.includes("/ai-hero/")) return false;
+    return /\/ai-hero\/[^/]+\/\d+\.webp$/i.test(p);
+  } catch {
+    return false;
+  }
+}
+
 export function rewriteSupabaseStorageObjectUrlsForWebDelivery(
   html: string,
   opts?: SupabaseImageDeliveryOptions,
 ): string {
   return html.replace(SUPABASE_OBJECT_PUBLIC_IMAGE_RE, (match) => {
     if (match.includes("/storage/v1/render/image/public/")) return match;
+    if (isPreoptimizedAiHeroPublishVariantObjectUrl(match)) return match;
     return supabaseStorageObjectUrlToRenderUrl(match, opts);
   });
 }

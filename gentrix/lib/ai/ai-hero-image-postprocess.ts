@@ -7,8 +7,10 @@ import type {
   TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
+import { buildHeroResponsiveWebpVariants } from "@/lib/ai/hero-responsive-webp-variants";
 import { tryEncodeHeroRasterAsWebp } from "@/lib/ai/hero-raster-encode-webp";
 import { SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE } from "@/lib/site/site-assets-storage-upload";
+import { inferHeroImgSizesFromAttrs } from "@/lib/site/supabase-storage-delivery-url";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isValidSubfolderSlug } from "@/lib/slug";
 
@@ -18,6 +20,20 @@ const PLACEHOLDER_GIF_PREFIX = "data:image/gif;base64,";
 const HERO_IMG_MARKER = 'data-gentrix-ai-hero-img="1"';
 
 export type StudioHeroImageRasterMime = "image/png" | "image/jpeg" | "image/webp";
+
+/** `string` = enkelvoudige `src`; object = vaste publish-varianten met `srcset`. */
+export type AiHeroInjectUrls =
+  | string
+  | {
+      variants: readonly { width: number; url: string }[];
+      defaultSrc: string;
+    };
+
+export type StudioHeroImageUploadResult = {
+  /** Één URL voor Claude asset-first footer (`promptUrl`). */
+  promptUrl: string;
+  inject: AiHeroInjectUrls;
+};
 
 /** Parallel hero-fetch vóór/e tijdens Claude; bevat base64 + MIME zodat Google Gemini (JPEG/WEBP) en OpenAI (PNG) hetzelfde pad delen. */
 export type StudioHeroImageRasterPrefetch = {
@@ -480,7 +496,7 @@ export async function generateStudioHeroImagePublicUrl(ctx: {
   description: string;
   designContract: DesignGenerationContract | null;
   subfolderSlug?: string | null;
-}): Promise<string | null> {
+}): Promise<StudioHeroImageUploadResult | null> {
   if (!isAiHeroImagePostProcessEnabled()) return null;
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
   const raster = await createHeroImageRasterB64(prompt);
@@ -492,7 +508,7 @@ export async function generateStudioHeroImagePublicUrl(ctx: {
     return null;
   }
   if (bytes.length < 500) return null;
-  return uploadRasterToSiteAssets(bytes, raster.mime, ctx.subfolderSlug);
+  return uploadHeroRasterToSiteAssets(bytes, raster.mime, ctx.subfolderSlug);
 }
 
 function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
@@ -539,7 +555,7 @@ export function appendPrebakedHeroImageToUserContent(
  * en valt terug op `createHeroImageRasterB64` als prefetch `null` opleverde of overgeslagen was.
  *
  * Bij **asset-first** (`generateStudioHeroImagePublicUrl` vóór HTML) niet starten: geef
- * `Promise.resolve(null)` door en zet `prebakedHeroPublicUrl` op de apply-context.
+ * `Promise.resolve(null)` door en zet `prebakedHero` op de apply-context.
  */
 export function startOpenAiHeroImagePrefetch(
   input: OpenAiHeroPrefetchInput,
@@ -566,7 +582,18 @@ function fileExtForHeroMime(mime: StudioHeroImageRasterMime): string {
   return "png";
 }
 
-async function uploadRasterToSiteAssets(
+function pickDefaultHeroSrcFromVariants(sorted: readonly { width: number; url: string }[]): string {
+  const TARGET = 1280;
+  if (!sorted.length) return "";
+  const exact = sorted.find((v) => v.width === TARGET);
+  if (exact) return exact.url;
+  const le = sorted.filter((v) => v.width <= TARGET);
+  if (le.length) return le[le.length - 1]!.url;
+  return sorted[0]!.url;
+}
+
+/** Fallback: één bestand (WebP indien kleiner dan bron). */
+async function uploadSingleRasterToSiteAssets(
   bytes: Buffer,
   mime: StudioHeroImageRasterMime,
   subfolderSlug?: string | null,
@@ -596,6 +623,56 @@ async function uploadRasterToSiteAssets(
     console.warn("[ai-hero] Storage unavailable:", e instanceof Error ? e.message : e);
     return null;
   }
+}
+
+async function uploadHeroRasterToSiteAssets(
+  bytes: Buffer,
+  mime: StudioHeroImageRasterMime,
+  subfolderSlug?: string | null,
+): Promise<StudioHeroImageUploadResult | null> {
+  const variants = await buildHeroResponsiveWebpVariants(bytes, mime);
+  if (variants != null && variants.length > 0) {
+    try {
+      const supabase = createServiceRoleClient();
+      const folder = storageFolderForGeneration(subfolderSlug);
+      const stem = `${Date.now()}-${randomBytes(8).toString("hex")}`;
+      const basePath = `${folder}/ai-hero/${stem}`;
+
+      const uploaded = (
+        await Promise.all(
+          variants.map(async (v) => {
+            const path = `${basePath}/${v.width}.webp`;
+            const { error } = await supabase.storage.from("site-assets").upload(path, v.bytes, {
+              contentType: "image/webp",
+              upsert: false,
+              cacheControl: SITE_ASSETS_UPLOAD_CACHE_CONTROL_MAX_AGE,
+            });
+            if (error) {
+              console.warn("[ai-hero] responsive variant upload failed:", path, error.message);
+              return null;
+            }
+            const { data: pub } = supabase.storage.from("site-assets").getPublicUrl(path);
+            return pub.publicUrl ? { width: v.width, url: pub.publicUrl } : null;
+          }),
+        )
+      ).filter((x): x is { width: number; url: string } => x != null);
+
+      if (uploaded.length > 0) {
+        const sorted = [...uploaded].sort((a, b) => a.width - b.width);
+        const defaultSrc = pickDefaultHeroSrcFromVariants(sorted);
+        return {
+          promptUrl: defaultSrc,
+          inject: { variants: sorted, defaultSrc },
+        };
+      }
+    } catch (e) {
+      console.warn("[ai-hero] responsive upload failed:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  const single = await uploadSingleRasterToSiteAssets(bytes, mime, subfolderSlug);
+  if (!single) return null;
+  return { promptUrl: single, inject: single };
 }
 
 function stripTailwindGradientBackgroundTokens(classValue: string): string {
@@ -688,16 +765,32 @@ function tryInjectAiHeroIntoSplitGridFirstColumn(html: string, imgTag: string): 
   return `${html.slice(0, divStart)}${newDivOpen}${imgTag}${html.slice(divEndExclusive)}`;
 }
 
+function escapeHtmlAttrDoubleQuoted(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
+function buildAiHeroImgTag(image: AiHeroInjectUrls): string {
+  const baseClass =
+    "pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center";
+  /** `z-0` (niet negatief): negatieve z-index verdween vaak achter sibling-kolommen met effen `bg-*`, waardoor de injectie “onzichtbaar” leek. */
+  if (typeof image === "string") {
+    const escUrl = escapeHtmlAttrDoubleQuoted(image);
+    return `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="${baseClass}" loading="eager" fetchpriority="high" decoding="async" />`;
+  }
+  const srcEsc = escapeHtmlAttrDoubleQuoted(image.defaultSrc);
+  const srcsetEsc = image.variants.map((v) => `${escapeHtmlAttrDoubleQuoted(v.url)} ${v.width}w`).join(", ");
+  const sizesEsc = escapeHtmlAttrDoubleQuoted(inferHeroImgSizesFromAttrs(`class="${baseClass}"`));
+  return `<img ${HERO_IMG_MARKER} src="${srcEsc}" srcset="${srcsetEsc}" sizes="${sizesEsc}" alt="" class="${baseClass}" loading="eager" fetchpriority="high" decoding="async" />`;
+}
+
 /**
  * Voegt één **full-bleed** hero-beeld toe (onder de overige inhoud, `z-0`).
  * Geen desktop-halve-breedte meer: `md:w-1/2` + complexe AI-grids met ondoorzichtige zijkolommen
  * liet het beeld alleen in een smalle strook zien (“drie kolommen”-bug in preview).
  * Retourneert `null` wanneer er geen passende `<section id="hero">` is.
  */
-export function injectAiHeroImageIntoHeroSectionHtml(html: string, publicImageUrl: string): string | null {
-  const escUrl = publicImageUrl.replace(/"/g, "&quot;");
-  /** `z-0` (niet negatief): negatieve z-index verdween vaak achter sibling-kolommen met effen `bg-*`, waardoor de injectie “onzichtbaar” leek. */
-  const img = `<img ${HERO_IMG_MARKER} src="${escUrl}" alt="" class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center" loading="eager" fetchpriority="high" />`;
+export function injectAiHeroImageIntoHeroSectionHtml(html: string, image: AiHeroInjectUrls): string | null {
+  const img = buildAiHeroImgTag(image);
 
   const splitFirst = tryInjectAiHeroIntoSplitGridFirstColumn(html, img);
   if (splitFirst != null) return splitFirst;
@@ -717,8 +810,12 @@ export type ApplyAiHeroImageContext = {
   /** Parallel gestart vóór/e tijdens Claude — bij `null` na await: opnieuw `createHeroImageRasterB64`. */
   prefetchedHeroB64Promise?: Promise<StudioHeroImageRasterPrefetch | null>;
   /**
-   * Zelfde raster als asset-first stap vóór HTML: injecteer zonder tweede upstream-call.
-   * Bij mislukte inject (geen `<section id="hero">`) geen tweede generatie — asset staat al op CDN.
+   * Asset-first: volledige upload (publish-varianten + `promptUrl`); injecteert zonder tweede upstream-call.
+   * Heeft voorrang op {@link prebakedHeroPublicUrl}.
+   */
+  prebakedHero?: StudioHeroImageUploadResult | null;
+  /**
+   * Legacy: alleen prompt-URL (string-inject). Checkpoints vóór multi-width gebruikten dit veld.
    */
   prebakedHeroPublicUrl?: string | null;
   /**
@@ -753,9 +850,16 @@ export async function applyAiHeroImageToGeneratedPage(
 
   if (!shouldAttemptAiHeroImageForHtml(heroHtmlForCheck)) return data;
 
-  const preUrl = ctx.prebakedHeroPublicUrl?.trim();
-  if (preUrl) {
-    const injectedEarly = injectAiHeroImageIntoHeroSectionHtml(heroHtmlForCheck, preUrl);
+  const prebaked =
+    ctx.prebakedHero ??
+    (ctx.prebakedHeroPublicUrl?.trim()
+      ? ({
+          promptUrl: ctx.prebakedHeroPublicUrl.trim(),
+          inject: ctx.prebakedHeroPublicUrl.trim(),
+        } satisfies StudioHeroImageUploadResult)
+      : null);
+  if (prebaked) {
+    const injectedEarly = injectAiHeroImageIntoHeroSectionHtml(heroHtmlForCheck, prebaked.inject);
     if (injectedEarly != null) {
       const nextSections = [...data.sections];
       nextSections[idx] = { ...sec, html: injectedEarly };
@@ -763,7 +867,7 @@ export async function applyAiHeroImageToGeneratedPage(
     }
     console.warn(
       "[ai-hero] prebaked URL present but hero HTML has no injectable <section id=\"hero\"> — skipping second hero API call (asset already on CDN):",
-      preUrl.slice(0, 120),
+      prebaked.promptUrl.slice(0, 120),
     );
     return data;
   }
@@ -793,16 +897,16 @@ export async function applyAiHeroImageToGeneratedPage(
   }
   if (bytes.length < 500) return data;
 
-  const url = await uploadRasterToSiteAssets(bytes, prefetch.mime, ctx.subfolderSlug);
-  if (!url) return data;
+  const uploaded = await uploadHeroRasterToSiteAssets(bytes, prefetch.mime, ctx.subfolderSlug);
+  if (!uploaded) return data;
 
   // Injecteer in de (eventueel gestripte) hero HTML zodat de AI-afbeelding
   // niet achter een klantfoto verdwijnt.
-  const nextHtml = injectAiHeroImageIntoHeroSectionHtml(heroHtmlForCheck, url);
+  const nextHtml = injectAiHeroImageIntoHeroSectionHtml(heroHtmlForCheck, uploaded.inject);
   if (nextHtml == null) {
     console.warn(
       "[ai-hero] Image generated and uploaded but hero HTML has no injectable <section id=\"hero\"> open tag — skipping inject (orphan asset):",
-      url,
+      uploaded.promptUrl,
     );
     return data;
   }

@@ -3,6 +3,7 @@ import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
   buildSupabaseRenderSrcsetFromRenderUrl,
   inferHeroImgSizesFromAttrs,
+  isPreoptimizedAiHeroPublishVariantObjectUrl,
   promoteHeroSupabaseBackgroundUrlToImg,
   qualityForSrcsetWidth,
   rewriteSupabaseStorageObjectUrlsForWebDelivery,
@@ -41,6 +42,16 @@ describe("rewriteSupabaseStorageObjectUrlsForWebDelivery", () => {
     expect(out).not.toContain("/object/public/");
     expect(out).toContain("/render/image/public/");
     expect(out.match(/render\/image\/public/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("laat publish-time AI-hero varianten (object/public) ongemoeid", () => {
+    const u =
+      "https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/1776-abc/1280.webp";
+    expect(isPreoptimizedAiHeroPublishVariantObjectUrl(u)).toBe(true);
+    const html = `<img src="${u}" alt="" />`;
+    const out = rewriteSupabaseStorageObjectUrlsForWebDelivery(html);
+    expect(out).toContain("/object/public/");
+    expect(out).not.toContain("/render/image/public/");
   });
 });
 

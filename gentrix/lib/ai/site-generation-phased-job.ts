@@ -16,6 +16,7 @@ import {
   appendPrebakedHeroImageToUserContent,
   generateStudioHeroImagePublicUrl,
   shouldRunStudioHeroImagePipeline,
+  type StudioHeroImageUploadResult,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
@@ -36,7 +37,9 @@ export type SiteGenerationJobCheckpointV1 = {
   designContract: DesignGenerationContract | null;
   /** Alleen velden die na de stream nog nodig zijn (upgrade, subfolder, …). */
   promptOptionsTail?: Pick<GenerateSitePromptOptions, "preserveLayoutUpgrade" | "siteStorageSubfolderSlug">;
-  /** Zelfde raster als monolithische asset-first stap; fase 2 injecteert zonder nieuwe upstream hero-call. */
+  /** Volledige asset-first upload (multi-width); fase 2 injecteert zonder nieuwe upstream hero-call. */
+  prebakedHero?: StudioHeroImageUploadResult | null;
+  /** Legacy checkpoints: alleen `promptUrl`-string. */
   prebakedHeroPublicUrl?: string | null;
 };
 
@@ -130,18 +133,18 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
   let userContentWithComposition = userContentForGeneration;
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;
-  let prebakedHeroPublicUrl: string | null = null;
+  let prebakedHero: StudioHeroImageUploadResult | null = null;
   if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
-    prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
+    prebakedHero = await generateStudioHeroImagePublicUrl({
       businessName,
       description,
       designContract,
       subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
     });
-    if (prebakedHeroPublicUrl) {
+    if (prebakedHero) {
       userContentWithComposition = appendPrebakedHeroImageToUserContent(
         userContentWithComposition,
-        prebakedHeroPublicUrl,
+        prebakedHero.promptUrl,
       );
     }
   }
@@ -153,7 +156,8 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
     prepared: serializePrepared(p),
     userContentWithComposition,
     designContract,
-    prebakedHeroPublicUrl,
+    prebakedHero,
+    prebakedHeroPublicUrl: prebakedHero?.promptUrl ?? null,
     promptOptionsTail: {
       ...(promptOptions?.preserveLayoutUpgrade != null
         ? { preserveLayoutUpgrade: promptOptions.preserveLayoutUpgrade }
@@ -190,6 +194,15 @@ export function buildPhase2InputFromCheckpoint(
         }
       : undefined;
 
+  const prebakedHero =
+    checkpoint.prebakedHero ??
+    (checkpoint.prebakedHeroPublicUrl
+      ? ({
+          promptUrl: checkpoint.prebakedHeroPublicUrl,
+          inject: checkpoint.prebakedHeroPublicUrl,
+        } satisfies StudioHeroImageUploadResult)
+      : null);
+
   return {
     prepared,
     userContentWithComposition: checkpoint.userContentWithComposition,
@@ -199,7 +212,7 @@ export function buildPhase2InputFromCheckpoint(
     promptOptions,
     /** Fase 1 draait asset-first; fase 2 heeft geen parallelle prefetch in checkpoint. */
     prefetchedHeroB64Promise: Promise.resolve(null),
-    prebakedHeroPublicUrl: checkpoint.prebakedHeroPublicUrl ?? null,
+    prebakedHero,
   };
 }
 

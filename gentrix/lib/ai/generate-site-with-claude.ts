@@ -71,6 +71,7 @@ import {
   shouldRunStudioHeroImagePipeline,
   startOpenAiHeroImagePrefetch,
   type StudioHeroImageRasterPrefetch,
+  type StudioHeroImageUploadResult,
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
@@ -2467,8 +2468,8 @@ export type ExecuteGenerateSitePhase2Input = {
   streamHooks?: GenerateSiteStreamHooks;
   /** Parallel hero-raster (Google Gemini image of OpenAI); zie `startOpenAiHeroImagePrefetch`. */
   prefetchedHeroB64Promise?: Promise<StudioHeroImageRasterPrefetch | null>;
-  /** Zelfde asset als v??r HTML (asset-first); apply gebruikt dit i.p.t. tweede upstream-call. */
-  prebakedHeroPublicUrl?: string | null;
+  /** Asset-first: multi-width WebP-set + `promptUrl` voor Claude; apply injecteert zonder tweede upstream-call. */
+  prebakedHero?: StudioHeroImageUploadResult | null;
 };
 
 export async function executeGenerateSitePhase2(
@@ -2483,7 +2484,7 @@ export async function executeGenerateSitePhase2(
     promptOptions,
     streamHooks,
     prefetchedHeroB64Promise,
-    prebakedHeroPublicUrl,
+    prebakedHero,
   } = input;
 
   let textBody = "";
@@ -2554,7 +2555,7 @@ export async function executeGenerateSitePhase2(
     designContract,
     subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
     prefetchedHeroB64Promise,
-    prebakedHeroPublicUrl: prebakedHeroPublicUrl ?? null,
+    prebakedHero: prebakedHero ?? null,
   });
 
   data = { ...data, sections: maybeEnhanceHero(data.sections, data.config, description) };
@@ -2622,20 +2623,20 @@ export async function generateSiteWithClaude(
   let userContentWithComposition = userContentForGeneration;
 
   const clientImgCount = promptOptions?.clientImages?.length ?? 0;
-  let prebakedHeroPublicUrl: string | null = null;
+  let prebakedHero: StudioHeroImageUploadResult | null = null;
   let prefetchedHeroB64Promise: Promise<StudioHeroImageRasterPrefetch | null>;
 
   if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
-    prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
+    prebakedHero = await generateStudioHeroImagePublicUrl({
       businessName,
       description,
       designContract,
       subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
     });
-    if (prebakedHeroPublicUrl) {
+    if (prebakedHero) {
       userContentWithComposition = appendPrebakedHeroImageToUserContent(
         userContentWithComposition,
-        prebakedHeroPublicUrl,
+        prebakedHero.promptUrl,
       );
     }
   }
@@ -2643,7 +2644,7 @@ export async function generateSiteWithClaude(
   const skipHeroPrefetch =
     clientImgCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
   prefetchedHeroB64Promise =
-    !skipHeroPrefetch && !prebakedHeroPublicUrl
+    !skipHeroPrefetch && !prebakedHero
       ? startOpenAiHeroImagePrefetch({
           businessName,
           description,
@@ -2661,7 +2662,7 @@ export async function generateSiteWithClaude(
     promptOptions,
     streamHooks,
     prefetchedHeroB64Promise,
-    prebakedHeroPublicUrl,
+    prebakedHero,
   });
 }
 
@@ -2898,7 +2899,7 @@ export function createGenerateSiteReadableStream(
             : p.userContent;
 
         const clientImgCount = promptOptions?.clientImages?.length ?? 0;
-        let prebakedHeroPublicUrl: string | null = null;
+        let prebakedHero: StudioHeroImageUploadResult | null = null;
         let prefetchedHeroB64Promise: Promise<StudioHeroImageRasterPrefetch | null>;
 
         if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
@@ -2908,7 +2909,7 @@ export function createGenerateSiteReadableStream(
           });
           const stopHeroPrebakeKeepalive = startNdjsonKeepaliveForSilentWork(controller, send);
           try {
-            prebakedHeroPublicUrl = await generateStudioHeroImagePublicUrl({
+            prebakedHero = await generateStudioHeroImagePublicUrl({
               businessName,
               description,
               designContract,
@@ -2917,11 +2918,11 @@ export function createGenerateSiteReadableStream(
           } finally {
             stopHeroPrebakeKeepalive();
           }
-          trace("prebaked_hero_done", prebakedHeroPublicUrl ? "url_ok" : "null");
-          if (prebakedHeroPublicUrl) {
+          trace("prebaked_hero_done", prebakedHero ? "url_ok" : "null");
+          if (prebakedHero) {
             userContentForGeneration = appendPrebakedHeroImageToUserContent(
               userContentForGeneration,
-              prebakedHeroPublicUrl,
+              prebakedHero.promptUrl,
             );
             send(controller, {
               type: "status",
@@ -2938,7 +2939,7 @@ export function createGenerateSiteReadableStream(
         const skipHeroPrefetch =
           clientImgCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
         prefetchedHeroB64Promise =
-          !skipHeroPrefetch && !prebakedHeroPublicUrl
+          !skipHeroPrefetch && !prebakedHero
             ? startOpenAiHeroImagePrefetch({
                 businessName,
                 description,
@@ -2946,7 +2947,7 @@ export function createGenerateSiteReadableStream(
                 skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
               })
             : Promise.resolve(null);
-        if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch && !prebakedHeroPublicUrl) {
+        if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch && !prebakedHero) {
           send(controller, {
             type: "status",
             message: "Hero-foto: upstream gestart (loopt parallel met pagina-HTML)???",
@@ -3112,7 +3113,7 @@ export function createGenerateSiteReadableStream(
         if (mayAiHero) {
           send(controller, {
             type: "status",
-            message: prebakedHeroPublicUrl
+            message: prebakedHero
               ? "Hero: vooraf gegenereerde foto controleren / in `#hero` plaatsen???"
               : isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch
                 ? "Hero: AI-foto uploaden en in de hero injecteren???"
@@ -3127,7 +3128,7 @@ export function createGenerateSiteReadableStream(
             designContract,
             subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
             prefetchedHeroB64Promise,
-            prebakedHeroPublicUrl,
+            prebakedHero,
           });
         } finally {
           stopAiHeroKeepalive();
