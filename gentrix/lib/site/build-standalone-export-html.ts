@@ -47,6 +47,7 @@ import {
 } from "@/lib/site/studio-section-visibility";
 import { pickStudioSiteCreditVariant } from "@/lib/site/studio-site-shell";
 import { buildUserScriptTagForHtmlDocument, sanitizeUserSiteCss } from "@/lib/site/user-site-assets";
+import type { StudioRasterBrandSet } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 function escapeHtmlText(s: string): string {
@@ -66,6 +67,7 @@ export type StandaloneExportUserAssets = {
   css?: string;
   js?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   /** Wanneer geen `exportPublish.subfolderSlug`: toch unieke favicon (display + slug). */
   faviconIdentity?: { displayName: string; slug: string };
   /**
@@ -107,8 +109,15 @@ export function buildStandaloneExportHtmlDocument(
         })
       : publicOnly;
 
+  const slugForFav =
+    userAssets?.exportPublish?.subfolderSlug?.trim() || userAssets?.faviconIdentity?.slug?.trim() || "site";
+  const displayForFav =
+    userAssets?.faviconIdentity?.displayName?.trim() || docTitle?.trim() || "Site";
+
   let bodyInner = buildTailwindSectionsBodyInnerHtml(sectionSource, pageConfig, {
     logoSet: userAssets?.logoSet,
+    rasterBrandSet: userAssets?.rasterBrandSet,
+    rasterBrandLabel: displayForFav,
     designContract: userAssets?.designContract ?? null,
   });
 
@@ -145,12 +154,9 @@ export function buildStandaloneExportHtmlDocument(
   const uJs = userAssets?.js?.trim() ?? "";
   const userCssBlock = uCss ? `<style id="studio-user-css">\n${sanitizeUserSiteCss(uCss)}\n</style>\n  ` : "";
   const userJsBlock = uJs ? `\n${buildUserScriptTagForHtmlDocument(uJs)}` : "";
-  const slugForFav =
-    userAssets?.exportPublish?.subfolderSlug?.trim() || userAssets?.faviconIdentity?.slug?.trim() || "site";
-  const displayForFav =
-    userAssets?.faviconIdentity?.displayName?.trim() || docTitle?.trim() || "Site";
   const faviconLink = buildFaviconLinkTagForPublishedSite({
     logoSet: userAssets?.logoSet,
+    rasterBrandSet: userAssets?.rasterBrandSet,
     displayName: displayForFav,
     slug: slugForFav,
     pageConfig: pageConfig ?? null,

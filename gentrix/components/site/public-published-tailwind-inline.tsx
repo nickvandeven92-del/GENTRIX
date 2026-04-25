@@ -99,6 +99,8 @@ export function PublicPublishedTailwindInline({
     contactSubpageNavBase ?? undefined,
   );
   const ssrOrigin = deriveSSROrigin();
+  /** Met `ssrOrigin` worden CDN-scripts (incl. Tailwind Play) naar eigen origin geproxied; preconnect naar cdn.tailwindcss.com helpt dan niet. */
+  const preconnectTailwindPlayCdn = !compiledTailwindCss?.trim() && !ssrOrigin;
   const contactSubpageNav =
     contactSubpageNavBase && ssrOrigin
       ? { ...contactSubpageNavBase, pageOrigin: ssrOrigin, prettyPublicUrls: prettyPublicUrls || undefined }
@@ -161,7 +163,7 @@ export function PublicPublishedTailwindInline({
         dangerouslySetInnerHTML={{ __html: shellBootScript }}
       />
       <PublishedTailwindShellSync publishedSlug={publishedSlug} navBrandLabel={navBrandLabel} />
-      <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
+      <PublishedTailwindAssets preconnectTailwindPlayCdn={preconnectTailwindPlayCdn} />
       {/* gegenereerde head-inhoud uit eigen builder (styles, meta, scripts) */}
       <div
         id="studio-published-head-payload"

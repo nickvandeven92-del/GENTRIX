@@ -76,7 +76,7 @@ export function siteChatMessageSuggestsAiHeroRaster(message: string): boolean {
   /** `briefingWantsAiGeneratedHeroImage` matcht ook "hero foto" — dat zit in "verwijder de hero foto". */
   const removalOnly =
     /\b(verwijder|weghaal|verberg|hide)\b/.test(lower) &&
-    !/\b(maak|nieuw|nieuwe|genereer|vervang|door|met|via|unsplash|stock|pexels)\b/.test(lower);
+    !/\b(maak|nieuw|nieuwe|genereer|vervang|door|met|via|stock|pexels)\b/.test(lower);
   if (removalOnly) return false;
 
   if (briefingWantsAiGeneratedHeroImage(message)) return true;
@@ -102,9 +102,10 @@ export function siteChatMessageSuggestsAiHeroRaster(message: string): boolean {
   if (/\b(impressive|stunning)\s+hero\b/i.test(message)) return true;
   if (/\bindrukwekkend[ea]?\s+hero\b/i.test(lower)) return true;
   if (/\bhero\s+(photo|picture|shot|visual|image)\b/i.test(lower)) return true;
-  const visual = /\b(luxe|luxer|high.end|high-end|premium|sfeerbeeld|achtergrond|fotografie|foto|beeld|stijl|look|atmosfeer|mood|zwart.?wit|motion blur|close.up|close-up|scheer|scheermes|barbier|gegenereerde|genereer|ai.?beeld|stock|unsplash|pexels)\b/.test(
-    lower,
-  );
+  const visual =
+    /\b(luxe|luxer|high.end|high-end|premium|exclusief|exclusievere?|zakelijke?\s+sfeer|institutioneel|corporate|sfeerbeeld|achtergrond|fotografie|foto|beeld|stijl|look|atmosfeer|mood|zwart.?wit|motion blur|close.up|close-up|macro|materiaal|lichtlijn|rim.?light|chiaroscuro|scheer|scheermes|barbier|gegenereerde|genereer|ai.?beeld|stock|pexels)\b/.test(
+      lower,
+    );
   /** Onder andere `genereer` — anders matcht bv. "Genereer een close-up ... voor mijn hero" niet en start de server-pipeline niet. */
   const change = /\b(maak|vervang|update|wijzig|wijziging|nieuw|nieuwe|andere|betere|verbeter|verbeteren|frisser|frisse|genereer|creëer|creer)\b/.test(
     lower,
@@ -275,9 +276,11 @@ export function buildOpenAiHeroPrompt(
   options?: BuildOpenAiHeroPromptOptions,
 ): string {
   const parts: string[] = [
-    "Photorealistic **environment / materials / still-life** photograph for a wide commercial website hero background — must read as a real photo, not an illustration or 3D render.",
-    "Shot like a full-frame DSLR / mirrorless still (24–50mm lens feel), natural dynamic range: avoid crushed blacks, blown highlights, HDR halos, oversharpening, or hyper-saturated 'AI poster' color.",
-    "Subject = **branche-sfeer zonder mensen**: believable interior or workspace **empty of people**, textures (wood, metal, fabric, stone, glass), tools or products **as still life on a surface** (no hands), seasonal light through windows, shallow depth of field with natural bokeh — premium editorial **location/product** photography, not lifestyle models.",
+    "Photorealistic **environment / materials / still-life** photograph for a **wide 16:9** commercial website hero background — must read as a real photo, not an illustration or 3D render.",
+    "**Default composition (unless the brief explicitly demands a full room):** prefer **macro or tight close-up** (macro to ~135mm lens feel): **texture- and light-led** — brushed or bead-blasted metal, smoked/tinted glass with speculars, carbon weave, fine stone/concrete grain, precision hardware, folded paper edges, **or** real architectural fragments (mullions, stair geometry, ceiling louvers, boardroom joinery) with **directional / rim light**. Wide airy **establishing shots** of whole desks/rooms are **second choice** — they read generic fast.",
+    "**Hard ban on lazy B2B stock tropes** (unless the brief names that exact scene): **no** bright Scandinavian home-office clichés — **laptop on pale wood + ceramic mug + spiral notebook + pen + felt desk pad** as the main read. If electronics appear, show **abstract detail** (keyboard edge, hinge metal, brushed lid corner) — not a hero product shot of a consumer laptop.",
+    "Lighting: **controlled drama is encouraged** — single strong key, narrow window beam, corridor perspective, justified deep shadows, specular edge light on glass/metal. Still **natural photographic** integrity: **no** HDR halos, oversharpening, neon oversaturation, or \"AI poster\" grading; **no** blown-out white wall + flat fill as the default look.",
+    "Subject = **branche mood without people**: believable interior **empty of people**, or **abstracted real architecture**, or **still-life props** filling most of the frame (no hands) — **institutional / advisory / craft** calm, **not** lifestyle bloggers, **not** domestic cozy.",
     "**Strict ban — no exceptions:** no people, no faces, no human silhouettes, no crowd, no customers or staff, no mannequins that read as humans, no body parts (hands, arms, legs). If the business is people-centric, show only **setting + props + materials** that imply the trade.",
     "Avoid illustration, vector, coloring-book, comic, game cinematic, or airbrushed glamour retouching.",
     "Props and tools: plausible real-world objects, slightly imperfect staging — never arranged around an invisible human actor.",
@@ -341,7 +344,7 @@ type GeminiGenerateContentResponse = {
   error?: { message?: string; code?: number; status?: string };
 };
 
-function studioHeroImageProviderMode(): "auto" | "google" | "openai" {
+export function studioHeroImageProviderMode(): "auto" | "google" | "openai" {
   const m = process.env.STUDIO_AI_HERO_IMAGE_PROVIDER?.trim().toLowerCase();
   if (m === "google" || m === "gemini") return "google";
   if (m === "openai" || m === "dalle" || m === "dall-e") return "openai";
@@ -352,7 +355,14 @@ function geminiHttpStatusRetryable(status: number): boolean {
   return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
-async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroImageRasterPrefetch | null> {
+/**
+ * Google Gemini image (`responseModalities: IMAGE`). Herbruikt voor hero (16:9) en merkmark (1:1).
+ */
+export async function studioGeminiCreateImageRaster(
+  prompt: string,
+  aspectRatio: string,
+  logTag: "[ai-hero]" | "[ai-brand]",
+): Promise<StudioHeroImageRasterPrefetch | null> {
   const apiKey = getGoogleAiStudioApiKey();
   if (!apiKey) return null;
   const model =
@@ -376,13 +386,13 @@ async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroI
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             responseModalities: ["IMAGE"],
-            imageConfig: { aspectRatio: "16:9" },
+            imageConfig: { aspectRatio },
           },
         }),
       });
       const json = (await res.json()) as GeminiGenerateContentResponse;
       if (!res.ok) {
-        console.warn("[ai-hero] Gemini generateContent error:", res.status, json?.error ?? json);
+        console.warn(logTag, "Gemini generateContent error:", res.status, json?.error ?? json);
         if (attempt < maxAttempts && geminiHttpStatusRetryable(res.status)) {
           await new Promise((r) => setTimeout(r, 700 * attempt));
           continue;
@@ -390,7 +400,7 @@ async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroI
         return null;
       }
       if (json.promptFeedback?.blockReason) {
-        console.warn("[ai-hero] Gemini promptFeedback block:", json.promptFeedback.blockReason);
+        console.warn(logTag, "Gemini promptFeedback block:", json.promptFeedback.blockReason);
         return null;
       }
       const parts = json.candidates?.[0]?.content?.parts ?? [];
@@ -402,10 +412,10 @@ async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroI
           return { base64: data, mime: mimeRaw };
         }
       }
-      console.warn("[ai-hero] Gemini response had no image inlineData in parts.");
+      console.warn(logTag, "Gemini response had no image inlineData in parts.");
       return null;
     } catch (e) {
-      console.warn("[ai-hero] Gemini request failed:", e instanceof Error ? e.message : e);
+      console.warn(logTag, "Gemini request failed:", e instanceof Error ? e.message : e);
       if (attempt < maxAttempts) {
         await new Promise((r) => setTimeout(r, 700 * attempt));
         continue;
@@ -416,6 +426,10 @@ async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroI
     }
   }
   return null;
+}
+
+async function googleGeminiCreateHeroRaster(prompt: string): Promise<StudioHeroImageRasterPrefetch | null> {
+  return studioGeminiCreateImageRaster(prompt, "16:9", "[ai-hero]");
 }
 
 type OpenAiImageGenResponse = {

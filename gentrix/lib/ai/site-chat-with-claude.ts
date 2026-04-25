@@ -9,7 +9,7 @@ import { parseModelJsonObject } from "@/lib/ai/extract-json";
 import { logClaudeMessageUsage } from "@/lib/ai/log-claude-message-usage";
 import { mergeSiteChatSectionsWithOptionalAiHero } from "@/lib/ai/ai-hero-image-postprocess";
 import { mergeTailwindSectionUpdates, tailwindSectionUpdateSchema } from "@/lib/ai/merge-tailwind-section-updates";
-import { stripAllUnsplashFromSections } from "@/lib/ai/strip-unsplash-urls";
+import { stripHallucinatedStockPhotoUrlsFromSections } from "@/lib/ai/strip-hallucinated-stock-photo-urls";
 import { extractPartialReplyFromStreamingSiteChatJson } from "@/lib/ai/site-chat-reply-extract";
 import {
   inferTargetIndicesFromInstruction,
@@ -395,7 +395,7 @@ function sectionsEqual(a: TailwindSection[], b: TailwindSection[]): boolean {
 }
 
 /**
- * Na Claude: verwijdert gehallucineerde `images.unsplash.com`-URL’s uit **alle** teruggestuurde secties (geen API — pure string-sanitatie).
+ * Na Claude: verwijdert gehallucineerde automatisch ingevulde stock-foto-URL's uit **alle** teruggestuurde secties (geen API — pure string-sanitatie).
  * Optioneel daarna AI-hero (Gemini/OpenAI) wanneer `heroCtx` gezet is en het gebruikersbericht daarvoor kwalificeert.
  */
 export async function finalizeSiteChatWithAiHeroPipeline(
@@ -409,7 +409,7 @@ export async function finalizeSiteChatWithAiHeroPipeline(
   if (okResult.sections === undefined) return okResult;
 
   const lastUser = messages[messages.length - 1]?.content ?? "";
-  const stripped = stripAllUnsplashFromSections(okResult.sections);
+  const stripped = stripHallucinatedStockPhotoUrlsFromSections(okResult.sections);
   let nextSections = stripped;
   if (heroCtx) {
     nextSections = await mergeSiteChatSectionsWithOptionalAiHero(stripped, lastUser, heroCtx);

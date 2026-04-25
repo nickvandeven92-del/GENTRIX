@@ -351,7 +351,8 @@ export function PublicPublishedTailwind({
           )}
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
-          <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
+          {/* Tailwind Play wordt altijd naar `/api/public/studio-preview-lib` herschreven; preconnect naar cdn.tailwindcss.com is dan nutteloos (Lighthouse). */}
+          <PublishedTailwindAssets preconnectTailwindPlayCdn={false} />
           {shouldShowSkeleton ? (
             <PublicSitePageSkeleton embedded={embedded} />
           ) : (
@@ -384,7 +385,7 @@ export function PublicPublishedTailwind({
           )}
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
-          <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
+          <PublishedTailwindAssets preconnectTailwindPlayCdn={false} />
         {useStudioDesktopIframe ? (
           <div
             className={cn(

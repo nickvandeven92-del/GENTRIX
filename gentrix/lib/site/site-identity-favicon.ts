@@ -128,6 +128,9 @@ export function renderSiteIdentityFaviconSvg(input: {
 
 export type ResolvePublicSiteFaviconInput = {
   logoFavicon?: string | null | undefined;
+  /** Gemini/OpenAI PNG-favicon (site-assets); wint op SVG-tabblad. */
+  rasterFavicon32Url?: string | null | undefined;
+  rasterFavicon192Url?: string | null | undefined;
   displayName: string;
   slug: string;
   pageConfig?: TailwindPageConfig | null;
@@ -145,7 +148,31 @@ export function resolvePublicSiteFaviconSvg(input: ResolvePublicSiteFaviconInput
   });
 }
 
+function isHttpsRasterUrl(s: string | null | undefined): s is string {
+  const t = s?.trim() ?? "";
+  return t.startsWith("https://") && t.length < 2048;
+}
+
 export function buildNextPublishedSiteIcons(input: ResolvePublicSiteFaviconInput): NonNullable<Metadata["icons"]> {
+  const r32 = input.rasterFavicon32Url?.trim();
+  if (isHttpsRasterUrl(r32)) {
+    const r192 = input.rasterFavicon192Url?.trim();
+    const icon: NonNullable<Metadata["icons"]>["icon"] = [
+      { url: r32, type: "image/png", sizes: "32x32" },
+    ];
+    if (isHttpsRasterUrl(r192)) {
+      icon.push({ url: r192, type: "image/png", sizes: "192x192" });
+    }
+    return {
+      icon,
+      ...(isHttpsRasterUrl(r192)
+        ? {
+            apple: [{ url: r192, sizes: "192x192", type: "image/png" }],
+          }
+        : {}),
+    };
+  }
+
   const svg = resolvePublicSiteFaviconSvg(input);
   const safe =
     svg.length <= MAX_FAVICON_DATA_URL_CHARS

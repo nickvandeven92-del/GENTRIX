@@ -7,6 +7,8 @@ type PublishedTailwindAssetsProps = {
 
 /**
  * Resource hints voor de iframe: max. één `preconnect` (Lighthouse: >4 preconnects schaadt).
+ * Zet `preconnectTailwindPlayCdn` alleen aan als Tailwind Play echt van `cdn.tailwindcss.com` laadt;
+ * bij proxy via `/api/public/studio-preview-lib` is die hint ongebruikt en waarschuwt Lighthouse.
  * Font-hints staan al in de iframe-/export-`<head>`; hier geen dubbele fonts.
  * jsDelivr (Alpine/Lucide): alleen `dns-prefetch` — lichter dan preconnect.
  */

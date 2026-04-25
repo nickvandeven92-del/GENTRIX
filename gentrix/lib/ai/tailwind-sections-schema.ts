@@ -461,6 +461,15 @@ const tailwindMarketingPagesRecordSchema = z
     }
   });
 
+/** Gemini/OpenAI raster-merk + PNG-favicon’s (site-assets); premium alternatief naast SVG `logoSet`. */
+export const studioRasterBrandSetSchema = z.object({
+  headerLogoUrl: z.string().url().max(2048),
+  favicon32Url: z.string().url().max(2048),
+  favicon192Url: z.string().url().max(2048).optional(),
+});
+
+export type StudioRasterBrandSet = z.infer<typeof studioRasterBrandSetSchema>;
+
 const tailwindPayloadStrictObjectSchema = z
   .object({
     format: z.literal("tailwind_sections"),
@@ -480,6 +489,8 @@ const tailwindPayloadStrictObjectSchema = z
     customJs: z.string().max(48_000).optional(),
     /** SVG-first merkset (premium logo-pipeline). */
     logoSet: generatedLogoSetSchema.optional(),
+    /** Server Gemini/OpenAI raster-merk (header + favicon); wint op tabblad i.p.v. kale letter-favicon. */
+    rasterBrandSet: studioRasterBrandSetSchema.optional(),
     /** Optioneel: server-gecompileerde utilities (geen Tailwind Play CDN op live/preview). */
     tailwindCompiledCss: z.string().max(SNAPSHOT_TAILWIND_COMPILED_CSS_MAX).optional(),
   })
@@ -506,6 +517,7 @@ export function stripUnknownTailwindPayloadKeys(input: unknown): unknown {
   if ("customCss" in o && o.customCss !== undefined) next.customCss = o.customCss;
   if ("customJs" in o && o.customJs !== undefined) next.customJs = o.customJs;
   if ("logoSet" in o && o.logoSet !== undefined) next.logoSet = o.logoSet;
+  if ("rasterBrandSet" in o && o.rasterBrandSet !== undefined) next.rasterBrandSet = o.rasterBrandSet;
   if ("tailwindCompiledCss" in o && o.tailwindCompiledCss !== undefined) next.tailwindCompiledCss = o.tailwindCompiledCss;
   return next;
 }
@@ -527,6 +539,7 @@ export type GeneratedTailwindPage = {
   /** Optioneel: `/site/.../<key>` met eigen sectie-HTML. */
   marketingPages?: Record<string, TailwindSection[]>;
   logoSet?: GeneratedLogoSet;
+  rasterBrandSet?: StudioRasterBrandSet;
   /** Heuristiek op HTML; voor admin/preview — niet in `site_data_json` persisteren. */
   contentClaimDiagnostics?: ContentClaimDiagnosticsReport;
 };
@@ -544,6 +557,7 @@ export function generatedTailwindPageToSectionsPayload(page: GeneratedTailwindPa
       ? { marketingPages: page.marketingPages }
       : {}),
     ...(page.logoSet != null ? { logoSet: page.logoSet } : {}),
+    ...(page.rasterBrandSet != null ? { rasterBrandSet: page.rasterBrandSet } : {}),
   });
 }
 

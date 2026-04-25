@@ -3,6 +3,7 @@ import {
   marketingPageKeyStoredSchema,
   sectionIdSchema,
   slugifyToSectionId,
+  studioRasterBrandSetSchema,
   tailwindPageConfigSchema,
   tailwindSectionSchema,
   type TailwindPageConfig,
@@ -124,6 +125,7 @@ export const themeTokensSchema = z
 export const projectAssetsSchema = z
   .object({
     logoSet: generatedLogoSetSchema.optional(),
+    rasterBrandSet: studioRasterBrandSetSchema.optional(),
     customCss: z.string().max(SNAPSHOT_CUSTOM_CSS_MAX).optional(),
     customJs: z.string().max(SNAPSHOT_CUSTOM_JS_MAX).optional(),
     /** Server-build Tailwind v4 (JIT → CSS); live/preview gebruikt dit i.p.v. cdn.tailwindcss.com. */
@@ -450,6 +452,9 @@ export function projectSnapshotToTailwindSectionsPayload(snapshot: ProjectSnapsh
       ? { customJs: snapshot.assets.customJs }
       : {}),
     ...(snapshot.assets.logoSet != null ? { logoSet: snapshot.assets.logoSet as GeneratedLogoSet } : {}),
+    ...(snapshot.assets.rasterBrandSet != null
+      ? { rasterBrandSet: snapshot.assets.rasterBrandSet }
+      : {}),
     ...(snapshot.assets.tailwindCompiledCss != null && snapshot.assets.tailwindCompiledCss.trim() !== ""
       ? { tailwindCompiledCss: snapshot.assets.tailwindCompiledCss }
       : {}),

@@ -118,6 +118,10 @@ export function mergeProjectSnapshotPatch(
       next.assets.logoSet = patch.assets.logoSet;
       updatedFields.push("assets.logoSet");
     }
+    if (patch.assets.rasterBrandSet !== undefined) {
+      next.assets.rasterBrandSet = patch.assets.rasterBrandSet;
+      updatedFields.push("assets.rasterBrandSet");
+    }
   }
 
   if (patch.editor) {

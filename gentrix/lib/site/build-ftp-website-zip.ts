@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildStandaloneExportHtmlDocument, STANDALONE_EXPORT_README_NL } from "@/lib/site/build-standalone-export-html";
 import { buildTailwindCompiledCssFromIndexHtml } from "@/lib/site/build-tailwind-compiled-css";
@@ -18,6 +18,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
   customCss?: string;
   customJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   subfolderSlug: string;
   appointmentsEnabled: boolean;
   webshopEnabled: boolean;
@@ -31,6 +32,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
     customCss,
     customJs,
     logoSet,
+    rasterBrandSet,
     subfolderSlug,
     appointmentsEnabled,
     webshopEnabled,
@@ -41,6 +43,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
     css: customCss,
     js: customJs,
     logoSet,
+    rasterBrandSet,
     forTailwindClassScan: true,
     faviconIdentity: { displayName: docTitle, slug: subfolderSlug },
     designContract: designContract ?? null,
@@ -51,6 +54,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
     css: customCss,
     js: customJs,
     logoSet,
+    rasterBrandSet,
     exportPublish: {
       subfolderSlug,
       appointmentsEnabled,

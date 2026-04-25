@@ -6,6 +6,7 @@ import {
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
+import type { StudioRasterBrandSet } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { parseStoredSiteData, type ParsedStoredSite } from "@/lib/site/parse-stored-site-data";
 import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
@@ -27,6 +28,7 @@ export type PublishedSitePayload =
       customCss?: string;
       customJs?: string;
       logoSet?: GeneratedLogoSet;
+      rasterBrandSet?: StudioRasterBrandSet;
       tailwindCompiledCss?: string;
       /** Snapshot-compositie: permutatie van sectie-`id`'s voor compose (geen ontwerp-lock). */
       sectionIdsOrdered?: string[];
@@ -77,6 +79,7 @@ export function publishedPayloadFromParsed(
       ...(parsed.customCss != null && parsed.customCss !== "" ? { customCss: parsed.customCss } : {}),
       ...(parsed.customJs != null && parsed.customJs !== "" ? { customJs: parsed.customJs } : {}),
       ...(parsed.logoSet != null ? { logoSet: parsed.logoSet } : {}),
+      ...(parsed.rasterBrandSet != null ? { rasterBrandSet: parsed.rasterBrandSet } : {}),
       ...(parsed.tailwindCompiledCss != null && parsed.tailwindCompiledCss.trim() !== ""
         ? { tailwindCompiledCss: parsed.tailwindCompiledCss }
         : {}),

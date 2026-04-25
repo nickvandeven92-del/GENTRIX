@@ -13,6 +13,7 @@ describe("ai-hero-image-postprocess", () => {
   it("siteChatMessageSuggestsAiHeroRaster herkent hero + luxe en sluit verwijder-flow uit", () => {
     expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero luxer en high-end")).toBe(true);
     expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero afbeelding luxer")).toBe(true);
+    expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero exclusiever, meer zakelijk")).toBe(true);
     expect(siteChatMessageSuggestsAiHeroRaster("verwijder de hero foto")).toBe(false);
     expect(siteChatMessageSuggestsAiHeroRaster("verwijder de hero")).toBe(false);
   });
@@ -45,6 +46,12 @@ describe("ai-hero-image-postprocess", () => {
     expect(p).toContain("deadbeef01");
     expect(p).toContain("Composition variation id");
     expect(p).toContain("Brief (primary creative direction");
+  });
+
+  it("buildOpenAiHeroPrompt: stuurt macro- en anti-stock-laptoprichting", () => {
+    const p = buildOpenAiHeroPrompt("GENTRIX", "IT-advies", null);
+    expect(p).toMatch(/macro|close-up/i);
+    expect(p).toMatch(/laptop|mug|notebook/i);
   });
 
   it("stripHeroRasterPlaceholdersForSiteChatAiHero verwijdert img en background-url zodat AI-inject mag", () => {

@@ -1,8 +1,10 @@
 import { generatedSiteSchema, type GeneratedSite } from "@/lib/ai/generated-site-schema";
 import {
+  studioRasterBrandSetSchema,
   tailwindPageConfigSchema,
   tailwindSectionSchema,
   tailwindSectionsArraySchema,
+  type StudioRasterBrandSet,
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
@@ -30,6 +32,7 @@ export type ParsedStoredSite =
       customCss?: string;
       customJs?: string;
       logoSet?: GeneratedLogoSet;
+      rasterBrandSet?: StudioRasterBrandSet;
       /** Server-build Tailwind CSS (minified); live zonder Play CDN. */
       tailwindCompiledCss?: string;
       /** Afkomstig uit `project_snapshot_v1.composition` — alleen voor compose-volgorde. */
@@ -51,6 +54,7 @@ const tailwindSectionsLooseSchema = z.object({
   customCss: z.string().max(48_000).optional(),
   customJs: z.string().max(48_000).optional(),
   logoSet: generatedLogoSetSchema.optional(),
+  rasterBrandSet: studioRasterBrandSetSchema.optional(),
   tailwindCompiledCss: z.string().max(SNAPSHOT_TAILWIND_COMPILED_CSS_MAX).optional(),
 });
 
@@ -73,6 +77,7 @@ function tailwindParsedFromSnapshotFlow(input: unknown): ParsedStoredSite | null
     ...(tw.customCss != null && tw.customCss !== "" ? { customCss: tw.customCss } : {}),
     ...(tw.customJs != null && tw.customJs !== "" ? { customJs: tw.customJs } : {}),
     ...(tw.logoSet != null ? { logoSet: tw.logoSet } : {}),
+    ...(tw.rasterBrandSet != null ? { rasterBrandSet: tw.rasterBrandSet } : {}),
     ...(tw.tailwindCompiledCss != null && tw.tailwindCompiledCss.trim() !== ""
       ? { tailwindCompiledCss: tw.tailwindCompiledCss }
       : {}),

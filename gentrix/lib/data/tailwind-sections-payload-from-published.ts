@@ -15,6 +15,7 @@ export function tailwindSectionsPayloadFromPublishedTailwind(
     ...(p.customCss != null && p.customCss !== "" ? { customCss: p.customCss } : {}),
     ...(p.customJs != null && p.customJs !== "" ? { customJs: p.customJs } : {}),
     ...(p.logoSet != null ? { logoSet: p.logoSet } : {}),
+    ...(p.rasterBrandSet != null ? { rasterBrandSet: p.rasterBrandSet } : {}),
     ...(p.contactSections != null && p.contactSections.length > 0 ? { contactSections: p.contactSections } : {}),
     ...(p.marketingPages != null && Object.keys(p.marketingPages).length > 0
       ? { marketingPages: p.marketingPages }

@@ -55,6 +55,7 @@ export async function GET(_request: Request, context: RouteContext) {
       customCss: parsed.customCss,
       customJs: parsed.customJs,
       logoSet: parsed.logoSet,
+      rasterBrandSet: parsed.rasterBrandSet,
       subfolderSlug: subfolder_slug,
       appointmentsEnabled: row.appointments_enabled ?? false,
       webshopEnabled: row.webshop_enabled ?? false,

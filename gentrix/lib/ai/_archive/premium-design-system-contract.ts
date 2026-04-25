@@ -49,7 +49,7 @@ North star: **LOVABLE 2.0 — VISUAL PRIORITY** (en eventueel **LOVABLE vs BORIN
 
 # SELF-CHECK (before returning)
 
-* \`data-layout\`/\`data-slot\` for listed archetype ids? Preset on hero + ≥2 other band wrappers? **Primary nav** uses \`navigation.wrapper\` → \`sticky top-0\` (or \`fixed top-0\` only for true overlay-on-hero)? **Hero** = pakkende eerste indruk (dominant visueel + sterke kop, geen slap kaarten-only-boven-de-fold)? ≥3 Unsplash images **or** deliberate gradient+orb stacks? One asymmetric or open type-led band? Section \`id\`s match \`_site_config.sections\` and outer \`<section id>\`?
+* \`data-layout\`/\`data-slot\` for listed archetype ids? Preset on hero + ≥2 other band wrappers? **Primary nav** uses \`navigation.wrapper\` → \`sticky top-0\` (or \`fixed top-0\` only for true overlay-on-hero)? **Hero** = pakkende eerste indruk (dominant visueel + sterke kop, geen slap kaarten-only-boven-de-fold)? ≥3 sterke beelden (klant/AI) **or** deliberate gradient+orb stacks? One asymmetric or open type-led band? Section \`id\`s match \`_site_config.sections\` and outer \`<section id>\`?
 
 ---
 

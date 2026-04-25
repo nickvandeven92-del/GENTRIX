@@ -11,7 +11,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'prod-1', slug: 'basic-tshirt', name: 'Basic T-Shirt', categoryId: 'cat-1',
     description: 'Een veelzijdig basis T-shirt van hoogwaardig biologisch katoen. Perfect voor elke gelegenheid.',
     shortDescription: 'Biologisch katoenen T-shirt',
-    images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop'],
+    images: ['https://placehold.co/600x600/e2e8f0/334155?text=T-Shirt'],
     variantOptions: [{ name: 'Maat', values: ['S', 'M', 'L', 'XL'] }, { name: 'Kleur', values: ['Zwart', 'Wit', 'Grijs'] }],
     variants: [
       { id: 'v1-1', options: { Maat: 'S', Kleur: 'Zwart' }, price: 29.95, stock: 15, reservedStock: 0, sku: 'TS-BLK-S', trackInventory: true, allowBackorder: false },
@@ -27,7 +27,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'prod-2', slug: 'canvas-sneakers', name: 'Canvas Sneakers', categoryId: 'cat-3',
     description: 'Lichtgewicht canvas sneakers met een klassiek ontwerp. Comfortabel voor dagelijks gebruik.',
     shortDescription: 'Klassieke canvas sneakers',
-    images: ['https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=600&h=600&fit=crop'],
+    images: ['https://placehold.co/600x600/e2e8f0/334155?text=Sneakers'],
     variantOptions: [{ name: 'Maat', values: ['38', '40', '42', '44'] }],
     variants: [
       { id: 'v2-1', options: { Maat: '38' }, price: 59.95, stock: 8, reservedStock: 0, sku: 'SN-38', trackInventory: true, allowBackorder: false },
@@ -42,7 +42,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'prod-3', slug: 'leather-belt', name: 'Leren Riem', categoryId: 'cat-2',
     description: 'Handgemaakte leren riem van premium Italiaans leer. Tijdloos design.',
     shortDescription: 'Premium Italiaanse leren riem',
-    images: ['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop'],
+    images: ['https://placehold.co/600x600/e2e8f0/334155?text=Riem'],
     variantOptions: [{ name: 'Maat', values: ['S', 'M', 'L'] }, { name: 'Kleur', values: ['Bruin', 'Zwart'] }],
     variants: [
       { id: 'v3-1', options: { Maat: 'S', Kleur: 'Bruin' }, price: 44.95, stock: 10, reservedStock: 0, sku: 'BLT-BRN-S', trackInventory: true, allowBackorder: false },
@@ -56,7 +56,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'prod-4', slug: 'denim-jacket', name: 'Denim Jacket', categoryId: 'cat-1',
     description: 'Klassiek denim jasje met een moderne pasvorm. Ideaal voor de tussenseizoenen.',
     shortDescription: 'Klassiek denim jasje',
-    images: ['https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=600&h=600&fit=crop'],
+    images: ['https://placehold.co/600x600/e2e8f0/334155?text=Denim'],
     variantOptions: [{ name: 'Maat', values: ['S', 'M', 'L', 'XL'] }],
     variants: [
       { id: 'v4-1', options: { Maat: 'S' }, price: 89.95, compareAtPrice: 119.95, stock: 5, reservedStock: 0, sku: 'DJ-S', trackInventory: true, allowBackorder: false },
@@ -71,7 +71,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'prod-5', slug: 'canvas-backpack', name: 'Canvas Rugzak', categoryId: 'cat-2',
     description: 'Duurzame canvas rugzak met leren details. Ruim genoeg voor een laptop van 15 inch.',
     shortDescription: 'Duurzame canvas rugzak',
-    images: ['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop'],
+    images: ['https://placehold.co/600x600/e2e8f0/334155?text=Rugzak'],
     variantOptions: [{ name: 'Kleur', values: ['Groen', 'Grijs', 'Navy'] }],
     variants: [
       { id: 'v5-1', options: { Kleur: 'Groen' }, price: 74.95, stock: 11, reservedStock: 0, sku: 'BP-GRN', trackInventory: true, allowBackorder: false },
@@ -85,7 +85,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'prod-6', slug: 'wool-beanie', name: 'Wollen Muts', categoryId: 'cat-2',
     description: 'Zachte wollen muts, perfect voor koude dagen. Unisex model.',
     shortDescription: 'Zachte wollen unisex muts',
-    images: ['https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=600&h=600&fit=crop'],
+    images: ['https://placehold.co/600x600/e2e8f0/334155?text=Muts'],
     variantOptions: [{ name: 'Kleur', values: ['Zwart', 'Grijs', 'Bordeaux'] }],
     variants: [
       { id: 'v6-1', options: { Kleur: 'Zwart' }, price: 19.95, stock: 25, reservedStock: 0, sku: 'BN-BLK', trackInventory: true, allowBackorder: false },

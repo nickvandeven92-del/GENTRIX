@@ -18,6 +18,7 @@ import {
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import {
   isLegacyTailwindPageConfig,
+  type StudioRasterBrandSet,
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
@@ -26,6 +27,7 @@ import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 import { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
 import { STUDIO_TAILWIND_PLAY_CDN_SRC } from "@/lib/site/studio-tailwind-cdn";
 import { applyBrandLogoFallbackToSections } from "@/lib/site/brand-logo-inject";
+import { applyRasterBrandMarkToSections } from "@/lib/site/brand-raster-inject";
 import { inferStudioNavChromeFromSections } from "@/lib/site/infer-studio-nav-chrome";
 import {
   parseStudioNavChromeConfig,
@@ -1865,8 +1867,8 @@ function ensureAlpineDomPurifyHook(): void {
 }
 
 /**
- * Verwijdert `<img>` met src die vrijwel altijd 404't (placeholders, example.com, oude Unsplash-source).
- * Unsplash: alleen echte foto-paden (`/photo-<digits>-…`); geen `/random`, verzonnen id’s, etc.
+ * Verwijdert `<img>` met src die vrijwel altijd 404't (placeholders, example.com, verouderde `source.*`-redirects).
+ * Bekende automatisch-ingevulde stock-hosts: alleen echte `/photo-<digits>-…`-paden behouden; geen `/random`, verzonnen id’s, etc.
  */
 export function stripLikelyBrokenImgTags(html: string): string {
   return replaceAllOpenTagsByLocalName(html, "img", (tag) => {
@@ -2311,11 +2313,22 @@ export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig |
  */
 export function buildFaviconLinkTagForPublishedSite(input: {
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   displayName: string;
   slug: string;
   pageConfig?: TailwindPageConfig | null;
   themePrimaryHex?: string | null;
 }): string {
+  const r32 = input.rasterBrandSet?.favicon32Url?.trim();
+  if (r32?.startsWith("https://")) {
+    const r192 = input.rasterBrandSet?.favicon192Url?.trim();
+    const lines = [`<link rel="icon" href="${escapeDataAttr(r32)}" type="image/png" sizes="32x32"/>`];
+    if (r192?.startsWith("https://")) {
+      lines.push(`<link rel="icon" href="${escapeDataAttr(r192)}" type="image/png" sizes="192x192"/>`);
+      lines.push(`<link rel="apple-touch-icon" href="${escapeDataAttr(r192)}" sizes="192x192"/>`);
+    }
+    return lines.join("\n");
+  }
   const svg = resolvePublicSiteFaviconSvg({
     logoFavicon: input.logoSet?.variants?.favicon,
     displayName: input.displayName,
@@ -2338,6 +2351,9 @@ export function buildFaviconLinkTagForPublishedSite(input: {
 
 export type BuildTailwindSectionsBodyOptions = {
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
+  /** Label voor `aria-label` / alt bij raster-merk (kort). */
+  rasterBrandLabel?: string | null;
   /** Optioneel: server kiest nav-preset i.f.m. Denklijn-contract (infer zonder `navVisualPreset`). */
   designContract?: DesignGenerationContract | null;
 };
@@ -2378,10 +2394,17 @@ export function buildTailwindSectionsBodyInnerHtml(
     );
   }
 
+  const raster = bodyOptions?.rasterBrandSet?.headerLogoUrl?.trim();
   const prepared =
-    bodyOptions?.logoSet != null
-      ? applyBrandLogoFallbackToSections(sectionRows, bodyOptions.logoSet)
-      : sectionRows;
+    raster && bodyOptions?.rasterBrandSet
+      ? applyRasterBrandMarkToSections(
+          sectionRows,
+          bodyOptions.rasterBrandSet,
+          (bodyOptions.rasterBrandLabel ?? "Site").trim() || "Site",
+        )
+      : bodyOptions?.logoSet != null
+        ? applyBrandLogoFallbackToSections(sectionRows, bodyOptions.logoSet)
+        : sectionRows;
   return prepared
     .map((s) => {
       const portalKeyMatch = s.html.match(/\bdata-portal-section-key="([^"]*)"/i);
@@ -2862,6 +2885,8 @@ export type BuildTailwindIframeSrcDocOptions = {
   userJs?: string;
   /** Premium merk-SVG: fallback-injectie in header/nav/section als model het logo oversloeg. */
   logoSet?: GeneratedLogoSet | null;
+  /** Server Gemini/OpenAI raster-merk (wint op SVG-fallback in body). */
+  rasterBrandSet?: StudioRasterBrandSet | null;
   /** Vervangt studio-placeholders in de body-HTML (live site + preview). */
   publishedSlug?: string;
   /** `false` wanneer afspraken-module uit: geen boekings-`href` uit placeholder. */
@@ -3116,6 +3141,8 @@ export function buildTailwindIframeSrcDoc(
 ): string {
   let body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {
     logoSet: options?.logoSet,
+    rasterBrandSet: options?.rasterBrandSet,
+    rasterBrandLabel: options?.navBrandLabel,
     designContract: options?.designContract ?? null,
   });
   const slug = options?.publishedSlug?.trim();
@@ -3171,6 +3198,7 @@ export function buildTailwindIframeSrcDoc(
   const displayForFav = options?.navBrandLabel?.trim() || "Site";
   const faviconLink = buildFaviconLinkTagForPublishedSite({
     logoSet: options?.logoSet,
+    rasterBrandSet: options?.rasterBrandSet,
     displayName: displayForFav,
     slug: slugForFav,
     pageConfig: pageConfig ?? null,

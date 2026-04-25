@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { randomUUID } from "crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildStandaloneExportHtmlDocument } from "@/lib/site/build-standalone-export-html";
 
@@ -56,6 +56,7 @@ export type BuildTailwindCompiledCssInput = {
   customCss?: string;
   customJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   /** Optioneel; anders stabiele placeholder voor favicon in compile-HTML. */
   faviconIdentity?: { displayName: string; slug: string };
 };
@@ -73,6 +74,7 @@ export async function buildTailwindCompiledCssBundle(input: BuildTailwindCompile
       css: input.customCss,
       js: input.customJs,
       logoSet: input.logoSet ?? undefined,
+      rasterBrandSet: input.rasterBrandSet ?? undefined,
       faviconIdentity: input.faviconIdentity ?? {
         displayName: input.docTitle,
         slug: "tailwind-compile",

@@ -14,8 +14,8 @@ import {
 } from "@/lib/site/studio-section-visibility";
 import {
   cleanupStrippedStockMarkup,
-  stripAllUnsplashPhotoUrlsInHtml,
-} from "@/lib/ai/strip-unsplash-urls";
+  stripHallucinatedStockPhotoUrlsInHtml,
+} from "@/lib/ai/strip-hallucinated-stock-photo-urls";
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName, sliceOpenTagContent } from "@/lib/site/html-open-tag";
 import { walkBalancedSameLocalBlock } from "@/lib/site/html-balanced-element";
 import { addDefaultLazyLoadingToBelowFoldSectionImages } from "@/lib/site/html-img-lazy-default";
@@ -2330,7 +2330,7 @@ function stripRasterMediaElementsFromHtml(html: string): string {
 
 function studioImageFreeSingleHtml(html: string): string {
   let s = stripRasterMediaElementsFromHtml(html);
-  s = stripAllUnsplashPhotoUrlsInHtml(s);
+  s = stripHallucinatedStockPhotoUrlsInHtml(s);
   s = cleanupStrippedStockMarkup(s);
   return s;
 }
@@ -2339,7 +2339,7 @@ function mapSectionsImageFree(sections: TailwindSection[]): TailwindSection[] {
   return sections.map((s) => ({ ...s, html: studioImageFreeSingleHtml(s.html) }));
 }
 
-/** Na generatie: verwijdert alle raster-/embed-media en resterende `images.unsplash.com`-URL's (deterministisch). */
+/** Na generatie: verwijdert alle raster-/embed-media en resterende automatisch ingevulde stock-foto-URL's (deterministisch). */
 export function applyStudioImageFreeHtmlPass(page: GeneratedTailwindPage): GeneratedTailwindPage {
   return {
     ...page,

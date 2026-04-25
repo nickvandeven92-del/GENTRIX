@@ -72,6 +72,7 @@ export async function attachCompiledTailwindCssToPayload(
       customCss: payload.customCss,
       customJs: payload.customJs,
       logoSet: payload.logoSet ?? null,
+      rasterBrandSet: payload.rasterBrandSet ?? null,
     });
     const trimmed = css.trim();
     if (!trimmed) return payload;

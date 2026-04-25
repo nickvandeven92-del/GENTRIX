@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   sectionIdSchema,
+  studioRasterBrandSetSchema,
   tailwindPageConfigPatchSchema,
   sectionSemanticRoleSchema,
 } from "@/lib/ai/tailwind-sections-schema";
@@ -37,6 +38,7 @@ const aiPatchAssetsSchema = z
   .object({
     customCss: z.string().max(SNAPSHOT_CUSTOM_CSS_MAX).optional(),
     logoSet: generatedLogoSetSchema.optional(),
+    rasterBrandSet: studioRasterBrandSetSchema.optional(),
   })
   .strict();
 

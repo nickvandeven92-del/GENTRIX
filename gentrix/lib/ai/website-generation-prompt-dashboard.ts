@@ -87,9 +87,9 @@ export const WEBSITE_PROMPT_SOURCE_FILES = [
   },
   {
     label: "Stock-URL strip (legacy model-output)",
-    path: "lib/ai/strip-unsplash-urls.ts",
+    path: "lib/ai/strip-hallucinated-stock-photo-urls.ts",
     description:
-      "stripUnsplashUrlsFromGeneratedTailwindPage — verwijdert resterende images.unsplash.com-URL's; geen externe stock-API.",
+      "stripHallucinatedStockPhotoUrlsFromGeneratedTailwindPage — verwijdert resterende automatisch ingevulde stock-foto-URL's; geen externe stock-API.",
   },
   {
     label: "NDJSON stream consumer (jobs)",

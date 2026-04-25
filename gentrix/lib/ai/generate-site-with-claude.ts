@@ -25,6 +25,7 @@ import {
   type ClaudeTailwindPageOutput,
   type GeneratedTailwindPage,
   type MasterPromptPageConfig,
+  type StudioRasterBrandSet,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
 import { getGenerationPackagePromptBlock } from "@/lib/ai/generation-packages";
@@ -56,9 +57,9 @@ import {
   isSiteSelfReviewEnabled,
 } from "@/lib/ai/self-review-site-generation";
 import {
-  htmlMayContainUnsplashPhotoUrl,
-  stripUnsplashUrlsFromGeneratedTailwindPage,
-} from "@/lib/ai/strip-unsplash-urls";
+  htmlMayContainHallucinatedStockPhotoUrl,
+  stripHallucinatedStockPhotoUrlsFromGeneratedTailwindPage,
+} from "@/lib/ai/strip-hallucinated-stock-photo-urls";
 import {
   applyAiHeroImageToGeneratedPage,
   appendPrebakedHeroImageToUserContent,
@@ -73,6 +74,11 @@ import {
   type StudioHeroImageRasterPrefetch,
   type StudioHeroImageUploadResult,
 } from "@/lib/ai/ai-hero-image-postprocess";
+import {
+  applyStudioRasterBrandToGeneratedPage,
+  isStudioRasterBrandImageEnabled,
+  startStudioRasterBrandPrefetch,
+} from "@/lib/ai/ai-brand-image-postprocess";
 import { fetchReferenceSiteForPrompt } from "@/lib/ai/fetch-reference-site-for-prompt";
 import { extractBriefingReferenceImagesWithVision } from "@/lib/ai/extract-briefing-reference-images-vision";
 import { streamClaudeMessageText } from "@/lib/ai/claude-stream-text";
@@ -1094,7 +1100,7 @@ function buildBrancheSectionPromptBlocks(sectionIds: Set<string>): string {
   if (sectionIds.has("gallery")) {
     blocks.push(`**=== GALERIJ (id: "gallery") ===**
 Alleen zinvol voor **portfolio / interieur / voor-na** (briefing vraagt expliciet om beeldoverzicht). **Niet** voor webshop-/productcatalogus: dat hoort in de shop-module.
-- **Alleen** echte **klant-**beeld-URL's uit de opdracht (\`KLANTFOTO'S\`) ??? **geen** externe stock-URL's (\`images.unsplash.com\` e.d.; die worden server-side verwijderd).
+- **Alleen** echte **klant-**beeld-URL's uit de opdracht (\`KLANTFOTO'S\`) ??? **geen** externe stock-foto-URL's (hallucinated stock-URL's worden server-side uit de HTML gehaald).
 - Max. **4???6** beelden, strak grid of editorial ??? geen ???18-tegels om lengte te maken???.
 - Eigen stijl i.p.v. standaard hover-scale op elke foto.`);
   }
@@ -1356,8 +1362,8 @@ function buildStockImageryAgencyDefaultMarkdown(): string {
   - **Spaarzaamheid (verplicht):** vul de site **niet** met gegenereerde of decoratieve foto's. **Geen** raster waarin elke USP-, team- of prijskaart **verplicht** een eigen \`<img>\` + zware border/schaduw krijgt. Zonder blok **KLANTFOTO'S**: liever **nul** \`<img>\` op de hele landingspagina ??? typografie, witruimte, gradient, SVG. **Met** KLANTFOTO'S: alleen **die** URL's; **niet** elke sectie volplakken ??? ??n sterke plek (vaak hero) + gericht hergebruik waar het echt dient; geen ???6?? dezelfde stock-stijl???.
   - **Klant-uploads** (blok **KLANTFOTO'S**): als die URL's in de opdracht staan, **verplicht** prominent gebruiken met \`<img src="???">\` (**exact** dezelfde https-URL als in de lijst) + zinvolle \`alt\` ??? **niet** vervangen door externe stock of verzonnen URL's.
   - **Briefing-screenshots** + eventuele **vision**-tekst: gebruik voor **inhoud en toon**; geen volledige ???browser???-schermafdruk als ??n giant \`<img>\` tenzij de briefing dat expliciet vraagt ??? zie blok **BRIEFING-REFERENTIEBEELDEN**.
-  - **Geen externe stock-URL's** (\`images.unsplash.com\`, Pexels-embeds als stock-raster, ???): die horen niet in de studio-output; gebruik **KLANTFOTO'S**, gradient, SVG of server-side **AI-hero** (zie contract). **\`gallery\`:** alleen als de briefing **expliciet** een fotogalerij wil ??? **geen** standaard collage ???omdat het kan???.
-  - **Server AI-hero / kant-en-klare hero-foto-URL:** behandel als **documentaire locatie-/materiaalfotografie** (geen mensen in het beeld — geen fictieve gezichten of modellen; portret/team alleen met echte **KLANTFOTO'S** in HTML) ??? geen ???AI-poster???-look door extreme \`mix-blend-mode\`, \`contrast-*\`, \`saturate-*\` of dubbele HDR-stacks op het beeld; overlays **alleen** licht genoeg voor leesbare typografie (vergelijkbaar met premium editorial sites).
+  - **Geen externe stock-foto-URL's** (Pexels-embeds als stock-raster, generieke stock-CDN's, ???): die horen niet in de studio-output; gebruik **KLANTFOTO'S**, gradient, SVG of server-side **AI-hero** (zie contract). **\`gallery\`:** alleen als de briefing **expliciet** een fotogalerij wil ??? **geen** standaard collage ???omdat het kan???.
+  - **Server AI-hero / kant-en-klare hero-foto-URL:** behandel als **documentaire materiaal- of architectuurfotografie** (macro/close-up of dramatisch belicht fragment; **geen** default **laptop-op-houten-tafel + mok + notitieboek**-stock) — geen mensen in het beeld — geen fictieve gezichten of modellen; portret/team alleen met echte **KLANTFOTO'S** in HTML. Combineer raster met **HTML-structuur** waar de briefing **premium / zakelijk** vraagt: dunne lichtlijnen, hairline-gradients, subtiele mesh/radial overlays, SVG-geometry — het beeld hoeft niet alles te zijn. Geen **AI-poster**-look door extreme \`mix-blend-mode\`, \`contrast-*\`, \`saturate-*\` of dubbele HDR-stacks op het beeld; overlays **alleen** licht genoeg voor leesbare typografie (vergelijkbaar met premium editorial sites).
   - **Vermijd standaard ???monogram-hero???:** geen **vaste** visuele formule ???split + rechterkolom met **dubbele ring/cirkel + initialen** + adres in het rondje??? als decoratieve mediavulling ??? dat is een herhaalbaar sjabloon. Zonder klantfoto: kies ?f **full-bleed typografie** (??n kolom, sterk beeld via type/gradient), ?f een split waarbij de rechter **geen** ondoorzichtig effen vlak over de volle hoogte nodig heeft (zie **?VIEWPORT ??? server AI-hero**); **geen** tweede pseudo-foto uit pure SVG-decoratie.
   - **Geen** \`via.placeholder\`, \`example.com\`-foto's of verzonnen beeld-URL's.
   - **\`<video>\` / \`<iframe>\`:** alleen met **concrete** https-URL in de geschreven briefing; anders gradient + \`data-animation\` / AOS.`;
@@ -1437,7 +1443,7 @@ ${buildContactStackStructureLine()}
 - **Afbeeldingen:** zie **Beeld (studio)** ??? **spaarzaam**; geen volsite vol **\`<img>\`**-kaarten. **Geen** anonieme externe stock-URL's. **Hero:** gradient/typografie of **klant-URL** uit **KLANTFOTO'S**; optioneel vult de server ??n AI-hero in.
   - **Galerij (\`id: "gallery"\`):** alleen met **echte klant-**URL's uit de briefing; geen standaard ???12 foto's???-raster zonder reden. **Volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden ??? bij twijfel gradient i.p.v. foto.
   - **Eigen beelden:** alleen **klant-**URL's uit de opdracht.
-  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, \`images.unsplash.com\`, verzonnen of generieke stock-URL's.
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, verzonnen of generieke externe stock-foto-URL's.
   - **Overige secties:** gradient, patroon, typografie, SVG ??? geen stock-foto; geen decoratieve fotomuur.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
@@ -1799,7 +1805,7 @@ ${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten *
 - **Afbeeldingen:** zie **Beeld (studio)** ??? **spaarzaam**; geen volsite vol **\`<img>\`**-kaarten. **Geen** anonieme externe stock-URL's. **Hero:** gradient/typografie of **klant-URL** uit **KLANTFOTO'S**; optioneel vult de server ??n AI-hero in.
   - **Galerij (\`id: "gallery"\`):** alleen met **echte klant-**URL's uit de briefing; geen standaard ???12 foto's???-raster zonder reden. **Volwassen commerce / lingerie (18+):** nooit kinder-/speelgoed-beelden ??? bij twijfel gradient i.p.v. foto.
   - **Eigen beelden:** alleen **klant-**URL's uit de opdracht.
-  - **Verboden:** \`example.com\`, \`via.placeholder\`, \`source.unsplash.com\`, \`images.unsplash.com\`, verzonnen of generieke stock-URL's.
+  - **Verboden:** \`example.com\`, \`via.placeholder\`, verzonnen of generieke externe stock-foto-URL's.
   - **Overige secties:** gradient, patroon, typografie, SVG ??? geen stock-foto; geen decoratieve fotomuur.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
 ${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
@@ -2238,7 +2244,7 @@ export function withContentClaimDiagnostics(data: GeneratedTailwindPage): Genera
   };
 }
 
-/** Verwijdert resterende `images.unsplash.com`-URL's uit model-HTML (geen externe stock-API). */
+/** Verwijdert resterende automatisch ingevulde stock-foto-URL's uit model-HTML (geen externe stock-API). */
 function applyStockUrlSanitizeToGeneratedPage(data: GeneratedTailwindPage): GeneratedTailwindPage {
   const joined = [
     ...data.sections.map((s) => s.html),
@@ -2247,8 +2253,8 @@ function applyStockUrlSanitizeToGeneratedPage(data: GeneratedTailwindPage): Gene
       ? Object.values(data.marketingPages).flatMap((secs) => secs.map((s) => s.html))
       : []),
   ].join("\n");
-  if (!htmlMayContainUnsplashPhotoUrl(joined)) return data;
-  return stripUnsplashUrlsFromGeneratedTailwindPage(data);
+  if (!htmlMayContainHallucinatedStockPhotoUrl(joined)) return data;
+  return stripHallucinatedStockPhotoUrlsFromGeneratedTailwindPage(data);
 }
 
 function shouldEnableGentrixScrollNav(promptOptions?: GenerateSitePromptOptions): boolean {
@@ -2471,6 +2477,8 @@ export type ExecuteGenerateSitePhase2Input = {
   streamHooks?: GenerateSiteStreamHooks;
   /** Parallel hero-raster (Google Gemini image of OpenAI); zie `startOpenAiHeroImagePrefetch`. */
   prefetchedHeroB64Promise?: Promise<StudioHeroImageRasterPrefetch | null>;
+  /** Parallel 1:1 merkmark + favicon-PNG’s (zelfde upstream als hero). */
+  prefetchedRasterBrandPromise?: Promise<StudioRasterBrandSet | null>;
   /** Asset-first: multi-width WebP-set + `promptUrl` voor Claude; apply injecteert zonder tweede upstream-call. */
   prebakedHero?: StudioHeroImageUploadResult | null;
 };
@@ -2487,6 +2495,7 @@ export async function executeGenerateSitePhase2(
     promptOptions,
     streamHooks,
     prefetchedHeroB64Promise,
+    prefetchedRasterBrandPromise,
     prebakedHero,
   } = input;
 
@@ -2559,6 +2568,14 @@ export async function executeGenerateSitePhase2(
     subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
     prefetchedHeroB64Promise,
     prebakedHero: prebakedHero ?? null,
+  });
+
+  data = await applyStudioRasterBrandToGeneratedPage(data, {
+    businessName,
+    description,
+    designContract,
+    subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+    prefetchedRasterBrandPromise: prefetchedRasterBrandPromise ?? Promise.resolve(null),
   });
 
   data = { ...data, sections: maybeEnhanceHero(data.sections, data.config, description) };
@@ -2656,6 +2673,15 @@ export async function generateSiteWithClaude(
         })
       : Promise.resolve(null);
 
+  const prefetchedRasterBrandPromise = isStudioRasterBrandImageEnabled()
+    ? startStudioRasterBrandPrefetch({
+        businessName,
+        description,
+        designContract,
+        subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+      })
+    : Promise.resolve(null);
+
   return executeGenerateSitePhase2({
     prepared: p,
     userContentWithComposition,
@@ -2665,6 +2691,7 @@ export async function generateSiteWithClaude(
     promptOptions,
     streamHooks,
     prefetchedHeroB64Promise,
+    prefetchedRasterBrandPromise,
     prebakedHero,
   });
 }
@@ -2904,6 +2931,7 @@ export function createGenerateSiteReadableStream(
         const clientImgCount = promptOptions?.clientImages?.length ?? 0;
         let prebakedHero: StudioHeroImageUploadResult | null = null;
         let prefetchedHeroB64Promise: Promise<StudioHeroImageRasterPrefetch | null>;
+        let prefetchedRasterBrandPromise: Promise<StudioRasterBrandSet | null>;
 
         if (shouldRunStudioHeroImagePipeline(description, clientImgCount)) {
           send(controller, {
@@ -2954,6 +2982,21 @@ export function createGenerateSiteReadableStream(
           send(controller, {
             type: "status",
             message: "Hero-foto: upstream gestart (loopt parallel met pagina-HTML)???",
+          });
+        }
+
+        prefetchedRasterBrandPromise = isStudioRasterBrandImageEnabled()
+          ? startStudioRasterBrandPrefetch({
+              businessName,
+              description,
+              designContract,
+              subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+            })
+          : Promise.resolve(null);
+        if (isStudioRasterBrandImageEnabled()) {
+          send(controller, {
+            type: "status",
+            message: "Merkbeeld (logo + favicon): upstream gestart (parallel met HTML)???",
           });
         }
 
@@ -3143,6 +3186,35 @@ export function createGenerateSiteReadableStream(
             message: injected
               ? "Hero: AI-foto toegevoegd."
               : "Hero: geen AI-foto ??? zie hostinglogs op `[ai-hero]` (Gemini/OpenAI of upload naar bucket ?site-assets?).",
+          });
+        }
+
+        if (isStudioRasterBrandImageEnabled()) {
+          send(controller, {
+            type: "status",
+            message: "Merkmark + favicon: resultaat verwerken (nav + metadata)???",
+          });
+        }
+        const stopRasterBrandKeepalive = isStudioRasterBrandImageEnabled()
+          ? startNdjsonKeepaliveForSilentWork(controller, send)
+          : () => {};
+        try {
+          data = await applyStudioRasterBrandToGeneratedPage(data, {
+            businessName,
+            description,
+            designContract,
+            subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+            prefetchedRasterBrandPromise,
+          });
+        } finally {
+          stopRasterBrandKeepalive();
+        }
+        if (isStudioRasterBrandImageEnabled()) {
+          send(controller, {
+            type: "status",
+            message: data.rasterBrandSet
+              ? "Merkbeeld: exclusieve logo/favicon-set toegevoegd."
+              : "Merkbeeld: overgeslagen of mislukt ??? zie hostinglogs op `[ai-brand]`.",
           });
         }
 

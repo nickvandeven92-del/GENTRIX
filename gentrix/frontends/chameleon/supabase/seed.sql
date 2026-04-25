@@ -34,7 +34,7 @@ INSERT INTO public.products (
   'Basic T-Shirt',
   'Een veelzijdig basis T-shirt van hoogwaardig biologisch katoen. Perfect voor elke gelegenheid.',
   'Biologisch katoenen T-shirt',
-  ARRAY['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop']::text[],
+  ARRAY['https://placehold.co/600x600/e2e8f0/334155?text=T-Shirt']::text[],
   '21111111-1111-4111-8111-111111111101',
   ARRAY[]::text[],
   29.95, NULL, 'active', true, false, 5, true
@@ -46,7 +46,7 @@ INSERT INTO public.products (
   'Canvas Sneakers',
   'Lichtgewicht canvas sneakers met een klassiek ontwerp. Comfortabel voor dagelijks gebruik.',
   'Klassieke canvas sneakers',
-  ARRAY['https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=600&h=600&fit=crop']::text[],
+  ARRAY['https://placehold.co/600x600/e2e8f0/334155?text=Sneakers']::text[],
   '21111111-1111-4111-8111-111111111103',
   ARRAY[]::text[],
   59.95, NULL, 'active', true, false, 5, true
@@ -58,7 +58,7 @@ INSERT INTO public.products (
   'Leren Riem',
   'Handgemaakte leren riem van premium Italiaans leer. Tijdloos design.',
   'Premium Italiaanse leren riem',
-  ARRAY['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop']::text[],
+  ARRAY['https://placehold.co/600x600/e2e8f0/334155?text=Riem']::text[],
   '21111111-1111-4111-8111-111111111102',
   ARRAY[]::text[],
   44.95, NULL, 'active', true, false, 3, true
@@ -70,7 +70,7 @@ INSERT INTO public.products (
   'Denim Jacket',
   'Klassiek denim jasje met een moderne pasvorm. Ideaal voor de tussenseizoenen.',
   'Klassiek denim jasje',
-  ARRAY['https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=600&h=600&fit=crop']::text[],
+  ARRAY['https://placehold.co/600x600/e2e8f0/334155?text=Denim']::text[],
   '21111111-1111-4111-8111-111111111101',
   ARRAY[]::text[],
   89.95, 119.95, 'active', true, false, 5, true
@@ -82,7 +82,7 @@ INSERT INTO public.products (
   'Canvas Rugzak',
   'Duurzame canvas rugzak met leren details. Ruim genoeg voor een laptop van 15 inch.',
   'Duurzame canvas rugzak',
-  ARRAY['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop']::text[],
+  ARRAY['https://placehold.co/600x600/e2e8f0/334155?text=Rugzak']::text[],
   '21111111-1111-4111-8111-111111111102',
   ARRAY[]::text[],
   74.95, NULL, 'active', true, false, 3, true
@@ -94,7 +94,7 @@ INSERT INTO public.products (
   'Wollen Muts',
   'Zachte wollen muts, perfect voor koude dagen. Unisex model.',
   'Zachte wollen unisex muts',
-  ARRAY['https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=600&h=600&fit=crop']::text[],
+  ARRAY['https://placehold.co/600x600/e2e8f0/334155?text=Muts']::text[],
   '21111111-1111-4111-8111-111111111102',
   ARRAY[]::text[],
   19.95, NULL, 'active', true, false, 5, true
