@@ -39,6 +39,8 @@ const RADIUS_MAP: Record<string, string> = {
 export type StudioNavChromeTone = {
   barHostStyle: string;
   pillHostStyle: string;
+  /** Zelfde vlakkleur als de bar-host (geen blur); vult `studio-nav-chrome-spacer` zodat app-shell-rand (#primary) niet doorschemert. */
+  spacerLayerStyle: string;
   /** Donkere shell (licht op tekst). */
   isDarkChrome: boolean;
   pillRadiusClass: string;
@@ -136,9 +138,17 @@ export function buildStudioNavChromeTone(
   const barHostStyle = `${borderBar};background:${barBg};color:${fg};${blur}${cssVars}`;
   const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars}`;
 
+  /*
+   * Spacer: altijd **dekkend**. Dezelfde rgba als de bar (bijv. 0,92 wit) laat nog steeds #primary
+   * van html/body doorschemen → zichtbare donkere strook onder de vaste header. Hero is meestal effen wit.
+   */
+  const spacerSolidBg = isDarkChrome ? rgbaFromHex(primary, 0.98) : "rgb(255,255,255)";
+  const spacerLayerStyle = `background:${spacerSolidBg}`;
+
   return {
     barHostStyle,
     pillHostStyle,
+    spacerLayerStyle,
     isDarkChrome,
     pillRadiusClass,
     barBottomRadiusClass,

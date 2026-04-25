@@ -194,7 +194,7 @@ export function GeneratorForm({
   const streamAbortRef = useRef<AbortController | null>(null);
   const [streamingSections, setStreamingSections] = useState<TailwindSection[]>([]);
   const [streamingConfig, setStreamingConfig] = useState<TailwindPageConfig | null>(null);
-  /** Tijdens generatie: status + secties (zonder live iframe-preview tot `complete`). */
+  /** Tijdens generatie: status + secties (zonder live preview in het rechter paneel tot `complete`). */
   const [generationActivity, setGenerationActivity] = useState<{ id: string; text: string }[]>([]);
   /** Beknopte milestone-weergave in het activiteitenpaneel (Lovable-achtig); ruwe tekst blijft bewaard. */
   const [compactActivityLog, setCompactActivityLog] = useState(true);
@@ -316,7 +316,7 @@ export function GeneratorForm({
   }, [generatedTailwind, previewClientLabel, detectedIndustryId]);
 
   /**
-   * Alleen volledige JSON in de iframe-preview (geen tussentijdse secties).
+   * Alleen volledige JSON in de preview (geen tussentijdse secties).
    * Uitzondering: stream viel weg vóór `complete` — dan tonen we de laatst ontvangen secties.
    */
   const activeStudioPreviewPayload = useMemo(() => {

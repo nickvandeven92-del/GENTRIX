@@ -56,8 +56,9 @@ type PublishedSiteViewProps = {
   /** Flyer/QR: interne links behouden `flyer=1` zodat de actiebalk op alle subpagina’s blijft. */
   flyerPreview?: boolean;
   /**
-   * Site-studio generator (split-pane): Tailwind in een **iframe** i.p.v. inline.
-   * Inline zet `position:fixed` tegen de admin-viewport → navbar “lekt” naar de shell-balk.
+   * Site-studio generator (split-pane): zelfde **inline** preview als live `/site` + QR/flyer (`PublicPublishedTailwindInline`),
+   * in een host met `transform` zodat `position:fixed` ten opzichte van de preview kleeft i.p.v. de hele admin.
+   * Geen `iframe` — die gaf o.a. scroll- en hoogteproblemen in de ingebouwde editor.
    */
   studioTailwindPreviewIframe?: boolean;
 };
@@ -206,59 +207,36 @@ export function PublishedSiteView({
           ? "contact"
           : "home";
 
-    /**
-     * Publieke weergave — standaard **geen iframe** (HTML in de Next-pagina; zelfde als live `/site`).
-     * In de **ingebouwde studio-generator** (split-pane): iframe zodat `position:fixed` niet tegen de admin-viewport kleef.
-     */
+    /** Publieke weergave: dezelfde `PublicPublishedTailwindInline` stack als live `/site` (geen iframe in admin; zie `studioTailwindPreviewIframe`). */
     if (visibility === "public") {
       const slugForA = publishedSlug?.trim() ?? "";
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
-      if (studioTailwindPreviewIframe) {
-        return (
-          <div className={cn("relative flex w-full min-w-0 flex-col", className)}>
-            {slugForA ? (
-              <GentrixPublicSiteAnalytics
-                siteSlug={slugForA}
-                pageKey={analyticsPageKey}
-                isPreview={isPreview}
-                bookingModuleEnabled={appointmentsEnabled}
-                webshopModuleEnabled={webshopEnabled}
-                sessionType={isPreview ? "public_preview" : "public_site"}
-                renderSurface="public_inline"
-              />
-            ) : null}
-            <PublicPublishedTailwind
-              sections={twSections}
-              pageConfig={payload.config}
-              className="flex w-full min-w-0 flex-col"
-              visibility="public"
-              publishedSlug={publishedSlug}
-              draftPublicPreviewToken={draftPublicPreviewToken}
-              userCss={payload.customCss}
-              userJs={payload.customJs}
-              logoSet={payload.logoSet}
-              compiledTailwindCss={payload.tailwindCompiledCss}
-              documentTitle={iframeTitle}
-              navBrandLabel={docTitle}
-              embedded={false}
-              appointmentsEnabled={appointmentsEnabled}
-              webshopEnabled={webshopEnabled}
-              ssrSrcDoc={null}
-              contactSubpageNavBase={contactNavBase}
-              designContract={payload.designContract}
-              previewPostMessageBridge
-              autoResizeFromPostMessage
-              documentHeightMode="full"
-              maxMeasuredHeight={20_000}
-              studioIframeDesktopViewport
-            />
-          </div>
-        );
-      }
       const publishedSiteSoftNav: PublishedSiteSoftNavContext | null =
         slugForA && contactNavBase ? { siteSlug: slugForA, prettyPublicUrls } : null;
+      const publicInlinePreview = (
+        <PublicPublishedTailwindInline
+          sections={twSections}
+          pageConfig={payload.config}
+          publishedSlug={publishedSlug}
+          draftPublicPreviewToken={draftPublicPreviewToken}
+          userCss={payload.customCss}
+          userJs={payload.customJs}
+          logoSet={payload.logoSet}
+          compiledTailwindCss={payload.tailwindCompiledCss}
+          documentTitle={iframeTitle}
+          navBrandLabel={docTitle}
+          appointmentsEnabled={appointmentsEnabled}
+          webshopEnabled={webshopEnabled}
+          contactSubpageNavBase={contactNavBase}
+          designContract={payload.designContract}
+          prettyPublicUrls={prettyPublicUrls}
+          relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
+          flyerPreview={flyerPreview}
+          publishedSiteSoftNav={publishedSiteSoftNav}
+        />
+      );
       return (
-        <div className={cn("relative flex w-full flex-1 flex-col", className)}>
+        <div className={cn("relative flex w-full min-w-0 flex-1 flex-col", className)}>
           {slugForA ? (
             <GentrixPublicSiteAnalytics
               siteSlug={slugForA}
@@ -270,26 +248,16 @@ export function PublishedSiteView({
               renderSurface="public_inline"
             />
           ) : null}
-          <PublicPublishedTailwindInline
-            sections={twSections}
-            pageConfig={payload.config}
-            publishedSlug={publishedSlug}
-            draftPublicPreviewToken={draftPublicPreviewToken}
-            userCss={payload.customCss}
-            userJs={payload.customJs}
-            logoSet={payload.logoSet}
-            compiledTailwindCss={payload.tailwindCompiledCss}
-            documentTitle={iframeTitle}
-            navBrandLabel={docTitle}
-            appointmentsEnabled={appointmentsEnabled}
-            webshopEnabled={webshopEnabled}
-            contactSubpageNavBase={contactNavBase}
-            designContract={payload.designContract}
-            prettyPublicUrls={prettyPublicUrls}
-            relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
-            flyerPreview={flyerPreview}
-            publishedSiteSoftNav={publishedSiteSoftNav}
-          />
+          {studioTailwindPreviewIframe ? (
+            <div
+              className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto will-change-transform [transform:translateZ(0)]"
+              data-gentrix-studio-inline-preview="1"
+            >
+              {publicInlinePreview}
+            </div>
+          ) : (
+            publicInlinePreview
+          )}
         </div>
       );
     }

@@ -158,7 +158,7 @@ export function renderStudioNavChromeHtml(
     ${menuBtn}
   </div>
   ${mobileSheet}
-</header><div class="${spacer}" aria-hidden="true"></div>`;
+</header><div class="${spacer}" style="${escapeAttr(tone.spacerLayerStyle)}" aria-hidden="true"></div>`;
 }
 
 /**

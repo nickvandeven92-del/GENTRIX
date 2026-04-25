@@ -11,6 +11,7 @@ describe("buildStudioNavChromeTone", () => {
     );
     expect(t.isDarkChrome).toBe(false);
     expect(t.barHostStyle).toContain("rgba(255,255,255");
+    expect(t.spacerLayerStyle).toBe("background:rgb(255,255,255)");
     expect(t.barHostStyle).toContain("--studio-nav-accent:#eab308");
     expect(t.hostShadowClass).toBe("");
   });
@@ -22,6 +23,7 @@ describe("buildStudioNavChromeTone", () => {
     );
     expect(t.isDarkChrome).toBe(true);
     expect(t.barHostStyle).toMatch(/background:rgba\(15,\s*23,\s*42/);
+    expect(t.spacerLayerStyle).toMatch(/^background:rgba\(15,\s*23,\s*42,\s*0\.98\)/);
   });
 
   it("glass surface: blur + lichte achtergrond", () => {
