@@ -22,14 +22,73 @@ export type NavVisualContract = {
   ctaStyle: "solid" | "outline" | "ghost";
 };
 
+const HEIGHT_ENUM = ["compact", "normal", "spacious"] as const;
+const CTA_ENUM = ["solid", "outline", "ghost"] as const;
+const IND_ENUM = ["underline", "pill", "none"] as const;
+
+export type NavVisualHeight = (typeof HEIGHT_ENUM)[number];
+export type NavVisualCtaStyle = (typeof CTA_ENUM)[number];
+export type NavVisualActiveIndicator = (typeof IND_ENUM)[number];
+
+/**
+ * Map AI-/handmatige varianten naar canonieke enums; onbekend → weglaten (geen parse-fout voor hele `studioNav`).
+ */
+export function coerceNavVisualHeight(raw: unknown): NavVisualHeight | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const s = String(raw).trim().toLowerCase();
+  if ((HEIGHT_ENUM as readonly string[]).includes(s)) return s as NavVisualHeight;
+  if (["tight", "short", "sm", "small", "dense", "xs", "narrow", "slim"].includes(s)) return "compact";
+  if (["medium", "mid", "default", "md", "regular", "base", "standard"].includes(s)) return "normal";
+  if (["tall", "large", "lg", "xl", "loose", "relaxed", "roomy", "airy", "expanded"].includes(s)) return "spacious";
+  return undefined;
+}
+
+export function coerceNavVisualCtaStyle(raw: unknown): NavVisualCtaStyle | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const s = String(raw).trim().toLowerCase();
+  if ((CTA_ENUM as readonly string[]).includes(s)) return s as NavVisualCtaStyle;
+  if (["filled", "fill", "primary", "button", "contained", "default"].includes(s)) return "solid";
+  if (["bordered", "border", "secondary", "stroke", "outlined"].includes(s)) return "outline";
+  if (["text", "link", "subtle", "minimal", "transparent", "plain", "flat"].includes(s)) return "ghost";
+  return undefined;
+}
+
+export function coerceNavVisualActiveIndicator(raw: unknown): NavVisualActiveIndicator | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const s = String(raw).trim().toLowerCase();
+  if ((IND_ENUM as readonly string[]).includes(s)) return s as NavVisualActiveIndicator;
+  if (["line", "bottom", "bar", "underline-default", "default"].includes(s)) return "underline";
+  if (["rounded", "capsule", "badge", "pill-indicator", "tab"].includes(s)) return "pill";
+  if (["off", "hidden", "false", "no", "0"].includes(s)) return "none";
+  return undefined;
+}
+
+/** Alleen toegestane keys; andere keys + ongeldige enum-strings worden genegeerd vóór Zod. */
+export function normalizeNavVisualOverridesInput(raw: unknown): Record<string, unknown> {
+  if (raw === null || raw === undefined) return {};
+  if (typeof raw !== "object" || Array.isArray(raw)) return {};
+  const o = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  const h = coerceNavVisualHeight(o.height);
+  if (h !== undefined) out.height = h;
+  const c = coerceNavVisualCtaStyle(o.ctaStyle);
+  if (c !== undefined) out.ctaStyle = c;
+  const a = coerceNavVisualActiveIndicator(o.activeIndicator);
+  if (a !== undefined) out.activeIndicator = a;
+  return out;
+}
+
 /** Alleen deze drie velden mogen via JSON overschreven worden (hybride, geclamped). */
-export const studioNavVisualAllowedOverridesSchema = z
-  .object({
-    height: z.enum(["compact", "normal", "spacious"]).optional(),
-    ctaStyle: z.enum(["solid", "outline", "ghost"]).optional(),
-    activeIndicator: z.enum(["underline", "pill", "none"]).optional(),
-  })
-  .strict();
+export const studioNavVisualAllowedOverridesSchema = z.preprocess(
+  (raw) => normalizeNavVisualOverridesInput(raw),
+  z
+    .object({
+      height: z.enum(HEIGHT_ENUM).optional(),
+      ctaStyle: z.enum(CTA_ENUM).optional(),
+      activeIndicator: z.enum(IND_ENUM).optional(),
+    })
+    .strict(),
+);
 
 export type NavVisualAllowedOverrides = z.infer<typeof studioNavVisualAllowedOverridesSchema>;
 

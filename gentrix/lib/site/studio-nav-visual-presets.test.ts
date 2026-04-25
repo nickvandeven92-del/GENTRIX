@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import {
+  coerceNavVisualActiveIndicator,
+  coerceNavVisualCtaStyle,
+  coerceNavVisualHeight,
   inferNavVisualPresetId,
   NAV_VISUAL_PRESETS,
+  normalizeNavVisualOverridesInput,
   resolveNavVisualPreset,
   resolveStudioNavVisual,
 } from "@/lib/site/studio-nav-visual-presets";
@@ -24,7 +28,7 @@ describe("resolveNavVisualPreset", () => {
     expect(r.contract.shadow).toBe("none");
   });
 
-  it("strikt schema: onbekende override-keys → hele overrides genegeerd", () => {
+  it("onbekende override-keys worden gestript; geldige velden blijven", () => {
     const r = resolveNavVisualPreset(
       {
         variant: "bar",
@@ -35,7 +39,7 @@ describe("resolveNavVisualPreset", () => {
       null,
     );
     expect(r.contract.surface).toBe("light");
-    expect(r.contract.height).toBe("normal");
+    expect(r.contract.height).toBe("compact");
   });
 
   it("legacy bar + frosted → minimalLight-basis + infer theme", () => {
@@ -57,6 +61,23 @@ describe("resolveNavVisualPreset", () => {
 
   it("resolveStudioNavVisual alias", () => {
     expect(resolveStudioNavVisual({ variant: "bar" }, { primary: "#fff" }, null).contract.surface).toBe("light");
+  });
+});
+
+describe("navVisualOverrides normalisatie", () => {
+  it("coerceert gangbare AI-synoniemen naar canonieke enums", () => {
+    expect(coerceNavVisualHeight("TALL")).toBe("spacious");
+    expect(coerceNavVisualCtaStyle("filled")).toBe("solid");
+    expect(coerceNavVisualActiveIndicator("LINE")).toBe("underline");
+    expect(normalizeNavVisualOverridesInput({ height: "large", ctaStyle: "primary", activeIndicator: "rounded" })).toEqual({
+      height: "spacious",
+      ctaStyle: "solid",
+      activeIndicator: "pill",
+    });
+  });
+
+  it("onzinnige waarden verdwijnen (lege overrides)", () => {
+    expect(normalizeNavVisualOverridesInput({ height: "galaxy", ctaStyle: 42 })).toEqual({});
   });
 });
 
