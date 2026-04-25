@@ -998,7 +998,7 @@ export function SiteHtmlEditor({
                   Desktop-knop: vaste brede preview (1280px).
                 </p>
               </div>
-              <div className="min-h-0 flex-1 overflow-hidden overscroll-contain">
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
                 <TailwindSectionsPreview
                   key={`${previewKey}-${previewViewportMode}`}
                   sections={previewSections}
@@ -1015,11 +1015,11 @@ export function SiteHtmlEditor({
                   compiledTailwindCss={previewCompiledCss}
                   navBrandLabel={initialName.trim() || subfolderSlug}
                   title={`Preview ${subfolderSlug}`}
-                  className="h-full min-h-0 w-full rounded-none border-0 bg-white"
-                  frameClassName="h-full min-h-[280px] w-full"
+                  className="w-full min-w-0 rounded-none border-0 bg-white"
+                  frameClassName="min-h-[280px] w-full"
                   autoResizeFromPostMessage
-                  documentHeightMode="panel"
-                  maxMeasuredHeight={3200}
+                  documentHeightMode="full"
+                  maxMeasuredHeight={20_000}
                   studioHtmlEditorParentNav
                   contactSubpageNavForHtmlEditor={contactSubpageNavForHtmlEditor}
                   iframeDocumentPathname={iframeDocumentPathname}

@@ -215,7 +215,7 @@ export function PublishedSiteView({
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
       if (studioTailwindPreviewIframe) {
         return (
-          <div className={cn("relative flex min-h-0 w-full flex-1 flex-col", className)}>
+          <div className={cn("relative flex w-full min-w-0 flex-col", className)}>
             {slugForA ? (
               <GentrixPublicSiteAnalytics
                 siteSlug={slugForA}
@@ -230,7 +230,7 @@ export function PublishedSiteView({
             <PublicPublishedTailwind
               sections={twSections}
               pageConfig={payload.config}
-              className="min-h-0 flex flex-1 flex-col"
+              className="flex w-full min-w-0 flex-col"
               visibility="public"
               publishedSlug={publishedSlug}
               draftPublicPreviewToken={draftPublicPreviewToken}
@@ -248,8 +248,8 @@ export function PublishedSiteView({
               designContract={payload.designContract}
               previewPostMessageBridge
               autoResizeFromPostMessage
-              documentHeightMode="panel"
-              maxMeasuredHeight={3200}
+              documentHeightMode="full"
+              maxMeasuredHeight={20_000}
               studioIframeDesktopViewport
             />
           </div>

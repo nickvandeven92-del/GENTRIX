@@ -321,7 +321,13 @@ export function TailwindSectionsPreview({
   );
 
   const desktopWideScroll = previewMatchParentWindowBreakpoints ? (
-    <div className="min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden" style={{ scrollbarGutter: "stable" }}>
+    <div
+      className={cn(
+        "min-h-0 w-full overflow-x-auto",
+        documentHeightMode === "full" ? "overflow-y-auto" : "flex-1 overflow-y-hidden",
+      )}
+      style={{ scrollbarGutter: "stable" }}
+    >
       {iframe}
     </div>
   ) : null;

@@ -2410,6 +2410,10 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
   if(document.readyState==="complete")measure();
   else window.addEventListener("load",measure);
   window.addEventListener("resize",function(){measure();});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){setTimeout(measure,0);});
+  setTimeout(measure,200);
+  setTimeout(measure,800);
+  setTimeout(measure,2e3);
 })();
 </script>`;
 

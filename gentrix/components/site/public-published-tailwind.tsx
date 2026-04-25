@@ -342,7 +342,10 @@ export function PublicPublishedTailwind({
         <div
           ref={previewPostMessageBridge && autoResizeFromPostMessage ? containerRef : undefined}
           className={cn(
-            "flex min-h-0 w-full flex-1 flex-col bg-transparent",
+            "flex w-full min-w-0 flex-col bg-transparent",
+            previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode === "full"
+              ? "min-h-0"
+              : "min-h-0 flex-1",
             previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode !== "full" && "overflow-hidden",
             className,
           )}
@@ -368,19 +371,27 @@ export function PublicPublishedTailwind({
 
   return (
     <PublishedTailwindNavBridge>
-      <div
-        ref={previewPostMessageBridge && autoResizeFromPostMessage ? containerRef : undefined}
-        className={cn(
-          "flex min-h-0 w-full flex-1 flex-col bg-transparent",
-          previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode !== "full" && "overflow-hidden",
-          className,
-        )}
-        style={{ width: "100%", height: embedded ? undefined : "100%" }}
-      >
-        <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
+        <div
+          ref={previewPostMessageBridge && autoResizeFromPostMessage ? containerRef : undefined}
+          className={cn(
+            "flex w-full min-w-0 flex-col bg-transparent",
+            /* `full` + postMessage: buiten-iframe verticaal scrollen; geen `flex-1` — anders klem je op paneelhóógte. */
+            previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode === "full"
+              ? "min-h-0"
+              : "min-h-0 flex-1",
+            previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode !== "full" && "overflow-hidden",
+            className,
+          )}
+          style={{ width: "100%", height: embedded ? undefined : "100%" }}
+        >
+          <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
         {useStudioDesktopIframe ? (
           <div
-            className="min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden"
+            className={cn(
+              "min-h-0 w-full overflow-x-auto",
+              /* `full` + fysiek hoge iframe: geen `flex-1` — anders weer één “viewport”-strip. */
+              documentHeightMode === "full" ? "overflow-y-auto" : "flex-1 overflow-y-hidden",
+            )}
             style={{ scrollbarGutter: "stable" }}
           >
             <iframe

@@ -1455,7 +1455,7 @@ export function GeneratorForm({
             ) : null}
             <div
               className={cn(
-                "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950",
+                "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950",
                 previewFullscreen && "rounded-lg border-zinc-300 dark:border-zinc-700",
               )}
             >
@@ -1534,10 +1534,10 @@ export function GeneratorForm({
                     <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300">Preview opent zo…</p>
                   </div>
                 ) : (
-                  <div className="relative min-h-0 flex-1 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
+                  <div className="relative w-full min-w-0 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
                     <PublishedSiteView
                       payload={generatorViewPayload}
-                      className="min-h-0 flex-1"
+                      className="w-full"
                       publishedSlug={slugFromUrl}
                       draftPublicPreviewToken={draftPublicPreviewToken}
                       appointmentsEnabled={detectedModuleFlags.appointmentsEnabled}
