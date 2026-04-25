@@ -32,6 +32,7 @@ import {
   prependStudioNavChromeToFirstSection,
   renderStudioNavChromeHtml,
 } from "@/lib/site/render-studio-nav-chrome-html";
+import { resolveStudioNavUnderShellPolicy } from "@/lib/site/studio-shell-nav-policy";
 import {
   applyStudioPublishedPathPlaceholders,
   neutralizeStudioPathPlaceholdersWithoutSlug,
@@ -2342,10 +2343,28 @@ export function buildTailwindSectionsBodyInnerHtml(
   bodyOptions?: BuildTailwindSectionsBodyOptions,
 ): string {
   let sectionRows: TailwindSection[] = sections;
-  const studioNav =
+  const shellResolve =
     pageConfig && !isLegacyTailwindPageConfig(pageConfig)
-      ? (parseStudioNavChromeConfig(pageConfig.studioNav) ?? inferStudioNavChromeFromSections(sections))
+      ? resolveStudioNavUnderShellPolicy(pageConfig, sections)
       : null;
+
+  if (shellResolve?.mode === "shell" && !shellResolve.ok) {
+    throw new Error(shellResolve.errors.join(" "));
+  }
+  if (shellResolve?.mode === "shell" && shellResolve.ok) {
+    for (const w of shellResolve.warnings) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[studioShellNav] ${w}`);
+      }
+    }
+  }
+
+  const studioNav =
+    shellResolve?.mode === "shell" && shellResolve.ok
+      ? shellResolve.studioNav
+      : pageConfig && !isLegacyTailwindPageConfig(pageConfig)
+        ? (parseStudioNavChromeConfig(pageConfig.studioNav) ?? inferStudioNavChromeFromSections(sections))
+        : null;
   if (studioNav) {
     const navTheme = pageConfig && !isLegacyTailwindPageConfig(pageConfig) ? pageConfig.theme : null;
     sectionRows = prependStudioNavChromeToFirstSection(

@@ -179,6 +179,11 @@ export const masterPromptPageConfigSchema = z.object({
   font: z.string().min(1).max(200),
   /** Declaratieve primaire nav: renderer vervangt AI-chrome in compose (zie `renderStudioNavChromeHtml`). */
   studioNav: studioNavChromeConfigSchema.optional(),
+  /**
+   * Wanneer `true`: server dwingt de studio-shell af — **geldig** `studioNav` verplicht, geen infer uit
+   * AI-`<header>`; lek-chrome in secties → waarschuwing (strip blijft safety net). Weggelaten/`false` = klassiek gedrag (parse + legacy-infer).
+   */
+  studioShellNav: z.boolean().optional(),
 });
 
 export type MasterPromptPageConfig = z.infer<typeof masterPromptPageConfigSchema>;
@@ -217,6 +222,7 @@ export const masterPromptPageConfigPatchSchema = z
     font: z.string().min(1).max(200).optional(),
     theme: z.record(z.string(), z.unknown()).optional(),
     studioNav: studioNavChromeConfigSchema.optional(),
+    studioShellNav: z.boolean().optional(),
   })
   .strict();
 

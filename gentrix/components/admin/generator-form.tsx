@@ -1306,6 +1306,7 @@ export function GeneratorForm({
                   />
                   <SaveSitePanel
                     page={generatedTailwind}
+                    designContract={designContract}
                     siteIrHints={detectedIndustryId ? { detectedIndustryId } : undefined}
                     defaultName={
                       studioBedrijfsnaam.trim() ||

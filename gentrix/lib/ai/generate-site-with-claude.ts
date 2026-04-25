@@ -1402,7 +1402,7 @@ function buildMarketingMultiPageOperationalTail(
 - Top-level keys: \`config\`, \`sections\`, \`marketingPages\`, \`contactSections\` ??? **alle vier** aanwezig.
 - \`marketingPages\`: **exact** deze ${uniqueSlugCount} key(s), geen extra, geen misser: ${slugList}.
 - Per key: **minstens 2** secties met unieke \`id\`'s op die pagina + genoeg zichtbare tekst (geen lege shells).
-- **Navigatie (studio shell):** bouw **geen** eigen top-\`<header>\`/\`<nav>\`-chrome (geen vaste balk, geen scroll/fixed-nav utilities op een primaire header). Vul **\`config.studioNav\`** met \`brandLabel\`, \`brandHref\`, \`items[]\` (alle routes dezelfde labels/hrefs), optioneel \`cta\`, optioneel \`navVisualPreset\` (één van: minimalLight, darkSolid, glassLight, floatingPill, luxuryGold, editorialTransparent, softBrand, compactBar) en optioneel \`navVisualOverrides\` (**alleen** \`height\` / \`ctaStyle\` / \`activeIndicator\`). **FAQ** staat **niet** in \`studioNav.items\` ??? alleen footer-link \`href="__STUDIO_SITE_BASE__/faq"\` op de landing. Elke marketing-key **behalve** \`faq\` wél als item met \`href="__STUDIO_SITE_BASE__/<slug>"\`.
+- **Navigatie (studio shell):** bouw **geen** eigen top-\`<header>\`/\`<nav>\`-chrome (geen vaste balk, geen scroll/fixed-nav utilities op een primaire header). Vul **\`config.studioNav\`** met \`brandLabel\`, \`brandHref\`, \`items[]\` (alle routes dezelfde labels/hrefs), optioneel \`cta\`, optioneel \`navVisualPreset\` (één van: minimalLight, darkSolid, glassLight, floatingPill, luxuryGold, editorialTransparent, softBrand, compactBar) en optioneel \`navVisualOverrides\` (**alleen** \`height\` / \`ctaStyle\` / \`activeIndicator\`). **Optioneel** \`"studioShellNav": true\` in \`config\`: dan **moet** \`studioNav\` geldig zijn (server valideert; geen infer uit AI-\`<header>\`). **FAQ** staat **niet** in \`studioNav.items\` ??? alleen footer-link \`href="__STUDIO_SITE_BASE__/faq"\` op de landing. Elke marketing-key **behalve** \`faq\` wél als item met \`href="__STUDIO_SITE_BASE__/<slug>"\`.
 
 `;
 
@@ -1449,7 +1449,7 @@ Lever **uitsluitend** ??n JSON-object. Geen markdown, geen code fences, geen tek
 Structuur ??? \`marketingPages\` met **precies** deze keys (elk **???2** secties):
 
 {
-  "config": { "style": "???", "theme": { "primary": "#???", "accent": "#???", "primaryLight": "#???", "primaryMain": "#???", "primaryDark": "#???" }, "font": "???", "studioNav": { "variant": "bar", "brandLabel": "???", "brandHref": "__STUDIO_SITE_BASE__", "items": [{"label": "???", "href": "#features"}], "cta": {"label": "Contact", "href": "__STUDIO_CONTACT_PATH__"}, "navVisualPreset": "minimalLight" },
+  "config": { "style": "???", "theme": { "primary": "#???", "accent": "#???", "primaryLight": "#???", "primaryMain": "#???", "primaryDark": "#???" }, "font": "???", "studioShellNav": true, "studioNav": { "variant": "bar", "brandLabel": "???", "brandHref": "__STUDIO_SITE_BASE__", "items": [{"label": "???", "href": "#features"}], "cta": {"label": "Contact", "href": "__STUDIO_CONTACT_PATH__"}, "navVisualPreset": "minimalLight" },
   "sections": [
     { "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">???</section>" }
   ],
@@ -1503,7 +1503,7 @@ function buildOperationalNavParts(
 ): Pick<SiteGenerationOperationalTailInput, "requiredIdsLine" | "section4Nav" | "section5IdsNote"> {
   const section4Nav = preserve
     ? `- **Nav / upgrade:** behoud navigatie en hero-structuur uit de **bestaande** hero-\`html\`; werk alleen \`href="#???"\` / \`id\` bij waar nieuwe secties dat vereisen. Nav-vorm **niet verplicht wijzigen** ??? zie minimale UX-fix onder ?3B.\n`
-    : `- **Navigatie (studio shell):** vul \`config.studioNav\` (merk, \`items\`, \`cta\`, optioneel \`navVisualPreset\` / \`navVisualOverrides\`). **Geen** eigen top-\`<header>\`/\`<nav>\`-chrome in sectie-HTML ??? de server bouwt de vaste navbar. **Geen** tweede verticale menubalk. Sectie-\`href="#???"\` alleen voor ankers op **dezelfde** pagina.\n`;
+    : `- **Navigatie (studio shell):** vul \`config.studioNav\` (merk, \`items\`, \`cta\`, optioneel \`navVisualPreset\` / \`navVisualOverrides\`). Zet optioneel \`"studioShellNav": true\` om server-side af te dwingen dat \`studioNav\` geldig is (anders faalt compose); lek-chrome in secties wordt gestript + gelogd. **Geen** eigen top-\`<header>\`/\`<nav>\`-chrome in sectie-HTML ??? de server bouwt de vaste navbar. **Geen** tweede verticale menubalk. Sectie-\`href="#???"\` alleen voor ankers op **dezelfde** pagina.\n`;
   let requiredIdsLine: string;
   if (!preserve && resolvedLandingSectionIds && resolvedLandingSectionIds.length > 0) {
     requiredIdsLine = resolvedLandingSectionIds.map((s) => `\`${s}\``).join(", ");

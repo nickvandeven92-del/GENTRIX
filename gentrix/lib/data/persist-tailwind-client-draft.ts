@@ -1,5 +1,6 @@
 import { revalidatePublishedSiteBundleCacheForSlug } from "@/lib/data/revalidate-published-site-bundle-cache";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindSectionsPayload } from "@/lib/ai/tailwind-sections-schema";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
 import { attachCompiledTailwindCssToPayloadWithColdStartRetry } from "@/lib/data/tailwind-compiled-css-attach";
@@ -8,6 +9,7 @@ import {
   projectSnapshotFromTailwindPayload,
   projectSnapshotToJson,
 } from "@/lib/site/project-snapshot-io";
+import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { getPersistSiteValidationErrors } from "@/lib/site/site-ir-compose-validation";
 import { describeTailwindMarketingNavPayloadIssues } from "@/lib/site/tailwind-marketing-nav-consistency";
 import type { PublicSiteModuleFlags } from "@/lib/site/public-site-modules-registry";
@@ -35,6 +37,21 @@ type ExistingClientRow = {
   generation_package?: string | null;
 };
 
+async function readDesignContractFromExistingSiteJson(
+  supabase: Supabase,
+  subfolderSlug: string,
+): Promise<DesignGenerationContract | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .select("site_data_json")
+    .eq("subfolder_slug", subfolderSlug)
+    .maybeSingle();
+  if (error || !data) return null;
+  const raw = (data as { site_data_json?: unknown }).site_data_json;
+  const parsed = raw != null ? parseStoredSiteData(raw) : null;
+  return parsed?.kind === "tailwind" && parsed.designContract != null ? parsed.designContract : null;
+}
+
 /**
  * Schrijft Tailwind-payload naar `clients.site_data_json` + nieuwe draft-snapshot (zelfde pad als `POST /api/clients`).
  */
@@ -49,6 +66,8 @@ export async function persistTailwindDraftForExistingClient(
     documentTitle?: string;
     /** Optioneel: blueprint / branche voor `siteIr` in project_snapshot_v1. */
     siteIrHints?: ProjectSnapshotFromTailwindOptions["siteIrHints"];
+    /** Optioneel: zet `project_snapshot_v1.designContract`. Weggelaten: overname uit huidige `site_data_json`. */
+    designContract?: DesignGenerationContract;
     /** Optioneel: voorkomt extra DB-read; gebruikt voor IR/CRM-compose-validatie. */
     moduleFlags?: PublicSiteModuleFlags;
   },
@@ -85,10 +104,18 @@ export async function persistTailwindDraftForExistingClient(
   if (navPayloadIssue) {
     return { ok: false, error: navPayloadIssue, status: 422 };
   }
+
+  let designContractForSnapshot: DesignGenerationContract | undefined = options.designContract;
+  if (designContractForSnapshot === undefined) {
+    const fromExisting = await readDesignContractFromExistingSiteJson(supabase, existing.subfolder_slug);
+    if (fromExisting != null) designContractForSnapshot = fromExisting;
+  }
+
   const snapshot = projectSnapshotFromTailwindPayload(withCanonicalModules, {
     generationSource,
     documentTitle: docTitle,
     ...(options.siteIrHints != null ? { siteIrHints: options.siteIrHints } : {}),
+    ...(designContractForSnapshot != null ? { designContract: designContractForSnapshot } : {}),
   });
 
   const persistErrors = getPersistSiteValidationErrors(snapshot, flags);

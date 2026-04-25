@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Database, Loader2, Save } from "lucide-react";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import {
   generatedTailwindPageToSectionsPayload,
   type GeneratedTailwindPage,
@@ -55,6 +56,11 @@ type SaveSitePanelProps = {
   generatorMode?: boolean;
   /** Na geslaagde POST (concept bijgewerkt). */
   onSaved?: () => void;
+  /**
+   * Denklijn-contract: wordt als `design_contract_json` meegePOST en in `project_snapshot_v1.designContract` gezet
+   * (niet in `tailwind_sections`).
+   */
+  designContract?: DesignGenerationContract | null;
 };
 
 export function SaveSitePanel({
@@ -66,6 +72,7 @@ export function SaveSitePanel({
   defaultPublishStatus,
   generatorMode = false,
   onSaved,
+  designContract = null,
 }: SaveSitePanelProps) {
   function initialSlug(): string {
     const fromUrl = defaultSubfolderSlug?.trim();
@@ -140,6 +147,7 @@ export function SaveSitePanel({
           status: effectiveStatus,
           generation_package: STUDIO_GENERATION_PACKAGE,
           snapshot_source: "generator",
+          ...(designContract != null ? { design_contract_json: designContract } : {}),
           ...(siteIrHints?.detectedIndustryId || siteIrHints?.blueprintId
             ? {
                 site_ir_hints: {

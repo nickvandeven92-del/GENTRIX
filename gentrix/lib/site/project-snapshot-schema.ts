@@ -29,7 +29,10 @@ import {
   type TokenOverrideKey,
 } from "@/lib/site/project-snapshot-tokens";
 import { buildSiteIrV1, siteIrV1Schema } from "@/lib/site/site-ir-schema";
-import { designGenerationContractSchema } from "@/lib/ai/design-generation-contract";
+import {
+  designGenerationContractSchema,
+  type DesignGenerationContract,
+} from "@/lib/ai/design-generation-contract";
 
 // Re-export voor consumers
 export { TOKEN_OVERRIDE_KEYS, tokenOverrideKeySchema, type TokenOverrideKey } from "@/lib/site/project-snapshot-tokens";
@@ -218,6 +221,8 @@ export type ProjectSnapshotFromTailwindOptions = {
     blueprintId?: string | null;
     detectedIndustryId?: string | null;
   };
+  /** Denklijn-contract op snapshot (niet in `tailwind_sections`-payload). */
+  designContract?: DesignGenerationContract;
 };
 
 export type ProjectSnapshotParseResult =
@@ -366,6 +371,7 @@ export function tailwindSectionsPayloadToProjectSnapshot(
       sectionIdsOrdered,
       hasDedicatedContactPage: Boolean(contactSections != null && contactSections.length > 0),
     }),
+    ...(options?.designContract != null ? { designContract: options.designContract } : {}),
   });
 }
 

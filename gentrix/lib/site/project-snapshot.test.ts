@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
+import type { MasterPromptPageConfig } from "@/lib/ai/tailwind-sections-schema";
 import { siteAiSnapshotPatchSchema } from "@/lib/ai/site-ai-command-patch-schema";
 import { mergeProjectSnapshotPatch } from "@/lib/site/merge-project-snapshot-patch";
 import { projectSnapshotToCanonicalJsonString, toCanonicalProjectSnapshotObject } from "@/lib/site/project-snapshot-canonical";
+import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { parseAnyStoredProjectDataToLatestSnapshot } from "@/lib/site/project-snapshot-migrate";
+import { projectSnapshotToJson } from "@/lib/site/project-snapshot-io";
+import { buildTailwindSectionsBodyInnerHtml } from "@/lib/site/tailwind-page-html";
 import {
   PROJECT_SNAPSHOT_FORMAT,
   projectSnapshotToTailwindSectionsPayload,
@@ -151,6 +156,89 @@ describe("project_snapshot_v1", () => {
       expect(merged.snapshot.sections[0].id).toBe("keep-me");
       expect(merged.report.updatedSectionIds).toContain("keep-me");
     }
+  });
+
+  it("merge AI-patch behoudt designContract op snapshot", () => {
+    const dc = {
+      heroVisualSubject: "Glassmorphism product UI with depth and clarity",
+      paletteMode: "light",
+      imageryMustReflect: ["clarity"],
+      motionLevel: "subtle",
+      referenceVisualAxes: {
+        layoutRhythm: "balanced",
+        themeMode: "light",
+        paletteIntent: "Light neutral surfaces with soft separation",
+        typographyDirection: "sans_modern",
+        heroComposition: "Centered product mockup with headline",
+        sectionDensity: "medium",
+        motionStyle: "static_minimal",
+        borderTreatment: "none_minimal",
+        cardStyle: "glass_blur",
+      },
+    } as DesignGenerationContract;
+    const base = tailwindSectionsPayloadToProjectSnapshot(
+      {
+        format: "tailwind_sections",
+        sections: [{ id: "keep-me", sectionName: "A", html: "<section>old</section>" }],
+      },
+      { generationSource: "import", createdByKind: "import", designContract: dc },
+    );
+    expect(base.designContract?.referenceVisualAxes?.cardStyle).toBe("glass_blur");
+    const merged = mergeProjectSnapshotPatch(base, {
+      sectionUpdates: [{ sectionId: "keep-me", html: "<section>new</section>" }],
+    });
+    expect(merged.ok).toBe(true);
+    if (merged.ok) {
+      expect(merged.snapshot.designContract?.referenceVisualAxes?.cardStyle).toBe("glass_blur");
+    }
+  });
+
+  it("designContract op snapshot → JSON → parseStoredSite → body nav (glass infer)", () => {
+    const pageConfig: MasterPromptPageConfig = {
+      style: "Test",
+      theme: { primary: "#f8fafc", accent: "#0ea5e9" },
+      font: "Inter, system-ui, sans-serif",
+      studioNav: {
+        variant: "bar",
+        brandLabel: "Brand",
+        brandHref: "#top",
+        items: [{ label: "Home", href: "#top" }],
+      },
+    };
+    const dc = {
+      heroVisualSubject: "Glass UI with frosted panels for a SaaS dashboard",
+      paletteMode: "light",
+      imageryMustReflect: ["trust"],
+      motionLevel: "subtle",
+      referenceVisualAxes: {
+        layoutRhythm: "balanced",
+        themeMode: "light",
+        paletteIntent: "Neutral light surfaces",
+        typographyDirection: "sans_modern",
+        heroComposition: "Hero with product screenshot",
+        sectionDensity: "medium",
+        motionStyle: "static_minimal",
+        borderTreatment: "none_minimal",
+        cardStyle: "glass_blur",
+      },
+    } as DesignGenerationContract;
+    const snap = tailwindSectionsPayloadToProjectSnapshot(
+      {
+        format: "tailwind_sections",
+        sections: [{ sectionName: "hero", html: "<main id=\"x\"><p>Hi</p></main>" }],
+        config: pageConfig,
+      },
+      { generationSource: "generator", documentTitle: "DC roundtrip", designContract: dc },
+    );
+    const json = projectSnapshotToJson(snap);
+    const parsed = parseStoredSiteData(json);
+    expect(parsed?.kind).toBe("tailwind");
+    if (parsed?.kind !== "tailwind" || parsed.config == null) return;
+    expect(parsed.designContract?.referenceVisualAxes?.cardStyle).toBe("glass_blur");
+    const body = buildTailwindSectionsBodyInnerHtml(parsed.sections, parsed.config, {
+      designContract: parsed.designContract ?? null,
+    });
+    expect(body).toContain("backdrop-filter:blur");
   });
 
   it("AI patch: ongeldige tokenOverride-key wordt geweigerd", () => {

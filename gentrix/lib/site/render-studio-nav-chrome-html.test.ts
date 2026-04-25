@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { MasterPromptPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import { buildTailwindSectionsBodyInnerHtml } from "@/lib/site/tailwind-page-html";
@@ -9,7 +9,10 @@ import {
   stripFirstSiteChromeFromSectionHtml,
 } from "@/lib/site/render-studio-nav-chrome-html";
 
-const minimalMasterConfig = (studioNav: MasterPromptPageConfig["studioNav"]): MasterPromptPageConfig => ({
+const minimalMasterConfig = (
+  studioNav?: MasterPromptPageConfig["studioNav"],
+  extra?: { studioShellNav?: boolean },
+): MasterPromptPageConfig => ({
   style: "Test",
   theme: {
     primary: "#0f172a",
@@ -17,6 +20,7 @@ const minimalMasterConfig = (studioNav: MasterPromptPageConfig["studioNav"]): Ma
   },
   font: "Inter, system-ui, sans-serif",
   ...(studioNav ? { studioNav } : {}),
+  ...(extra?.studioShellNav !== undefined ? { studioShellNav: extra.studioShellNav } : {}),
 });
 
 describe("parseStudioNavChromeConfig", () => {
@@ -199,5 +203,57 @@ describe("buildTailwindSectionsBodyInnerHtml + studioNav", () => {
     const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, { designContract: dc });
     expect(body).toContain("rgba(15,23,42,0.9)");
     expect(body).toMatch(/border border-\[color:var\(--studio-nav-accent\)\]/);
+  });
+
+  it("studioShellNav: zonder geldige studioNav → throw (server policy)", () => {
+    const pageConfig = minimalMasterConfig(undefined, { studioShellNav: true });
+    expect(() =>
+      buildTailwindSectionsBodyInnerHtml(
+        [{ sectionName: "hero", html: `<main id="hero">OK</main>` }],
+        pageConfig,
+        {},
+      ),
+    ).toThrow(/studioShellNav is true but config\.studioNav is missing or invalid/i);
+  });
+
+  it("studioShellNav + studioNav + AI-header: één shell-nav, AI-chrome gestript, waarschuwing", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pageConfig = minimalMasterConfig(
+      {
+        variant: "bar",
+        brandLabel: "ShellBrand",
+        brandHref: "#top",
+        items: [{ label: "Home", href: "#top" }],
+      },
+      { studioShellNav: true },
+    );
+    const sections: TailwindSection[] = [
+      {
+        sectionName: "hero",
+        html: `<header class="sticky top-0 z-50 bg-black text-white"><nav><a href="#x">AI</a></nav></header><main id="hero">Body</main>`,
+      },
+    ];
+    const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {});
+
+    const chromeCount = (body.match(/data-studio-nav-chrome="1"/g) ?? []).length;
+    expect(chromeCount).toBe(1);
+    expect(body).toContain("ShellBrand");
+    expect(body).not.toContain(">AI<");
+    expect(body).toContain("Body");
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("studioShellNav uit: studioNav ontbreekt maar AI-header → infer vult nav (legacy)", () => {
+    const pageConfig = minimalMasterConfig(undefined);
+    const sections: TailwindSection[] = [
+      {
+        sectionName: "hero",
+        html: `<header class="sticky top-0"><a href="#top">Home</a><a href="#diensten">Diensten</a></header><main id="hero">X</main>`,
+      },
+    ];
+    const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {});
+    expect(body).toContain("Diensten");
+    expect((body.match(/data-studio-nav-chrome="1"/g) ?? []).length).toBe(1);
   });
 });

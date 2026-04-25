@@ -3,6 +3,7 @@ import { z } from "zod";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { requireStudioAdminApiAuth } from "@/lib/auth/require-studio-admin-api";
 import { isValidSubfolderSlug, STUDIO_HOMEPAGE_SUBFOLDER_SLUG } from "@/lib/slug";
+import { parseDesignContractFromStoredJson } from "@/lib/ai/design-generation-contract";
 import { tailwindSectionsPayloadSchema } from "@/lib/ai/tailwind-sections-schema";
 import { parseStoredSiteData } from "@/lib/site/parse-stored-site-data";
 import { generateClientNumber } from "@/lib/commercial/document-numbering";
@@ -46,6 +47,11 @@ const bodySchema = z.object({
       blueprint_id: z.string().max(64).optional(),
     })
     .optional(),
+  /**
+   * Denklijn-contract apart van `site_data_json` (strikt `tailwind_sections` zonder dit veld).
+   * Wordt opgeslagen als `project_snapshot_v1.designContract`.
+   */
+  design_contract_json: z.unknown().optional(),
 });
 
 export async function POST(request: Request) {
@@ -183,6 +189,13 @@ export async function POST(request: Request) {
       appointmentsEnabled: priorAppointments,
       webshopEnabled: resolvedWebshopEnabled,
     });
+
+    const fromBody = parseDesignContractFromStoredJson(parsed.data.design_contract_json);
+    let designContractForSnapshot =
+      fromBody ??
+      (siteParsed.kind === "tailwind" && siteParsed.designContract != null ? siteParsed.designContract : null) ??
+      (existingSite?.kind === "tailwind" && existingSite.designContract != null ? existingSite.designContract : null);
+
     const snapshot = projectSnapshotFromTailwindPayload(mergedForCrm, {
       generationSource,
       documentTitle: docTitle,
@@ -190,6 +203,7 @@ export async function POST(request: Request) {
         detectedIndustryId: parsed.data.site_ir_hints?.detected_industry_id ?? undefined,
         blueprintId: parsed.data.site_ir_hints?.blueprint_id ?? undefined,
       },
+      ...(designContractForSnapshot != null ? { designContract: designContractForSnapshot } : {}),
     });
     persistedTailwindSnapshot = snapshot;
     jsonToStore = projectSnapshotToJson(snapshot) as Json;
