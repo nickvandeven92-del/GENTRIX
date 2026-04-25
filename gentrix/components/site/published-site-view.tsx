@@ -245,6 +245,10 @@ export function PublishedSiteView({
               webshopEnabled={webshopEnabled}
               ssrSrcDoc={null}
               contactSubpageNavBase={contactNavBase}
+              previewPostMessageBridge
+              autoResizeFromPostMessage
+              documentHeightMode="panel"
+              maxMeasuredHeight={3200}
             />
           </div>
         );

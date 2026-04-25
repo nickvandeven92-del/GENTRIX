@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
@@ -16,6 +23,7 @@ import {
 import { PublishedTailwindAssets } from "@/components/site/published-tailwind-assets";
 import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind-nav-bridge";
 import { PublicSitePageSkeleton } from "@/components/site/public-site-page-skeleton";
+import { isStudioPreviewPostMessage } from "@/lib/site/preview-post-message";
 import { cn } from "@/lib/utils";
 import {
   initGentrixAnalytics,
@@ -57,6 +65,11 @@ type PublicPublishedTailwindProps = {
    * Fallback naar client-build als `null`.
    */
   ssrSrcDoc?: string | null;
+  /** Zelfde als `TailwindSectionsPreview`: hoogte-meting uit iframe → geen lege band onder de pagina. */
+  previewPostMessageBridge?: boolean;
+  autoResizeFromPostMessage?: boolean;
+  documentHeightMode?: "panel" | "full";
+  maxMeasuredHeight?: number;
 };
 
 function fallbackSrcDoc(documentTitle: string, body: string): string {
@@ -66,8 +79,9 @@ function fallbackSrcDoc(documentTitle: string, body: string): string {
 }
 
 /**
- * Tailwind-publieke site: HTML wordt in de **browser** gebouwd (DOMPurify/jsdom), niet op de Vercel-server.
- * Daarmee vermijd je 500-crash op serverless die lokaal wél kan werken.
+ * Tailwind-publieke site: standaard wordt `srcDoc` in de **browser** gebouwd (`buildTailwindIframeSrcDoc`),
+ * niet als kant-en-klare HTML van de server (behalve bij `ssrSrcDoc`).
+ * Optioneel: `previewPostMessageBridge` + `autoResizeFromPostMessage` voor studio-generator (iframe-hoogte = inhoud).
  */
 export function PublicPublishedTailwind({
   sections,
@@ -87,6 +101,10 @@ export function PublicPublishedTailwind({
   contactSubpageNavBase = null,
   navBrandLabel = null,
   ssrSrcDoc = null,
+  previewPostMessageBridge = false,
+  autoResizeFromPostMessage = false,
+  documentHeightMode = "panel",
+  maxMeasuredHeight = 2400,
 }: PublicPublishedTailwindProps) {
   const filtered = useMemo(
     () =>
@@ -105,6 +123,12 @@ export function PublicPublishedTailwind({
   const [srcDoc, setSrcDoc] = useState<string | null>(ssrSrcDoc ?? null);
   /** Skeleton alleen tonen als we geen SSR srcDoc hebben; anders direct iframe. */
   const [showSkeleton] = useState<boolean>(ssrSrcDoc == null);
+  /** Bij gezet `ssrSrcDoc` op mount: geen client-side herbouw (voorkomt overschrijven van server-doc). */
+  const skipClientSrcDocBuildRef = useRef(Boolean(ssrSrcDoc?.trim()));
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+  const [panelClipPx, setPanelClipPx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isGentrixAnalyticsEnabled()) return;
@@ -131,8 +155,59 @@ export function PublicPublishedTailwind({
   ]);
 
   useEffect(() => {
-    /** SSR heeft de srcDoc al berekend — niets te doen op de client. */
-    if (srcDoc !== null) return;
+    queueMicrotask(() => setMeasuredHeight(null));
+  }, [srcDoc]);
+
+  useLayoutEffect(() => {
+    if (!autoResizeFromPostMessage || !previewPostMessageBridge || documentHeightMode === "full") {
+      queueMicrotask(() => setPanelClipPx(null));
+      return;
+    }
+    const el = containerRef.current;
+    if (!el) return;
+    const apply = () => {
+      const h = el.clientHeight;
+      setPanelClipPx(h > 0 ? h : null);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [autoResizeFromPostMessage, previewPostMessageBridge, documentHeightMode, srcDoc]);
+
+  useEffect(() => {
+    if (!previewPostMessageBridge || !autoResizeFromPostMessage) return;
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (!isStudioPreviewPostMessage(event.data)) return;
+      if (event.data.type === "studio-preview-height") {
+        const h = Math.min(Math.max(event.data.height, 320), maxMeasuredHeight);
+        setMeasuredHeight(h);
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [previewPostMessageBridge, autoResizeFromPostMessage, maxMeasuredHeight, srcDoc]);
+
+  const autoResizeHeightPx =
+    previewPostMessageBridge && autoResizeFromPostMessage && measuredHeight != null
+      ? documentHeightMode === "full"
+        ? Math.min(Math.max(measuredHeight, 320), maxMeasuredHeight)
+        : Math.min(
+            measuredHeight,
+            maxMeasuredHeight,
+            panelClipPx != null && panelClipPx > 0
+              ? panelClipPx
+              : typeof window !== "undefined"
+                ? Math.round(window.innerHeight * 0.82)
+                : 920,
+          )
+      : null;
+
+  useEffect(() => {
+    if (skipClientSrcDocBuildRef.current) return;
     let cancelled = false;
     /** Eén macrotask uitstellen zodat de browser eerst skeleton kan painten (zware sync `buildTailwindIframeSrcDoc` blokkeert anders meteen de main thread). */
     const t = window.setTimeout(() => {
@@ -143,7 +218,7 @@ export function PublicPublishedTailwind({
             ? { ...contactSubpageNavBase, pageOrigin: window.location.origin }
             : undefined;
         let doc = buildTailwindIframeSrcDoc(filtered, pageConfig, {
-          previewPostMessageBridge: false,
+          previewPostMessageBridge,
           userCss,
           userJs,
           logoSet,
@@ -203,32 +278,41 @@ export function PublicPublishedTailwind({
     iframeDocumentPathname,
     embedded,
     visibility,
+    previewPostMessageBridge,
   ]);
 
-  const iframeStyle: CSSProperties = embedded
-    ? {
-        width: "100%",
-        minHeight: "min(72vh, 720px)",
-        height: "min(72vh, 720px)",
-        border: "none",
-        background: "transparent",
-        overflow: "auto",
-      }
-    : {
-        width: "100%",
-        height: "100%",
-        border: "none",
-        background: "transparent",
-        display: "block",
-        overflow: "auto",
-      };
+  const iframeStyle: CSSProperties = {
+    ...(embedded
+      ? {
+          width: "100%",
+          minHeight: "min(72vh, 720px)",
+          height: "min(72vh, 720px)",
+          border: "none",
+          background: "transparent",
+          overflow: "auto",
+        }
+      : {
+          width: "100%",
+          height: "100%",
+          border: "none",
+          background: "transparent",
+          display: "block",
+          overflow: "auto",
+        }),
+    ...(autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : {}),
+  };
   const shouldShowSkeleton = embedded || showSkeleton;
 
   if (srcDoc === null) {
     return (
       <PublishedTailwindNavBridge>
         <div
-          className={cn("flex min-h-0 w-full flex-1 flex-col bg-transparent", className)}
+          ref={previewPostMessageBridge && autoResizeFromPostMessage ? containerRef : undefined}
+          className={cn(
+            "flex min-h-0 w-full flex-1 flex-col bg-transparent",
+            previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode !== "full" && "overflow-hidden",
+            className,
+          )}
           style={{ width: "100%", height: embedded ? undefined : "100%" }}
         >
           <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
@@ -252,14 +336,20 @@ export function PublicPublishedTailwind({
   return (
     <PublishedTailwindNavBridge>
       <div
-        className={cn("flex min-h-0 w-full flex-1 flex-col bg-transparent", className)}
+        ref={previewPostMessageBridge && autoResizeFromPostMessage ? containerRef : undefined}
+        className={cn(
+          "flex min-h-0 w-full flex-1 flex-col bg-transparent",
+          previewPostMessageBridge && autoResizeFromPostMessage && documentHeightMode !== "full" && "overflow-hidden",
+          className,
+        )}
         style={{ width: "100%", height: embedded ? undefined : "100%" }}
       >
         <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
         <iframe
+          ref={iframeRef}
           title={documentTitle}
           style={iframeStyle}
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
           srcDoc={srcDoc}
         />
       </div>
