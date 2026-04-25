@@ -1358,10 +1358,12 @@ html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:fir
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-header[data-gentrix-scroll-nav="1"] .mx-auto,
-header[data-gentrix-scroll-nav="1"] > .mx-auto,
-nav[data-gentrix-scroll-nav="1"] .mx-auto,
-nav[data-gentrix-scroll-nav="1"] > .mx-auto {
+/*
+ * Bovenaan (niet gescrold): alle directe kinderen transparant — niet alleen .mx-auto.
+ * Anders: logo-rail met eigen bg-slate-* naast een leeggemaakte .mx-auto-rail = twee kleurvlakken.
+ */
+header[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]) > *,
+nav[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]) > * {
   background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
@@ -1378,19 +1380,18 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] {
   backdrop-filter: blur(12px) saturate(130%) !important;
   -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] .mx-auto,
-nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > .mx-auto,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] .mx-auto,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > .mx-auto,
-nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] .mx-auto,
-nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > .mx-auto {
-  background-color: rgb(8 16 34 / 0.44) !important;
-  border-color: rgb(148 163 184 / 0.2) !important;
-  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.16) !important;
-  backdrop-filter: blur(12px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
+/*
+ * Gescrold: één frosted laag op de header — kinderen transparant (geen dubbele blur / geen halve balk donkerder).
+ */
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > *,
+nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > *,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > *,
+nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > * {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
 header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
