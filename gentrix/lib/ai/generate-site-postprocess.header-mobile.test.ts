@@ -1,10 +1,36 @@
 import { describe, expect, it } from "vitest";
 import {
+  alignChromeNavMdLgBreakpoints,
   buildGentrixMenuIconToggle,
   convertMobileDrawerToPushDown,
   repairHeaderMobileMenuButton,
   sliceFirstSiteChromeNavBlock,
 } from "@/lib/ai/generate-site-postprocess";
+
+describe("alignChromeNavMdLgBreakpoints", () => {
+  it("tilt `hidden md:flex` + mobiel sheet naar `lg` wanneer de menuknop `lg:hidden` gebruikt (Gentrix-home-patroon)", () => {
+    const html = `<header x-data="{ open: false }" class="sticky top-0">
+  <nav class="flex justify-between">
+    <a href="/">GENTRIX</a>
+    <div class="hidden md:flex items-center gap-8">
+      <a href="/a">A</a>
+    </div>
+    <button type="button" class="lg:hidden" aria-label="Menu" @click="open = !open">☰</button>
+  </nav>
+  <div x-show="open" class="md:hidden absolute top-0 left-0 bg-white">links</div>
+</header>`;
+    const out = alignChromeNavMdLgBreakpoints(html);
+    expect(out).toContain("hidden lg:flex");
+    expect(out).toContain("lg:hidden absolute");
+    expect(out).not.toMatch(/\bhidden md:flex\b/);
+    expect(out.match(/\bmd:hidden\b/g) ?? []).toHaveLength(0);
+  });
+
+  it("is idempotent op reeds uitgelijnde markup", () => {
+    const html = `<header><div class="hidden lg:flex"></div><button class="lg:hidden gentrix-menu-repaired" @click="open = !open"></button></header>`;
+    expect(alignChromeNavMdLgBreakpoints(html)).toBe(html);
+  });
+});
 
 describe("buildGentrixMenuIconToggle", () => {
   it("bouwt twee SVG-staten (hamburger + X) met x-show (zonder x-cloak/x-transition op de SVG's)", () => {

@@ -20,7 +20,8 @@
     "remotion:studio": "remotion studio remotion/index.ts",
     "remotion:render": "remotion render remotion/index.ts StudioPromo out/remotion/studio-promo.mp4",
     "remotion:render:still": "remotion still remotion/index.ts StudioPromo out/remotion/poster.png --frame=120",
-    "faq:pdf": "node scripts/build-faq-pdf.mjs"
+    "faq:pdf": "node scripts/build-faq-pdf.mjs",
+    "fonts:sync-inter": "node scripts/sync-studio-inter-fonts.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -53,6 +54,7 @@
     "jsdom": "25.0.1"
   },
   "devDependencies": {
+    "@fontsource-variable/inter": "^5.2.5",
     "@remotion/eslint-plugin": "^4.0.446",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

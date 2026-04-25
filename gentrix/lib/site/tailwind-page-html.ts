@@ -10,6 +10,7 @@ import {
   fixAlpineNavToggleDefaultsInXData,
   normalizeStudioHeroDomIdsAndRootMotion,
   repairBrokenMobileDrawer,
+  alignChromeNavMdLgBreakpoints,
   repairHeaderMobileMenuButton,
   removeDuplicateAlpineNavScopeInHeader,
   stripDecorativeScrollCueMarkup,
@@ -19,6 +20,7 @@ import {
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
+import { buildStudioFontHeadFragment } from "@/lib/site/studio-font-head";
 import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 import { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
 import { STUDIO_TAILWIND_PLAY_CDN_SRC } from "@/lib/site/studio-tailwind-cdn";
@@ -2071,7 +2073,7 @@ export function sanitizeTailwindFragment(html: string): string {
 return removeDuplicateAlpineNavScopeInHeader(
   repairBrokenMobileDrawer(
     appendImgOnErrorHide(
-      convertMobileDrawerToPushDown(repairHeaderMobileMenuButton(purified)),
+      convertMobileDrawerToPushDown(alignChromeNavMdLgBreakpoints(repairHeaderMobileMenuButton(purified))),
     ),
   ),
 );
@@ -2101,55 +2103,40 @@ export function sanitizeFontStackForPage(input: string): string {
   return s || "Inter, system-ui, sans-serif";
 }
 
-function googleFontsLinkHref(fontFamily: string): string | null {
-  const first = fontFamily.split(",")[0].trim().replace(/^["'`]|["'`]$/g, "");
-  if (
-    !first ||
-    /^(system-ui|ui-sans-serif|ui-serif|inherit|default|serif|sans-serif|monospace)$/i.test(first)
-  ) {
-    return null;
-  }
-  const param = encodeURIComponent(first).replace(/%20/g, "+");
-  return `https://fonts.googleapis.com/css2?family=${param}:wght@400;500;600;700;800&display=swap`;
-}
-
 function tailwindRadiusBodyClass(input: string): string {
   const t = input.trim();
   if (/^rounded(-[a-z0-9]+)?$/.test(t)) return ` ${t}`;
   return "";
 }
 
-const defaultInterFontHref =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap";
-
 export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig | null | undefined): {
-  fontLink: string;
+  fontHeadFragment: string;
   fontStack: string;
   rootCss: string;
   radiusClass: string;
 } {
   if (!pageConfig) {
+    const fontStack = "Inter, system-ui, sans-serif";
     return {
-      fontLink: defaultInterFontHref,
-      fontStack: "Inter, system-ui, sans-serif",
+      fontHeadFragment: buildStudioFontHeadFragment({ fontStack }),
+      fontStack,
       rootCss: "",
       radiusClass: "",
     };
   }
 
   if (isLegacyTailwindPageConfig(pageConfig)) {
-    const fontHref = googleFontsLinkHref(pageConfig.fontFamily);
+    const fontStack = sanitizeFontStackForPage(pageConfig.fontFamily);
     const primary = sanitizeCssHex(pageConfig.primaryColor);
     return {
-      fontLink: fontHref ?? defaultInterFontHref,
-      fontStack: sanitizeFontStackForPage(pageConfig.fontFamily),
+      fontHeadFragment: buildStudioFontHeadFragment({ fontStack }),
+      fontStack,
       rootCss: `:root { --page-primary: ${primary}; }`,
       radiusClass: tailwindRadiusBodyClass(pageConfig.borderRadius),
     };
   }
 
   const { theme, font } = pageConfig;
-  const fontHref = googleFontsLinkHref(font);
   const p = sanitizeCssHex(theme.primary);
   const accent = sanitizeCssHex(theme.accent);
   const pLight = sanitizeCssHexOptional(theme.primaryLight, theme.primary);
@@ -2186,9 +2173,10 @@ export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig |
     cssVarLines.push(`--page-text-muted: ${sanitizeCssHex(theme.textMuted)}`);
   }
 
+  const fontStack = sanitizeFontStackForPage(font);
   return {
-    fontLink: fontHref ?? defaultInterFontHref,
-    fontStack: sanitizeFontStackForPage(font),
+    fontHeadFragment: buildStudioFontHeadFragment({ fontStack }),
+    fontStack,
     rootCss: `:root {
     ${cssVarLines.join(";\n    ")};
   }`,
@@ -2982,7 +2970,7 @@ export function buildTailwindIframeSrcDoc(
     body = neutralizeStudioPathPlaceholdersWithoutSlug(body);
     body = stripLeakedStudioPlaceholderTokens(body);
   }
-  const { fontLink, fontStack, rootCss, radiusClass } = buildRootCssVarsForTailwindPage(pageConfig ?? null);
+  const { fontHeadFragment, fontStack, rootCss, radiusClass } = buildRootCssVarsForTailwindPage(pageConfig ?? null);
   const themeMeta =
     pageConfig && !isLegacyTailwindPageConfig(pageConfig)
       ? `<meta name="generator" content="${escapeDataAttr(pageConfig.style)}"/>`
@@ -3117,9 +3105,7 @@ const iframeShellAttr = `${isPreviewIframe ? ` data-gentrix-studio-iframe="1"` :
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="${escapeDataAttr(viewportContent)}"/>
-${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com"/>
-  <link href="${fontLink}" rel="stylesheet"/>
+${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}${fontHeadFragment ? `${fontHeadFragment}\n` : ""}
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}
     ${STUDIO_VIEW_TRANSITION_CSS}

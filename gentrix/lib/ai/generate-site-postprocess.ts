@@ -616,6 +616,49 @@ function injectNavStateScopeOnChromeBlock(h: string, stateKey: string): string {
 }
 
 /**
+ * Veel AI-markup: desktop-links `hidden md:flex` maar menuknop `lg:hidden` + sheet `md:hidden`.
+ * Tussen **768–1023px** is de knop dan wél zichtbaar (tot lg), maar het paneel blijft verborgen
+ * (`md:hidden` vanaf 768) — “hamburger doet niets” / lijkt verdwenen naast de desktoprij.
+ * Los door desktop naar `lg` te tillen en `md:hidden` op `x-show`-menu-panelen naar `lg:hidden`.
+ */
+export function alignChromeNavMdLgBreakpoints(html: string): string {
+  const sliced = sliceFirstSiteChromeNavBlock(html);
+  if (!sliced) return html;
+
+  const block = sliced.block;
+  const desktopMd =
+    /\bhidden\s+md:flex\b/i.test(block) || /\bhidden\s+md:inline-flex\b/i.test(block);
+  const menuLgHidden =
+    /\blg:hidden\b/i.test(block) &&
+    /(?:gentrix-menu-repaired|gentrix-menu-icon|@click\s*=\s*["'][^"']*\b(?:open|navOpen|menuOpen|mobileOpen|drawerOpen|sheetOpen)\s*=\s*!)/i.test(
+      block,
+    );
+  if (!desktopMd || !menuLgHidden) return html;
+
+  let next = block
+    .replace(/\bhidden\s+md:flex\b/gi, "hidden lg:flex")
+    .replace(/\bhidden\s+md:inline-flex\b/gi, "hidden lg:inline-flex");
+
+  next = next.replace(/<([a-zA-Z][\w:-]*)(\s[^>]*)>/g, (full: string, tag: string, attrs: string) => {
+    if (!/\bx-show\s*=/i.test(attrs)) return full;
+    if (!/\bclass\s*=\s*["']/i.test(attrs) && !/\bclass\s*=\s*'/i.test(attrs)) return full;
+    const showM = /\bx-show\s*=\s*["']([^"']*)["']/i.exec(attrs);
+    if (!showM?.[1] || !xShowExpressionUsesNavToggle(showM[1])) return full;
+    if (!/\bmd:hidden\b/i.test(attrs)) return full;
+    const replaced = attrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/gi, (_m, q: string, c: string) => {
+      if (!/\bmd:hidden\b/i.test(c)) return `class=${q}${c}${q}`;
+      const nc = c.replace(/\bmd:hidden\b/gi, "lg:hidden");
+      return `class=${q}${nc}${q}`;
+    });
+    if (replaced === attrs) return full;
+    return `<${tag}${replaced}>`;
+  });
+
+  if (next === block) return html;
+  return html.slice(0, sliced.start) + next + html.slice(sliced.end);
+}
+
+/**
  * Normaliseert de mobiele menuknop in de eerste site-chrome (`<header>`, `div[role="banner"]`, of wortel-`<nav>`):
  *   - zorgt voor een `@click`-toggle op de juiste Alpine-state,
  *   - vervangt inhoud die géén echte hamburger↔× twee-staten-toggle is door de premium
@@ -1771,7 +1814,8 @@ export function postProcessClaudeTailwindPage(
     const html2c0 = repairBrokenMobileDrawer(html2b);
     /** Zelfde stap als in `sanitizeTailwindFragment` (na drawer-repair, vóór push-down): anders blijft AI-markup met `flex-col` + gedraaide spans in de DB staan totdat er gesanitized wordt. */
     const html2c0a = repairHeaderMobileMenuButton(html2c0);
-    const html2c0b = convertMobileDrawerToPushDown(html2c0a);
+    const html2c0a1 = alignChromeNavMdLgBreakpoints(html2c0a);
+    const html2c0b = convertMobileDrawerToPushDown(html2c0a1);
     const html2ba = ensureAlpineMobileToggleButtonHasLgHidden(html2c0b);
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);

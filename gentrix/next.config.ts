@@ -50,6 +50,10 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: LONG_CACHE_FINGERPRINTED }],
       },
       {
+        source: "/fonts/:path*",
+        headers: [{ key: "Cache-Control", value: LONG_CACHE_IMMUTABLE }],
+      },
+      {
         source: "/:path*",
         headers: SECURITY_HEADERS,
       },

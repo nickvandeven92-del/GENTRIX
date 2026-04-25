@@ -118,7 +118,7 @@ export function buildStandaloneExportHtmlDocument(
     bodyInner = bodyInner.split(STUDIO_SHOP_PATH_PLACEHOLDER).join("#");
   }
 
-  const { fontLink, fontStack, rootCss, radiusClass } = buildRootCssVarsForTailwindPage(pageConfig ?? null);
+  const { fontHeadFragment, fontStack, rootCss, radiusClass } = buildRootCssVarsForTailwindPage(pageConfig ?? null);
   const themeMeta =
     pageConfig && !isLegacyTailwindPageConfig(pageConfig)
       ? `<meta name="generator" content="${escapeHtmlText(pageConfig.style)}"/>\n  `
@@ -161,9 +161,7 @@ export function buildStandaloneExportHtmlDocument(
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>${escapeHtmlText(docTitle)}</title>
-  ${faviconLink ? `  ${faviconLink}\n  ` : ""}${themeMeta}${styleBlock}<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com"/>
-  <link href="${fontLink}" rel="stylesheet"/>
+  ${faviconLink ? `  ${faviconLink}\n  ` : ""}${themeMeta}${styleBlock}${fontHeadFragment ? `${fontHeadFragment}\n  ` : ""}
   <style>
     ${STUDIO_ALPINE_X_CLOAK_CSS}
     html { scroll-padding-top: 5.5rem; }
@@ -236,7 +234,7 @@ Technisch
 - Horizontale ticker (\`studio-marquee\`): wordt **niet** meer gegenereerd; bestaande geëxporteerde pagina’s kunnen de klassen nog bevatten — de bundel levert nog compatibiliteits-CSS; pauzeert bij “verminder beweging”.
 - Premium merk-SVG: alleen als de site is gegenereerd met ENABLE_BRAND_LOGO_SYSTEM=1 in .env.local; het logo hoort dan als inline-SVG of img in index.html te staan (niet als los bestand in images/). Ontbrak het in de model-HTML, dan voegt de export/publicatie automatisch het primary-SVG toe na de eerste header/nav/section (attribuut data-studio-brand-mark).
 - Eigen JS/CSS uit de HTML-editor staan in index.html; controleer die code voordat je publiceert.
-- Lettertypen: Google Fonts worden nog van fonts.googleapis.com geladen (eenmalige download door de browser).
+- Lettertypen: Google Fonts-css wordt asynchroon geactiveerd (media=print + onload) zodat de eerste paint niet op fonts.googleapis.com wacht.
   Geen internet? Vervang die regels in index.html door lokale @font-face (optioneel).
 - Waar eerst een Studio-portaal-link stond, staat "#". Vervang door je eigen URL indien nodig.
 
