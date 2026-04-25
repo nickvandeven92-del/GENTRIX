@@ -533,6 +533,29 @@ export const STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS = `@media (max-width: 102
 }`;
 
 /**
+ * Hamburger↔X via `:class="gentrix-menu-open"` op `.gentrix-menu-toggle-css` (niet `x-show` op de SVG's):
+ * vóór Alpine init zouden anders beide SVG's even zichtbaar zijn (“X door strepen”), ook bij SPA-nav.
+ * Oude markup met alleen `x-show` op de SVG's heeft deze class niet en blijft ongewijzigd.
+ */
+export const GENTRIX_MENU_ICON_TOGGLE_CSS = `
+.gentrix-menu-toggle-css > svg {
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+.gentrix-menu-toggle-css > svg:last-of-type {
+  opacity: 0;
+  visibility: hidden;
+}
+.gentrix-menu-toggle-css.gentrix-menu-open > svg:first-of-type {
+  opacity: 0;
+  visibility: hidden;
+}
+.gentrix-menu-toggle-css.gentrix-menu-open > svg:last-of-type {
+  opacity: 1;
+  visibility: visible;
+}
+`;
+
+/**
  * Alleen **mobiele** HTML-editor-preview (`data-gentrix-studio-mobile` + iframe): vaak halftransparante
  * `nav` / sheet over de hero — hier **volledig dekkend** (geen hero-titel erdoorheen), alleen in deze preview.
  */
@@ -2322,9 +2345,13 @@ export function buildFaviconLinkTagForPublishedSite(input: {
   const r32 = input.rasterBrandSet?.favicon32Url?.trim();
   if (r32?.startsWith("https://")) {
     const r192 = input.rasterBrandSet?.favicon192Url?.trim();
-    const lines = [`<link rel="icon" href="${escapeDataAttr(r32)}" type="image/png" sizes="32x32"/>`];
+    /** Grotere PNG eerst: browsers/tabbladen pakken die voor scherpere weergave op retina. */
+    const lines: string[] = [];
     if (r192?.startsWith("https://")) {
       lines.push(`<link rel="icon" href="${escapeDataAttr(r192)}" type="image/png" sizes="192x192"/>`);
+    }
+    lines.push(`<link rel="icon" href="${escapeDataAttr(r32)}" type="image/png" sizes="32x32"/>`);
+    if (r192?.startsWith("https://")) {
       lines.push(`<link rel="apple-touch-icon" href="${escapeDataAttr(r192)}" sizes="192x192"/>`);
     }
     return lines.join("\n");
@@ -3321,6 +3348,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}${fontHeadFr
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS}
+    ${GENTRIX_MENU_ICON_TOGGLE_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
     ${STUDIO_SITE_CREDIT_VARIANT_CSS}

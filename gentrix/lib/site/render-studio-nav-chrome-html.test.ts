@@ -36,6 +36,24 @@ describe("parseStudioNavChromeConfig", () => {
 });
 
 describe("renderStudioNavChromeHtml", () => {
+  it("navChromeTheme.accent overschrijft alleen chrome-accent (niet pagina-theme nodig voor variabele)", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "bar",
+        brandLabel: "B",
+        brandHref: "#top",
+        items: [
+          { label: "A", href: "#a" },
+          { label: "B", href: "#b" },
+        ],
+        navVisualPreset: "minimalLight",
+        navChromeTheme: { accent: "#c026d3" },
+      },
+      { primary: "#0f172a", accent: "#d4a853" },
+    );
+    expect(html).toMatch(/--studio-nav-accent:#c026d3/i);
+  });
+
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
     const html = renderStudioNavChromeHtml(
       {

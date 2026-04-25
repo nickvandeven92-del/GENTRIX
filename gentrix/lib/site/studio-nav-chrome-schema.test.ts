@@ -16,6 +16,39 @@ describe("coerceStudioNavBarLayout", () => {
   });
 });
 
+describe("studioNavChromeConfigSchema + navVisualPreset synoniemen", () => {
+  it("floating + bar variant → floatingPill + pill (floating vereist pill-layout in JSON)", () => {
+    const r = studioNavChromeConfigSchema.safeParse({
+      variant: "bar",
+      brandLabel: "X",
+      items: [
+        { label: "A", href: "#a" },
+        { label: "B", href: "#b" },
+      ],
+      navVisualPreset: "floating",
+    });
+    expect(r.success).toBe(true);
+    expect(r.data?.navVisualPreset).toBe("floatingPill");
+    expect(r.data?.variant).toBe("pill");
+  });
+});
+
+describe("studioNavChromeConfigSchema + navChromeTheme", () => {
+  it("accepteert optionele navChromeTheme", () => {
+    const r = studioNavChromeConfigSchema.safeParse({
+      variant: "bar",
+      brandLabel: "X",
+      items: [
+        { label: "A", href: "#a" },
+        { label: "B", href: "#b" },
+      ],
+      navChromeTheme: { accent: "#ff00aa", primary: "#111111" },
+    });
+    expect(r.success).toBe(true);
+    expect(r.data?.navChromeTheme?.accent).toBe("#ff00aa");
+  });
+});
+
 describe("studioNavChromeConfigSchema + navBarLayout", () => {
   it("parsed navBarLayout na preprocess", () => {
     const r = studioNavChromeConfigSchema.safeParse({

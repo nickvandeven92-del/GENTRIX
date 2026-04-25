@@ -193,6 +193,39 @@ export const STUDIO_NAV_VISUAL_PRESET_IDS = PRESET_IDS as [NavVisualPresetId, ..
 
 export const studioNavVisualPresetIdSchema = z.enum(STUDIO_NAV_VISUAL_PRESET_IDS);
 
+/**
+ * NL/model-synoniemen → canoniek `navVisualPreset` (ongeldige string → doorgeven aan enum voor fout).
+ * O.a. “floating” / “zwevend” → `floatingPill`.
+ */
+export function coerceNavVisualPresetId(raw: unknown): NavVisualPresetId | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const s = String(raw).trim().toLowerCase().replace(/[\s_-]+/g, "");
+  const canon = (STUDIO_NAV_VISUAL_PRESET_IDS as readonly string[]).find((id) => id.toLowerCase() === s);
+  if (canon) return canon as NavVisualPresetId;
+  if (
+    [
+      "floating",
+      "float",
+      "zwevend",
+      "zwevendebalk",
+      "zwevendenav",
+      "floatingnav",
+      "pillfloat",
+      "floatingpill",
+    ].includes(s)
+  ) {
+    return "floatingPill";
+  }
+  return undefined;
+}
+
+/** `navVisualPreset` in JSON met gangbare synoniemen (server normaliseert vóór enum). */
+export const studioNavVisualPresetInputSchema = z.preprocess((raw) => {
+  const c = coerceNavVisualPresetId(raw);
+  if (c !== undefined) return c;
+  return raw;
+}, studioNavVisualPresetIdSchema);
+
 /** @deprecated gebruik `NavVisualContract` */
 export type StudioNavVisualContract = NavVisualContract;
 

@@ -179,8 +179,8 @@ export async function generateStudioRasterBrandSetPublicUrls(ctx: {
   try {
     headerWebp = await sharp(src, { failOn: "none" })
       .rotate()
-      .resize(512, 512, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 90, effort: 5 })
+      .resize(768, 768, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 92, effort: 5 })
       .toBuffer();
   } catch (e) {
     console.warn("[ai-brand] sharp header encode failed:", e instanceof Error ? e.message : e);

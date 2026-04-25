@@ -17,6 +17,26 @@ function escapeAttr(value: string): string {
 
 const NAV_KEY = "navOpen";
 
+/** `navChromeTheme` overschrijft alleen kleuren voor de chrome; preset-keuze blijft op basis van het pagina-thema. */
+function themeEffectiveForNavChrome(
+  theme: MasterPromptTheme | null | undefined,
+  config: StudioNavChromeConfig,
+): MasterPromptTheme | null | undefined {
+  const o = config.navChromeTheme;
+  if (!o?.primary && !o?.accent) return theme ?? undefined;
+  if (!theme) {
+    return {
+      primary: o.primary ?? "#0f172a",
+      accent: o.accent ?? "#d4a853",
+    };
+  }
+  return {
+    ...theme,
+    ...(o.primary ? { primary: o.primary } : {}),
+    ...(o.accent ? { accent: o.accent } : {}),
+  };
+}
+
 function innerYClasses(v: NavVisualContract): string {
   if (v.height === "compact") return "py-2 sm:py-2";
   if (v.height === "spacious") return "py-4 sm:py-5";
@@ -86,7 +106,7 @@ export function renderStudioNavChromeHtml(
 ): string {
   const brandHref = config.brandHref ?? "__STUDIO_SITE_BASE__";
   const { contract, presetId } = resolveNavVisualPreset(config, theme ?? null, designContract ?? null);
-  const tone = buildStudioNavChromeTone(theme ?? null, contract);
+  const tone = buildStudioNavChromeTone(themeEffectiveForNavChrome(theme ?? undefined, config) ?? null, contract);
   const hostStyle = contract.variant === "pill" ? tone.pillHostStyle : tone.barHostStyle;
   const shadow = tone.hostShadowClass.trim();
   const shadowPart = shadow ? ` ${shadow}` : "";

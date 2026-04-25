@@ -63,6 +63,17 @@ type PublicPublishedTailwindInlineProps = {
   /** Multipage/contact: client-side navigatie + morph (View Transitions) i.p.v. volledige document-load. */
   publishedSiteSoftNav?: PublishedSiteSoftNavContext | null;
   designContract?: DesignGenerationContract | null;
+  /**
+   * Site-HTML-editor: zelfde `buildTailwindIframeSrcDoc`-opties als de oude iframe-preview (`TailwindSectionsPreview`),
+   * maar gerenderd inline in de admin (geen `<iframe>`).
+   */
+  studioHtmlEditorPreview?: {
+    contactSubpageNav?: ContactSubpageNavScriptInput | null;
+    studioHtmlEditorParentNav: true;
+    previewMatchParentWindowBreakpoints: boolean;
+    studioMobileEditorFrame: boolean;
+    iframeDocumentPathname?: string | null;
+  } | null;
 };
 
 function deriveSSROrigin(): string {
@@ -94,6 +105,7 @@ export function PublicPublishedTailwindInline({
   flyerPreview = false,
   publishedSiteSoftNav = null,
   designContract = null,
+  studioHtmlEditorPreview = null,
 }: PublicPublishedTailwindInlineProps) {
   const filtered = filterSectionsForPublicSite(sections);
   const iframeDocumentPathname = publicSiteIframeDocumentPathname(
@@ -103,10 +115,14 @@ export function PublicPublishedTailwindInline({
   const ssrOrigin = deriveSSROrigin();
   /** Met `ssrOrigin` worden CDN-scripts (incl. Tailwind Play) naar eigen origin geproxied; preconnect naar cdn.tailwindcss.com helpt dan niet. */
   const preconnectTailwindPlayCdn = !compiledTailwindCss?.trim() && !ssrOrigin;
-  const contactSubpageNav =
+  const contactSubpageNavFromBase =
     contactSubpageNavBase && ssrOrigin
       ? { ...contactSubpageNavBase, pageOrigin: ssrOrigin, prettyPublicUrls: prettyPublicUrls || undefined }
       : undefined;
+  const contactSubpageNav =
+    studioHtmlEditorPreview?.contactSubpageNav?.pageOrigin?.trim()
+      ? studioHtmlEditorPreview.contactSubpageNav
+      : contactSubpageNavFromBase;
 
   let fullHtml: string;
   try {
@@ -124,9 +140,20 @@ export function PublicPublishedTailwindInline({
       compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
       previewScriptOrigin: ssrOrigin || undefined,
       navBrandLabel: navBrandLabel?.trim() || undefined,
-      iframeDocumentPathname,
+      iframeDocumentPathname:
+        studioHtmlEditorPreview?.iframeDocumentPathname != null &&
+        String(studioHtmlEditorPreview.iframeDocumentPathname).trim() !== ""
+          ? String(studioHtmlEditorPreview.iframeDocumentPathname).trim()
+          : iframeDocumentPathname,
       relaxedTailwindCdnLoading,
       flyerPreview,
+      ...(studioHtmlEditorPreview
+        ? {
+            studioHtmlEditorParentNav: true,
+            previewMatchParentWindowBreakpoints: studioHtmlEditorPreview.previewMatchParentWindowBreakpoints,
+            studioMobileEditorFrame: studioHtmlEditorPreview.studioMobileEditorFrame,
+          }
+        : {}),
       ...(contactSubpageNav ? { contactSubpageNav } : {}),
     });
     if (ssrOrigin) fullHtml = rewriteStudioDevOriginsInHtml(fullHtml, ssrOrigin);

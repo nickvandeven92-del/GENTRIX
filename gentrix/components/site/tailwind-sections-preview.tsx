@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
@@ -21,25 +13,11 @@ import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 import type { ContactSubpageNavScriptInput } from "@/lib/site/tailwind-contact-subpage";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
+import { useStudioTailwindPreviewViewportModes } from "@/lib/site/studio-tailwind-preview-viewport";
 import { cn } from "@/lib/utils";
 
-/** Gelijk aan Tailwind `lg:` (1024px) — veel sites gebruiken `lg:hidden` voor hamburger; 768px gaf “menu vast” bij smal venster. */
-const STUDIO_PREVIEW_DESKTOP_MQ = "(min-width: 1024px)";
-/** `auto`-modus: onder deze paneelbreedte studio-mobile chrome + `device-width` (tablet/telefoon-layout in iframe). */
-const STUDIO_PREVIEW_AUTO_PANEL_LG_PX = 1024;
 /** Alleen bij expliciete desktop-preview: zelfde als `meta viewport` in `buildTailwindIframeSrcDoc` — vaste desktop-layout. */
 const STUDIO_PREVIEW_DESKTOP_IFRAME_MIN_PX = 1280;
-
-function subscribeStudioPreviewDesktopMq(onChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const mq = window.matchMedia(STUDIO_PREVIEW_DESKTOP_MQ);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
-}
-
-function getStudioPreviewDesktopSnapshot(): boolean {
-  return typeof window !== "undefined" && window.matchMedia(STUDIO_PREVIEW_DESKTOP_MQ).matches;
-}
 
 export { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
 
@@ -134,41 +112,11 @@ export function TailwindSectionsPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const [panelClipPx, setPanelClipPx] = useState<number | null>(null);
-  /** Breedte van het preview-paneel (ResizeObserver) — alleen voor `auto`-modus. */
-  const [previewPanelWidthPx, setPreviewPanelWidthPx] = useState<number | null>(null);
 
-  const parentWindowDesktop = useSyncExternalStore(
-    subscribeStudioPreviewDesktopMq,
-    getStudioPreviewDesktopSnapshot,
-    () => false,
+  const { previewMatchParentWindowBreakpoints, studioMobileEditorFrame } = useStudioTailwindPreviewViewportModes(
+    viewportMode,
+    containerRef,
   );
-
-  useLayoutEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const apply = () => {
-      const w = el.getBoundingClientRect().width;
-      if (Number.isFinite(w)) setPreviewPanelWidthPx(Math.round(w));
-    };
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [viewportMode]);
-
-  /** Alleen expliciete “Desktop”-knop: vaste 1280-viewport + horizontaal scrollen in smal paneel. */
-  const previewMatchParentWindowBreakpoints = viewportMode === "desktop";
-
-  /**
-   * `auto`: mobiele studio-chrome als paneel smaller is dan Tailwind `lg` (1024px), anders desktop-chrome.
-   * Tot eerste meting: fallback op browservenster (zelfde gedrag als vroeger).
-   */
-  const autoPanelIsLg =
-    previewPanelWidthPx != null ? previewPanelWidthPx >= STUDIO_PREVIEW_AUTO_PANEL_LG_PX : parentWindowDesktop;
-
-  /** Mobiel-knop, of Autom. op smal preview-paneel: zelfde nav-polish in iframe als `studioMobileEditorFrame`. */
-  const studioMobileEditorFrame =
-    viewportMode === "mobile" || (viewportMode === "auto" && !autoPanelIsLg);
 
   const previewScriptOrigin = typeof window !== "undefined" ? window.location.origin : "";
 

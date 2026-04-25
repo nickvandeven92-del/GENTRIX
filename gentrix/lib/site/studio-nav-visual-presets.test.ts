@@ -4,6 +4,7 @@ import {
   coerceNavVisualActiveIndicator,
   coerceNavVisualCtaStyle,
   coerceNavVisualHeight,
+  coerceNavVisualPresetId,
   inferNavVisualPresetId,
   NAV_VISUAL_PRESETS,
   normalizeNavVisualOverridesInput,
@@ -61,6 +62,14 @@ describe("resolveNavVisualPreset", () => {
 
   it("resolveStudioNavVisual alias", () => {
     expect(resolveStudioNavVisual({ variant: "bar" }, { primary: "#fff" }, null).contract.surface).toBe("light");
+  });
+});
+
+describe("coerceNavVisualPresetId", () => {
+  it("floating / zwevend → floatingPill", () => {
+    expect(coerceNavVisualPresetId("floating")).toBe("floatingPill");
+    expect(coerceNavVisualPresetId("ZWEVEND")).toBe("floatingPill");
+    expect(coerceNavVisualPresetId("minimalLight")).toBe("minimalLight");
   });
 });
 

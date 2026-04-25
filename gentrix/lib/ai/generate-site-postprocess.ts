@@ -448,25 +448,26 @@ const stateKey =
  *   knop waardoor twee gedraaide spans *naast* elkaar belanden en je geen X krijgt maar "| |".
  * - SVG is visueel identiek ongeacht de klassen op de button-parent — werkt ook in `flex flex-col gap-x`.
  * - `stroke="currentColor"` erft de tekstkleur van de knop (die we elders al licht/donker normaliseren).
- * - Geen `x-transition` / `x-cloak` op deze SVG's: op sommige browsers blijft het kruis anders onzichtbaar
- *   (halve transitie, `[x-cloak]{display:none!important}` i.c.m. Alpine-volgorde).
+ * - **Geen `x-show` op de twee SVG's:** vóór Alpine-init zijn beide anders zichtbaar (X door strepen).
+ *   We gebruiken `gentrix-menu-toggle-css` + `:class="gentrix-menu-open"` + `GENTRIX_MENU_ICON_TOGGLE_CSS`
+ *   (zie `tailwind-page-html.ts`) voor een dichte default zonder FOUC.
  * - `pointer-events-none` stuurt de klik altijd door naar de button.
  */
 export function buildGentrixMenuIconToggle(stateKey: string): string {
   const svgBase =
     `class="absolute inset-0 h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
   const hamburger =
-    `<svg x-show="!${stateKey}" ${svgBase} aria-hidden="true">` +
+    `<svg ${svgBase} aria-hidden="true">` +
     `<line x1="4" y1="7" x2="20" y2="7"/>` +
     `<line x1="4" y1="12" x2="20" y2="12"/>` +
     `<line x1="4" y1="17" x2="20" y2="17"/>` +
     `</svg>`;
   const cross =
-    `<svg x-show="${stateKey}" ${svgBase} aria-hidden="true">` +
+    `<svg ${svgBase} aria-hidden="true">` +
     `<line x1="6" y1="6" x2="18" y2="18"/>` +
     `<line x1="18" y1="6" x2="6" y2="18"/>` +
     `</svg>`;
-  return `<span class="gentrix-menu-icon pointer-events-none relative inline-flex h-6 w-6 items-center justify-center" aria-hidden="true">${hamburger}${cross}</span>`;
+  return `<span class="gentrix-menu-icon gentrix-menu-toggle-css pointer-events-none relative inline-flex h-6 w-6 items-center justify-center" :class="{ 'gentrix-menu-open': ${stateKey} }" aria-hidden="true">${hamburger}${cross}</span>`;
 }
 
 /**
@@ -476,6 +477,7 @@ export function buildGentrixMenuIconToggle(stateKey: string): string {
  */
 function innerHasHamburgerXToggle(inner: string, stateKey: string): boolean {
   if (!/\bgentrix-menu-icon\b/.test(inner)) return false;
+  if (/\bgentrix-menu-toggle-css\b/.test(inner)) return true;
   const k = escapeRegExpKey(stateKey);
   const closed = new RegExp(`x-show\\s*=\\s*["']\\s*!\\s*${k}\\b`, "i");
   const openOnly = new RegExp(`x-show\\s*=\\s*["']\\s*${k}\\s*["']`, "i");

@@ -5,6 +5,19 @@ import { STUDIO_BRAND_MARK_ATTR } from "@/lib/site/brand-logo-inject";
 
 const RASTER_BRAND_ATTR = "data-gentrix-raster-brand";
 
+/** `headerLogoUrl` mag nooit het 32×32/192×192 favicon zijn — dat geeft een onleesbare “postzegel” in de navbar. */
+export function rasterHeaderUrlIsConfusableWithFavicon(headerUrl: string, raster: StudioRasterBrandSet): boolean {
+  const h = headerUrl.trim().toLowerCase();
+  if (!h) return false;
+  const f32 = raster.favicon32Url?.trim().toLowerCase() ?? "";
+  const f192 = raster.favicon192Url?.trim().toLowerCase() ?? "";
+  if (f32 && h === f32) return true;
+  if (f192 && h === f192) return true;
+  if (/\/favicon[^/]*\.(png|webp|ico)(\?|$)/i.test(headerUrl)) return true;
+  if (/favicon[-_]?(32|192)\b/i.test(headerUrl)) return true;
+  return false;
+}
+
 function escapeHtmlAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
@@ -75,6 +88,7 @@ export function applyRasterBrandMarkToSections(
 ): TailwindSection[] {
   const url = raster.headerLogoUrl.trim();
   if (!url) return sections;
+  if (rasterHeaderUrlIsConfusableWithFavicon(url, raster)) return sections;
 
   const full = sections.map((s) => s.html).join("\n");
   if (full.includes(RASTER_BRAND_ATTR) && full.includes(url)) {

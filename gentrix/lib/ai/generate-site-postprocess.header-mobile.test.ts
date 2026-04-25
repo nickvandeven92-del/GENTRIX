@@ -47,10 +47,11 @@ describe("alignChromeNavMdLgBreakpoints", () => {
 });
 
 describe("buildGentrixMenuIconToggle", () => {
-  it("bouwt twee SVG-staten (hamburger + X) met x-show (zonder x-cloak/x-transition op de SVG's)", () => {
+  it("bouwt twee SVG-staten (hamburger + X) met CSS-toggle + :class (geen x-show op SVG's — voorkomt FOUC)", () => {
     const html = buildGentrixMenuIconToggle("navOpen");
-    expect(html).toContain(`x-show="!navOpen"`);
-    expect(html).toContain(`x-show="navOpen"`);
+    expect(html).toContain("gentrix-menu-toggle-css");
+    expect(html).toContain(`:class="{ 'gentrix-menu-open': navOpen }"`);
+    expect(html).not.toMatch(/<svg[^>]*\bx-show=/i);
     expect(html).not.toContain("x-cloak");
     expect(html).not.toContain("x-transition:");
     expect(html).toContain("gentrix-menu-icon");
@@ -68,8 +69,7 @@ describe("buildGentrixMenuIconToggle", () => {
 
   it("respecteert de gegeven stateKey", () => {
     const html = buildGentrixMenuIconToggle("menuOpen");
-    expect(html).toContain(`x-show="!menuOpen"`);
-    expect(html).toContain(`x-show="menuOpen"`);
+    expect(html).toContain(`'gentrix-menu-open': menuOpen`);
     expect(html).not.toContain("navOpen");
   });
 });
@@ -152,8 +152,8 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).toContain("@click");
     expect(out).toContain("navOpen = !navOpen");
     expect(out).toContain("gentrix-menu-icon");
-    expect(out).toContain(`x-show="!navOpen"`);
-    expect(out).toContain(`x-show="navOpen"`);
+    expect(out).toContain("gentrix-menu-toggle-css");
+    expect(out).toContain(`'gentrix-menu-open': navOpen`);
     expect(out).toContain("<svg");
     // text-neutral-900 moet *binnen* class="..." op de button landen (niet als bare attribute)
     expect(out).toMatch(/<button\b[^>]*\bclass="[^"]*\btext-neutral-900\b[^"]*"[^>]*>/);
@@ -166,8 +166,8 @@ describe("repairHeaderMobileMenuButton", () => {
 </header>`;
     const out = repairHeaderMobileMenuButton(html);
     expect(out).toContain("gentrix-menu-icon");
-    expect(out).toContain(`x-show="!navOpen"`);
-    expect(out).toContain(`x-show="navOpen"`);
+    expect(out).toContain("gentrix-menu-toggle-css");
+    expect(out).toContain(`'gentrix-menu-open': navOpen`);
     expect(out).not.toContain("☰");
     // Bestaande @click moet behouden blijven — geen dubbele @click regel
     expect((out.match(/@click/g) ?? []).length).toBe(1);
@@ -180,8 +180,8 @@ describe("repairHeaderMobileMenuButton", () => {
 </header>`;
     const out = repairHeaderMobileMenuButton(html);
     expect(out).toContain("gentrix-menu-icon");
-    expect(out).toContain(`x-show="!navOpen"`);
-    expect(out).toContain(`x-show="navOpen"`);
+    expect(out).toContain("gentrix-menu-toggle-css");
+    expect(out).toContain(`'gentrix-menu-open': navOpen`);
     expect(out).not.toContain("<path");
   });
 
@@ -281,8 +281,8 @@ describe("repairHeaderMobileMenuButton", () => {
   <div class="lg:hidden" x-show="menuOpen" x-cloak><a href="#a">A</a></div>
 </header>`;
     const out = repairHeaderMobileMenuButton(html);
-    expect(out).toContain(`x-show="!menuOpen"`);
-    expect(out).toContain(`x-show="menuOpen"`);
+    expect(out).toContain("gentrix-menu-toggle-css");
+    expect(out).toContain(`'gentrix-menu-open': menuOpen`);
     expect(out).not.toContain("navOpen");
   });
 

@@ -62,7 +62,19 @@ function firstChromeBlockFromSections(sections: readonly TailwindSection[]): str
 }
 
 function pickVariantFromChrome(html: string): "bar" | "pill" {
-  return /\brounded-full\b/i.test(html) ? "pill" : "bar";
+  if (/\brounded-full\b/i.test(html)) return "pill";
+  const h = html.toLowerCase();
+  /** Zwevende / “floating” shells: vaak `rounded-2xl` + schaduw + inset vanaf top, zonder `rounded-full`. */
+  const hasFloatedInset = /\b(top-4|top-5|top-6)\b/.test(h);
+  const hasFloatedCenter =
+    /left-1\/2/.test(h) ||
+    /-translate-x-1\/2/.test(h) ||
+    (/\bmx-auto\b/.test(h) && /\bmax-w-5xl\b/.test(h));
+  if (hasFloatedInset && hasFloatedCenter && /\brounded-(2xl|3xl|xl)\b/.test(h) && /\b(shadow-(lg|xl|2xl)|shadow-md|ring-1)\b/.test(h)) {
+    return "pill";
+  }
+  if (hasFloatedInset && /\brounded-(2xl|3xl)\b/.test(h) && /\b(shadow-(lg|xl|2xl)|ring-1)\b/.test(h)) return "pill";
+  return "bar";
 }
 
 /**

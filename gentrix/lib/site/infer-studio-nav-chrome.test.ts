@@ -29,6 +29,18 @@ describe("inferStudioNavChromeFromSections", () => {
   it("retourneert null zonder bruikbare chrome", () => {
     expect(inferStudioNavChromeFromSections([{ sectionName: "hero", html: "<div>only</div>" }])).toBeNull();
   });
+
+  it("herkent zwevende shell met rounded-2xl + shadow zonder rounded-full", () => {
+    const html = `<header class="fixed top-4 left-1/2 z-50 flex w-full max-w-5xl -translate-x-1/2 rounded-2xl bg-slate-900/80 px-4 py-3 shadow-xl ring-1 ring-white/10">
+  <a href="__STUDIO_SITE_BASE__">WW83</a>
+  <a href="__STUDIO_SITE_BASE__/diensten">Diensten</a>
+  <a href="#contact">Contact</a>
+</header>`;
+    const sections: TailwindSection[] = [{ sectionName: "hero", html }];
+    const cfg = inferStudioNavChromeFromSections(sections);
+    expect(cfg?.variant).toBe("pill");
+    expect(cfg?.navVisualPreset).toBe("floatingPill");
+  });
 });
 
 describe("buildTailwindSectionsBodyInnerHtml auto-infer", () => {

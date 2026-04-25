@@ -32,7 +32,7 @@ import type { GeneratedLogoSet } from "@/types/logo";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { SiteAiChatPanel } from "@/components/admin/site-ai-chat-panel";
 import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
-import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
+import { PublicPublishedTailwindInline } from "@/components/site/public-published-tailwind-inline";
 import {
   composePublicMarketingTailwindSections,
   type ComposePublicMarketingPlan,
@@ -56,6 +56,7 @@ import {
   resolvePublicTailwindContactPlan,
   selectTailwindSectionsForPublicView,
 } from "@/lib/site/tailwind-contact-subpage";
+import { useStudioTailwindPreviewViewportModes } from "@/lib/site/studio-tailwind-preview-viewport";
 import { cn } from "@/lib/utils";
 
 /** Debounce na laatste wijziging (undo/AI/…) voordat concept naar Supabase gaat — vergelijkbaar met Lovable. */
@@ -172,10 +173,9 @@ export function SiteHtmlEditor({
     return css && css.length > 0 ? css : null;
   });
   const [previewKey, setPreviewKey] = useState(0);
-  /** Welke (sub)pagina de rechter preview toont; nav in iframe wisselt alleen de preview. */
+  /** Welke (sub)pagina de rechter preview toont; `postMessage`-nav wisselt alleen de preview. */
   const [previewRoute, setPreviewRoute] = useState<SiteHtmlEditorPreviewRoute>({ kind: "landing" });
-  /** Live preview: iframe-viewport (zie `TailwindSectionsPreview.viewportMode`). */
-  /** Standaard desktop (1280px-viewport in iframe): gelijk aan live `/site` voor `lg:`-nav; `auto` volgt smalle preview-kolom → vaak mobiele layout zonder zichtbare menubalk. */
+  /** Standaard desktop (1280px layout): gelijk aan live `/site` voor `lg:`-nav; `auto` volgt smalle preview-kolom. */
   const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("desktop");
   const [stepsOpen, setStepsOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -206,6 +206,11 @@ export function SiteHtmlEditor({
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistInFlightRef = useRef(false);
   const previewInitResetDoneRef = useRef(false);
+  const previewPanelRef = useRef<HTMLDivElement>(null);
+  const { previewMatchParentWindowBreakpoints, studioMobileEditorFrame } = useStudioTailwindPreviewViewportModes(
+    previewViewportMode,
+    previewPanelRef,
+  );
 
   const payload = useMemo(
     () =>
@@ -373,7 +378,7 @@ export function SiteHtmlEditor({
   );
 
   useEffect(() => {
-    // Eerste mount + inhoudswijzigingen: iframe herladen zodat de preview bovenaan start.
+    // Eerste mount + inhoudswijzigingen: preview herladen zodat de weergave bovenaan start.
     if (!previewInitResetDoneRef.current) {
       previewInitResetDoneRef.current = true;
       setPreviewKey((k) => k + 1);
@@ -1010,36 +1015,58 @@ export function SiteHtmlEditor({
                   Preview = <strong className="font-medium">werkversie</strong>.{" "}
                   <code className="rounded bg-zinc-200/80 px-0.5 font-mono dark:bg-zinc-800/80">/site/…</code> zonder token ={" "}
                   <strong className="font-medium">live</strong> snapshot. Automatisch: tablet/telefoon-layout bij smal paneel;
-                  Desktop-knop: vaste brede preview (1280px).
+                  Desktop-knop: vaste brede layout (1280px), inline (geen iframe).
                 </p>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
-                <TailwindSectionsPreview
-                  key={`${previewKey}-${previewViewportMode}`}
-                  sections={previewSections}
-                  pageConfig={config}
-                  userCss={customCss}
-                  userJs={customJs}
-                  logoSet={initialLogoSet}
-                  rasterBrandSet={initialRasterBrandSet}
-                  publishedSlug={subfolderSlug}
-                  draftPublicPreviewToken={draftPublicPreviewToken}
-                  appointmentsEnabled={appointmentsEnabled}
-                  webshopEnabled={webshopEnabled}
-                  skipPublicMarketingCompose
-                  viewportMode={previewViewportMode}
-                  compiledTailwindCss={previewCompiledCss}
-                  navBrandLabel={initialName.trim() || subfolderSlug}
-                  title={`Preview ${subfolderSlug}`}
-                  className="w-full min-w-0 rounded-none border-0 bg-white"
-                  frameClassName="min-h-[280px] w-full"
-                  autoResizeFromPostMessage
-                  documentHeightMode="full"
-                  maxMeasuredHeight={20_000}
-                  studioHtmlEditorParentNav
-                  contactSubpageNavForHtmlEditor={contactSubpageNavForHtmlEditor}
-                  iframeDocumentPathname={iframeDocumentPathname}
-                />
+              <div
+                ref={previewPanelRef}
+                className={cn(
+                  "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+                  previewMatchParentWindowBreakpoints ? "overflow-x-auto" : "overflow-x-hidden",
+                )}
+              >
+                <div
+                  className={cn(
+                    "min-h-0 min-h-[280px] w-full min-w-0 will-change-transform [transform:translateZ(0)]",
+                    previewMatchParentWindowBreakpoints && "overflow-x-auto",
+                  )}
+                  style={previewMatchParentWindowBreakpoints ? { scrollbarGutter: "stable" } : undefined}
+                  data-gentrix-studio-inline-preview="1"
+                >
+                  <div
+                    className={cn(
+                      previewMatchParentWindowBreakpoints && "w-[1280px] min-w-[1280px] max-w-none shrink-0",
+                    )}
+                  >
+                    <PublicPublishedTailwindInline
+                      key={`${previewKey}-${previewViewportMode}`}
+                      sections={previewSections}
+                      pageConfig={config}
+                      userCss={customCss}
+                      userJs={customJs}
+                      logoSet={initialLogoSet}
+                      rasterBrandSet={initialRasterBrandSet}
+                      publishedSlug={subfolderSlug}
+                      draftPublicPreviewToken={draftPublicPreviewToken}
+                      appointmentsEnabled={appointmentsEnabled}
+                      webshopEnabled={webshopEnabled}
+                      compiledTailwindCss={previewCompiledCss}
+                      documentTitle={`Preview ${subfolderSlug}`}
+                      navBrandLabel={initialName.trim() || subfolderSlug}
+                      className={cn(
+                        "min-h-[280px] w-full rounded-none border-0 bg-white",
+                        previewMatchParentWindowBreakpoints && "w-[1280px] min-w-[1280px]",
+                      )}
+                      studioHtmlEditorPreview={{
+                        contactSubpageNav: contactSubpageNavForHtmlEditor ?? undefined,
+                        studioHtmlEditorParentNav: true,
+                        previewMatchParentWindowBreakpoints,
+                        studioMobileEditorFrame,
+                        iframeDocumentPathname: iframeDocumentPathname ?? undefined,
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
