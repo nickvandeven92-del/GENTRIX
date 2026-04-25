@@ -2100,6 +2100,11 @@ export function sanitizeTailwindFragment(html: string): string {
       "xmlns",
       "width",
       "height",
+      /** SVG `<line>` (o.a. hamburger in `buildGentrixMenuIconToggle`) — zonder deze attrs zijn de strepen leeg. */
+      "x1",
+      "y1",
+      "x2",
+      "y2",
       "x",
       "y",
       "cx",
