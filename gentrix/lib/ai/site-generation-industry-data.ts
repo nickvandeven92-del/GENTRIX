@@ -437,7 +437,7 @@ Gezelligheid, goede koffie en een plek om tot rust te komen. De website is de ui
     vibe: "warm",
     promptHint: `**BRANCHE-INSPIRATIE: IJSSALON**
 Vreugde, smaken en zomer. De website moet je doen watertanden en naar de winkel lokken.
-- **Hero-idee:** kleurrijk ijs in close-up, of gelukkige mensen met een ijsje. Levendig, vrolijk.
+- **Hero-idee:** kleurrijk ijs in close-up, wafelhoorntjes op marmer, toppings als stilleven ??? levendig, vrolijk; **geen** generieke ???blije mensen???-stock in de hero (server-AI-hero ook **zonder** mensfiguren).
 - **Smaken-idee:** visuele kaarten per smaak met kleurrijke fotografie. Seizoensspcials uitlichten.
 - **Content:** ambachtelijk, vers bereid, natuurlijke ingrediënten, seizoenssmaken, allergeen-info.
 - **Typische elementen:** smakenkaart, seizoensspecials, catering/feestjes, locatie + openingstijden.`,
@@ -668,7 +668,7 @@ Energie, kracht en motivatie. De website moet activeren — de bezoeker moet zin
     vibe: "modern",
     promptHint: `**BRANCHE-INSPIRATIE: PERSONAL TRAINER**
 Resultaat, motivatie en persoonlijke aandacht. De trainer IS het merk — de website verkoopt de persoon.
-- **Hero-idee:** de trainer in actie, of een before/after transformatie. Krachtig, persoonlijk, authentiek.
+- **Hero-idee:** gymvloer, kettlebells, roosters/licht, abstracte energie (motion blur op **materiaal**, geen lichaam) of typografie-led ??? krachtig en authentiek; **geen** AI-fotomensen in de hero (de trainer zelf: **KLANTFOTO'S** / over-ons, niet server-raster).
 - **Diensten-idee:** prijslijst: personal training 1-op-1, duo-training, online coaching, voedingsadvies, bootcamp.
 - **Content:** de trainer als persoon (verhaal, certificeringen), resultaten van klanten, werkwijze/aanpak.
 - **Typische elementen:** over de trainer (persoonlijk verhaal), pakketten/prijzen, transformatie-galerij, klantreviews, boekings-CTA.`,

@@ -275,12 +275,12 @@ export function buildOpenAiHeroPrompt(
   options?: BuildOpenAiHeroPromptOptions,
 ): string {
   const parts: string[] = [
-    "Photorealistic documentary photograph for a commercial website hero — must read as a real photo, not an illustration or 3D render.",
-    "Shot like a full-frame DSLR / mirrorless still (35–50mm lens feel), natural dynamic range: avoid crushed blacks, blown highlights, HDR halos, oversharpening, or hyper-saturated 'AI poster' color.",
-    "Believable workshop or service environment; soft window light or warm practicals; shallow depth of field with natural bokeh — like a premium editorial brand shoot (reference quality: high-end craft business photography).",
-    "Natural skin texture and hair detail, realistic imperfections, not plastic or wax-doll; candid mid-action moment, not a stiff stock pose.",
+    "Photorealistic **environment / materials / still-life** photograph for a wide commercial website hero background — must read as a real photo, not an illustration or 3D render.",
+    "Shot like a full-frame DSLR / mirrorless still (24–50mm lens feel), natural dynamic range: avoid crushed blacks, blown highlights, HDR halos, oversharpening, or hyper-saturated 'AI poster' color.",
+    "Subject = **branche-sfeer zonder mensen**: believable interior or workspace **empty of people**, textures (wood, metal, fabric, stone, glass), tools or products **as still life on a surface** (no hands), seasonal light through windows, shallow depth of field with natural bokeh — premium editorial **location/product** photography, not lifestyle models.",
+    "**Strict ban — no exceptions:** no people, no faces, no human silhouettes, no crowd, no customers or staff, no mannequins that read as humans, no body parts (hands, arms, legs). If the business is people-centric, show only **setting + props + materials** that imply the trade.",
     "Avoid illustration, vector, coloring-book, comic, game cinematic, or airbrushed glamour retouching.",
-    "Hands and tools: anatomically plausible, slightly imperfect — not perfectly symmetrical staging.",
+    "Props and tools: plausible real-world objects, slightly imperfect staging — never arranged around an invisible human actor.",
     "No text, no logos, no watermarks, no UI mockups.",
     "Optional subtle film grain; restrained color grade — photographic, not stylized fantasy.",
   ];
@@ -300,7 +300,7 @@ export function buildOpenAiHeroPrompt(
   const seed = options?.variationSeed?.trim();
   if (seed) {
     parts.push(
-      `Composition variation id: ${seed}. Use a clearly different camera angle, distance, and prop placement than a generic centered “AI product” shot; avoid repeating the same framing as typical barbershop or tool close-ups unless the Brief explicitly demands that exact layout.`,
+      `Composition variation id: ${seed}. Use a clearly different camera angle, distance, and prop placement than a generic centered “AI product” shot; still **zero people** — vary environment, surface, and light only.`,
     );
   }
   const p = parts.join(" ");
@@ -516,7 +516,7 @@ function buildPrebakedHeroImagePromptFooter(publicUrl: string): string {
   if (!u) return "";
   return (
     "\n\n=== SERVER: HERO-SFEERFOTO (AL KLAAR — ASSET-FIRST) ===\n\n" +
-    "Er is **nu al** één AI-sfeerbeeld geüpload. **Geen externe stock-foto-URL** voor dit hoofdbeeld — gebruik **exact** deze URL (letterlijk copy-paste, geen query-params wijzigen):\n\n" +
+    "Er is **nu al** één AI-sfeerbeeld (omgeving/materiaal/stilleven — **geen** mensfiguren) geüpload. **Geen externe stock-foto-URL** voor dit hoofdbeeld — gebruik **exact** deze URL (letterlijk copy-paste, geen query-params wijzigen):\n\n" +
     `\`${u}\`\n\n` +
     "**In de landings-`hero`-sectie (`id: \"hero\"`):**\n" +
     "- Buitenste wrapper **moet** `<section id=\"hero\" …>` zijn met `relative` in de `class` (stacking voor overlays).\n" +

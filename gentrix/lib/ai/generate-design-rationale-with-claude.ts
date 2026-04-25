@@ -37,7 +37,8 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 4. Optioneel: **één** zin met de belangrijkste briefing-nuance (geen bullet-essay).
 
 === contract — basisvelden ===
-- \`heroVisualSubject\`, \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
+- \`heroVisualSubject\` — beschrijft wat de **server-side AI-hero** (één full-bleed foto) visueel moet zijn: **sfeer, materialen, interieur/werkplek zonder mensen, branche-typische rekwisieten of producten als stilleven, textuur, lichtval**. **Verboden:** fictieve personen, gezichten, klantenmodellen, medewerkers in beeld — team/portret hoort via **KLANTFOTO'S** in HTML, niet in deze AI-raster. Zelfs bij kapper, horeca of coaching: kies **scharen/stoelen/ingrediënten/sportattribuut op een tafel**, leeg interieur, dramatisch licht op materiaal — **geen** menselijke figuur.
+- \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
 - \`paletteMode\` — **exact één** van: \`"light"\` | \`"dark"\` | \`"either"\` (hoofdthema van de site). **Niet** \`"mixed"\` (dat hoort bij \`referenceVisualAxes.themeMode\` bij referentie). Warm/helder → \`"light"\`; diep/neon → \`"dark"\`; echt licht-of-donker vrij → \`"either"\`.
 - \`motionLevel\` — **exact één** van deze strings (geen synoniemen zoals "high"): \`"none"\` | \`"subtle"\` | \`"moderate"\` | \`"strong"\`. Hoge bewegingswens uit briefing → meestal \`"strong"\`; spaarzaam → \`"subtle"\`.
 - \`heroImageSearchHints\` (optioneel) — **één string** met komma’s of puntkomma’s (geen JSON-array), of een string-array die server-side wordt samengevoegd.

@@ -1,11 +1,12 @@
-import posthog from "posthog-js";
+import type { PostHog } from "posthog-js";
 import type {
   GentrixAnalyticsContext,
   GentrixEventName,
   GentrixScrollDepth,
 } from "@/lib/analytics/schema";
 
-let inited = false;
+let posthogClient: PostHog | null = null;
+let loadStarted = false;
 let lastRegisteredJson = "";
 
 const defaultContext: GentrixAnalyticsContext = {
@@ -24,6 +25,12 @@ const defaultContext: GentrixAnalyticsContext = {
 type MutableContext = typeof defaultContext;
 let current = { ...defaultContext };
 
+const pendingPageviews: string[] = [];
+type PendingTrack = { name: GentrixEventName; properties?: Record<string, string | number | boolean | null | undefined> };
+const pendingTracks: PendingTrack[] = [];
+let pendingIdentify: { userId: string; traits?: Record<string, string | number | boolean | null> } | null = null;
+let registerDirty = true;
+
 function envKey() {
   return (process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "").trim();
 }
@@ -32,52 +39,13 @@ export function isGentrixAnalyticsEnabled(): boolean {
   return envKey().length > 0;
 }
 
-export function initGentrixAnalytics() {
-  if (typeof window === "undefined" || inited) return;
-  const key = envKey();
-  if (!key) return;
-  inited = true;
-  const host = (process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com").trim() || "https://eu.i.posthog.com";
-  posthog.init(key, {
-    api_host: host,
-    person_profiles: "identified_only",
-    capture_pageview: false,
-    capture_pageleave: true,
-    persistence: "localStorage",
-    loaded: (ph) => {
-      if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_POSTHOG_DEBUG === "1") {
-        ph.debug();
-      }
-    },
-  });
-}
-
-/**
- * Sessiesuper–properties voor PostHog. Wordt aangepast wanneer de bezoeker van context wisselt (bijv. /site → /admin).
- */
-export function setGentrixPageContext(updates: Partial<GentrixAnalyticsContext>) {
-  const next: MutableContext = { ...current, ...updates };
-  current = next;
-  if (!isGentrixAnalyticsEnabled() || !inited) return;
-  const forRegister: Record<string, string | number | boolean | null> = {
-    session_type: next.session_type,
-    site_slug: next.site_slug,
-    page_key: next.page_key,
-    booking_module_enabled: next.booking_module_enabled,
-    webshop_module_enabled: next.webshop_module_enabled,
-    is_preview: next.is_preview,
-    app_environment: next.app_environment,
-    is_internal_actor: next.is_internal_actor,
-    actor: next.actor,
-    render_surface: next.render_surface,
-  };
-  const asJson = JSON.stringify(forRegister);
-  if (asJson === lastRegisteredJson) return;
-  lastRegisteredJson = asJson;
-  try {
-    posthog.register(forRegister);
-  } catch {
-    /* ignore */
+function scheduleIdleLoad(run: () => void): void {
+  if (typeof window === "undefined") return;
+  const ric = window.requestIdleCallback?.bind(window);
+  if (typeof ric === "function") {
+    ric(() => run(), { timeout: 4000 });
+  } else {
+    window.setTimeout(run, 200);
   }
 }
 
@@ -97,11 +65,133 @@ function ctxPayload(): Record<string, string | number | boolean | null> {
   };
 }
 
+function syncRegisterToPosthog(): void {
+  if (!posthogClient) return;
+  const forRegister: Record<string, string | number | boolean | null> = {
+    session_type: current.session_type,
+    site_slug: current.site_slug,
+    page_key: current.page_key,
+    booking_module_enabled: current.booking_module_enabled,
+    webshop_module_enabled: current.webshop_module_enabled,
+    is_preview: current.is_preview,
+    app_environment: current.app_environment,
+    is_internal_actor: current.is_internal_actor,
+    actor: current.actor,
+    render_surface: current.render_surface,
+  };
+  const asJson = JSON.stringify(forRegister);
+  if (asJson === lastRegisteredJson) return;
+  lastRegisteredJson = asJson;
+  try {
+    posthogClient.register(forRegister);
+  } catch {
+    /* ignore */
+  }
+}
+
+function flushPosthogQueue(): void {
+  if (!posthogClient) return;
+  if (registerDirty) {
+    registerDirty = false;
+    syncRegisterToPosthog();
+  }
+  if (pendingIdentify) {
+    const { userId, traits } = pendingIdentify;
+    pendingIdentify = null;
+    try {
+      posthogClient.identify(userId, traits ?? undefined);
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const path of pendingPageviews.splice(0, pendingPageviews.length)) {
+    try {
+      const href = typeof window !== "undefined" ? window.location.href : path;
+      posthogClient.capture("$pageview", { ...ctxPayload(), $current_url: href, path });
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const t of pendingTracks.splice(0, pendingTracks.length)) {
+    const rest: Record<string, string | number | boolean> = {};
+    if (t.properties) {
+      for (const [k, v] of Object.entries(t.properties)) {
+        if (v === undefined) continue;
+        if (v === null) {
+          rest[k] = "";
+          continue;
+        }
+        rest[k] = v;
+      }
+    }
+    try {
+      posthogClient.capture(String(t.name), { ...ctxPayload(), ...rest });
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function startPosthogLoad(): void {
+  if (typeof window === "undefined" || loadStarted) return;
+  const key = envKey();
+  if (!key) return;
+  loadStarted = true;
+  scheduleIdleLoad(() => {
+    void import("posthog-js")
+      .then((mod) => {
+        const ph = mod.default;
+        const host =
+          (process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com").trim() || "https://eu.i.posthog.com";
+        ph.init(key, {
+          api_host: host,
+          person_profiles: "identified_only",
+          capture_pageview: false,
+          capture_pageleave: true,
+          persistence: "localStorage",
+          loaded: (instance) => {
+            if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_POSTHOG_DEBUG === "1") {
+              instance.debug();
+            }
+          },
+        });
+        posthogClient = ph;
+        flushPosthogQueue();
+      })
+      .catch(() => {
+        loadStarted = false;
+      });
+  });
+}
+
+export function initGentrixAnalytics() {
+  if (typeof window === "undefined" || !isGentrixAnalyticsEnabled()) return;
+  startPosthogLoad();
+}
+
+/**
+ * Sessiesuper–properties voor PostHog. Wordt aangepast wanneer de bezoeker van context wisselt (bijv. /site → /admin).
+ */
+export function setGentrixPageContext(updates: Partial<GentrixAnalyticsContext>) {
+  current = { ...current, ...updates };
+  if (!isGentrixAnalyticsEnabled()) return;
+  if (!posthogClient) {
+    registerDirty = true;
+    return;
+  }
+  syncRegisterToPosthog();
+}
+
 export function trackGentrixEvent(
   name: GentrixEventName,
   properties?: Record<string, string | number | boolean | null | undefined>,
 ) {
-  if (!isGentrixAnalyticsEnabled() || !inited) return;
+  if (!isGentrixAnalyticsEnabled()) return;
+  if (!posthogClient) {
+    pendingTracks.push({ name, properties });
+    startPosthogLoad();
+    return;
+  }
   const rest: Record<string, string | number | boolean> = {};
   if (properties) {
     for (const [k, v] of Object.entries(properties)) {
@@ -114,7 +204,7 @@ export function trackGentrixEvent(
     }
   }
   try {
-    posthog.capture(String(name), { ...ctxPayload(), ...rest });
+    posthogClient.capture(String(name), { ...ctxPayload(), ...rest });
   } catch {
     /* ignore */
   }
@@ -124,19 +214,29 @@ export function trackGentrixEvent(
  * Eénmalig identificeren (bijv. na portaal-login). Alleen wanneer je een stabiele `userId` hebt.
  */
 export function identifyGentrixUser(userId: string, traits?: Record<string, string | number | boolean | null>) {
-  if (!isGentrixAnalyticsEnabled() || !inited) return;
+  if (!isGentrixAnalyticsEnabled()) return;
+  if (!posthogClient) {
+    pendingIdentify = { userId, traits };
+    startPosthogLoad();
+    return;
+  }
   try {
-    posthog.identify(userId, traits ?? undefined);
+    posthogClient.identify(userId, traits ?? undefined);
   } catch {
     /* ignore */
   }
 }
 
 export function captureGentrixPageview(pathWithSearch: string) {
-  if (!isGentrixAnalyticsEnabled() || !inited) return;
+  if (!isGentrixAnalyticsEnabled()) return;
+  if (!posthogClient) {
+    pendingPageviews.push(pathWithSearch);
+    startPosthogLoad();
+    return;
+  }
   try {
     const href = typeof window !== "undefined" ? window.location.href : pathWithSearch;
-    posthog.capture("$pageview", { ...ctxPayload(), $current_url: href, path: pathWithSearch });
+    posthogClient.capture("$pageview", { ...ctxPayload(), $current_url: href, path: pathWithSearch });
   } catch {
     /* ignore */
   }
@@ -145,9 +245,13 @@ export function captureGentrixPageview(pathWithSearch: string) {
 export function resetGentrixAnalytics() {
   lastRegisteredJson = "";
   current = { ...defaultContext };
-  if (isGentrixAnalyticsEnabled() && inited) {
+  pendingPageviews.length = 0;
+  pendingTracks.length = 0;
+  pendingIdentify = null;
+  registerDirty = true;
+  if (posthogClient) {
     try {
-      posthog.reset();
+      posthogClient.reset();
     } catch {
       /* ignore */
     }
