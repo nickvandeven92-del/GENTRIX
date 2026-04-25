@@ -25,6 +25,12 @@ import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 import { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
 import { STUDIO_TAILWIND_PLAY_CDN_SRC } from "@/lib/site/studio-tailwind-cdn";
 import { applyBrandLogoFallbackToSections } from "@/lib/site/brand-logo-inject";
+import { inferStudioNavChromeFromSections } from "@/lib/site/infer-studio-nav-chrome";
+import {
+  parseStudioNavChromeConfig,
+  prependStudioNavChromeToFirstSection,
+  renderStudioNavChromeHtml,
+} from "@/lib/site/render-studio-nav-chrome-html";
 import {
   applyStudioPublishedPathPlaceholders,
   neutralizeStudioPathPlaceholdersWithoutSlug,
@@ -1302,7 +1308,7 @@ html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type,
 html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type {
   overflow-x: clip !important;
 }
-header[data-gentrix-scroll-nav="1"],
+header[data-gentrix-scroll-nav="1"]:not([data-studio-nav-chrome]),
 nav[data-gentrix-scroll-nav="1"] {
   position: fixed !important;
   top: 0 !important;
@@ -1322,8 +1328,8 @@ nav[data-gentrix-scroll-nav="1"] {
     backdrop-filter 220ms ease,
     -webkit-backdrop-filter 220ms ease;
 }
-html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]),
-html[data-gentrix-scroll-nav-fallback="1"] header[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]),
+html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
+html[data-gentrix-scroll-nav-fallback="1"] header[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] nav[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]),
 html[data-gentrix-scroll-nav-fallback="1"] nav[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]) {
   position: fixed !important;
@@ -1338,13 +1344,13 @@ html[data-gentrix-scroll-nav-fallback="1"] nav[class*="fixed"][class*="top-0"]:n
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type:not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] body > nav:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type:not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > nav:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > header:first-of-type:not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > nav:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > header:first-of-type,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > header:first-of-type:not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > nav:first-of-type {
   position: fixed !important;
   top: 0 !important;
@@ -1362,7 +1368,7 @@ html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:fir
  * Bovenaan (niet gescrold): alle directe kinderen transparant — niet alleen .mx-auto.
  * Anders: logo-rail met eigen bg-slate-* naast een leeggemaakte .mx-auto-rail = twee kleurvlakken.
  */
-header[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]) > *,
+header[data-gentrix-scroll-nav="1"]:not([data-studio-nav-chrome]):not([data-gentrix-scrolled="1"]) > *,
 nav[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]) > * {
   background-color: transparent !important;
   border-color: transparent !important;
@@ -1370,9 +1376,9 @@ nav[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]) > * {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]),
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"],
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"],
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]),
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] {
   background-color: rgb(8 16 34 / 0.44) !important;
   border-color: rgb(148 163 184 / 0.22) !important;
@@ -1383,9 +1389,9 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] {
 /*
  * Gescrold: één frosted laag op de header — kinderen transparant (geen dubbele blur / geen halve balk donkerder).
  */
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > *,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) > *,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] > *,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > *,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) > *,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > * {
   background-color: transparent !important;
   border-color: transparent !important;
@@ -1393,24 +1399,24 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] > * {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] span,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] li,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] label,
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) a,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) button,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) span,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) li,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) label,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) svg,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] a,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] span,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] li,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] label,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] a,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] button,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] span,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] li,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] label,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] svg,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) a,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) button,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) span,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) li,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) label,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) svg,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] a,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] button,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] span,
@@ -1419,22 +1425,22 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] label,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] svg {
   color: rgb(241 245 249) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) svg,
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] svg,
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] svg,
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) svg,
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] svg {
   fill: currentColor !important;
   stroke: currentColor !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] [class*="border-white"],
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) [class*="border-white"],
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] [class*="border-white"],
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] [class*="border-white"],
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) [class*="border-white"],
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] [class*="border-white"] {
   border-color: rgba(241, 245, 249, 0.28) !important;
 }
-header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"],
+header[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) button span[class*="bg-white"],
 nav[data-gentrix-scroll-nav="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"],
-header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"],
+header[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"]:not([data-studio-nav-chrome]) button span[class*="bg-white"],
 nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] button span[class*="bg-white"] {
   background-color: rgb(241 245 249) !important;
 }
@@ -1605,6 +1611,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
     for(var i=0;i<list.length;i++){
       var el=list[i];
       if(el.closest("[data-studio-skip-nav-tone]"))continue;
+      if(el.getAttribute&&el.getAttribute("data-studio-nav-chrome")==="1")continue;
       var st=getComputedStyle(el);
       if(st.position!=="fixed"&&st.position!=="sticky")continue;
       if(st.display==="none"||st.visibility==="hidden")continue;
@@ -1624,6 +1631,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
    */
   function shouldTreatAsGentrixScrollNavTarget(el){
     if(!el)return false;
+    if(el.getAttribute&&el.getAttribute("data-studio-nav-chrome")==="1")return false;
     if(el.getAttribute&&el.getAttribute("data-gentrix-scroll-nav")==="1")return true;
     if(el.getAttribute&&el.getAttribute("data-gentrix-scroll-overlay")==="1")return true;
     var root=document.documentElement;
@@ -1653,7 +1661,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
       "body > header:first-of-type, body > nav:first-of-type, body > section:first-of-type > header:first-of-type, body > section:first-of-type > nav:first-of-type," +
       ".gentrix-published-root > header:first-of-type, .gentrix-published-root > nav:first-of-type, .gentrix-published-root > section:first-of-type > header:first-of-type, .gentrix-published-root > section:first-of-type > nav:first-of-type"
     );
-    if(hard&&hard.tagName){
+    if(hard&&hard.tagName&&shouldTreatAsGentrixScrollNavTarget(hard)){
       return hard;
     }
     return null;
@@ -1670,6 +1678,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
   }
   function syncGentrixScrollNavState(){
     if(!nav)return;
+    if(nav.getAttribute&&nav.getAttribute("data-studio-nav-chrome")==="1")return;
     if(!shouldTreatAsGentrixScrollNavTarget(nav))return;
     if(nav.getAttribute&&nav.getAttribute("data-gentrix-scroll-nav")!=="1"){
       nav.setAttribute("data-gentrix-scroll-nav","1");
@@ -1686,6 +1695,7 @@ export const STUDIO_NAV_SCROLL_CONTRAST_SCRIPT = `<script>
   }
   function sync(){
     if(!nav)return;
+    if(nav.getAttribute&&nav.getAttribute("data-studio-nav-chrome")==="1")return;
     syncGentrixScrollNavState();
     var r=nav.getBoundingClientRect();
     if(r.height<20||r.width<32)return;
@@ -1765,7 +1775,8 @@ export const STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT = `<script>
     try{
       var root=document.querySelector("section[data-section]");
       if(!root)return;
-      var hdr=root.querySelector("header[class*='sticky']");
+      var hdr=root.querySelector("header[data-studio-nav-chrome]");
+      if(!hdr)hdr=root.querySelector("header[class*='sticky']");
       if(!hdr)return;
       var cur=hdr.parentElement;
       while(cur&&cur!==document.body){
@@ -2118,6 +2129,12 @@ export function sanitizeTailwindFragment(html: string): string {
       "data-studio-nav-module",
       "data-studio-module-cta",
       "data-studio-feature-zone",
+      /** Gentrix scroll-nav chrome (declaratieve header); anders strip DOMPurify `data-gentrix-*` weg. */
+      "data-gentrix-scroll-nav",
+      "data-gentrix-scrolled",
+      "data-gentrix-scroll-overlay",
+      "data-gentrix-scrolling",
+      "data-studio-nav-chrome",
       /** Ankers / secties in client-HTML. */
       "data-section",
       /** Portal visuele editor: section wrappers moeten de sanitizer overleven. */
@@ -2306,10 +2323,20 @@ export function buildTailwindSectionsBodyInnerHtml(
   pageConfig?: TailwindPageConfig | null,
   bodyOptions?: BuildTailwindSectionsBodyOptions,
 ): string {
+  let sectionRows: TailwindSection[] = sections;
+  const studioNav =
+    pageConfig && !isLegacyTailwindPageConfig(pageConfig)
+      ? (parseStudioNavChromeConfig(pageConfig.studioNav) ?? inferStudioNavChromeFromSections(sections))
+      : null;
+  if (studioNav) {
+    const navTheme = pageConfig && !isLegacyTailwindPageConfig(pageConfig) ? pageConfig.theme : null;
+    sectionRows = prependStudioNavChromeToFirstSection(sections, renderStudioNavChromeHtml(studioNav, navTheme));
+  }
+
   const prepared =
     bodyOptions?.logoSet != null
-      ? applyBrandLogoFallbackToSections(sections, bodyOptions.logoSet)
-      : sections;
+      ? applyBrandLogoFallbackToSections(sectionRows, bodyOptions.logoSet)
+      : sectionRows;
   return prepared
     .map((s) => {
       const portalKeyMatch = s.html.match(/\bdata-portal-section-key="([^"]*)"/i);

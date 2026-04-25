@@ -3,9 +3,11 @@ import {
   alignChromeNavMdLgBreakpoints,
   buildGentrixMenuIconToggle,
   convertMobileDrawerToPushDown,
+  repairBrokenMobileDrawer,
   repairHeaderMobileMenuButton,
   sliceFirstSiteChromeNavBlock,
 } from "@/lib/ai/generate-site-postprocess";
+import { findHtmlOpenTagEnd } from "@/lib/site/html-open-tag";
 
 describe("alignChromeNavMdLgBreakpoints", () => {
   it("tilt `hidden md:flex` + mobiel sheet naar `lg` wanneer de menuknop `lg:hidden` gebruikt (Gentrix-home-patroon)", () => {
@@ -116,6 +118,23 @@ describe("sliceFirstSiteChromeNavBlock", () => {
     expect(out.trimStart().match(/^<header\b/i)).toBeTruthy();
     expect((out.match(/<header\b/gi) ?? []).length).toBe(1);
     expect(out).toContain("gentrix-menu-icon");
+  });
+});
+
+describe("repairBrokenMobileDrawer (x-data-inject + @scroll.window)", () => {
+  it("splits `<header>` niet midden in `scrollY > 10` (geen lek van `10\" :class=…` als tekst)", () => {
+    const html = `<header class="sticky top-0 z-50 text-white" @scroll.window="navScrolled = window.scrollY > 10" :class="{ 'bg-[#0f172a]/95': navScrolled }">
+  <button type="button" class="lg:hidden" aria-label="Menu"></button>
+  <div class="fixed right-0 top-0 h-full w-72 z-50 bg-white">m</div>
+</header>`;
+    const out = repairBrokenMobileDrawer(html);
+    const hi = out.search(/<header\b/i);
+    expect(hi).toBeGreaterThanOrEqual(0);
+    const oend = findHtmlOpenTagEnd(out, hi);
+    const afterOpen = out.slice(oend).trimStart();
+    expect(afterOpen.startsWith("10")).toBe(false);
+    expect(afterOpen.startsWith("<") || afterOpen === "").toBe(true);
+    expect(out).toContain("navScrolled = window.scrollY > 10");
   });
 });
 

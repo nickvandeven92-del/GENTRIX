@@ -345,21 +345,30 @@ function pickMenuButtonOrdinalCandidates(scopeHtml: string, buttonMatches: RegEx
   return out;
 }
 
+/**
+ * `x-data` injecteren op de eerste passende top-tag. Moet **quote-aware** zijn: `>` in
+ * `@scroll.window="... scrollY > 10"` valt anders vóór de slot-`>` van de open-tag, waardoor
+ * fragmenten als `10" :class="…">` als tekst in de DOM belanden.
+ */
 function injectNavStateScope(html: string, stateKey: string): string {
   const scopeAttrs = ` x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false"`;
-  let out = html.replace(
-    /<header\b((?:(?!\bx-data\s*=)[^>])*)>/i,
-    `<header$1${scopeAttrs}>`,
-  );
-  if (out !== html) return out;
-  out = html.replace(
-    /<section\b((?:(?!\bx-data\s*=)[^>])*)>/i,
-    `<section$1${scopeAttrs}>`,
-  );
-  if (out !== html) return out;
-  return html.replace(
-    /<(div|nav|aside|main|article)\b((?:(?!\bx-data\s*=)[^>])*)>/i,
-    (full, tag: string, attrs: string) => `<${tag}${attrs}${scopeAttrs}>`,
+  const hi = html.search(/<header\b/i);
+  if (hi !== -1) {
+    const hs = sliceOpenTagContent(html, hi);
+    if (hs && /\bx-data\s*=/i.test(hs.attrs)) {
+      /** Header heeft al Alpine-scope — niet op de eerste `<div>` daarbinnen injecteren (dubbele `@keydown`). */
+      return html;
+    }
+  }
+  const tryInject = (re: RegExp): string | null => {
+    const m = re.exec(html);
+    if (m == null) return null;
+    const s = sliceOpenTagContent(html, m.index);
+    if (!s || /\bx-data\s*=/i.test(s.attrs)) return null;
+    return `${html.slice(0, m.index)}<${s.tagName}${s.attrs}${scopeAttrs}>${html.slice(s.end)}`;
+  };
+  return (
+    tryInject(/<header\b/i) ?? tryInject(/<section\b/i) ?? tryInject(/<(div|nav|aside|main|article)\b/i) ?? html
   );
 }
 

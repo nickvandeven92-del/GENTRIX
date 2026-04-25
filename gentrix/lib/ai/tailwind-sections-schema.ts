@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { designPersonalitySchema } from "@/lib/ai/design-personality";
+import { studioNavChromeConfigSchema } from "@/lib/site/studio-nav-chrome-schema";
 import { snapshotPageTypeSchema } from "@/lib/site/snapshot-page-type";
 import { SNAPSHOT_TAILWIND_COMPILED_CSS_MAX } from "@/lib/site/project-snapshot-constants";
 import type { ContentClaimDiagnosticsReport } from "@/lib/ai/content-claim-diagnostics";
@@ -176,9 +177,13 @@ export const masterPromptPageConfigSchema = z.object({
     .transform((s) => clampConfigStyleString(s)),
   theme: masterPromptThemeSchema,
   font: z.string().min(1).max(200),
+  /** Declaratieve primaire nav: renderer vervangt AI-chrome in compose (zie `renderStudioNavChromeHtml`). */
+  studioNav: studioNavChromeConfigSchema.optional(),
 });
 
 export type MasterPromptPageConfig = z.infer<typeof masterPromptPageConfigSchema>;
+
+export type { StudioNavChromeConfig, StudioNavLink } from "@/lib/site/studio-nav-chrome-schema";
 
 /** Uitgebreid theme-object (optionele velden) zoals Claude het in \`config.theme\` mag vullen. */
 export type MasterPromptTheme = z.infer<typeof masterPromptThemeSchema>;
@@ -204,6 +209,7 @@ export const masterPromptPageConfigPatchSchema = z
       .optional(),
     font: z.string().min(1).max(200).optional(),
     theme: z.record(z.string(), z.unknown()).optional(),
+    studioNav: studioNavChromeConfigSchema.optional(),
   })
   .strict();
 
