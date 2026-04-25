@@ -1441,6 +1441,87 @@ nav[data-gentrix-scroll-overlay="1"][data-gentrix-scrolled="1"] button span[clas
 `;
 
 /**
+ * Bibliotheek: transparant → frosted/donker bij scroll. Model zet \`studio-nav-scroll-dim\` op de host en
+ * Alpine toggelt \`studio-nav-scroll-dim--active\` (zie \`getStudioNavChromePatternLibraryPromptBlock\`).
+ */
+export const STUDIO_NAV_SCROLL_DIM_CSS = `/* studio-nav-scroll-dim: zie lib/ai/studio-nav-chrome-pattern-library.ts */
+header.studio-nav-scroll-dim,
+nav.studio-nav-scroll-dim {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    backdrop-filter 220ms ease,
+    -webkit-backdrop-filter 220ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  header.studio-nav-scroll-dim,
+  nav.studio-nav-scroll-dim {
+    transition: none;
+  }
+}
+header.studio-nav-scroll-dim:not(.studio-nav-scroll-dim--active),
+nav.studio-nav-scroll-dim:not(.studio-nav-scroll-dim--active) {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+header.studio-nav-scroll-dim:not(.studio-nav-scroll-dim--active) > *,
+nav.studio-nav-scroll-dim:not(.studio-nav-scroll-dim--active) > * {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active {
+  background-color: rgb(8 16 34 / 0.5) !important;
+  border-color: rgb(148 163 184 / 0.24) !important;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.22) !important;
+  backdrop-filter: blur(14px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(135%) !important;
+}
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active > *,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active > * {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active a,
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active button,
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active span,
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active li,
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active label,
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active svg,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active a,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active button,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active span,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active li,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active label,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active svg {
+  color: rgb(241 245 249) !important;
+}
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active svg,
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active svg {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active [class*="border-white"],
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active [class*="border-white"] {
+  border-color: rgba(241, 245, 249, 0.28) !important;
+}
+header.studio-nav-scroll-dim.studio-nav-scroll-dim--active button span[class*="bg-white"],
+nav.studio-nav-scroll-dim.studio-nav-scroll-dim--active button span[class*="bg-white"] {
+  background-color: rgb(241 245 249) !important;
+}
+`;
+
+/**
  * iOS Safari iframe position:fixed fix — zonder dit verschijnt het mobiele nav-overlay als een klein kaartje
  * i.p.v. volledig scherm te bedekken. Scroll-lock op <html> wanneer een nav-toggle truthy wordt, zodat
  * position:fixed elementen relatief aan het viewport renderen in plaats van de iframe-scrollcontainer.
@@ -3126,6 +3207,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}${fontHeadFr
     ${rootCss}
     ${animationCss}
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
+    ${STUDIO_NAV_SCROLL_DIM_CSS}
     ${STUDIO_MOBILE_MENU_STACKING_FIX_CSS}
     ${STUDIO_MOBILE_NAV_DRAWER_FONT_CAP_CSS}
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}

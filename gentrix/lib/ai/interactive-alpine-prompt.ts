@@ -3,6 +3,7 @@
  * Houd dit synchroon met lib/site/studio-alpine-cdn.ts en sanitize in tailwind-page-html.
  */
 import { getStudioDefaultHeroVideoPromptBlock } from "@/lib/site/studio-default-hero-videos";
+import { getStudioNavChromePatternLibraryPromptBlock } from "@/lib/ai/studio-nav-chrome-pattern-library";
 
 export function getAlpineInteractivityPromptBlock(): string {
   return `=== INTERACTIVITEIT (Alpine.js 3, CDN) ===
@@ -29,6 +30,10 @@ De pagina laadt **Alpine.js** naast Tailwind. Gebruik **declaratieve** micro-int
 **Mobiel menu — contrast:** de pagina-shell heeft \`text-slate-900\` op \`body\`; elke link in een **donkere** sheet/overlay moet expliciet lichte tekst hebben (bv. \`text-white\`, \`text-white/90\`, \`hover:bg-white/10\`) — anders erven ankers de donkere bodykleur en zijn ze op zwart **onzichtbaar**.
 
 **Leesbaarheid:** transparante of glass header over wisselende achtergronden: zorg **functioneel** voor contrast (bijv. \`:class\` op scroll, \`@scroll.window\`) — **geen** verplichte nav-stijl.
+
+**Nav-vorm (vrij):** elke generatie mag een **ander** nav-archetype kiezen (effen, ghost, pill, segmented, minimal links, geen scroll-dimming, ???). Alleen bij **multipage** geldt apart de regel ???**dezelfde** chrome **binnen** ??n site op alle routes??? (zie kernprompt 3B) ??? dat is **niet** ???elke run dezelfde nav als de vorige site???.
+
+${getStudioNavChromePatternLibraryPromptBlock()}
 
 **Formulieren:** \`<form>\` met \`@submit.prevent\` mag voor UX (bijv. "bedankt"-toggle); echte server-POST is niet standaard — gebruik \`mailto:\`, \`tel:\`, \`https://\` of ankers naar \`#contact\` tenzij de briefing expliciet anders vraagt. Geen fictieve API-routes als harde afhankelijkheid.
 
