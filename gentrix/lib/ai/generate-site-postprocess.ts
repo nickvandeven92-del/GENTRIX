@@ -17,6 +17,7 @@ import {
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/strip-unsplash-urls";
 import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName, sliceOpenTagContent } from "@/lib/site/html-open-tag";
+import { walkBalancedSameLocalBlock } from "@/lib/site/html-balanced-element";
 import { addDefaultLazyLoadingToBelowFoldSectionImages } from "@/lib/site/html-img-lazy-default";
 import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
@@ -530,53 +531,6 @@ function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
  * Donker ⇒ `text-neutral-100` (witte streepjes)
  * Anders ⇒ `text-neutral-900` (zwarte streepjes) — ook voor crème/pastel/beige headers.
  */
-function findNextSameLocalOpenOrClose(
-  html: string,
-  pos: number,
-  local: string,
-): { kind: "open" | "close"; index: number } | null {
-  const openRe = new RegExp(`<${local}\\b`, "gi");
-  const closeRe = new RegExp(`</${local}\\b`, "gi");
-  openRe.lastIndex = pos;
-  closeRe.lastIndex = pos;
-  const om = openRe.exec(html);
-  const cm = closeRe.exec(html);
-  if (!om && !cm) return null;
-  const oi = om?.index ?? Number.POSITIVE_INFINITY;
-  const ci = cm?.index ?? Number.POSITIVE_INFINITY;
-  if (oi < ci) return { kind: "open", index: om!.index };
-  return { kind: "close", index: cm!.index };
-}
-
-function walkBalancedSameLocalBlock(
-  html: string,
-  openIndex: number,
-  local: "header" | "nav" | "div",
-): { block: string; start: number; end: number } | null {
-  const openEnd = findHtmlOpenTagEnd(html, openIndex);
-  if (openEnd <= openIndex) return null;
-  const opener = html.slice(openIndex, openEnd);
-  if (!new RegExp(`^<${local}\\b`, "i").test(opener)) return null;
-  let depth = 1;
-  let pos = openEnd;
-  while (depth > 0) {
-    const next = findNextSameLocalOpenOrClose(html, pos, local);
-    if (!next) return null;
-    const tagEnd = findHtmlOpenTagEnd(html, next.index);
-    if (next.kind === "close") {
-      depth -= 1;
-      if (depth === 0) {
-        return { block: html.slice(openIndex, tagEnd), start: openIndex, end: tagEnd };
-      }
-      pos = tagEnd;
-    } else {
-      depth += 1;
-      pos = tagEnd;
-    }
-  }
-  return null;
-}
-
 function findFirstBannerDivOpenIndex(html: string): number | null {
   let scan = 0;
   while (scan < html.length) {
@@ -2395,14 +2349,38 @@ export function applyStudioImageFreeHtmlPass(page: GeneratedTailwindPage): Gener
 }
 
 export function removeDuplicateAlpineNavScopeInHeader(html: string): string {
-  return html.replace(
-    /(<header\b[^>]*\bx-data\s*=\s*["'][^"']*["'][^>]*>)([\s\S]*?)(<\/header>)/gi,
-    (full, headerOpen, inner, headerClose) => {
-      const cleaned = inner.replace(
-        /\s*x-data\s*=\s*["'][^"']*\bnavOpen\b[^"']*["']/gi,
-        ""
-      );
-      return headerOpen + cleaned + headerClose;
+  let cursor = 0;
+  let out = "";
+  let pos = 0;
+  while (pos < html.length) {
+    const m = /<header\b/gi.exec(html.slice(pos));
+    if (!m) break;
+    const abs = pos + m.index;
+    const w = walkBalancedSameLocalBlock(html, abs, "header");
+    if (!w) {
+      pos = abs + 1;
+      continue;
     }
-  );
+    const openSlice = sliceOpenTagContent(html, abs);
+    out += html.slice(cursor, w.start);
+    if (!openSlice?.attrs || !/\bx-data\s*=/i.test(openSlice.attrs)) {
+      out += w.block;
+    } else {
+      const block = w.block;
+      const innerStart = findHtmlOpenTagEnd(block, 0);
+      const closeExec = /<\/header\s*>/i.exec(block.slice(innerStart));
+      if (!closeExec) {
+        out += block;
+      } else {
+        const innerEnd = innerStart + closeExec.index;
+        const inner = block.slice(innerStart, innerEnd);
+        const cleaned = inner.replace(/\s*x-data\s*=\s*["'][^"']*\bnavOpen\b[^"']*["']/gi, "");
+        out += block.slice(0, innerStart) + cleaned + block.slice(innerEnd);
+      }
+    }
+    cursor = w.end;
+    pos = w.end;
+  }
+  out += html.slice(cursor);
+  return out;
 }

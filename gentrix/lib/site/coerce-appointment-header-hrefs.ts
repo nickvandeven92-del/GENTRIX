@@ -3,6 +3,7 @@ import {
   STUDIO_CONTACT_PATH_PLACEHOLDER,
   STUDIO_SITE_BASE_PLACEHOLDER,
 } from "@/lib/site/studio-section-visibility";
+import { walkBalancedSameLocalBlock } from "@/lib/site/html-balanced-element";
 
 /** Zichtbare tekst op een knop/link duidt op online boeken, niet op het contactformulier. */
 const BOOKING_INTENT_IN_ANCHOR_TEXT_RE =
@@ -23,6 +24,28 @@ const CONTACT_OR_HASH_CONTACT_ANCHOR_RE = new RegExp(
   `<a\\b([^>]*?)\\bhref\\s*=\\s*(["'])(#contact\\b|${CONTACT_HREF_ESCAPED}|${SITE_BASE_HREF_ESCAPED}\\/contact|\\/[^"'#?]+\\/contact(?:[?#][^"']*)?)\\2([^>]*)>([\\s\\S]*?)<\\/a>`,
   "gi",
 );
+
+function mapBalancedHeaders(html: string, fn: (headerBlock: string) => string): string {
+  let cursor = 0;
+  let out = "";
+  let pos = 0;
+  while (pos < html.length) {
+    const m = /<header\b/gi.exec(html.slice(pos));
+    if (!m) break;
+    const abs = pos + m.index;
+    const w = walkBalancedSameLocalBlock(html, abs, "header");
+    if (!w) {
+      pos = abs + 1;
+      continue;
+    }
+    out += html.slice(cursor, w.start);
+    out += fn(w.block);
+    cursor = w.end;
+    pos = w.end;
+  }
+  out += html.slice(cursor);
+  return out;
+}
 
 function rewriteContactHrefToBookingWhenIntentBooking(fragment: string): string {
   return fragment.replace(
@@ -46,7 +69,7 @@ export function coerceContactBookCtaAnchorsInHtmlFragment(html: string): string 
  * maar de tekst duidelijk om een afspraak gaat, dwingen we het studio-boekingspad (compose lost het op naar `/booking-app/book/{slug}`).
  */
 export function coerceHeaderWhatsappLinksToBookingPlaceholder(html: string): string {
-  return html.replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, (headerBlock) =>
+  return mapBalancedHeaders(html, (headerBlock) =>
     headerBlock.replace(
       /<a\b([^>]*?)\bhref\s*=\s*(["'])(https?:\/\/(?:wa\.me|api\.whatsapp\.com|web\.whatsapp\.com|chat\.whatsapp\.com)[^"']*)\2([^>]*)>([\s\S]*?)<\/a>/gi,
       (full, pre, quote, _badUrl, post, inner) => {
@@ -64,7 +87,7 @@ export function coerceHeaderWhatsappLinksToBookingPlaceholder(html: string): str
  * → `__STUDIO_BOOKING_PATH__` (geen DB-wijziging; alleen compose voor live `/site`).
  */
 export function coerceHeaderContactBookCtasToBookingPlaceholder(html: string): string {
-  return html.replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, rewriteContactHrefToBookingWhenIntentBooking);
+  return mapBalancedHeaders(html, rewriteContactHrefToBookingWhenIntentBooking);
 }
 
 /**

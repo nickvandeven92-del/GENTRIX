@@ -1,4 +1,5 @@
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import { findHtmlOpenTagEnd } from "@/lib/site/html-open-tag";
 import type { GeneratedLogoSet } from "@/types/logo";
 
 /** Voorkomt dubbele injectie; zet dit op je eigen merk-wrapper om fallback te onderdrukken. */
@@ -13,11 +14,12 @@ function escapeHtmlAttr(s: string): string {
 }
 
 function injectAfterFirstTag(html: string, tagName: string, block: string): string | null {
-  const re = new RegExp(`<${tagName}\\b[^>]*>`, "i");
-  const m = html.match(re);
+  const re = new RegExp(`<${tagName}\\b`, "i");
+  const m = re.exec(html);
   if (m == null || m.index === undefined) return null;
-  const ins = m.index + m[0].length;
-  return html.slice(0, ins) + block + html.slice(ins);
+  const openEnd = findHtmlOpenTagEnd(html, m.index);
+  if (openEnd <= m.index) return null;
+  return html.slice(0, openEnd) + block + html.slice(openEnd);
 }
 
 /**

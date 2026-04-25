@@ -1,3 +1,6 @@
+import { walkBalancedSameLocalBlock } from "@/lib/site/html-balanced-element";
+import { findHtmlOpenTagEnd } from "@/lib/site/html-open-tag";
+
 const STUDIO_SITE_BASE_SUBPATH_RE = /__STUDIO_SITE_BASE__\/([a-z0-9-]+)/gi;
 const STUDIO_FAQ_PATH = "__STUDIO_SITE_BASE__/faq";
 
@@ -5,16 +8,44 @@ type MarketingSectionRow = { id: string; html: string };
 
 /** Verwijdert `<header>…</header>`-blokken (case-insensitive) voor checks op body/footer. */
 export function stripHtmlHeaderBlocks(html: string): string {
-  return html.replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, "");
+  let cursor = 0;
+  let out = "";
+  let pos = 0;
+  while (pos < html.length) {
+    const m = /<header\b/gi.exec(html.slice(pos));
+    if (!m) break;
+    const abs = pos + m.index;
+    const w = walkBalancedSameLocalBlock(html, abs, "header");
+    if (!w) {
+      pos = abs + 1;
+      continue;
+    }
+    out += html.slice(cursor, w.start);
+    cursor = w.end;
+    pos = w.end;
+  }
+  out += html.slice(cursor);
+  return out;
 }
 
 /** Alleen de inhoud binnen `<header>` (concat) — om te verbieden dat FAQ daar linked wordt. */
 export function collectHtmlHeaderInnerHtml(html: string): string {
   const chunks: string[] = [];
-  const re = /<header\b[^>]*>([\s\S]*?)<\/header>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    if (m[1]) chunks.push(m[1]);
+  let pos = 0;
+  while (pos < html.length) {
+    const m = /<header\b/gi.exec(html.slice(pos));
+    if (!m) break;
+    const abs = pos + m.index;
+    const w = walkBalancedSameLocalBlock(html, abs, "header");
+    if (!w) {
+      pos = abs + 1;
+      continue;
+    }
+    const block = w.block;
+    const innerStart = findHtmlOpenTagEnd(block, 0);
+    const close = /<\/header\s*>/i.exec(block.slice(innerStart));
+    if (close) chunks.push(block.slice(innerStart, innerStart + close.index));
+    pos = w.end;
   }
   return chunks.join("\n");
 }

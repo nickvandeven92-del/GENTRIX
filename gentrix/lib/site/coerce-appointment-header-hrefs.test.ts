@@ -29,6 +29,14 @@ describe("coerceHeaderWhatsappLinksToBookingPlaceholder", () => {
     const html = `<section><a href="https://wa.me/x">Maak afspraak</a></section>`;
     expect(coerceHeaderWhatsappLinksToBookingPlaceholder(html)).toContain("wa.me");
   });
+
+  it("herkent de hele header ook met `>` in @scroll.window (geen truncate vóór </header>)", () => {
+    const html = `<header class="sticky" @scroll.window="x = scrollY > 10" :class="{ a: x }"><a href="https://wa.me/31612345678">Maak afspraak</a></header>`;
+    const out = coerceHeaderWhatsappLinksToBookingPlaceholder(html);
+    expect(out).toContain(STUDIO_BOOKING_PATH_PLACEHOLDER);
+    expect(out).toContain("scrollY > 10");
+    expect(out).toContain(":class=");
+  });
 });
 
 describe("coerceHeaderContactBookCtasToBookingPlaceholder", () => {
