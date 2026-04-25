@@ -276,8 +276,11 @@ export const claudeTailwindSectionRowSchema = z.object({
   name: z.string().min(1).max(120).optional(),
 });
 
-/** Studio-generatie: één compacte landingspagina (sneller, minder timeout). */
-export const STUDIO_GENERATION_MAX_SECTIONS = 4;
+/**
+ * Studio-generatie: landings-`sections` + per marketing-/contactpagina.
+ * Moet gelijk lopen aan `HOMEPAGE_SECTION_BUDGET_MAX` in `generate-site-with-claude.ts` (nu 3–5).
+ */
+export const STUDIO_GENERATION_MAX_SECTIONS = 5;
 
 export const claudeTailwindPageOutputSchema = z.object({
   config: masterPromptPageConfigSchema,
