@@ -26,6 +26,24 @@ export function findHtmlOpenTagEnd(html: string, tagStart: number): number {
 }
 
 /**
+ * Quote-aware slice of one open tag starting at `tagStart` (`<` … `>` inclusive).
+ * `attrs` is the substring between the tag name and the closing `>` (often starts with whitespace).
+ */
+export function sliceOpenTagContent(
+  html: string,
+  tagStart: number,
+): { tagName: string; attrs: string; full: string; end: number } | null {
+  const end = findHtmlOpenTagEnd(html, tagStart);
+  if (end <= tagStart || html[tagStart] !== "<") return null;
+  const full = html.slice(tagStart, end);
+  const m = /^<([a-zA-Z][\w:-]*)\b/i.exec(full);
+  if (!m) return null;
+  const tagName = m[1]!;
+  const attrs = full.slice(m[0].length, full.length - 1);
+  return { tagName, attrs, full, end };
+}
+
+/**
  * Replace each open tag with local name `localName` (e.g. `img`, `source`) using `fn`.
  * Only the opening tag is matched; paired elements are not closed here.
  */

@@ -16,7 +16,7 @@ import {
   cleanupStrippedStockMarkup,
   stripAllUnsplashPhotoUrlsInHtml,
 } from "@/lib/ai/strip-unsplash-urls";
-import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName } from "@/lib/site/html-open-tag";
+import { findHtmlOpenTagEnd, replaceAllOpenTagsByLocalName, sliceOpenTagContent } from "@/lib/site/html-open-tag";
 import { addDefaultLazyLoadingToBelowFoldSectionImages } from "@/lib/site/html-img-lazy-default";
 import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
@@ -530,6 +530,152 @@ function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
  * Donker ⇒ `text-neutral-100` (witte streepjes)
  * Anders ⇒ `text-neutral-900` (zwarte streepjes) — ook voor crème/pastel/beige headers.
  */
+function findNextSameLocalOpenOrClose(
+  html: string,
+  pos: number,
+  local: string,
+): { kind: "open" | "close"; index: number } | null {
+  const openRe = new RegExp(`<${local}\\b`, "gi");
+  const closeRe = new RegExp(`</${local}\\b`, "gi");
+  openRe.lastIndex = pos;
+  closeRe.lastIndex = pos;
+  const om = openRe.exec(html);
+  const cm = closeRe.exec(html);
+  if (!om && !cm) return null;
+  const oi = om?.index ?? Number.POSITIVE_INFINITY;
+  const ci = cm?.index ?? Number.POSITIVE_INFINITY;
+  if (oi < ci) return { kind: "open", index: om!.index };
+  return { kind: "close", index: cm!.index };
+}
+
+function walkBalancedSameLocalBlock(
+  html: string,
+  openIndex: number,
+  local: "header" | "nav" | "div",
+): { block: string; start: number; end: number } | null {
+  const openEnd = findHtmlOpenTagEnd(html, openIndex);
+  if (openEnd <= openIndex) return null;
+  const opener = html.slice(openIndex, openEnd);
+  if (!new RegExp(`^<${local}\\b`, "i").test(opener)) return null;
+  let depth = 1;
+  let pos = openEnd;
+  while (depth > 0) {
+    const next = findNextSameLocalOpenOrClose(html, pos, local);
+    if (!next) return null;
+    const tagEnd = findHtmlOpenTagEnd(html, next.index);
+    if (next.kind === "close") {
+      depth -= 1;
+      if (depth === 0) {
+        return { block: html.slice(openIndex, tagEnd), start: openIndex, end: tagEnd };
+      }
+      pos = tagEnd;
+    } else {
+      depth += 1;
+      pos = tagEnd;
+    }
+  }
+  return null;
+}
+
+function findFirstBannerDivOpenIndex(html: string): number | null {
+  let scan = 0;
+  while (scan < html.length) {
+    const rel = html.slice(scan);
+    const dm = /<div\b/gi.exec(rel);
+    if (!dm) return null;
+    const abs = scan + dm.index;
+    const s = sliceOpenTagContent(html, abs);
+    if (!s) {
+      scan = abs + 4;
+      continue;
+    }
+    if (/\brole\s*=\s*["']banner["']/i.test(s.attrs)) return abs;
+    scan = s.end;
+  }
+  return null;
+}
+
+function findFirstStickyNavChromeOpenIndex(html: string): number | null {
+  let scan = 0;
+  while (scan < html.length) {
+    const rel = html.slice(scan);
+    const nm = /<nav\b/gi.exec(rel);
+    if (!nm) return null;
+    const abs = scan + nm.index;
+    const s = sliceOpenTagContent(html, abs);
+    if (!s) {
+      scan = abs + 4;
+      continue;
+    }
+    const cls = s.attrs.match(/\bclass\s*=\s*["']([^"']*)["']/i)?.[1]?.replace(/\s+/g, " ") ?? "";
+    const hasSticky = /\bsticky\b/i.test(cls) || /\bfixed\b/i.test(cls);
+    const hasTop0 = /\btop-0\b/i.test(cls);
+    if (hasSticky && hasTop0) return abs;
+    scan = s.end;
+  }
+  return null;
+}
+
+/** Eerste `<header>`, `div[role=banner]`, of wortel-`<nav>` opening tag (quote-aware). */
+function sliceFirstSiteChromeOpenTagFull(h: string): string {
+  const hi = h.search(/<header\b/i);
+  if (hi !== -1) {
+    const s = sliceOpenTagContent(h, hi);
+    if (s) return s.full;
+  }
+  let scan = 0;
+  while (scan < h.length) {
+    const dm = /<div\b/gi.exec(h.slice(scan));
+    if (!dm) break;
+    const abs = scan + dm.index;
+    const s = sliceOpenTagContent(h, abs);
+    if (!s) {
+      scan = abs + 4;
+      continue;
+    }
+    if (/\brole\s*=\s*["']banner["']/i.test(s.attrs)) return s.full;
+    scan = s.end;
+  }
+  if (/^\s*<nav\b/i.test(h)) {
+    const ni = h.search(/<nav\b/i);
+    if (ni !== -1) {
+      const s = sliceOpenTagContent(h, ni);
+      if (s) return s.full;
+    }
+  }
+  return "";
+}
+
+function replaceAllOpenTagsQuoteAware(
+  html: string,
+  replacer: (tagName: string, attrs: string, full: string) => string,
+): string {
+  let out = "";
+  let i = 0;
+  while (i < html.length) {
+    const lt = html.indexOf("<", i);
+    if (lt === -1) {
+      out += html.slice(i);
+      break;
+    }
+    out += html.slice(i, lt);
+    const m = /^<([a-zA-Z][\w:-]*)\b/.exec(html.slice(lt));
+    if (!m) {
+      out += "<";
+      i = lt + 1;
+      continue;
+    }
+    const tagStart = lt;
+    const end = findHtmlOpenTagEnd(html, tagStart);
+    const full = html.slice(tagStart, end);
+    const tagName = m[1]!;
+    const attrs = full.slice(m[0].length, full.length - 1);
+    out += replacer(tagName, attrs, full);
+    i = end;
+  }
+  return out;
+}
+
 function isHeaderBackgroundDark(blob: string): boolean {
   // 1) Palette-kleuren: `bg-black`, `bg-(neutral|zinc|slate|stone|gray)-(700|800|900|950)`.
   if (/\bbg-black\b/i.test(blob)) return true;
@@ -557,41 +703,22 @@ function isHeaderBackgroundDark(blob: string): boolean {
  * `<nav class="sticky|fixed … top-0 …">…</nav>` (modellen slaan soms `<header>` over).
  */
 export function sliceFirstSiteChromeNavBlock(html: string): { block: string; start: number; end: number } | null {
-  const walkBalanced = (openIndex: number, local: string): { block: string; start: number; end: number } | null => {
-    const tagRe = new RegExp(`<\\/?${local}\\b[^>]*>`, "gi");
-    tagRe.lastIndex = openIndex;
-    let depth = 0;
-    let m: RegExpExecArray | null;
-    while ((m = tagRe.exec(html)) !== null) {
-      const isClose = new RegExp(`^</${local}`, "i").test(m[0]);
-      if (isClose) depth -= 1;
-      else depth += 1;
-      if (depth === 0) {
-        return { block: html.slice(openIndex, m.index + m[0].length), start: openIndex, end: m.index + m[0].length };
-      }
-    }
-    return null;
-  };
-
-  const headerOpen = /<header\b[^>]*>/i.exec(html);
+  const headerOpen = /<header\b/i.exec(html);
   if (headerOpen?.index !== undefined) {
-    const w = walkBalanced(headerOpen.index, "header");
+    const w = walkBalancedSameLocalBlock(html, headerOpen.index, "header");
     if (w) return w;
   }
 
-  const bannerOpen = /<div\b[^>]*\brole\s*=\s*["']banner["'][^>]*>/i.exec(html);
-  if (bannerOpen?.index !== undefined) {
-    const w = walkBalanced(bannerOpen.index, "div");
+  const bannerIdx = findFirstBannerDivOpenIndex(html);
+  if (bannerIdx !== null) {
+    const w = walkBalancedSameLocalBlock(html, bannerIdx, "div");
     if (w) return w;
   }
 
   /** Eerste sticky/fixed top-balk als `<nav>` — anders geen `repairHeaderMobileMenuButton` / drawer-fix. */
-  const navChromeOpen =
-    /<nav\b[^>]*(?:\b(?:sticky|fixed)\b[^>]{0,360}?\btop-0\b|\btop-0\b[^>]{0,360}?\b(?:sticky|fixed)\b)[^>]*>/i.exec(
-      html,
-    );
-  if (navChromeOpen?.index !== undefined) {
-    const w = walkBalanced(navChromeOpen.index, "nav");
+  const navIdx = findFirstStickyNavChromeOpenIndex(html);
+  if (navIdx !== null) {
+    const w = walkBalancedSameLocalBlock(html, navIdx, "nav");
     if (w) return w;
   }
 
@@ -600,17 +727,38 @@ export function sliceFirstSiteChromeNavBlock(html: string): { block: string; sta
 
 function injectNavStateScopeOnChromeBlock(h: string, stateKey: string): string {
   const scopeAttrs = ` x-data="{ ${stateKey}: false }" @keydown.escape.window="${stateKey} = false"`;
-  let out = h.replace(/<header\b((?:(?!\bx-data\s*=)[^>])*)>/i, `<header$1${scopeAttrs}>`);
-  if (out !== h) return out;
-  out = h.replace(
-    /<div\b((?:(?!\bx-data\s*=)[^>])*\brole\s*=\s*["']banner["'](?:(?!\bx-data\s*=)[^>])*)>/i,
-    `<div$1${scopeAttrs}>`,
-  );
-  if (out !== h) return out;
+  const hi = h.search(/<header\b/i);
+  if (hi !== -1) {
+    const s = sliceOpenTagContent(h, hi);
+    if (s && !/\bx-data\s*=/i.test(s.attrs)) {
+      return `${h.slice(0, hi)}<${s.tagName}${s.attrs}${scopeAttrs}>${h.slice(s.end)}`;
+    }
+  }
+  let scan = 0;
+  while (scan < h.length) {
+    const rel = h.slice(scan);
+    const dm = /<div\b/gi.exec(rel);
+    if (!dm) break;
+    const abs = scan + dm.index;
+    const s = sliceOpenTagContent(h, abs);
+    if (!s) {
+      scan = abs + 4;
+      continue;
+    }
+    if (/\brole\s*=\s*["']banner["']/i.test(s.attrs) && !/\bx-data\s*=/i.test(s.attrs)) {
+      return `${h.slice(0, abs)}<${s.tagName}${s.attrs}${scopeAttrs}>${h.slice(s.end)}`;
+    }
+    scan = s.end;
+  }
   /** Alleen de **wortel**-nav (slice = hele `<nav>…</nav>`); niet de eerste `<nav>` ínside een `<header>`. */
   if (/^\s*<nav\b/i.test(h)) {
-    out = h.replace(/<nav\b((?:(?!\bx-data\s*=)[^>])*)>/i, `<nav$1${scopeAttrs}>`);
-    if (out !== h) return out;
+    const ni = h.search(/<nav\b/i);
+    if (ni !== -1) {
+      const s = sliceOpenTagContent(h, ni);
+      if (s && !/\bx-data\s*=/i.test(s.attrs)) {
+        return `${h.slice(0, ni)}<${s.tagName}${s.attrs}${scopeAttrs}>${h.slice(s.end)}`;
+      }
+    }
   }
   return injectNavStateScope(h, stateKey);
 }
@@ -639,7 +787,7 @@ export function alignChromeNavMdLgBreakpoints(html: string): string {
     .replace(/\bhidden\s+md:flex\b/gi, "hidden lg:flex")
     .replace(/\bhidden\s+md:inline-flex\b/gi, "hidden lg:inline-flex");
 
-  next = next.replace(/<([a-zA-Z][\w:-]*)(\s[^>]*)>/g, (full: string, tag: string, attrs: string) => {
+  next = replaceAllOpenTagsQuoteAware(next, (tagName, attrs, full) => {
     if (!/\bx-show\s*=/i.test(attrs)) return full;
     if (!/\bclass\s*=\s*["']/i.test(attrs) && !/\bclass\s*=\s*'/i.test(attrs)) return full;
     const showM = /\bx-show\s*=\s*["']([^"']*)["']/i.exec(attrs);
@@ -651,7 +799,7 @@ export function alignChromeNavMdLgBreakpoints(html: string): string {
       return `class=${q}${nc}${q}`;
     });
     if (replaced === attrs) return full;
-    return `<${tag}${replaced}>`;
+    return `<${tagName}${replaced}>`;
   });
 
   if (next === block) return html;
@@ -724,11 +872,7 @@ export function repairHeaderMobileMenuButton(html: string): string {
     if (needsIcon) {
       // Alleen de *chrome-root* (header, `div[role=banner]`, of wortel-`<nav>`) inspecteren voor achtergrondkleur —
       // niet de kinderen, anders detecteert een donkere drawer (`bg-stone-900`) de balk foutief als donker.
-      const chromeOpenTag =
-        /<header\b[^>]*>/i.exec(h)?.[0] ??
-        /<div\b[^>]*\brole\s*=\s*["']banner["'][^>]*>/i.exec(h)?.[0] ??
-        (/^\s*<nav\b/i.test(h) ? /<nav\b[^>]*>/i.exec(h)?.[0] : undefined) ??
-        "";
+      const chromeOpenTag = sliceFirstSiteChromeOpenTagFull(h);
       const blob = `${chromeOpenTag}\n${nextAttrs}`;
       const darkNav = isHeaderBackgroundDark(blob);
       if (!darkNav) {
@@ -1096,32 +1240,46 @@ export function stripStudioMarqueeMarkupFromHtml(html: string): string {
 }
 
 export function mergeDuplicateClassOnChromeTags(html: string): string {
-  return html.replace(/<(nav|header)(\s[^>]*?)>/gi, (full, tag: string, inner: string) => {
-    const doubleQuoted = [...inner.matchAll(/\bclass\s*=\s*"([^"]*)"/gi)];
-    const singleQuoted = [...inner.matchAll(/\bclass\s*=\s*'([^']*)'/gi)];
-    if (doubleQuoted.length + singleQuoted.length < 2) {
-      return full;
-    }
-    const parts: string[] = [];
-    for (const m of doubleQuoted) {
-      for (const p of m[1].split(/\s+/).filter(Boolean)) {
-        parts.push(p);
+  let out = html;
+  let guard = 0;
+  while (guard++ < 400) {
+    let changed = false;
+    for (const name of ["header", "nav"] as const) {
+      const re = new RegExp(`<${name}\\b`, "gi");
+      const m = re.exec(out);
+      if (!m) continue;
+      const s = sliceOpenTagContent(out, m.index);
+      if (!s || s.tagName.toLowerCase() !== name) continue;
+      const inner = s.attrs;
+      const doubleQuoted = [...inner.matchAll(/\bclass\s*=\s*"([^"]*)"/gi)];
+      const singleQuoted = [...inner.matchAll(/\bclass\s*=\s*'([^']*)'/gi)];
+      if (doubleQuoted.length + singleQuoted.length < 2) continue;
+      const parts: string[] = [];
+      for (const mq of doubleQuoted) {
+        for (const p of mq[1].split(/\s+/).filter(Boolean)) {
+          parts.push(p);
+        }
       }
-    }
-    for (const m of singleQuoted) {
-      for (const p of m[1].split(/\s+/).filter(Boolean)) {
-        parts.push(p);
+      for (const mq of singleQuoted) {
+        for (const p of mq[1].split(/\s+/).filter(Boolean)) {
+          parts.push(p);
+        }
       }
+      const merged = [...new Set(parts)].join(" ");
+      const without = inner
+        .replace(/\bclass\s*=\s*"[^"]*"/gi, " ")
+        .replace(/\bclass\s*=\s*'[^']*'/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const newInner = without.length > 0 ? `class="${merged}" ${without}` : `class="${merged}"`;
+      const newOpen = `<${s.tagName} ${newInner}>`;
+      out = `${out.slice(0, m.index)}${newOpen}${out.slice(s.end)}`;
+      changed = true;
+      break;
     }
-    const merged = [...new Set(parts)].join(" ");
-    const without = inner
-      .replace(/\bclass\s*=\s*"[^"]*"/gi, " ")
-      .replace(/\bclass\s*=\s*'[^']*'/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    const newInner = without.length > 0 ? `class="${merged}" ${without}` : `class="${merged}"`;
-    return `<${tag} ${newInner}>`;
-  });
+    if (!changed) break;
+  }
+  return out;
 }
 
 function tailwindClassHasZIndex(classStr: string): boolean {
@@ -1172,22 +1330,45 @@ function injectStickyIntoChromeOpenTag(tag: string, attrs: string): string {
  */
 export function injectStickyPrimaryChromeOnceInHtml(html: string): { html: string; applied: boolean } {
   if (!html) return { html, applied: false };
-  let applied = false;
-  const out = html.replace(/<(header|nav)\b([^>]*)>/gi, (full, tag: string, inner: string) => {
-    if (applied) return full;
-    const t = tag.toLowerCase();
-    const cls =
-      inner.match(/\bclass\s*=\s*"([^"]*)"/i)?.[1] ?? inner.match(/\bclass\s*=\s*'([^']*)'/i)?.[1] ?? "";
-    const clsTrim = cls.trim();
-    if (shouldSkipChromeTagForStickyInjection(t, clsTrim)) return full;
-    if (/\bsticky\b/i.test(clsTrim) && /\btop-0\b/.test(clsTrim) && tailwindClassHasZIndex(clsTrim)) {
-      applied = true;
-      return full;
+  let scan = 0;
+  while (scan < html.length) {
+    const rest = html.slice(scan);
+    const hi = rest.search(/<header\b/i);
+    const ni = rest.search(/<nav\b/i);
+    let nextIdx: number | null = null;
+    let which: "header" | "nav" | null = null;
+    if (hi !== -1 && (ni === -1 || hi < ni)) {
+      nextIdx = scan + hi;
+      which = "header";
+    } else if (ni !== -1) {
+      nextIdx = scan + ni;
+      which = "nav";
     }
-    applied = true;
-    return injectStickyIntoChromeOpenTag(tag, inner);
-  });
-  return { html: out, applied };
+    if (nextIdx === null || which === null) return { html, applied: false };
+    const s = sliceOpenTagContent(html, nextIdx);
+    if (!s) {
+      scan = nextIdx + 1;
+      continue;
+    }
+    const t = s.tagName.toLowerCase();
+    if (t !== which) {
+      scan = nextIdx + 1;
+      continue;
+    }
+    const cls =
+      s.attrs.match(/\bclass\s*=\s*"([^"]*)"/i)?.[1] ?? s.attrs.match(/\bclass\s*=\s*'([^']*)'/i)?.[1] ?? "";
+    const clsTrim = cls.trim();
+    if (shouldSkipChromeTagForStickyInjection(t, clsTrim)) {
+      scan = s.end;
+      continue;
+    }
+    if (/\bsticky\b/i.test(clsTrim) && /\btop-0\b/.test(clsTrim) && tailwindClassHasZIndex(clsTrim)) {
+      return { html, applied: true };
+    }
+    const nextOpen = injectStickyIntoChromeOpenTag(s.tagName, s.attrs);
+    return { html: `${html.slice(0, nextIdx)}${nextOpen}${html.slice(s.end)}`, applied: true };
+  }
+  return { html, applied: false };
 }
 
 type SectionRow = { id: string; html: string; name?: string };
@@ -1225,19 +1406,46 @@ function injectGentrixScrollNavMarkerIntoChromeOpenTag(tag: string, attrs: strin
  */
 export function injectGentrixScrollNavMarkerOnceInHtml(html: string): { html: string; applied: boolean } {
   if (!html) return { html, applied: false };
-  let applied = false;
-  const out = html.replace(/<(header|nav)\b([^>]*)>/gi, (full, tag: string, inner: string) => {
-    if (applied) return full;
-    const t = tag.toLowerCase();
+  let scan = 0;
+  while (scan < html.length) {
+    const rest = html.slice(scan);
+    const hi = rest.search(/<header\b/i);
+    const ni = rest.search(/<nav\b/i);
+    let nextIdx: number | null = null;
+    let which: "header" | "nav" | null = null;
+    if (hi !== -1 && (ni === -1 || hi < ni)) {
+      nextIdx = scan + hi;
+      which = "header";
+    } else if (ni !== -1) {
+      nextIdx = scan + ni;
+      which = "nav";
+    }
+    if (nextIdx === null || which === null) return { html, applied: false };
+    const s = sliceOpenTagContent(html, nextIdx);
+    if (!s) {
+      scan = nextIdx + 1;
+      continue;
+    }
+    const t = s.tagName.toLowerCase();
+    if (t !== which) {
+      scan = nextIdx + 1;
+      continue;
+    }
     const cls =
-      inner.match(/\bclass\s*=\s*"([^"]*)"/i)?.[1] ?? inner.match(/\bclass\s*=\s*'([^']*)'/i)?.[1] ?? "";
+      s.attrs.match(/\bclass\s*=\s*"([^"]*)"/i)?.[1] ?? s.attrs.match(/\bclass\s*=\s*'([^']*)'/i)?.[1] ?? "";
     const clsTrim = cls.trim();
-    if (shouldSkipChromeTagForStickyInjection(t, clsTrim)) return full;
-    if (!/\b(sticky|fixed)\b/i.test(clsTrim) || !/\btop-0\b/.test(clsTrim)) return full;
-    applied = true;
-    return injectGentrixScrollNavMarkerIntoChromeOpenTag(tag, inner);
-  });
-  return { html: out, applied };
+    if (shouldSkipChromeTagForStickyInjection(t, clsTrim)) {
+      scan = s.end;
+      continue;
+    }
+    if (!/\b(sticky|fixed)\b/i.test(clsTrim) || !/\btop-0\b/.test(clsTrim)) {
+      scan = s.end;
+      continue;
+    }
+    const nextOpen = injectGentrixScrollNavMarkerIntoChromeOpenTag(s.tagName, s.attrs);
+    return { html: `${html.slice(0, nextIdx)}${nextOpen}${html.slice(s.end)}`, applied: true };
+  }
+  return { html, applied: false };
 }
 
 export function enforceGentrixScrollNavMarkerAcrossSections(sections: SectionRow[]): SectionRow[] {

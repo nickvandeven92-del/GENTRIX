@@ -30,6 +30,18 @@ describe("alignChromeNavMdLgBreakpoints", () => {
     const html = `<header><div class="hidden lg:flex"></div><button class="lg:hidden gentrix-menu-repaired" @click="open = !open"></button></header>`;
     expect(alignChromeNavMdLgBreakpoints(html)).toBe(html);
   });
+
+  it("past breakpoint-tilt toe ook als `<header>` een `>` in een quoted attribuut heeft (@scroll.window)", () => {
+    const html = `<header class="sticky top-0 z-50" @scroll.window="open = window.scrollY > 10" x-data="{ open: false }">
+  <div class="hidden md:flex items-center gap-8"><a href="#a">A</a></div>
+  <button type="button" class="lg:hidden gentrix-menu-repaired" @click="open = !open"></button>
+  <div x-show="open" class="md:hidden absolute top-0 left-0 bg-white">links</div>
+</header>`;
+    const out = alignChromeNavMdLgBreakpoints(html);
+    expect(out).toContain("hidden lg:flex");
+    expect(out).toContain("lg:hidden absolute");
+    expect(out.match(/\bmd:hidden\b/g) ?? []).toHaveLength(0);
+  });
 });
 
 describe("buildGentrixMenuIconToggle", () => {
@@ -88,6 +100,22 @@ describe("sliceFirstSiteChromeNavBlock", () => {
     const out = repairHeaderMobileMenuButton(html);
     expect(out).toContain("gentrix-menu-icon");
     expect(out).toContain("@click");
+  });
+
+  it("snijdt `<header>` quote-aware af: geen tekstlek bij `>` binnen @scroll.window / :class", () => {
+    const html = `<header class="sticky top-0 z-50 text-white" @scroll.window="navScrolled = window.scrollY > 10" :class="{ 'bg-[#0f172a]/95 backdrop-blur-md': navScrolled }" x-data="{ navOpen: false }">
+  <button type="button" class="lg:hidden" aria-label="Menu"></button>
+  <div x-show="navOpen" class="md:hidden bg-white">m</div>
+</header><main>Body</main>`;
+    const s = sliceFirstSiteChromeNavBlock(html);
+    expect(s?.block.endsWith("</header>")).toBe(true);
+    expect(s?.block).toContain("navScrolled = window.scrollY > 10");
+    expect(s?.block).toContain(":class=");
+    expect(s?.block.includes("Body")).toBe(false);
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out.trimStart().match(/^<header\b/i)).toBeTruthy();
+    expect((out.match(/<header\b/gi) ?? []).length).toBe(1);
+    expect(out).toContain("gentrix-menu-icon");
   });
 });
 
