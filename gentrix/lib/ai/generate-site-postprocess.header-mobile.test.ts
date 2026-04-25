@@ -41,6 +41,16 @@ describe("sliceFirstSiteChromeNavBlock", () => {
     expect(s?.block.startsWith("<header")).toBe(true);
   });
 
+  it("valt terug op eerste sticky `<nav>` met `top-0` als er geen `<header>` is", () => {
+    const html = `<main></main><nav class="sticky top-0 z-50 bg-white w-full" x-data="{ navOpen: false }">
+  <button type="button" class="lg:hidden" aria-label="Menu"></button>
+</nav>`;
+    const s = sliceFirstSiteChromeNavBlock(html);
+    expect(s?.block.trimStart().toLowerCase().startsWith("<nav")).toBe(true);
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toContain("gentrix-menu-icon");
+  });
+
   it("valt terug op buitenste `<div role=\"banner\">` zonder `<header>`", () => {
     const html = `<div role="banner" class="sticky bg-black text-white" x-data="{ navOpen: false }">
   <div class="flex justify-between p-4"><span>Logo</span>
@@ -201,6 +211,26 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).toContain(`x-show="!menuOpen"`);
     expect(out).toContain(`x-show="menuOpen"`);
     expect(out).not.toContain("navOpen");
+  });
+
+  it("herkent menuknop met `flex items-center justify-center` zonder `gap-*` (veel AI-templates)", () => {
+    const html = `<header x-data="{ navOpen: false }" class="bg-white">
+  <button type="button" class="flex items-center justify-center lg:hidden w-10 h-10 rounded-lg" aria-label="Open menu"></button>
+  <div class="lg:hidden" x-show="navOpen" x-cloak><a href="#a">A</a></div>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toContain("gentrix-menu-icon");
+    expect(out).toContain("@click");
+  });
+
+  it("geeft score-boost op lege knop met bestaande @click-toggle (zonder aria/breakpoint)", () => {
+    const html = `<header x-data="{ navOpen: false }" class="bg-white">
+  <button type="button" class="p-2 rounded" @click="navOpen = !navOpen"></button>
+  <div class="lg:hidden" x-show="navOpen" x-cloak><a href="#a">A</a></div>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toContain("gentrix-menu-icon");
+    expect((out.match(/@click/g) ?? []).length).toBe(1);
   });
 });
 

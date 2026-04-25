@@ -277,6 +277,14 @@ function menuButtonHintScore(attrs: string): number {
   if (/\bclass\s*=\s*["'][^"']*(?:menu|hamburger|burger|nav-toggle|drawer-toggle|mobile-toggle)[^"']*["']/i.test(attrs)) {
     score += 5;
   }
+  /** Vaak al `@click` vóór reparatie; zonder lg:hidden/aria was de score te laag. */
+  if (
+    /(?:@click|x-on:click)\s*=\s*["'][^"']*\b(?:navOpen|menuOpen|mobileOpen|drawerOpen|sheetOpen)\s*=\s*!\s*(?:navOpen|menuOpen|mobileOpen|drawerOpen|sheetOpen)\b/i.test(
+      attrs,
+    )
+  ) {
+    score += 5;
+  }
   if (
     /\bclass\s*=\s*["'][^"']*(?:\bh-(?:8|9|10|11|12)\b|\bw-(?:8|9|10|11|12)\b|\bsize-(?:8|9|10|11|12)\b|\baspect-square\b)[^"']*["']/i.test(
       attrs,
@@ -497,11 +505,16 @@ function isLikelyHeaderMobileMenuButton(attrs: string): boolean {
   const hasBreakpointHide =
     /\b(?:lg|md|sm|xl|2xl):hidden\b/i.test(attrs) || /\bmax-(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs);
   const layoutish =
-    /\bflex\b/i.test(attrs) ||
+    /\b(?:inline-)?flex\b/i.test(attrs) ||
     /\bgrid\b/i.test(attrs) ||
     /\bitems-center\b/i.test(attrs) ||
     /\bjustify-(?:center|between|end)\b/i.test(attrs);
-  const spaced = /\bgap-/.test(attrs) || /\bspace-[xy]-/.test(attrs) || /\bplace-(?:content|items)-/.test(attrs);
+  /** Veel AI-menuknoppen: `flex items-center justify-center` zonder `gap-*` — oude `spaced`-plicht sloeg mis. */
+  const spaced =
+    /\bgap-/.test(attrs) ||
+    /\bspace-[xy]-/.test(attrs) ||
+    /\bplace-(?:content|items)-/.test(attrs) ||
+    (/\bitems-center\b/.test(attrs) && /\bjustify-(?:center|between|end)\b/.test(attrs));
   return (
     hasBreakpointHide &&
     /\baria-label\s*=\s*["'][^"']*(?:menu|Menu|enu|hamburger)/i.test(attrs) &&
@@ -540,8 +553,8 @@ function isHeaderBackgroundDark(blob: string): boolean {
 }
 
 /**
- * Eerste top-chrome in het fragment: `<header>…</header>` of buitenste `<div role="banner">…</div>`.
- * Zonder match faalt menu-reparatie volledig — veel AI-markup gebruikt alleen `role="banner"`.
+ * Eerste top-chrome: `<header>…</header>`, `<div role="banner">…</div>`, of **primaire**
+ * `<nav class="sticky|fixed … top-0 …">…</nav>` (modellen slaan soms `<header>` over).
  */
 export function sliceFirstSiteChromeNavBlock(html: string): { block: string; start: number; end: number } | null {
   const walkBalanced = (openIndex: number, local: string): { block: string; start: number; end: number } | null => {
@@ -572,6 +585,16 @@ export function sliceFirstSiteChromeNavBlock(html: string): { block: string; sta
     if (w) return w;
   }
 
+  /** Eerste sticky/fixed top-balk als `<nav>` — anders geen `repairHeaderMobileMenuButton` / drawer-fix. */
+  const navChromeOpen =
+    /<nav\b[^>]*(?:\b(?:sticky|fixed)\b[^>]{0,360}?\btop-0\b|\btop-0\b[^>]{0,360}?\b(?:sticky|fixed)\b)[^>]*>/i.exec(
+      html,
+    );
+  if (navChromeOpen?.index !== undefined) {
+    const w = walkBalanced(navChromeOpen.index, "nav");
+    if (w) return w;
+  }
+
   return null;
 }
 
@@ -584,11 +607,16 @@ function injectNavStateScopeOnChromeBlock(h: string, stateKey: string): string {
     `<div$1${scopeAttrs}>`,
   );
   if (out !== h) return out;
+  /** Alleen de **wortel**-nav (slice = hele `<nav>…</nav>`); niet de eerste `<nav>` ínside een `<header>`. */
+  if (/^\s*<nav\b/i.test(h)) {
+    out = h.replace(/<nav\b((?:(?!\bx-data\s*=)[^>])*)>/i, `<nav$1${scopeAttrs}>`);
+    if (out !== h) return out;
+  }
   return injectNavStateScope(h, stateKey);
 }
 
 /**
- * Normaliseert de mobiele menuknop in de eerste site-chrome (`<header>` of buitenste `<div role="banner">`):
+ * Normaliseert de mobiele menuknop in de eerste site-chrome (`<header>`, `div[role="banner"]`, of wortel-`<nav>`):
  *   - zorgt voor een `@click`-toggle op de juiste Alpine-state,
  *   - vervangt inhoud die géén echte hamburger↔× twee-staten-toggle is door de premium
  *     `gentrix-menu-icon` (drie streepjes ↔ kruisje, vloeiend overgaan).
@@ -651,10 +679,13 @@ export function repairHeaderMobileMenuButton(html: string): string {
       extraClasses.push("gentrix-menu-repaired");
     }
     if (needsIcon) {
-      // Alleen de *chrome-root* (header of `div[role=banner]`) inspecteren voor achtergrondkleur —
+      // Alleen de *chrome-root* (header, `div[role=banner]`, of wortel-`<nav>`) inspecteren voor achtergrondkleur —
       // niet de kinderen, anders detecteert een donkere drawer (`bg-stone-900`) de balk foutief als donker.
       const chromeOpenTag =
-        /<header\b[^>]*>/i.exec(h)?.[0] ?? /<div\b[^>]*\brole\s*=\s*["']banner["'][^>]*>/i.exec(h)?.[0] ?? "";
+        /<header\b[^>]*>/i.exec(h)?.[0] ??
+        /<div\b[^>]*\brole\s*=\s*["']banner["'][^>]*>/i.exec(h)?.[0] ??
+        (/^\s*<nav\b/i.test(h) ? /<nav\b[^>]*>/i.exec(h)?.[0] : undefined) ??
+        "";
       const blob = `${chromeOpenTag}\n${nextAttrs}`;
       const darkNav = isHeaderBackgroundDark(blob);
       if (!darkNav) {
