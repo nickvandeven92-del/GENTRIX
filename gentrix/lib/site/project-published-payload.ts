@@ -3,6 +3,7 @@ import {
   normalizeGenerationPackageId,
   type GenerationPackageId,
 } from "@/lib/ai/generation-packages";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { ReactSiteDocument } from "@/lib/site/react-site-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
@@ -35,6 +36,8 @@ export type PublishedSitePayload =
       contactSections?: TailwindSection[];
       /** Subroutes `/site/{slug}/<key>`. */
       marketingPages?: Record<string, TailwindSection[]>;
+      /** Denklijn-contract wanneer in snapshot/JSON opgenomen — server infer nav-preset. */
+      designContract?: DesignGenerationContract;
     }
   | {
       kind: "react";
@@ -87,6 +90,7 @@ export function publishedPayloadFromParsed(
       ...(parsed.marketingPages != null && Object.keys(parsed.marketingPages).length > 0
         ? { marketingPages: parsed.marketingPages }
         : {}),
+      ...(parsed.designContract != null ? { designContract: parsed.designContract } : {}),
     };
   }
   if (parsed.kind === "react") {

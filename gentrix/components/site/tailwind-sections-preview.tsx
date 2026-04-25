@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type CSSProperties,
 } from "react";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import {
@@ -97,6 +98,7 @@ type TailwindSectionsPreviewProps = {
   iframeDocumentPathname?: string | null;
   /** Zet `STUDIO_HTML_EDITOR_IFRAME_NAV` i.p.v. `studio-public-nav` in het iframe. */
   studioHtmlEditorParentNav?: boolean;
+  designContract?: DesignGenerationContract | null;
 };
 
 export function TailwindSectionsPreview({
@@ -124,6 +126,7 @@ export function TailwindSectionsPreview({
   contactSubpageNavForHtmlEditor = null,
   iframeDocumentPathname: iframeDocumentPathnameProp = null,
   studioHtmlEditorParentNav = false,
+  designContract = null,
 }: TailwindSectionsPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -189,6 +192,7 @@ export function TailwindSectionsPreview({
         userCss,
         userJs,
         logoSet,
+        designContract: designContract ?? undefined,
         publishedSlug: publishedSlug?.trim(),
         draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
         appointmentsEnabled,
@@ -225,6 +229,7 @@ export function TailwindSectionsPreview({
       contactSubpageNavForHtmlEditor,
       iframeDocumentPathnameProp,
       studioHtmlEditorParentNav,
+      designContract,
     ],
   );
 

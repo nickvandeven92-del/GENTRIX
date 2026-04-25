@@ -107,6 +107,7 @@ export default async function PortalWebsitePage({ params }: Props) {
           logoSet={draftPayload.logoSet}
           compiledTailwindCss={draftPayload.tailwindCompiledCss}
           publicSiteUrl={publicSiteAbsoluteUrl}
+          designContract={draftPayload.designContract}
         />
       ) : (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">

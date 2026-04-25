@@ -245,6 +245,7 @@ export function PublishedSiteView({
               webshopEnabled={webshopEnabled}
               ssrSrcDoc={null}
               contactSubpageNavBase={contactNavBase}
+              designContract={payload.designContract}
               previewPostMessageBridge
               autoResizeFromPostMessage
               documentHeightMode="panel"
@@ -283,6 +284,7 @@ export function PublishedSiteView({
             appointmentsEnabled={appointmentsEnabled}
             webshopEnabled={webshopEnabled}
             contactSubpageNavBase={contactNavBase}
+            designContract={payload.designContract}
             prettyPublicUrls={prettyPublicUrls}
             relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
             flyerPreview={flyerPreview}
@@ -317,6 +319,7 @@ export function PublishedSiteView({
           webshopEnabled={webshopEnabled}
           ssrSrcDoc={null}
           contactSubpageNavBase={contactNavBase}
+          designContract={payload.designContract}
         />
       </div>
     );

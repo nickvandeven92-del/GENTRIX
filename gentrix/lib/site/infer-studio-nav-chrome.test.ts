@@ -21,6 +21,7 @@ describe("inferStudioNavChromeFromSections", () => {
     const cfg = inferStudioNavChromeFromSections(sections);
     expect(cfg?.brandLabel).toBe("GENTRIX");
     expect(cfg?.variant).toBe("pill");
+    expect(cfg?.navVisualPreset).toBe("floatingPill");
     expect(cfg?.items.map((x) => x.label)).toEqual(["Wat wij doen"]);
     expect(cfg?.cta?.label).toBe("Contact");
   });

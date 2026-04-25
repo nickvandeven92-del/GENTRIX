@@ -280,6 +280,16 @@ export function clampUnknownContractForSchemaParse(contract: unknown): unknown {
   return root;
 }
 
+/**
+ * Parse een opgeslagen JSON-waarde (Denklijn / snapshot / API) naar een geldig contract.
+ * Ongeldige of ontbrekende data → `null` (geen throw — backwards compatible reads).
+ */
+export function parseDesignContractFromStoredJson(raw: unknown): DesignGenerationContract | null {
+  if (raw == null) return null;
+  const r = designGenerationContractSchema.safeParse(clampUnknownContractForSchemaParse(raw));
+  return r.success ? r.data : null;
+}
+
 export type { SiteSignature } from "@/lib/ai/site-signature-schema";
 export { SITE_SIGNATURE_ARCHETYPE_LABELS } from "@/lib/ai/site-signature-schema";
 

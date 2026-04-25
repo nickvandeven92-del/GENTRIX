@@ -1,4 +1,5 @@
 import type { MasterPromptTheme } from "@/lib/ai/tailwind-sections-schema";
+import type { NavVisualContract } from "@/lib/site/studio-nav-visual-presets";
 
 function sanitizeHex(input: string | undefined, fallback: string): string {
   const t = (input ?? "").trim();
@@ -20,12 +21,6 @@ function parseRgb(hex: string): { r: number; g: number; b: number } {
   return { r, g, b };
 }
 
-/** Perceptuele helderheid 0–255 (BT.601), voor licht/donker keuze nav-chrome. */
-function luminance01(hex: string): number {
-  const { r, g, b } = parseRgb(hex);
-  return r * 0.299 + g * 0.587 + b * 0.114;
-}
-
 function rgbaFromHex(hex: string, alpha: number): string {
   const { r, g, b } = parseRgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
@@ -41,54 +36,92 @@ const RADIUS_MAP: Record<string, string> = {
   full: "rounded-full",
 };
 
-const BAR_BOTTOM_RADIUS_MAP: Record<string, string> = {
-  none: "",
-  sm: "rounded-b-sm",
-  md: "rounded-b-md",
-  lg: "rounded-b-lg",
-  xl: "rounded-b-xl",
-  "2xl": "rounded-b-2xl",
-  full: "rounded-b-3xl",
+export type StudioNavChromeTone = {
+  barHostStyle: string;
+  pillHostStyle: string;
+  /** Donkere shell (licht op tekst). */
+  isDarkChrome: boolean;
+  pillRadiusClass: string;
+  barBottomRadiusClass: string;
+  /** Tailwind shadow-* op host (bar of pill). */
+  hostShadowClass: string;
 };
 
-export type StudioNavChromeTone = {
-  /** Volledige `style=""` voor bar-variant host. */
-  barHostStyle: string;
-  /** Volledige `style=""` voor pill-variant host. */
-  pillHostStyle: string;
-  /** `true` = lichte tekst op primary-tint chrome. */
-  isDarkChrome: boolean;
-  /** Afgeronde hoeken pill i.h.a. `theme.borderRadius`. */
-  pillRadiusClass: string;
-  /** Onderhoeken bar (subtiel); leeg string = geen extra rounding. */
-  barBottomRadiusClass: string;
-};
+function hostShadowClass(shadow: NavVisualContract["shadow"]): string {
+  if (shadow === "soft") return "shadow-sm";
+  if (shadow === "medium") return "shadow-md";
+  return "";
+}
+
+function borderBottomCss(
+  visual: NavVisualContract,
+  primary: string,
+  accent: string,
+  isDarkChrome: boolean,
+): string {
+  if (visual.border === "none") return "border-bottom:none";
+  if (visual.border === "accent") return `border-bottom:2px solid ${accent}`;
+  /* subtle */
+  const line = isDarkChrome ? "rgba(255,255,255,0.14)" : rgbaFromHex(primary, 0.22);
+  return `border-bottom:1px solid ${line}`;
+}
 
 /**
- * Kleuren afgeleid van `config.theme` zodat studio-nav bij de rest van de site past.
+ * Kleuren + shell volgens `theme` en het **visuele contract** (preset + overrides).
  */
-export function buildStudioNavChromeTone(theme: MasterPromptTheme | null | undefined): StudioNavChromeTone {
+export function buildStudioNavChromeTone(
+  theme: MasterPromptTheme | null | undefined,
+  visual: NavVisualContract,
+): StudioNavChromeTone {
   const primary = sanitizeHex(theme?.primary, "#0f172a");
   const accent = sanitizeHex(theme?.accent, "#d4a853");
-  const lum = luminance01(primary);
-  const isDarkChrome = lum < 145;
+  const isDarkChrome = visual.surface === "dark";
 
   const fg = isDarkChrome ? "rgba(248,250,252,0.96)" : "rgba(15,23,42,0.94)";
   const fgMuted = isDarkChrome ? "rgba(248,250,252,0.82)" : "rgba(15,23,42,0.78)";
   const fgHover = isDarkChrome ? "#ffffff" : "#0f172a";
 
-  /** Iets hogere dekking i.p.v. `backdrop-blur` op de host: blur + scrollende content gaf een “tweede balk”-naad. */
-  const barBg = isDarkChrome ? rgbaFromHex(primary, 0.9) : "rgba(255,255,255,0.92)";
-  const pillBg = isDarkChrome ? rgbaFromHex(primary, 0.88) : "rgba(255,255,255,0.92)";
-  const barBorder = isDarkChrome ? "rgba(255,255,255,0.14)" : rgbaFromHex(primary, 0.22);
+  let barBg: string;
+  let pillBg: string;
+  let blur = "";
+
+  if (visual.surface === "dark") {
+    barBg = rgbaFromHex(primary, 0.9);
+    pillBg = rgbaFromHex(primary, 0.88);
+  } else if (visual.surface === "glass") {
+    barBg = "rgba(255,255,255,0.68)";
+    pillBg = "rgba(255,255,255,0.72)";
+    blur = "backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);";
+  } else if (visual.surface === "transparent") {
+    barBg = "transparent";
+    pillBg = "rgba(255,255,255,0.06)";
+  } else {
+    barBg = "rgba(255,255,255,0.92)";
+    pillBg = "rgba(255,255,255,0.92)";
+  }
+
   const pillBorder = isDarkChrome ? "rgba(255,255,255,0.18)" : rgbaFromHex(primary, 0.28);
-  const sheetBg = isDarkChrome ? rgbaFromHex(primary, 0.94) : "rgba(255,255,255,0.97)";
+  const sheetBg =
+    visual.surface === "glass"
+      ? "rgba(255,255,255,0.94)"
+      : visual.surface === "transparent"
+        ? "rgba(255,255,255,0.96)"
+        : isDarkChrome
+          ? rgbaFromHex(primary, 0.94)
+          : "rgba(255,255,255,0.97)";
   const sheetBorder = isDarkChrome ? "rgba(255,255,255,0.12)" : rgbaFromHex(primary, 0.12);
   const hoverUi = isDarkChrome ? "rgba(255,255,255,0.1)" : rgbaFromHex(primary, 0.08);
 
   const brToken = theme?.borderRadius ?? "lg";
   const pillRadiusClass = RADIUS_MAP[brToken] ?? RADIUS_MAP.lg;
-  const barBottomRadiusClass = BAR_BOTTOM_RADIUS_MAP[brToken] ?? BAR_BOTTOM_RADIUS_MAP.lg;
+  const barBottomRadiusClass = "";
+  const borderBar = borderBottomCss(visual, primary, accent, isDarkChrome);
+  const borderPill =
+    visual.border === "none"
+      ? "border:1px solid transparent"
+      : visual.border === "accent"
+        ? `border:1px solid ${accent}`
+        : `border:1px solid ${pillBorder}`;
 
   const cssVars = [
     `--studio-nav-fg:${fg}`,
@@ -100,8 +133,15 @@ export function buildStudioNavChromeTone(theme: MasterPromptTheme | null | undef
     `--studio-nav-sheet-border:${sheetBorder}`,
   ].join(";");
 
-  const barHostStyle = `border-bottom:1px solid ${barBorder};background:${barBg};color:${fg};${cssVars}`;
-  const pillHostStyle = `border:1px solid ${pillBorder};background:${pillBg};color:${fg};box-shadow:0 10px 40px -12px ${rgbaFromHex(primary, 0.35)};${cssVars}`;
+  const barHostStyle = `${borderBar};background:${barBg};color:${fg};${blur}${cssVars}`;
+  const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars}`;
 
-  return { barHostStyle, pillHostStyle, isDarkChrome, pillRadiusClass, barBottomRadiusClass };
+  return {
+    barHostStyle,
+    pillHostStyle,
+    isDarkChrome,
+    pillRadiusClass,
+    barBottomRadiusClass,
+    hostShadowClass: hostShadowClass(visual.shadow),
+  };
 }

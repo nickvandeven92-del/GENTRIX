@@ -1,3 +1,4 @@
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import {
   isLegacyTailwindPageConfig,
   type TailwindPageConfig,
@@ -21,6 +22,7 @@ import {
   STUDIO_NAV_SCROLL_CONTRAST_CSS,
   STUDIO_NAV_SCROLL_DIM_CSS,
   STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS,
+  STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS,
   STUDIO_NAV_SCROLL_CONTRAST_SCRIPT,
   STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT,
   STUDIO_SCROLL_REVEAL_SCRIPT,
@@ -77,6 +79,8 @@ export type StandaloneExportUserAssets = {
     appointmentsEnabled: boolean;
     webshopEnabled: boolean;
   };
+  /** Denklijn-contract wanneer bekend — zelfde studio-nav infer als live/iframe. */
+  designContract?: DesignGenerationContract | null;
 };
 
 /**
@@ -105,6 +109,7 @@ export function buildStandaloneExportHtmlDocument(
 
   let bodyInner = buildTailwindSectionsBodyInnerHtml(sectionSource, pageConfig, {
     logoSet: userAssets?.logoSet,
+    designContract: userAssets?.designContract ?? null,
   });
 
   if (!forScan && publish && publish.subfolderSlug.trim()) {
@@ -180,6 +185,7 @@ export function buildStandaloneExportHtmlDocument(
     ${STUDIO_NAV_SCROLL_CONTRAST_CSS}
     ${STUDIO_NAV_SCROLL_DIM_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
+    ${STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
     ${STUDIO_SITE_CREDIT_VARIANT_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}

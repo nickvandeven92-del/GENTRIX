@@ -379,10 +379,15 @@ export function GeneratorForm({
     const base = activeStudioPreviewPayload;
     if (!base || base.kind !== "tailwind") return base;
     const mergedCss = generatorPreviewCompiledCss?.trim() || base.tailwindCompiledCss?.trim();
-    if (!mergedCss) return base;
-    if (base.tailwindCompiledCss?.trim() === mergedCss) return base;
-    return { ...base, tailwindCompiledCss: mergedCss };
-  }, [activeStudioPreviewPayload, generatorPreviewCompiledCss]);
+    const withCss =
+      mergedCss && base.tailwindCompiledCss?.trim() !== mergedCss
+        ? { ...base, tailwindCompiledCss: mergedCss }
+        : base;
+    if (designContract != null) {
+      return { ...withCss, designContract };
+    }
+    return withCss;
+  }, [activeStudioPreviewPayload, generatorPreviewCompiledCss, designContract]);
 
   const previewIsStreaming = Boolean(streamEndedWithoutComplete && streamingSections.length > 0);
   const previewPendingUntilComplete = Boolean(loading && !generatedTailwind && !streamEndedWithoutComplete);

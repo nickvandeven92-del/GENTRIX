@@ -29,6 +29,7 @@ import {
   type TokenOverrideKey,
 } from "@/lib/site/project-snapshot-tokens";
 import { buildSiteIrV1, siteIrV1Schema } from "@/lib/site/site-ir-schema";
+import { designGenerationContractSchema } from "@/lib/ai/design-generation-contract";
 
 // Re-export voor consumers
 export { TOKEN_OVERRIDE_KEYS, tokenOverrideKeySchema, type TokenOverrideKey } from "@/lib/site/project-snapshot-tokens";
@@ -189,6 +190,11 @@ export const projectSnapshotSchema = z
     generation: generationContextSchema,
     /** Site IR v1: blueprint + primaire pagina + module-slots + canonieke volgorde (gesynchroniseerd met `composition`). */
     siteIr: siteIrV1Schema.optional(),
+    /**
+     * Optioneel Denklijn-contract (alleen gevalideerde shape) — o.a. server-side nav-preset infer bij render.
+     * Oude snapshots zonder dit veld blijven geldig.
+     */
+    designContract: designGenerationContractSchema.optional(),
   })
   .strict();
 

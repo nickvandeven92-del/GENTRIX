@@ -17,6 +17,7 @@ import { snapshotPageTypeSchema } from "@/lib/site/snapshot-page-type";
 import { SNAPSHOT_TAILWIND_COMPILED_CSS_MAX } from "@/lib/site/project-snapshot-constants";
 import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
 import { z } from "zod";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 
 export type ParsedStoredSite =
   | { kind: "legacy"; site: GeneratedSite }
@@ -36,6 +37,8 @@ export type ParsedStoredSite =
       siteIr?: SiteIrV1;
       contactSections?: TailwindSection[];
       marketingPages?: Record<string, TailwindSection[]>;
+      /** Denklijn-contract wanneer aanwezig in snapshot/site-JSON — nav-preset infer server-side. */
+      designContract?: DesignGenerationContract;
     };
 
 /** Secties + optionele config zonder `format: "tailwind_sections"` (sommige handmatige exports). */
@@ -79,6 +82,7 @@ function tailwindParsedFromSnapshotFlow(input: unknown): ParsedStoredSite | null
     ...(tw.marketingPages != null && Object.keys(tw.marketingPages).length > 0
       ? { marketingPages: tw.marketingPages }
       : {}),
+    ...(snap.designContract != null ? { designContract: snap.designContract } : {}),
   };
 }
 

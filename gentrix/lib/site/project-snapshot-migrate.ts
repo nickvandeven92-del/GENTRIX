@@ -21,6 +21,7 @@ import {
   siteIrV1Schema,
 } from "@/lib/site/site-ir-schema";
 import { slugify } from "@/lib/slug";
+import { parseDesignContractFromStoredJson } from "@/lib/ai/design-generation-contract";
 import { LAYOUT_PRESET_IDS } from "@/lib/site/project-snapshot-layout";
 import { CONTENT_DENSITY_VALUES } from "@/lib/site/project-snapshot-layout";
 import { SNAPSHOT_PAGE_TYPES } from "@/lib/site/snapshot-page-type";
@@ -225,6 +226,8 @@ export function upgradeLooseProjectSnapshotV1(
   }
   siteIr = ensureSiteIrStandardModuleRoutes(siteIr);
 
+  const designContract = parseDesignContractFromStoredJson(raw.designContract ?? raw.design_contract_json);
+
   return {
     format,
     meta,
@@ -238,6 +241,7 @@ export function upgradeLooseProjectSnapshotV1(
     editor,
     generation,
     siteIr,
+    ...(designContract != null ? { designContract } : {}),
   };
 }
 

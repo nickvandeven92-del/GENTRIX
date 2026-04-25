@@ -3,6 +3,7 @@ import {
   buildDesignContractPromptInjection,
   clampUnknownContractForSchemaParse,
   designGenerationContractSchema,
+  parseDesignContractFromStoredJson,
 } from "@/lib/ai/design-generation-contract";
 
 const sampleAxes = {
@@ -260,5 +261,28 @@ describe("buildDesignContractPromptInjection", () => {
     expect(block).toContain("REFERENCE VISUAL AXES");
     expect(block).toContain("layoutRhythm");
     expect(block).toContain("https://ref.example/");
+  });
+});
+
+describe("parseDesignContractFromStoredJson", () => {
+  it("retourneert null voor null/undefined", () => {
+    expect(parseDesignContractFromStoredJson(null)).toBeNull();
+    expect(parseDesignContractFromStoredJson(undefined)).toBeNull();
+  });
+
+  it("parset geldige JSON naar contract", () => {
+    const raw = {
+      heroVisualSubject: "Valid hero subject line here",
+      paletteMode: "light",
+      imageryMustReflect: ["trust"],
+      motionLevel: "subtle",
+    };
+    const c = parseDesignContractFromStoredJson(raw);
+    expect(c).not.toBeNull();
+    expect(c?.paletteMode).toBe("light");
+  });
+
+  it("retourneert null bij ongeldige payload", () => {
+    expect(parseDesignContractFromStoredJson({ not: "a contract" })).toBeNull();
   });
 });

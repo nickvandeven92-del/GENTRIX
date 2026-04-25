@@ -184,6 +184,13 @@ export const masterPromptPageConfigSchema = z.object({
 export type MasterPromptPageConfig = z.infer<typeof masterPromptPageConfigSchema>;
 
 export type { StudioNavChromeConfig, StudioNavLink } from "@/lib/site/studio-nav-chrome-schema";
+export type {
+  NavVisualAllowedOverrides,
+  NavVisualContract,
+  NavVisualPresetId,
+  /** @deprecated */ StudioNavVisualContract,
+  /** @deprecated */ StudioNavVisualOverrides,
+} from "@/lib/site/studio-nav-visual-presets";
 
 /** Uitgebreid theme-object (optionele velden) zoals Claude het in \`config.theme\` mag vullen. */
 export type MasterPromptTheme = z.infer<typeof masterPromptThemeSchema>;

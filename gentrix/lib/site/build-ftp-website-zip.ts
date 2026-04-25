@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildStandaloneExportHtmlDocument, STANDALONE_EXPORT_README_NL } from "@/lib/site/build-standalone-export-html";
@@ -20,6 +21,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
   subfolderSlug: string;
   appointmentsEnabled: boolean;
   webshopEnabled: boolean;
+  designContract?: DesignGenerationContract | null;
 }): Promise<Buffer> {
   const {
     projectRoot,
@@ -32,6 +34,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
     subfolderSlug,
     appointmentsEnabled,
     webshopEnabled,
+    designContract,
   } = options;
 
   const scanHtml = buildStandaloneExportHtmlDocument(sections, config, docTitle, "local_css", {
@@ -40,6 +43,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
     logoSet,
     forTailwindClassScan: true,
     faviconIdentity: { displayName: docTitle, slug: subfolderSlug },
+    designContract: designContract ?? null,
   });
   const stylesCss = await buildTailwindCompiledCssFromIndexHtml(projectRoot, scanHtml);
 
@@ -52,6 +56,7 @@ export async function buildFtpWebsiteZipBuffer(options: {
       appointmentsEnabled,
       webshopEnabled,
     },
+    designContract: designContract ?? null,
   });
   const bundled = await bundleRemoteImagesForExport(html);
   html = bundled.html;

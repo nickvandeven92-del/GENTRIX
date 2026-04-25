@@ -107,8 +107,10 @@ export function inferStudioNavChromeFromSections(sections: readonly TailwindSect
 
   if (navItems.length === 0) return null;
 
+  const variant = pickVariantFromChrome(chrome);
   const raw: StudioNavChromeConfig = {
-    variant: pickVariantFromChrome(chrome),
+    variant,
+    navVisualPreset: variant === "pill" ? "floatingPill" : "minimalLight",
     brandLabel: brand.label.slice(0, 120),
     brandHref: brand.href,
     items: navItems.slice(0, 16),

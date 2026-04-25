@@ -1,12 +1,14 @@
 /**
  * **Alleen prompttekst** voor het AI-model: voorbeeld-markup en -gedrag.
- * Geen React/componenten, geen runtime registry, geen `studioNav`-schema hier, geen server-renderer —
- * dat zit in `lib/site/render-studio-nav-chrome-html.ts`, `infer-studio-nav-chrome.ts` en
- * `buildTailwindSectionsBodyInnerHtml`. Dit bestand beïnvloedt alleen instructies aan Claude.
+ * Geen React/componenten, geen `studioNav`-schema hier — runtime preset-registry staat in
+ * `lib/site/studio-nav-visual-presets.ts`; renderer in `lib/site/render-studio-nav-chrome-html.ts`,
+ * `infer-studio-nav-chrome.ts`, `buildTailwindSectionsBodyInnerHtml`. Dit bestand beïnvloedt alleen instructies aan Claude.
  *
  * Alleen relevant als de primaire `<header>` **niet** door de studio wordt vervangen (legacy-config,
  * of master-Tailwind waar infer te weinig links vindt en de AI-nav blijft staan).
  * Houd synchroon met `STUDIO_NAV_SCROLL_DIM_CSS` in `lib/site/tailwind-page-html.ts`.
+ * Declaratieve shell (`studioNav`): runtime-presets in `lib/site/studio-nav-visual-presets.ts` (`navVisualPreset` + overrides);
+ * renderer: `render-studio-nav-chrome-html.ts`.
  */
 export function getStudioNavChromePatternLibraryPromptBlock(): string {
   return `=== NAV-CHROME BIBLIOTHEEK (alleen legacy / geen declaratieve vervanging) ===

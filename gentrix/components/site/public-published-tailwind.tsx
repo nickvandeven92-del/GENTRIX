@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
@@ -60,6 +61,8 @@ type PublicPublishedTailwindProps = {
   contactSubpageNavBase?: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null;
   /** Korte merknaam (klantnaam) voor favicon/shell; niet `documentTitle` met subpagina-suffix. */
   navBrandLabel?: string | null;
+  /** Denklijn-contract wanneer beschikbaar — zelfde nav-preset infer als live payload. */
+  designContract?: DesignGenerationContract | null;
   /**
    * Server-side pre-computed srcDoc (RSC via `NEXT_PUBLIC_SITE_URL`).
    * Als gezet: iframe verschijnt direct bij eerste paint zonder client-side JS-build.
@@ -107,6 +110,7 @@ export function PublicPublishedTailwind({
   webshopEnabled = true,
   contactSubpageNavBase = null,
   navBrandLabel = null,
+  designContract = null,
   ssrSrcDoc = null,
   previewPostMessageBridge = false,
   autoResizeFromPostMessage = false,
@@ -236,6 +240,7 @@ export function PublicPublishedTailwind({
           userCss,
           userJs,
           logoSet,
+          designContract: designContract ?? undefined,
           publishedSlug: publishedSlug?.trim(),
           draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
           appointmentsEnabled,
@@ -294,6 +299,7 @@ export function PublicPublishedTailwind({
     visibility,
     previewPostMessageBridge,
     studioIframeDesktopViewport,
+    designContract,
   ]);
 
   const useStudioDesktopIframe = Boolean(studioIframeDesktopViewport && !embedded);

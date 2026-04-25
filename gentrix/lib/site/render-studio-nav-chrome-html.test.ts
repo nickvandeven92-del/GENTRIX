@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { MasterPromptPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import { buildTailwindSectionsBodyInnerHtml } from "@/lib/site/tailwind-page-html";
 import {
@@ -45,6 +46,7 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain('data-studio-nav-chrome="1"');
     expect(html).toContain('data-gentrix-scroll-nav="1"');
     expect(html).toContain("gentrix-menu-icon");
+    expect(html).toContain("studio-nav-chrome-menu-btn");
     expect(html).toContain("fixed top-0");
     expect(html).toContain("studio-nav-chrome-spacer");
     expect(html).toContain("@click.outside");
@@ -52,6 +54,24 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).not.toContain("@scroll.window");
     expect(html).not.toContain("backdrop-blur-md");
     expect(html).toMatch(/style="[^"]*--studio-nav-accent:#ca8a04/);
+  });
+
+  it("luxuryGold preset: solide CTA + preset data-attribuut", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "bar",
+        navVisualPreset: "luxuryGold",
+        brandLabel: "X",
+        brandHref: "#top",
+        items: [{ label: "A", href: "#a" }],
+        cta: { label: "Contact", href: "#contact" },
+      },
+      { primary: "#0f172a", accent: "#ca8a04" },
+    );
+    expect(html).toContain('data-studio-nav-preset="luxuryGold"');
+    expect(html).toContain("border-[color:var(--studio-nav-accent)]");
+    expect(html).toMatch(/border-bottom:2px solid #ca8a04/i);
+    expect(html).toMatch(/background:rgba\(15,\s*23,\s*42/i);
   });
 });
 
@@ -93,5 +113,91 @@ describe("buildTailwindSectionsBodyInnerHtml + studioNav", () => {
     expect(body).not.toContain(">AI<");
     expect(body).toContain("Body");
     expect(body).toContain('data-section="hero"');
+  });
+
+  it("designContract glass_blur → glass nav host (backdrop blur)", () => {
+    const pageConfig = minimalMasterConfig({
+      variant: "bar",
+      brandLabel: "Brand",
+      brandHref: "#top",
+      items: [{ label: "Home", href: "#top" }],
+      cta: { label: "Contact", href: "#contact" },
+    });
+    const sections: TailwindSection[] = [
+      { sectionName: "hero", html: `<main id="hero"><p>Body</p></main>` },
+    ];
+    const dc = {
+      heroVisualSubject: "Product UI with frosted panels and depth",
+      paletteMode: "light",
+      imageryMustReflect: ["clarity"],
+      motionLevel: "subtle",
+      referenceVisualAxes: {
+        layoutRhythm: "balanced",
+        themeMode: "light",
+        paletteIntent: "Light neutral surfaces with soft separation",
+        typographyDirection: "sans_modern",
+        heroComposition: "Centered product mockup with headline",
+        sectionDensity: "medium",
+        motionStyle: "static_minimal",
+        borderTreatment: "none_minimal",
+        cardStyle: "glass_blur",
+      },
+    } as DesignGenerationContract;
+    const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, { designContract: dc });
+    expect(body).toContain("backdrop-filter:blur");
+  });
+
+  it("designContract editorial_mosaic → transparent bar background", () => {
+    const pageConfig = minimalMasterConfig({
+      variant: "bar",
+      brandLabel: "Studio",
+      brandHref: "#top",
+      items: [{ label: "Werk", href: "#werk" }],
+    });
+    const sections: TailwindSection[] = [
+      { sectionName: "hero", html: `<main id="hero"><p>Inhoud</p></main>` },
+    ];
+    const dc = {
+      heroVisualSubject: "Editorial layout for an independent magazine",
+      paletteMode: "light",
+      imageryMustReflect: ["editorial"],
+      motionLevel: "subtle",
+      referenceVisualAxes: {
+        layoutRhythm: "editorial_mosaic",
+        themeMode: "light",
+        paletteIntent: "Paper white with ink contrast and thin rules",
+        typographyDirection: "serif_editorial",
+        heroComposition: "Full-bleed image with overlaid headline",
+        sectionDensity: "sparse",
+        motionStyle: "static_minimal",
+        borderTreatment: "none_minimal",
+        cardStyle: "flat",
+      },
+    } as DesignGenerationContract;
+    const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, { designContract: dc });
+    expect(body).toMatch(/background:\s*transparent/i);
+  });
+
+  it("designContract luxury tone → outline CTA + donkere shell (luxuryGold)", () => {
+    const pageConfig = minimalMasterConfig({
+      variant: "bar",
+      brandLabel: "Maison",
+      brandHref: "#top",
+      items: [{ label: "Collectie", href: "#collectie" }],
+      cta: { label: "Afspraak", href: "#contact" },
+    });
+    const sections: TailwindSection[] = [
+      { sectionName: "hero", html: `<main id="hero"><p>Welkom</p></main>` },
+    ];
+    const dc = {
+      heroVisualSubject: "Boutique hospitality brand with premium positioning",
+      paletteMode: "light",
+      imageryMustReflect: ["warmth"],
+      motionLevel: "subtle",
+      toneSummary: "Luxury boutique hotel with understated premium cues",
+    } as DesignGenerationContract;
+    const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, { designContract: dc });
+    expect(body).toContain("rgba(15,23,42,0.9)");
+    expect(body).toMatch(/border border-\[color:var\(--studio-nav-accent\)\]/);
   });
 });

@@ -1,3 +1,4 @@
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import Script from "next/script";
 import { publishedTailwindInlineHtmlShellAttrs } from "@/lib/site/studio-site-shell";
@@ -60,6 +61,7 @@ type PublicPublishedTailwindInlineProps = {
   flyerPreview?: boolean;
   /** Multipage/contact: client-side navigatie + morph (View Transitions) i.p.v. volledige document-load. */
   publishedSiteSoftNav?: PublishedSiteSoftNavContext | null;
+  designContract?: DesignGenerationContract | null;
 };
 
 function deriveSSROrigin(): string {
@@ -89,6 +91,7 @@ export function PublicPublishedTailwindInline({
   relaxedTailwindCdnLoading = false,
   flyerPreview = false,
   publishedSiteSoftNav = null,
+  designContract = null,
 }: PublicPublishedTailwindInlineProps) {
   const filtered = filterSectionsForPublicSite(sections);
   const iframeDocumentPathname = publicSiteIframeDocumentPathname(
@@ -108,6 +111,7 @@ export function PublicPublishedTailwindInline({
       userCss,
       userJs,
       logoSet,
+      designContract: designContract ?? undefined,
       publishedSlug: publishedSlug?.trim(),
       draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
       appointmentsEnabled,

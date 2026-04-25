@@ -15,6 +15,7 @@ import {
   removeDuplicateAlpineNavScopeInHeader,
   stripDecorativeScrollCueMarkup,
 } from "@/lib/ai/generate-site-postprocess";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import {
   isLegacyTailwindPageConfig,
   type TailwindPageConfig,
@@ -509,6 +510,21 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
 export const STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 1024px) {
   .lg\\:hidden,
   .xl\\:hidden {
+    display: none !important;
+  }
+}`;
+
+/**
+ * Declaratieve `data-studio-nav-chrome`-header: menuknop zichtbaarheid los van Tailwind-JIT purge
+ * en met hogere specificiteit dan generieke iframe-desktop-fixes op `.lg:hidden`.
+ */
+export const STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS = `@media (max-width: 1023px) {
+  header[data-studio-nav-chrome="1"] button.studio-nav-chrome-menu-btn {
+    display: inline-flex !important;
+  }
+}
+@media (min-width: 1024px) {
+  header[data-studio-nav-chrome="1"] button.studio-nav-chrome-menu-btn {
     display: none !important;
   }
 }`;
@@ -2316,6 +2332,8 @@ export function buildFaviconLinkTagForPublishedSite(input: {
 
 export type BuildTailwindSectionsBodyOptions = {
   logoSet?: GeneratedLogoSet | null;
+  /** Optioneel: server kiest nav-preset i.f.m. Denklijn-contract (infer zonder `navVisualPreset`). */
+  designContract?: DesignGenerationContract | null;
 };
 
 export function buildTailwindSectionsBodyInnerHtml(
@@ -2330,7 +2348,10 @@ export function buildTailwindSectionsBodyInnerHtml(
       : null;
   if (studioNav) {
     const navTheme = pageConfig && !isLegacyTailwindPageConfig(pageConfig) ? pageConfig.theme : null;
-    sectionRows = prependStudioNavChromeToFirstSection(sections, renderStudioNavChromeHtml(studioNav, navTheme));
+    sectionRows = prependStudioNavChromeToFirstSection(
+      sections,
+      renderStudioNavChromeHtml(studioNav, navTheme, bodyOptions?.designContract ?? null),
+    );
   }
 
   const prepared =
@@ -2879,6 +2900,8 @@ export type BuildTailwindIframeSrcDocOptions = {
    * inline `/site` (daar draait scroll op `window` in de Next-pagina).
    */
   gentrixIframeAnalytics?: boolean;
+  /** Zie `BuildTailwindSectionsBodyOptions.designContract` — nav-preset infer bij ontbrekende `navVisualPreset`. */
+  designContract?: DesignGenerationContract | null;
 };
 
 /**
@@ -3065,6 +3088,7 @@ export function buildTailwindIframeSrcDoc(
 ): string {
   let body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, {
     logoSet: options?.logoSet,
+    designContract: options?.designContract ?? null,
   });
   const slug = options?.publishedSlug?.trim();
   const isGentrixHomeSlug = (slug?.toLowerCase() ?? "") === STUDIO_HOMEPAGE_SUBFOLDER_SLUG;
@@ -3240,6 +3264,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}${fontHeadFr
     ${STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS}
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
+    ${STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${STUDIO_SITE_CREDIT_CSS}
     ${STUDIO_SITE_CREDIT_VARIANT_CSS}

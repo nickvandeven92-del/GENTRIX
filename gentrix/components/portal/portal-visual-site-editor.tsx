@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Check, ExternalLink, ImagePlus, Loader2, Paintbrush, Rocket, Save } from "lucide-react";
+import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
 import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
@@ -59,6 +60,8 @@ type Props = {
   compiledTailwindCss?: string | null;
   /** Publieke URL voor de "Open site" link en terugkoppeling na publiceren. */
   publicSiteUrl?: string | null;
+  /** Snapshot-/draft-contract wanneer aanwezig — zelfde nav-preset infer als publieke site. */
+  designContract?: DesignGenerationContract | null;
 };
 
 function escapeAttr(value: string): string {
@@ -191,6 +194,7 @@ export function PortalVisualSiteEditor({
   logoSet,
   compiledTailwindCss,
   publicSiteUrl,
+  designContract = null,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -259,12 +263,13 @@ export function PortalVisualSiteEditor({
       userCss,
       userJs: undefined,
       logoSet,
+      designContract: designContract ?? undefined,
       publishedSlug: decodeURIComponent(slug),
       compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
       navBrandLabel: clientName,
     });
     return injectPortalEditorIntoSrcDoc(base);
-  }, [clientName, compiledTailwindCss, logoSet, pageConfigValue, previewSections, slug, userCss, userJs]);
+  }, [clientName, compiledTailwindCss, designContract, logoSet, pageConfigValue, previewSections, slug, userCss, userJs]);
 
   const mergeSnapshotIntoSections = useCallback((baseSections: EditableSection[], snapshot: SnapshotSection[]) => {
     const htmlByKey = new Map(snapshot.map((item) => [item.key, item.html]));
