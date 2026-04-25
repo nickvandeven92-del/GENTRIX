@@ -55,6 +55,11 @@ type PublishedSiteViewProps = {
   relaxedTailwindCdnLoading?: boolean;
   /** Flyer/QR: interne links behouden `flyer=1` zodat de actiebalk op alle subpagina’s blijft. */
   flyerPreview?: boolean;
+  /**
+   * Site-studio generator (split-pane): Tailwind in een **iframe** i.p.v. inline.
+   * Inline zet `position:fixed` tegen de admin-viewport → navbar “lekt” naar de shell-balk.
+   */
+  studioTailwindPreviewIframe?: boolean;
 };
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
@@ -72,6 +77,7 @@ export function PublishedSiteView({
   prettyPublicUrls = false,
   relaxedTailwindCdnLoading = false,
   flyerPreview = false,
+  studioTailwindPreviewIframe = false,
 }: PublishedSiteViewProps) {
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";
@@ -201,12 +207,48 @@ export function PublishedSiteView({
           : "home";
 
     /**
-     * Publieke weergave — **geen iframe**: HTML wordt direct in de Next.js-pagina gerenderd
-     * (Optie A). Portaal blijft iframe-based zodat inline visual editing mogelijk blijft.
+     * Publieke weergave — standaard **geen iframe** (HTML in de Next-pagina; zelfde als live `/site`).
+     * In de **ingebouwde studio-generator** (split-pane): iframe zodat `position:fixed` niet tegen de admin-viewport kleef.
      */
     if (visibility === "public") {
       const slugForA = publishedSlug?.trim() ?? "";
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
+      if (studioTailwindPreviewIframe) {
+        return (
+          <div className={cn("relative flex min-h-0 w-full flex-1 flex-col", className)}>
+            {slugForA ? (
+              <GentrixPublicSiteAnalytics
+                siteSlug={slugForA}
+                pageKey={analyticsPageKey}
+                isPreview={isPreview}
+                bookingModuleEnabled={appointmentsEnabled}
+                webshopModuleEnabled={webshopEnabled}
+                sessionType={isPreview ? "public_preview" : "public_site"}
+                renderSurface="public_inline"
+              />
+            ) : null}
+            <PublicPublishedTailwind
+              sections={twSections}
+              pageConfig={payload.config}
+              className="min-h-0 flex flex-1 flex-col"
+              visibility="public"
+              publishedSlug={publishedSlug}
+              draftPublicPreviewToken={draftPublicPreviewToken}
+              userCss={payload.customCss}
+              userJs={payload.customJs}
+              logoSet={payload.logoSet}
+              compiledTailwindCss={payload.tailwindCompiledCss}
+              documentTitle={iframeTitle}
+              navBrandLabel={docTitle}
+              embedded={false}
+              appointmentsEnabled={appointmentsEnabled}
+              webshopEnabled={webshopEnabled}
+              ssrSrcDoc={null}
+              contactSubpageNavBase={contactNavBase}
+            />
+          </div>
+        );
+      }
       const publishedSiteSoftNav: PublishedSiteSoftNavContext | null =
         slugForA && contactNavBase ? { siteSlug: slugForA, prettyPublicUrls } : null;
       return (

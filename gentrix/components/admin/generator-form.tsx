@@ -1536,6 +1536,7 @@ export function GeneratorForm({
                       draftPublicPreviewToken={draftPublicPreviewToken}
                       appointmentsEnabled={detectedModuleFlags.appointmentsEnabled}
                       webshopEnabled={detectedModuleFlags.webshopEnabled}
+                      studioTailwindPreviewIframe
                     />
                   </div>
                 )
