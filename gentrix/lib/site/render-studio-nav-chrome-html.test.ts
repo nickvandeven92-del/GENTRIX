@@ -50,6 +50,7 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("@click.outside");
     expect(html).toContain("x-transition:enter-start");
     expect(html).not.toContain("@scroll.window");
+    expect(html).not.toContain("backdrop-blur-md");
     expect(html).toMatch(/style="[^"]*--studio-nav-accent:#ca8a04/);
   });
 });

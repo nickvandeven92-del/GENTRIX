@@ -77,8 +77,9 @@ export function buildStudioNavChromeTone(theme: MasterPromptTheme | null | undef
   const fgMuted = isDarkChrome ? "rgba(248,250,252,0.82)" : "rgba(15,23,42,0.78)";
   const fgHover = isDarkChrome ? "#ffffff" : "#0f172a";
 
-  const barBg = isDarkChrome ? rgbaFromHex(primary, 0.78) : "rgba(255,255,255,0.9)";
-  const pillBg = isDarkChrome ? rgbaFromHex(primary, 0.72) : "rgba(255,255,255,0.88)";
+  /** Iets hogere dekking i.p.v. `backdrop-blur` op de host: blur + scrollende content gaf een “tweede balk”-naad. */
+  const barBg = isDarkChrome ? rgbaFromHex(primary, 0.9) : "rgba(255,255,255,0.92)";
+  const pillBg = isDarkChrome ? rgbaFromHex(primary, 0.88) : "rgba(255,255,255,0.92)";
   const barBorder = isDarkChrome ? "rgba(255,255,255,0.14)" : rgbaFromHex(primary, 0.22);
   const pillBorder = isDarkChrome ? "rgba(255,255,255,0.18)" : rgbaFromHex(primary, 0.28);
   const sheetBg = isDarkChrome ? rgbaFromHex(primary, 0.94) : "rgba(255,255,255,0.97)";

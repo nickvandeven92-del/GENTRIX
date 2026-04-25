@@ -1,3 +1,8 @@
+/**
+ * **Server-side** HTML voor declaratieve primaire nav (`studioNav` + theme).
+ * Niet te verwarren met `lib/ai/studio-nav-chrome-pattern-library.ts`: dat is **alleen** prompt-voorbeelden
+ * voor legacy-AI-nav; dit bestand rendert echte markup voor preview/export.
+ */
 import { buildGentrixMenuIconToggle, sliceFirstSiteChromeNavBlock } from "@/lib/ai/generate-site-postprocess";
 import type { MasterPromptTheme, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { StudioNavChromeConfig } from "@/lib/site/studio-nav-chrome-schema";
@@ -40,8 +45,8 @@ export function renderStudioNavChromeHtml(config: StudioNavChromeConfig, theme?:
 
   const hostClass =
     config.variant === "pill"
-      ? `fixed top-4 left-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 items-center justify-between gap-4 overflow-visible px-4 py-2.5 shadow-lg backdrop-blur-md sm:px-5 sm:gap-6 ${tone.pillRadiusClass}`
-      : `fixed top-0 left-0 right-0 z-50 w-full overflow-visible backdrop-blur-md ${tone.barBottomRadiusClass}`.trim();
+      ? `fixed top-4 left-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 items-center justify-between gap-4 overflow-visible px-4 py-2.5 shadow-lg sm:px-5 sm:gap-6 ${tone.pillRadiusClass}`
+      : `fixed top-0 left-0 right-0 z-50 w-full overflow-visible ${tone.barBottomRadiusClass}`.trim();
 
   const innerWrapClass =
     config.variant === "pill"
@@ -90,7 +95,7 @@ export function renderStudioNavChromeHtml(config: StudioNavChromeConfig, theme?:
     x-transition:leave="transition ease-in duration-150 transform"
     x-transition:leave-start="translate-y-0 opacity-100"
     x-transition:leave-end="-translate-y-2 opacity-0"
-    class="absolute inset-x-0 top-full z-[60] origin-top px-4 pb-4 pt-1 shadow-lg backdrop-blur-md lg:hidden"
+    class="absolute inset-x-0 top-full z-[60] origin-top px-4 pb-4 pt-1 shadow-lg lg:hidden"
     style="background:var(--studio-nav-sheet-bg);border-top:1px solid var(--studio-nav-sheet-border)"
   >${mobileLinks}${mobileCta}</div>`;
 
