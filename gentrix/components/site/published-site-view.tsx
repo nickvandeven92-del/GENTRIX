@@ -249,6 +249,7 @@ export function PublishedSiteView({
               autoResizeFromPostMessage
               documentHeightMode="panel"
               maxMeasuredHeight={3200}
+              studioIframeDesktopViewport
             />
           </div>
         );

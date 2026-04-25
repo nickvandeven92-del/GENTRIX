@@ -85,6 +85,14 @@ describe("repairSamePagePathHrefsInHtml", () => {
     expect(out).toBe(`<a href="__STUDIO_SITE_BASE__">X</a>`);
   });
 
+  it("rewrites /site/slug (alleen studio-map) naar home-placeholder bij multipage marketing (niet #top)", () => {
+    const valid = new Set(["hero", "contact", "top"]);
+    const html = `<a href="/site/demo">Home</a>`;
+    expect(repairSamePagePathHrefsInHtml(html, valid, marketingCross)).toBe(
+      `<a href="__STUDIO_SITE_BASE__">Home</a>`,
+    );
+  });
+
   it("leaves /site/slug/wat-wij-doen unchanged when key is valid", () => {
     const valid = new Set(["hero", "top"]);
     const html = `<a href="/site/demo/wat-wij-doen">Diensten</a>`;
@@ -401,7 +409,7 @@ describe("postProcessClaudeTailwindPage path href integration", () => {
     };
     const out = postProcessClaudeTailwindPage(page);
     const joined = out.sections.map((s) => s.html).join("\n");
-    expect(joined).toContain('href="#top"');
+    expect(joined).toContain('href="#hero"');
     expect(joined).toContain('href="#diensten"');
   });
 });

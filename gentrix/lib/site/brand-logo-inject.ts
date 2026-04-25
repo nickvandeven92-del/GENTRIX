@@ -33,6 +33,8 @@ export function applyBrandLogoFallbackToSections(
 
   const full = sections.map((s) => s.html).join("\n");
   if (full.includes(STUDIO_BRAND_MARK_ATTR)) return sections;
+  /** Model heeft al een “naar home”-link; geen tweede merkblok (tekstlogo + geïnjecteerd SVG). */
+  if (/\bhref\s*=\s*(["'])__STUDIO_SITE_BASE__\1/i.test(collapseWs(full))) return sections;
 
   const pNorm = collapseWs(primary);
   if (pNorm.length >= 16 && collapseWs(full).includes(pNorm)) return sections;

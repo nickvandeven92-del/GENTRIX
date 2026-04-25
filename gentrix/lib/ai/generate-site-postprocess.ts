@@ -1466,6 +1466,10 @@ function pathOrAbsoluteSiteHrefToHash(
       if (crossH) return crossH;
       return `#${fb}`;
     }
+    /** Multipage marketing: `/site/{slug}` is de landings-URL, geen in-page `#top` (subpagina's hebben vaak geen `id="top"`). */
+    if (rest.length === 1 && cross?.marketingPageKeys && cross.marketingPageKeys.size > 0) {
+      return STUDIO_SITE_BASE_PLACEHOLDER;
+    }
     return validIds.has("top") ? `#top` : `#${fb}`;
   }
 
@@ -1800,7 +1804,6 @@ export function postProcessClaudeTailwindPage(
   const combined = withIds.map((row) => withRootIdOnSectionHtml(row.html, row.id)).join("\n");
 
   const validIds = new Set(withIds.map((s) => s.id));
-  validIds.add("top");
   for (const id of collectHtmlElementIds(combined)) {
     validIds.add(id);
   }

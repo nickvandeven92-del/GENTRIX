@@ -36,6 +36,8 @@ function escapeHtmlForSrcDocTitle(s: string): string {
 }
 
 const MAX_SRC_DOC_CHARS = 3_500_000;
+/** Gelijk aan `TailwindSectionsPreview` / `buildTailwindIframeSrcDoc` — vaste desktop-breakpoints in iframe. */
+const STUDIO_IFRAME_DESKTOP_VIEWPORT_PX = 1280;
 
 type PublicPublishedTailwindProps = {
   sections: TailwindSection[];
@@ -70,6 +72,11 @@ type PublicPublishedTailwindProps = {
   autoResizeFromPostMessage?: boolean;
   documentHeightMode?: "panel" | "full";
   maxMeasuredHeight?: number;
+  /**
+   * Site-studio **generator**-iframe: `width=1280` viewport + horizontaal scrollen in smal paneel,
+   * zodat `lg:`-desktop-nav zichtbaar is (niet `device-width` = breedte preview-kolom → mobiele layout).
+   */
+  studioIframeDesktopViewport?: boolean;
 };
 
 function fallbackSrcDoc(documentTitle: string, body: string): string {
@@ -105,6 +112,7 @@ export function PublicPublishedTailwind({
   autoResizeFromPostMessage = false,
   documentHeightMode = "panel",
   maxMeasuredHeight = 2400,
+  studioIframeDesktopViewport = false,
 }: PublicPublishedTailwindProps) {
   const filtered = useMemo(
     () =>
@@ -219,6 +227,12 @@ export function PublicPublishedTailwind({
             : undefined;
         let doc = buildTailwindIframeSrcDoc(filtered, pageConfig, {
           previewPostMessageBridge,
+          ...(studioIframeDesktopViewport && !embedded
+            ? {
+                previewMatchParentWindowBreakpoints: true,
+                studioMobileEditorFrame: false,
+              }
+            : {}),
           userCss,
           userJs,
           logoSet,
@@ -279,7 +293,10 @@ export function PublicPublishedTailwind({
     embedded,
     visibility,
     previewPostMessageBridge,
+    studioIframeDesktopViewport,
   ]);
+
+  const useStudioDesktopIframe = Boolean(studioIframeDesktopViewport && !embedded);
 
   const iframeStyle: CSSProperties = {
     ...(embedded
@@ -291,14 +308,24 @@ export function PublicPublishedTailwind({
           background: "transparent",
           overflow: "auto",
         }
-      : {
-          width: "100%",
-          height: "100%",
-          border: "none",
-          background: "transparent",
-          display: "block",
-          overflow: "auto",
-        }),
+      : useStudioDesktopIframe
+        ? {
+            width: STUDIO_IFRAME_DESKTOP_VIEWPORT_PX,
+            minWidth: STUDIO_IFRAME_DESKTOP_VIEWPORT_PX,
+            height: "100%",
+            border: "none",
+            background: "transparent",
+            display: "block",
+            overflow: "auto",
+          }
+        : {
+            width: "100%",
+            height: "100%",
+            border: "none",
+            background: "transparent",
+            display: "block",
+            overflow: "auto",
+          }),
     ...(autoResizeHeightPx != null ? { height: `${Math.round(autoResizeHeightPx)}px` } : {}),
   };
   const shouldShowSkeleton = embedded || showSkeleton;
@@ -345,13 +372,29 @@ export function PublicPublishedTailwind({
         style={{ width: "100%", height: embedded ? undefined : "100%" }}
       >
         <PublishedTailwindAssets preconnectTailwindPlayCdn={!compiledTailwindCss?.trim()} />
-        <iframe
-          ref={iframeRef}
-          title={documentTitle}
-          style={iframeStyle}
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-          srcDoc={srcDoc}
-        />
+        {useStudioDesktopIframe ? (
+          <div
+            className="min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden"
+            style={{ scrollbarGutter: "stable" }}
+          >
+            <iframe
+              ref={iframeRef}
+              title={documentTitle}
+              className="max-w-none shrink-0 border-0 bg-white"
+              style={iframeStyle}
+              sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+              srcDoc={srcDoc}
+            />
+          </div>
+        ) : (
+          <iframe
+            ref={iframeRef}
+            title={documentTitle}
+            style={iframeStyle}
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+            srcDoc={srcDoc}
+          />
+        )}
       </div>
     </PublishedTailwindNavBridge>
   );

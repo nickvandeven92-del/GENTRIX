@@ -171,7 +171,8 @@ export function SiteHtmlEditor({
   /** Welke (sub)pagina de rechter preview toont; nav in iframe wisselt alleen de preview. */
   const [previewRoute, setPreviewRoute] = useState<SiteHtmlEditorPreviewRoute>({ kind: "landing" });
   /** Live preview: iframe-viewport (zie `TailwindSectionsPreview.viewportMode`). */
-  const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("auto");
+  /** Standaard desktop (1280px-viewport in iframe): gelijk aan live `/site` voor `lg:`-nav; `auto` volgt smalle preview-kolom → vaak mobiele layout zonder zichtbare menubalk. */
+  const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("desktop");
   const [stepsOpen, setStepsOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
