@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import {
   slugifyToSectionId,
+  type StudioRasterBrandSet,
   type TailwindPageConfig,
   type TailwindSection,
 } from "@/lib/ai/tailwind-sections-schema";
@@ -109,6 +110,8 @@ type SiteHtmlEditorProps = {
   initialCustomJs?: string;
   /** Bewaard bij opslaan (premium logo-pipeline). */
   initialLogoSet?: GeneratedLogoSet;
+  /** Server Gemini/OpenAI raster-merk (preview + payload). */
+  initialRasterBrandSet?: StudioRasterBrandSet;
   /** Multi-page uit snapshot — meesturen bij opslaan (anders verdwijnen subroutes uit de DB). */
   initialContactSections?: TailwindSection[];
   initialMarketingPages?: Record<string, TailwindSection[]>;
@@ -136,6 +139,7 @@ export function SiteHtmlEditor({
   initialCustomCss = "",
   initialCustomJs = "",
   initialLogoSet,
+  initialRasterBrandSet,
   initialContactSections,
   initialMarketingPages,
   appointmentsEnabled = true,
@@ -213,10 +217,21 @@ export function SiteHtmlEditor({
         customCss,
         customJs,
         ...(initialLogoSet != null ? { logoSet: initialLogoSet } : {}),
+        ...(initialRasterBrandSet != null ? { rasterBrandSet: initialRasterBrandSet } : {}),
         ...(contactSections != null && contactSections.length > 0 ? { contactSections } : {}),
         ...(marketingPages != null && Object.keys(marketingPages).length > 0 ? { marketingPages } : {}),
       }) satisfies Record<string, unknown>,
-    [sections, config, customCss, customJs, initialLogoSet, pageType, contactSections, marketingPages],
+    [
+      sections,
+      config,
+      customCss,
+      customJs,
+      initialLogoSet,
+      initialRasterBrandSet,
+      pageType,
+      contactSections,
+      marketingPages,
+    ],
   );
 
   useEffect(() => {
@@ -1006,6 +1021,7 @@ export function SiteHtmlEditor({
                   userCss={customCss}
                   userJs={customJs}
                   logoSet={initialLogoSet}
+                  rasterBrandSet={initialRasterBrandSet}
                   publishedSlug={subfolderSlug}
                   draftPublicPreviewToken={draftPublicPreviewToken}
                   appointmentsEnabled={appointmentsEnabled}

@@ -100,6 +100,9 @@ async function attachCompiledTailwindWithColdStartRetry(
   if (out.tailwindCompiledCss?.trim()) return out;
   await new Promise((r) => setTimeout(r, 220));
   out = await attachCompiledTailwindCssToPayload(tw, title);
+  if (out.tailwindCompiledCss?.trim()) return out;
+  await new Promise((r) => setTimeout(r, 500));
+  out = await attachCompiledTailwindCssToPayload(tw, title);
   return out;
 }
 

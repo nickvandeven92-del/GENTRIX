@@ -157,7 +157,7 @@ export function buildNextPublishedSiteIcons(input: ResolvePublicSiteFaviconInput
   const r32 = input.rasterFavicon32Url?.trim();
   if (isHttpsRasterUrl(r32)) {
     const r192 = input.rasterFavicon192Url?.trim();
-    const icon: NonNullable<Metadata["icons"]>["icon"] = [
+    const icon: Array<{ url: string; type?: string; sizes?: string }> = [
       { url: r32, type: "image/png", sizes: "32x32" },
     ];
     if (isHttpsRasterUrl(r192)) {
@@ -170,7 +170,7 @@ export function buildNextPublishedSiteIcons(input: ResolvePublicSiteFaviconInput
             apple: [{ url: r192, sizes: "192x192", type: "image/png" }],
           }
         : {}),
-    };
+    } as NonNullable<Metadata["icons"]>;
   }
 
   const svg = resolvePublicSiteFaviconSvg(input);

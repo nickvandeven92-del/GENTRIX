@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Check, ExternalLink, ImagePlus, Loader2, Paintbrush, Rocket, Save } from "lucide-react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { buildTailwindIframeSrcDoc } from "@/components/site/tailwind-sections-preview";
 import { resolveNavHrefToPageId } from "@/lib/portal/portal-editor-nav-href";
@@ -57,6 +57,7 @@ type Props = {
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   compiledTailwindCss?: string | null;
   /** Publieke URL voor de "Open site" link en terugkoppeling na publiceren. */
   publicSiteUrl?: string | null;
@@ -192,6 +193,7 @@ export function PortalVisualSiteEditor({
   userCss,
   userJs,
   logoSet,
+  rasterBrandSet,
   compiledTailwindCss,
   publicSiteUrl,
   designContract = null,
@@ -263,13 +265,25 @@ export function PortalVisualSiteEditor({
       userCss,
       userJs: undefined,
       logoSet,
+      rasterBrandSet: rasterBrandSet ?? undefined,
       designContract: designContract ?? undefined,
       publishedSlug: decodeURIComponent(slug),
       compiledTailwindCss: compiledTailwindCss?.trim() || undefined,
       navBrandLabel: clientName,
     });
     return injectPortalEditorIntoSrcDoc(base);
-  }, [clientName, compiledTailwindCss, designContract, logoSet, pageConfigValue, previewSections, slug, userCss, userJs]);
+  }, [
+    clientName,
+    compiledTailwindCss,
+    designContract,
+    logoSet,
+    rasterBrandSet,
+    pageConfigValue,
+    previewSections,
+    slug,
+    userCss,
+    userJs,
+  ]);
 
   const mergeSnapshotIntoSections = useCallback((baseSections: EditableSection[], snapshot: SnapshotSection[]) => {
     const htmlByKey = new Map(snapshot.map((item) => [item.key, item.html]));

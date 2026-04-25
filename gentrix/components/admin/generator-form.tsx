@@ -295,6 +295,7 @@ export function GeneratorForm({
         sections: generatedTailwind.sections,
         config: generatedTailwind.config,
         ...(generatedTailwind.logoSet != null ? { logoSet: generatedTailwind.logoSet } : {}),
+        ...(generatedTailwind.rasterBrandSet != null ? { rasterBrandSet: generatedTailwind.rasterBrandSet } : {}),
         ...(generatedTailwind.contactSections != null && generatedTailwind.contactSections.length > 0
           ? { contactSections: generatedTailwind.contactSections }
           : {}),

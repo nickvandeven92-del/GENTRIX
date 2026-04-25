@@ -222,6 +222,7 @@ export function PublishedSiteView({
           userCss={payload.customCss}
           userJs={payload.customJs}
           logoSet={payload.logoSet}
+          rasterBrandSet={payload.rasterBrandSet}
           compiledTailwindCss={payload.tailwindCompiledCss}
           documentTitle={iframeTitle}
           navBrandLabel={docTitle}
@@ -279,6 +280,7 @@ export function PublishedSiteView({
           userCss={payload.customCss}
           userJs={payload.customJs}
           logoSet={payload.logoSet}
+          rasterBrandSet={payload.rasterBrandSet}
           compiledTailwindCss={payload.tailwindCompiledCss}
           documentTitle={iframeTitle}
           navBrandLabel={docTitle}

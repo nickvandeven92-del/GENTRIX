@@ -149,6 +149,7 @@ export async function POST(request: Request) {
       ...(siteParsed.customCss != null && siteParsed.customCss !== "" ? { customCss: siteParsed.customCss } : {}),
       ...(siteParsed.customJs != null && siteParsed.customJs !== "" ? { customJs: siteParsed.customJs } : {}),
       ...(siteParsed.logoSet != null ? { logoSet: siteParsed.logoSet } : {}),
+      ...(siteParsed.rasterBrandSet != null ? { rasterBrandSet: siteParsed.rasterBrandSet } : {}),
       ...(mergedContactSections != null && mergedContactSections.length > 0
         ? { contactSections: mergedContactSections }
         : {}),

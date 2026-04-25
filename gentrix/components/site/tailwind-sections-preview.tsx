@@ -10,7 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import {
   composePublicMarketingTailwindSections,
@@ -64,6 +64,7 @@ type TailwindSectionsPreviewProps = {
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   /** Portaal-links (`__STUDIO_PORTAL_PATH__`) gelijk aan live. */
   publishedSlug?: string;
   /** Concept: interne `/site/{slug}/…`-navigatie behoudt `?token=` (zelfde routes als live). */
@@ -114,6 +115,7 @@ export function TailwindSectionsPreview({
   userCss,
   userJs,
   logoSet,
+  rasterBrandSet,
   publishedSlug,
   draftPublicPreviewToken,
   appointmentsEnabled = true,
@@ -192,6 +194,7 @@ export function TailwindSectionsPreview({
         userCss,
         userJs,
         logoSet,
+        rasterBrandSet: rasterBrandSet ?? undefined,
         designContract: designContract ?? undefined,
         publishedSlug: publishedSlug?.trim(),
         draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
@@ -217,6 +220,7 @@ export function TailwindSectionsPreview({
       userCss,
       userJs,
       logoSet,
+      rasterBrandSet,
       publishedSlug,
       draftPublicPreviewToken,
       appointmentsEnabled,

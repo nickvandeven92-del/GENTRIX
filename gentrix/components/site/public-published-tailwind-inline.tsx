@@ -1,5 +1,5 @@
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import Script from "next/script";
 import { publishedTailwindInlineHtmlShellAttrs } from "@/lib/site/studio-site-shell";
 import type { GeneratedLogoSet } from "@/types/logo";
@@ -43,6 +43,7 @@ type PublicPublishedTailwindInlineProps = {
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   compiledTailwindCss?: string | null;
   documentTitle?: string;
   appointmentsEnabled?: boolean;
@@ -81,6 +82,7 @@ export function PublicPublishedTailwindInline({
   userCss,
   userJs,
   logoSet,
+  rasterBrandSet,
   compiledTailwindCss,
   documentTitle,
   appointmentsEnabled = true,
@@ -113,6 +115,7 @@ export function PublicPublishedTailwindInline({
       userCss,
       userJs,
       logoSet,
+      rasterBrandSet: rasterBrandSet ?? undefined,
       designContract: designContract ?? undefined,
       publishedSlug: publishedSlug?.trim(),
       draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,

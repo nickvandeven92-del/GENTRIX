@@ -49,6 +49,7 @@ export default async function SalesOpsStudioPage({ searchParams }: Props) {
           initialCustomCss={parsed.customCss}
           initialCustomJs={parsed.customJs}
           initialLogoSet={parsed.logoSet}
+          initialRasterBrandSet={parsed.rasterBrandSet}
           initialContactSections={parsed.contactSections}
           initialMarketingPages={parsed.marketingPages}
           appointmentsEnabled={appointmentsEnabled}

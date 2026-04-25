@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import type { DesignGenerationContract } from "@/lib/ai/design-generation-contract";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
 import { rewriteStudioDevOriginsInHtml } from "@/lib/site/rewrite-published-html-origins";
 import { buildTailwindIframeSrcDoc } from "@/lib/site/tailwind-page-html";
@@ -51,6 +51,7 @@ type PublicPublishedTailwindProps = {
   userCss?: string;
   userJs?: string;
   logoSet?: GeneratedLogoSet | null;
+  rasterBrandSet?: StudioRasterBrandSet | null;
   /** Minified Tailwind v4 — geen Play CDN (sneller, geen FOUC). */
   compiledTailwindCss?: string | null;
   documentTitle?: string;
@@ -103,6 +104,7 @@ export function PublicPublishedTailwind({
   userCss,
   userJs,
   logoSet,
+  rasterBrandSet,
   compiledTailwindCss,
   documentTitle = "Website",
   embedded = false,
@@ -240,6 +242,7 @@ export function PublicPublishedTailwind({
           userCss,
           userJs,
           logoSet,
+          rasterBrandSet: rasterBrandSet ?? undefined,
           designContract: designContract ?? undefined,
           publishedSlug: publishedSlug?.trim(),
           draftPublicPreviewToken: draftPublicPreviewToken?.trim() || undefined,
@@ -300,6 +303,7 @@ export function PublicPublishedTailwind({
     previewPostMessageBridge,
     studioIframeDesktopViewport,
     designContract,
+    rasterBrandSet,
   ]);
 
   const useStudioDesktopIframe = Boolean(studioIframeDesktopViewport && !embedded);

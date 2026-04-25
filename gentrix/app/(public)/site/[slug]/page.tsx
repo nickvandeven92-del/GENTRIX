@@ -61,6 +61,8 @@ export async function generateMetadata({ params, searchParams }: SitePageProps):
       description: `Website van ${displayName}`,
       ...conceptRobots,
       icons: buildNextPublishedSiteIcons({
+        rasterFavicon32Url: row.rasterBrandSet?.favicon32Url,
+        rasterFavicon192Url: row.rasterBrandSet?.favicon192Url,
         logoFavicon: row.logoSet?.variants?.favicon,
         displayName,
         slug,

@@ -36,6 +36,27 @@ describe("parseStudioNavChromeConfig", () => {
 });
 
 describe("renderStudioNavChromeHtml", () => {
+  it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "bar",
+        brandLabel: "Brand",
+        brandHref: "#top",
+        items: [
+          { label: "Diensten", href: "#diensten" },
+          { label: "Werk", href: "#werk" },
+        ],
+        cta: { label: "Contact", href: "#contact" },
+        navBarLayout: "centeredLinks",
+      },
+      { primary: "#0f172a", accent: "#ca8a04" },
+    );
+    expect(html).toContain('data-studio-nav-bar-layout="centeredLinks"');
+    expect(html).toMatch(/flex-1\s+justify-center/);
+    expect(html).toContain("Diensten");
+    expect(html).toContain("Contact");
+  });
+
   it("rendert data-gentrix-scroll markers zonder @scroll.window", () => {
     const html = renderStudioNavChromeHtml(
       {

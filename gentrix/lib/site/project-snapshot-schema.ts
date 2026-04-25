@@ -353,6 +353,7 @@ export function tailwindSectionsPayloadToProjectSnapshot(
     },
     assets: {
       ...(payload.logoSet != null ? { logoSet: payload.logoSet } : {}),
+      ...(payload.rasterBrandSet != null ? { rasterBrandSet: payload.rasterBrandSet } : {}),
       ...(payload.customCss != null && payload.customCss !== ""
         ? { customCss: payload.customCss.slice(0, SNAPSHOT_CUSTOM_CSS_MAX) }
         : {}),

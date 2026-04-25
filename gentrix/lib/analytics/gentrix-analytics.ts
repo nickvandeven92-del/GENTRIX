@@ -149,6 +149,11 @@ function startPosthogLoad(): void {
           capture_pageview: false,
           capture_pageleave: true,
           persistence: "localStorage",
+          /** Mobiel: geen rrweb + recorder (~50+ KiB), minder lange main-thread taken. */
+          disable_session_recording: true,
+          /** Vermijdt extra bundels (web-vitals, dead-clicks) die Lighthouse als duplicaat/CPU-tijd toont. */
+          capture_dead_clicks: false,
+          capture_performance: false,
           loaded: (instance) => {
             if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_POSTHOG_DEBUG === "1") {
               instance.debug();

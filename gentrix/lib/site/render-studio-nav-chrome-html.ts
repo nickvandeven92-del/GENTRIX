@@ -102,6 +102,8 @@ export function renderStudioNavChromeHtml(
       ? `flex w-full min-w-0 items-center justify-between gap-3 sm:gap-6 ${innerPad}`
       : `mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 sm:gap-6 ${innerPad}`;
 
+  const navBarLayout = config.navBarLayout ?? "standard";
+
   const ind = linkIndicatorClasses(contract.activeIndicator);
   const linkDesktop =
     `text-sm font-medium transition-colors text-[color:var(--studio-nav-fg-muted)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
@@ -131,7 +133,22 @@ export function renderStudioNavChromeHtml(
 
   const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] lg:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
 
-  const desktopRow = `<div class="hidden min-w-0 flex-wrap items-center gap-6 lg:flex">${desktopLinks}${ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""}</div>`;
+  const desktopLinksCluster = `<div class="flex flex-wrap items-center justify-center gap-6">${desktopLinks}</div>`;
+
+  const desktopRowStandard = `<div class="hidden min-w-0 flex-wrap items-center gap-6 lg:flex">${desktopLinks}${
+    ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
+  }</div>`;
+
+  const desktopRowCentered = `<div class="hidden min-w-0 flex-1 justify-center lg:flex">${desktopLinksCluster}</div>`;
+
+  const desktopTrailing = `<div class="flex shrink-0 items-center gap-2">${
+    navBarLayout === "centeredLinks" && ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
+  }${menuBtn}</div>`;
+
+  const desktopRow =
+    navBarLayout === "centeredLinks"
+      ? `${desktopRowCentered}${desktopTrailing}`
+      : `${desktopRowStandard}${menuBtn}`;
 
   const mobileSheet = `<div
     id="studio-nav-chrome-mobile-sheet"
@@ -150,12 +167,12 @@ export function renderStudioNavChromeHtml(
 
   const spacer = spacerClass(contract);
   const presetAttr = presetId ? ` data-studio-nav-preset="${escapeAttr(presetId)}"` : "";
+  const layoutAttr = ` data-studio-nav-bar-layout="${escapeAttr(navBarLayout)}"`;
 
-  return `<header class="${hostClass}" style="${hostStyle}" x-data="{ ${NAV_KEY}: false }" @keydown.escape.window="${NAV_KEY} = false" @click.outside="${NAV_KEY} = false" data-studio-nav-chrome="1" data-gentrix-scroll-nav="1" data-gentrix-scrolled="0"${presetAttr}>
+  return `<header class="${hostClass}" style="${hostStyle}" x-data="{ ${NAV_KEY}: false }" @keydown.escape.window="${NAV_KEY} = false" @click.outside="${NAV_KEY} = false" data-studio-nav-chrome="1" data-gentrix-scroll-nav="1" data-gentrix-scrolled="0"${presetAttr}${layoutAttr}>
   <div class="${innerWrapClass}">
     ${brand}
     ${desktopRow}
-    ${menuBtn}
   </div>
   ${mobileSheet}
 </header><div class="${spacer}" style="${escapeAttr(tone.spacerLayerStyle)}" aria-hidden="true"></div>`;

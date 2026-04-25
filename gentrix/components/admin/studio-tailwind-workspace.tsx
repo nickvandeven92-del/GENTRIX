@@ -8,7 +8,7 @@ import { GeneratorForm } from "@/components/admin/generator-form";
 import { GeneratorStudioFaqLauncher } from "@/components/admin/generator-studio-faq-launcher";
 import { StudioSupportStrip } from "@/components/sales-os/studio-support-strip";
 import { SiteHtmlEditor } from "@/components/admin/site-html-editor";
-import type { TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
+import type { StudioRasterBrandSet, TailwindPageConfig, TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
 import type { SiteIrV1 } from "@/lib/site/site-ir-schema";
 import type { GeneratedLogoSet } from "@/types/logo";
@@ -29,6 +29,7 @@ export type StudioTailwindWorkspaceProps = {
   initialCustomCss?: string;
   initialCustomJs?: string;
   initialLogoSet?: GeneratedLogoSet;
+  initialRasterBrandSet?: StudioRasterBrandSet;
   /** Multi-page: contact-subroute `/site/{slug}/contact` — meesturen bij opslaan zodat de API ze niet weglaat. */
   initialContactSections?: TailwindSection[];
   /** Multi-page: marketing-subroutes `/site/{slug}/…` — idem. */
@@ -117,6 +118,7 @@ export function StudioTailwindWorkspace(props: StudioTailwindWorkspaceProps) {
             initialCustomCss={props.initialCustomCss ?? ""}
             initialCustomJs={props.initialCustomJs ?? ""}
             initialLogoSet={props.initialLogoSet}
+            initialRasterBrandSet={props.initialRasterBrandSet}
             initialContactSections={props.initialContactSections}
             initialMarketingPages={props.initialMarketingPages}
             appointmentsEnabled={props.appointmentsEnabled ?? true}

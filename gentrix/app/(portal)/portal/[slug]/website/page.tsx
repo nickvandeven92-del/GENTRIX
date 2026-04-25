@@ -105,6 +105,7 @@ export default async function PortalWebsitePage({ params }: Props) {
           userCss={draftPayload.customCss}
           userJs={draftPayload.customJs}
           logoSet={draftPayload.logoSet}
+          rasterBrandSet={draftPayload.rasterBrandSet}
           compiledTailwindCss={draftPayload.tailwindCompiledCss}
           publicSiteUrl={publicSiteAbsoluteUrl}
           designContract={draftPayload.designContract}
