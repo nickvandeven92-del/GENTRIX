@@ -143,11 +143,14 @@ export function renderStudioNavChromeHtml(
   const hostStyle = contract.variant === "pill" ? tone.pillHostStyle : tone.barHostStyle;
   const shadow = tone.hostShadowClass.trim();
   const shadowPart = shadow ? ` ${shadow}` : "";
+  /** Zonder transform-centering: `left-1/2 -translate-x-1/2` breekt als een ancestor `transform` heeft (fixed klemt dan aan die ancestor → nav links). */
+  const pillShellVisual = `${tone.pillRadiusClass}${shadowPart}`.trim();
+  const usePillFlexCenter = contract.variant === "pill" && !isHeroOverlay;
 
   const hostClass = isHeroOverlay
     ? `fixed top-4 right-4 z-50 flex w-max max-w-[min(100vw-2rem,56rem)] flex-col items-stretch overflow-visible rounded-2xl ring-1 ring-white/15${shadowPart}`.trim()
     : contract.variant === "pill"
-      ? `fixed top-4 left-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 items-center justify-between gap-4 overflow-visible px-4 sm:px-5 sm:gap-6 ${tone.pillRadiusClass}${shadowPart}`.trim()
+      ? `fixed top-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4 pointer-events-none overflow-visible`.trim()
       : `fixed top-0 left-0 right-0 z-50 w-full overflow-visible ${tone.barBottomRadiusClass}${shadowPart}`.trim();
 
   const innerPad = innerYClasses(contract);
@@ -179,7 +182,7 @@ export function renderStudioNavChromeHtml(
     ? `<a href="${escapeAttr(brandHref)}" class="group mr-auto hidden min-w-0 max-w-[10rem] shrink-0 items-center sm:flex text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--studio-nav-accent)]/35 rounded-sm" aria-label="${brandLabelEsc}"><span class="truncate text-sm font-semibold tracking-tight">${brandLabelEsc}</span></a>`
     : `<a href="${escapeAttr(brandHref)}" class="group flex min-w-0 shrink-0 items-center gap-2.5 text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]"><span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)] text-sm font-bold text-white shadow-sm ring-1 ring-black/10 dark:ring-white/10" aria-hidden="true">${markChar}</span><span class="truncate text-base font-semibold tracking-tight">${brandLabelEsc}</span></a>`;
   const brand = (navBarLayout === "centeredLinks" && !isHeroOverlay)
-    ? `<div class="flex flex-1 min-w-0 items-center">${brandLink}</div>`
+    ? `<div class="flex min-w-0 flex-1 shrink-0 items-center justify-start">${brandLink}</div>`
     : brandLink;
 
   const desktopLinks = config.items
@@ -226,6 +229,8 @@ export function renderStudioNavChromeHtml(
     ? "absolute right-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] origin-top rounded-xl px-3 pb-3 pt-2 shadow-xl ring-1 ring-white/10 lg:hidden"
     : "absolute inset-x-0 top-full z-[60] origin-top px-4 pb-4 pt-1 shadow-lg lg:hidden";
 
+  const mobileSheetClassFinal = usePillFlexCenter ? `${mobileSheetClass} pointer-events-auto` : mobileSheetClass;
+
   const mobileSheet = `<div
     id="studio-nav-chrome-mobile-sheet"
     x-show="${NAV_KEY}"
@@ -237,7 +242,7 @@ export function renderStudioNavChromeHtml(
     x-transition:leave="transition ease-in duration-150 transform"
     x-transition:leave-start="translate-y-0 opacity-100"
     x-transition:leave-end="-translate-y-2 opacity-0"
-    class="${mobileSheetClass}"
+    class="${mobileSheetClassFinal}"
     style="background:var(--studio-nav-sheet-bg);border-top:1px solid var(--studio-nav-sheet-border)"
   >${mobileLinks}${mobileCta}</div>`;
 
@@ -253,11 +258,22 @@ export function renderStudioNavChromeHtml(
     : "";
   const shellClassAttr = isHeroOverlay ? ` :class="{ 'studio-nav-shell-scrolled': shellScrolled }"` : "";
 
-  return `<header class="${hostClass}" style="${hostStyle}" ${xDataAttr}${scrollShellAttr} @keydown.escape.window="${NAV_KEY} = false" @click.outside="${NAV_KEY} = false"${shellClassAttr} data-studio-nav-chrome="1" data-gentrix-scroll-nav="1" data-gentrix-scrolled="0"${presetAttr}${layoutAttr}${heroOverlayAttr}>
-  <div class="${innerWrapClass}">
+  const headerStyleAttr = usePillFlexCenter ? "" : ` style="${escapeAttr(hostStyle)}"`;
+  const pillInnerClass = `pointer-events-auto flex w-full min-w-0 max-w-5xl items-center justify-between gap-3 sm:gap-6 ${innerPad} ${pillShellVisual}`.trim();
+  const innerStyleAttr = usePillFlexCenter ? ` style="${escapeAttr(hostStyle)}"` : "";
+
+  const innerBlock = usePillFlexCenter
+    ? `<div class="${pillInnerClass}"${innerStyleAttr}>
     ${brand}
     ${desktopRow}
-  </div>
+  </div>`
+    : `<div class="${innerWrapClass}">
+    ${brand}
+    ${desktopRow}
+  </div>`;
+
+  return `<header class="${hostClass}"${headerStyleAttr} ${xDataAttr}${scrollShellAttr} @keydown.escape.window="${NAV_KEY} = false" @click.outside="${NAV_KEY} = false"${shellClassAttr} data-studio-nav-chrome="1" data-gentrix-scroll-nav="1" data-gentrix-scrolled="0"${presetAttr}${layoutAttr}${heroOverlayAttr}>
+  ${innerBlock}
   ${mobileSheet}
 </header><div class="${spacer}" style="${escapeAttr(tone.spacerLayerStyle)}" aria-hidden="true"></div>`;
 }

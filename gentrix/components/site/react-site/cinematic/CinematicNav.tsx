@@ -454,7 +454,7 @@ export function CinematicNav({
         style={floatingShellStyle}
       >
         <div className="flex w-full items-center gap-3 sm:gap-4">
-          <div className="flex min-w-0 flex-1 basis-0 justify-start">
+          <div className="flex min-w-0 flex-1 basis-0 shrink-0 justify-start">
             <a
               href={homeHref}
               data-studio-brand-mark="1"

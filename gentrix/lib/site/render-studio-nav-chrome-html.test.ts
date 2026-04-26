@@ -143,7 +143,10 @@ describe("renderStudioNavChromeHtml", () => {
     );
     expect(html).toMatch(/studio-nav-chrome-spacer[^"]*\bh-0\b/);
     expect(html).not.toMatch(/studio-nav-chrome-spacer[^"]*\bh-24\b/);
-    expect(html).toContain("-translate-x-1/2");
+    expect(html).toContain("justify-center");
+    expect(html).toContain("pointer-events-none");
+    expect(html).toContain("pointer-events-auto");
+    expect(html).not.toContain("-translate-x-1/2");
   });
 
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
