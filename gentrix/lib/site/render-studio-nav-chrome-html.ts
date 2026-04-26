@@ -13,8 +13,8 @@ import { resolveNavVisualPreset } from "@/lib/site/studio-nav-visual-presets";
 import { pickMarkCharForSiteIdentity } from "@/lib/site/site-identity-favicon";
 
 /**
- * Presets waarmee `navBarLayout: linksRightInHero` een zwevende cluster over de hero mag (geen `h-24` spacer-strook).
- * `floatingPill` is `variant: "pill"` — die moet hier ook in, anders blijft een witte reserveruimte onder de shell.
+ * Presets waarmee `navBarLayout: linksRightInHero` een zwevende cluster over de hero mag (donker glas i.p.v. vol-breedte-balk).
+ * `variant: "pill"`: host staat `fixed` — spacer hoort **nul** te zijn, anders een lege strook (body-achtergrond) vóór de hero.
  */
 const HERO_OVERLAY_ELIGIBLE_PRESETS = new Set<NavVisualPresetId>([
   "minimalLight",
@@ -99,7 +99,8 @@ function spacerClass(contract: NavVisualContract, heroOverlay: boolean): string 
   }
   const base = "studio-nav-chrome-spacer w-full shrink-0";
   if (contract.variant === "pill") {
-    return contract.height === "spacious" ? `${base} h-28` : `${base} h-24`;
+    /* Pill zweeft `fixed` boven de eerste sectie; h-24/h-28 hier = zichtbare “balk” in page-bg vóór de hero. */
+    return `${base} h-0 min-h-0 max-h-0 overflow-hidden border-0 p-0 m-0 pointer-events-none`;
   }
   if (contract.height === "compact") return `${base} h-14`;
   if (contract.height === "spacious") return `${base} h-20`;

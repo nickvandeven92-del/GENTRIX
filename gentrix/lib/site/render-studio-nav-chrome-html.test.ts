@@ -125,6 +125,27 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).not.toContain("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)]");
   });
 
+  it("variant pill + minimalLight preset: JSON-variant wint — zwevende shell, spacer hoogte 0", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "pill",
+        brandLabel: "GENTRIX",
+        brandHref: "/",
+        items: [
+          { label: "Wat wij doen", href: "/diensten" },
+          { label: "Werkwijze", href: "/werk" },
+        ],
+        cta: { label: "Contact opnemen", href: "/contact" },
+        navVisualPreset: "minimalLight",
+        navBarLayout: "centeredLinks",
+      },
+      { primary: "#0f172a", accent: "#06b6d4" },
+    );
+    expect(html).toMatch(/studio-nav-chrome-spacer[^"]*\bh-0\b/);
+    expect(html).not.toMatch(/studio-nav-chrome-spacer[^"]*\bh-24\b/);
+    expect(html).toContain("-translate-x-1/2");
+  });
+
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
     const html = renderStudioNavChromeHtml(
       {

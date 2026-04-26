@@ -13,6 +13,14 @@ import {
 } from "@/lib/site/studio-nav-visual-presets";
 
 describe("resolveNavVisualPreset", () => {
+  it("preset minimalLight + variant pill in JSON: preset-kleuren/indicator, maar shell is pill (geen bar)", () => {
+    const r = resolveNavVisualPreset({ variant: "pill", navVisualPreset: "minimalLight" }, null, null);
+    expect(r.presetId).toBe("minimalLight");
+    expect(r.contract.variant).toBe("pill");
+    expect(r.contract.surface).toBe("light");
+    expect(r.contract.activeIndicator).toBe("underline");
+  });
+
   it("preset minimalLight + override alleen height", () => {
     const r = resolveNavVisualPreset(
       {

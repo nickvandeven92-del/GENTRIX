@@ -334,7 +334,10 @@ export function resolveNavVisualPreset(
     base = { ...NAV_VISUAL_PRESETS[input.navVisualPreset] };
     presetId = input.navVisualPreset;
     const ov = studioNavVisualAllowedOverridesSchema.safeParse(input.navVisualOverrides ?? {});
-    return { contract: mergeAllowedOverrides(base, ov.success ? ov.data : undefined), presetId };
+    let contract = mergeAllowedOverrides(base, ov.success ? ov.data : undefined);
+    /** `variant` in JSON wint t.o.v. preset.bar — anders blijft pill-bedoeling een vol-breedte balk + spacer. */
+    if (input.variant === "pill") contract = { ...contract, variant: "pill" };
+    return { contract, presetId };
   }
 
   if (input.variant === "pill") {
