@@ -67,4 +67,22 @@ describe("buildStudioNavChromeTone", () => {
     expect(t.pillRadiusClass).toBe("rounded-lg");
     expect(t.ctaRadiusClass).toBe("rounded-none");
   });
+
+  it("floatingPill: pill krijgt box-shadow-diepte (rand/lift zoals hero-cards)", () => {
+    const t = buildStudioNavChromeTone(
+      { primary: "#0f172a", accent: "#06b6d4" } as MasterPromptTheme,
+      STUDIO_NAV_VISUAL_PRESETS.floatingPill,
+    );
+    expect(t.pillHostStyle).toContain("box-shadow:");
+    expect(t.pillHostStyle).toMatch(/inset/);
+  });
+
+  it("heroOverlayBar: pill krijgt eveneens diepte-box-shadow", () => {
+    const t = buildStudioNavChromeTone(
+      { primary: "#0f172a", accent: "#06b6d4" } as MasterPromptTheme,
+      STUDIO_NAV_VISUAL_PRESETS.minimalLight,
+      { heroOverlayBar: true },
+    );
+    expect(t.pillHostStyle).toContain("box-shadow:");
+  });
 });

@@ -60,6 +60,22 @@ function hostShadowClass(shadow: NavVisualContract["shadow"]): string {
   return "";
 }
 
+/**
+ * Zwevende pill: rand + diepte (inset highlight + zachte “halo” + drop shadow) — visueel in lijn met
+ * hero feature-cards (`border-white/10`, `shadow-black/40`).
+ */
+function pillShellDepthStyle(visual: NavVisualContract, isDarkChrome: boolean): string {
+  if (visual.variant !== "pill") return "";
+  if (isDarkChrome) {
+    return "box-shadow:0 1px 0 rgba(255,255,255,0.12) inset,0 0 0 1px rgba(0,0,0,0.32),0 24px 52px -14px rgba(0,0,0,0.62);";
+  }
+  if (visual.surface === "transparent") {
+    return "box-shadow:0 1px 0 rgba(255,255,255,0.22) inset,0 0 0 1px rgba(255,255,255,0.14),0 22px 48px -14px rgba(0,0,0,0.55);";
+  }
+  /* light + glass */
+  return "box-shadow:0 1px 0 rgba(255,255,255,0.5) inset,0 0 0 1px rgba(15,23,42,0.08),0 26px 55px -14px rgba(0,0,0,0.5);";
+}
+
 function borderBottomCss(
   visual: NavVisualContract,
   primary: string,
@@ -115,8 +131,10 @@ export function buildStudioNavChromeTone(
       `--studio-nav-sheet-bg:${sheetBg}`,
       `--studio-nav-sheet-border:${sheetBorder}`,
     ].join(";");
+    const pillHeroDepth =
+      "box-shadow:0 1px 0 rgba(255,255,255,0.16) inset,0 0 0 1px rgba(255,255,255,0.12),0 22px 48px -14px rgba(0,0,0,0.48);";
     const barHostStyle = `${borderBar};background:${barBg};color:${fg};${blur}${cssVars}`;
-    const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars}`;
+    const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars};${pillHeroDepth}`;
     return {
       barHostStyle,
       pillHostStyle,
@@ -189,8 +207,9 @@ export function buildStudioNavChromeTone(
     `--studio-nav-sheet-border:${sheetBorder}`,
   ].join(";");
 
+  const pillDepth = pillShellDepthStyle(visual, isDarkChrome);
   const barHostStyle = `${borderBar};background:${barBg};color:${fg};${blur}${cssVars}`;
-  const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars}`;
+  const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars};${pillDepth}`;
 
     /*
    * Spacer: transparant. De nav-header is `fixed` en zweeft boven de pagina;

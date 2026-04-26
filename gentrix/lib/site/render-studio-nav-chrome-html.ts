@@ -201,19 +201,19 @@ export function renderStudioNavChromeHtml(
     ? `<a href="${escapeAttr(config.cta.href)}" class="${ctaMobileClass}">${escapeAttr(config.cta.label)}</a>`
     : "";
 
-  const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center ${r} text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] lg:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
+  const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center ${r} text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] md:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
 
   const mobileMenuTriggerRow = isHeroOverlay
-    ? `<div class="studio-nav-chrome-mobile-triggers flex shrink-0 items-center gap-2 lg:hidden">${ctaBlock}${menuBtn}</div>`
+    ? `<div class="studio-nav-chrome-mobile-triggers flex shrink-0 items-center gap-2 md:hidden">${ctaBlock}${menuBtn}</div>`
     : menuBtn;
 
   const desktopLinksCluster = `<div class="flex flex-nowrap items-center justify-center gap-4 sm:gap-6">${desktopLinks}</div>`;
 
-  const desktopRowStandard = `<div class="hidden min-w-0 flex-nowrap items-center gap-4 sm:gap-6 lg:flex">${desktopLinks}${
+  const desktopRowStandard = `<div class="hidden min-w-0 flex-nowrap items-center gap-4 sm:gap-6 md:flex">${desktopLinks}${
     ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
   }</div>`;
 
-  const desktopRowCentered = `<div class="hidden min-w-0 flex-1 justify-center lg:flex">${desktopLinksCluster}</div>`;
+  const desktopRowCentered = `<div class="hidden min-w-0 flex-1 justify-center md:flex">${desktopLinksCluster}</div>`;
 
   const desktopTrailing = `<div class="flex flex-1 justify-end items-center gap-2">${
     navBarLayout === "centeredLinks" && ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
@@ -225,9 +225,10 @@ export function renderStudioNavChromeHtml(
       ? `${desktopRowCentered}${desktopTrailing}`
       : `${desktopRowStandard}${menuBtn}`;
 
+  /** Vast onder de navbar, volle breedte; `md:` = iPad + desktop horizontale nav (768px). */
   const mobileSheetClass = isHeroOverlay
-    ? "absolute right-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] origin-top rounded-xl px-3 pb-3 pt-2 shadow-xl ring-1 ring-white/10 lg:hidden"
-    : "absolute inset-x-0 top-full z-[60] origin-top px-4 pb-4 pt-1 shadow-lg lg:hidden";
+    ? "fixed inset-x-0 top-[4.25rem] z-[60] max-h-[min(88dvh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain rounded-b-2xl px-4 pb-5 pt-3 shadow-2xl ring-1 ring-black/10 md:hidden"
+    : "fixed inset-x-0 top-[4.5rem] z-[60] max-h-[min(88dvh,calc(100dvh-4.75rem))] overflow-y-auto overscroll-contain px-4 pb-5 pt-2 shadow-2xl md:hidden";
 
   const mobileSheetClassFinal = usePillFlexCenter ? `${mobileSheetClass} pointer-events-auto` : mobileSheetClass;
 
@@ -236,12 +237,12 @@ export function renderStudioNavChromeHtml(
     x-show="${NAV_KEY}"
     x-cloak
     @click="if ($event.target.closest('a')) { ${NAV_KEY} = false }"
-    x-transition:enter="transition ease-out duration-200 transform"
-    x-transition:enter-start="-translate-y-2 opacity-0"
+    x-transition:enter="transition ease-out duration-300 transform [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]"
+    x-transition:enter-start="-translate-y-full opacity-0"
     x-transition:enter-end="translate-y-0 opacity-100"
-    x-transition:leave="transition ease-in duration-150 transform"
+    x-transition:leave="transition ease-in duration-220 transform"
     x-transition:leave-start="translate-y-0 opacity-100"
-    x-transition:leave-end="-translate-y-2 opacity-0"
+    x-transition:leave-end="-translate-y-full opacity-0"
     class="${mobileSheetClassFinal}"
     style="background:var(--studio-nav-sheet-bg);border-top:1px solid var(--studio-nav-sheet-border)"
   >${mobileLinks}${mobileCta}</div>`;

@@ -473,7 +473,12 @@ export const STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width:
   }
 }`;
 
-export const STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 1024px) {
+export const STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 768px) {
+  .md\\:hidden {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
   .lg\\:hidden,
   .xl\\:hidden {
     display: none !important;
@@ -482,14 +487,14 @@ export const STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS = `@media (min-width: 1024px
 
 /**
  * Declaratieve `data-studio-nav-chrome`-header: menuknop zichtbaarheid los van Tailwind-JIT purge
- * en met hogere specificiteit dan generieke iframe-desktop-fixes op `.lg:hidden`.
+ * en met hogere specificiteit dan generieke iframe-desktop-fixes op `.md:hidden` / `.lg:hidden`.
  */
-export const STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS = `@media (max-width: 1023px) {
+export const STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS = `@media (max-width: 767px) {
   header[data-studio-nav-chrome="1"] button.studio-nav-chrome-menu-btn {
     display: inline-flex !important;
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   header[data-studio-nav-chrome="1"] button.studio-nav-chrome-menu-btn {
     display: none !important;
   }
@@ -3013,16 +3018,16 @@ function buildAlpineMobileHeaderScopeRepairScript(): string {
 }
 
 /**
- * Studio/preview: bij Tailwind `lg`+ (iframe 1280 of smal venster → breed) alle mobiele nav-toggle-state
- * in header/banner resetten. Zo blijft een op mobiel geopend menu niet “plakken” bij desktop-weergave,
- * en wint geen oude Alpine-state over `lg:hidden` (x-show inline).
+ * Studio/preview: bij Tailwind `md`+ (≥768px, o.a. iPad portrait) alle mobiele nav-toggle-state
+ * in header/banner resetten. Zo blijft een op mobiel geopend menu niet “plakken” bij tablet/desktop,
+ * en wint geen oude Alpine-state over `md:hidden` / `lg:hidden` (x-show inline).
  */
 function buildStudioIframeNavResetOnDesktopViewportScript(): string {
   const keysLiteral = ALPINE_NAV_TOGGLE_KEYS.map((k) => JSON.stringify(k)).join(",");
   return `<script defer>
 (function(){
   if(document.documentElement.getAttribute("data-gentrix-studio-iframe")!=="1")return;
-  var mq=window.matchMedia("(min-width:1024px)");
+  var mq=window.matchMedia("(min-width:768px)");
   var KEYS=[${keysLiteral}];
   function sectionHasMobileHeaderNav(sec){
     if(!sec||sec.tagName!=="SECTION"||!sec.querySelector)return false;

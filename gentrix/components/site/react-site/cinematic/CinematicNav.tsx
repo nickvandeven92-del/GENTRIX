@@ -22,16 +22,16 @@ import { cn } from "@/lib/utils";
 
 type NavSection = Extract<ReactSiteSection, { type: "nav_overlay" }>;
 
-/** Server: mobiel aannemen zodat de inline menu-links nooit in de eerste HTML staan. */
-const LG = 1024;
-function useLgUp(): boolean {
+/** ≥768px: tablet/iPad krijgen desktop-nav; telefoons hamburger + sheet. */
+const MD = 768;
+function useMdUp(): boolean {
   return useSyncExternalStore(
     (onChange) => {
-      const mq = window.matchMedia(`(min-width: ${LG}px)`);
+      const mq = window.matchMedia(`(min-width: ${MD}px)`);
       mq.addEventListener("change", onChange);
       return () => mq.removeEventListener("change", onChange);
     },
-    () => window.matchMedia(`(min-width: ${LG}px)`).matches,
+    () => window.matchMedia(`(min-width: ${MD}px)`).matches,
     () => false,
   );
 }
@@ -162,7 +162,7 @@ function MobileNavDrawer({
       >
         <nav
           ref={navRef}
-          className="mx-auto flex w-full max-w-6xl flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-5 sm:px-6 sm:pt-6"
+          className="flex w-full max-w-none flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-5 sm:px-6 sm:pt-6"
           aria-label="Mobiel menu"
         >
           {children}
@@ -191,8 +191,8 @@ export function CinematicNav({
   const [mobileOpen, setMobileOpen] = useState(false);
   /** 0 = transparant glas boven hero, 1 = vaste donkere balk (scroll). */
   const [navElevated, setNavElevated] = useState(0);
-  const lgUp = useLgUp();
-  const mobileMenuOpen = mobileOpen && !lgUp;
+  const mdUp = useMdUp();
+  const mobileMenuOpen = mobileOpen && !mdUp;
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const router = useRouter();
@@ -267,10 +267,10 @@ export function CinematicNav({
     return () => window.removeEventListener("scroll", onScroll);
   }, [barStyle]);
 
-  // Close menu when viewport size changes (desktop ↔ mobile) or when navigating
+  // Close menu when viewport size changes (tablet/desktop ↔ phone) or when navigating
   useEffect(() => {
     setMobileOpen(false);
-  }, [lgUp, section]);
+  }, [mdUp, section]);
 
   // Close menu when user scrolls (handles internal navigation in single-page sites)
   useEffect(() => {
@@ -329,7 +329,7 @@ export function CinematicNav({
           </div>
           <nav
             className="shrink-0 flex-nowrap items-center gap-x-4 text-[0.9375rem] sm:gap-x-5 lg:text-sm"
-            style={{ display: lgUp ? "flex" : "none" }}
+            style={{ display: mdUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
             onClick={(e: ReactMouseEvent) => {
               const anchor = (e.target as HTMLElement).closest("a");
@@ -345,7 +345,7 @@ export function CinematicNav({
             <button
               type="button"
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100"
-              style={{ display: lgUp ? "none" : "inline-flex" }}
+              style={{ display: mdUp ? "none" : "inline-flex" }}
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
               onClick={() => setMobileOpen((o) => !o)}
@@ -355,7 +355,7 @@ export function CinematicNav({
           </div>
         </div>
         {/* Only render mobile drawer on mobile */}
-        {!lgUp && (
+        {!mdUp && (
           <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_light" topOffset={topOffset}>
             {mobileLinkWrap(
               <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />,
@@ -388,7 +388,7 @@ export function CinematicNav({
           </div>
           <nav
             className="shrink-0 flex-nowrap items-center gap-x-4 text-[0.9375rem] sm:gap-x-5 lg:text-sm"
-            style={{ display: lgUp ? "flex" : "none" }}
+            style={{ display: mdUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
             onClick={(e: ReactMouseEvent) => {
               const anchor = (e.target as HTMLElement).closest("a");
@@ -404,7 +404,7 @@ export function CinematicNav({
             <button
               type="button"
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
-              style={{ display: lgUp ? "none" : "inline-flex" }}
+              style={{ display: mdUp ? "none" : "inline-flex" }}
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
               onClick={() => setMobileOpen((o) => !o)}
@@ -414,7 +414,7 @@ export function CinematicNav({
           </div>
         </div>
         {/* Only render mobile drawer on mobile */}
-        {!lgUp && (
+        {!mdUp && (
           <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="bar_dark" topOffset={topOffset}>
             {mobileLinkWrap(
               <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />,
@@ -430,12 +430,13 @@ export function CinematicNav({
    * Rust: genoeg dekking dat tekst leesbaar blijft (te lage alpha oogt als “geen achtergrond”). */
   const floatingShellStyle: CSSProperties = {
     ...fontSans,
-    borderColor: `rgba(255,255,255,${0.14 * (1 - navElevated) + 0.22 * navElevated})`,
+    borderColor: `rgba(255,255,255,${0.18 * (1 - navElevated) + 0.26 * navElevated})`,
     backgroundColor: `rgba(9,9,11,${0.48 * (1 - navElevated) + 0.9 * navElevated})`,
+    /* Rand + diepte in lijn met hero feature-cards (subtiele highlight + donkere lift). */
     boxShadow:
       navElevated > 0.12
-        ? `0 18px 50px rgba(0,0,0,${0.32 + navElevated * 0.28})`
-        : `0 10px 36px rgba(0,0,0,0.2)`,
+        ? `0 1px 0 rgba(255,255,255,0.1) inset, 0 0 0 1px rgba(0,0,0,0.35), 0 22px 52px -12px rgba(0,0,0,${0.5 + navElevated * 0.18})`
+        : `0 1px 0 rgba(255,255,255,0.14) inset, 0 0 0 1px rgba(255,255,255,0.12), 0 24px 55px -14px rgba(0,0,0,0.5)`,
   };
 
   return (
@@ -448,7 +449,7 @@ export function CinematicNav({
     >
       <MotionNavShell
         className={cn(
-          "pointer-events-auto flex w-full max-w-5xl items-center rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4",
+          "pointer-events-auto flex w-full max-w-5xl items-center rounded-2xl border border-white/12 px-4 py-3 backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4",
           navElevated > 0.65 && "rounded-xl sm:rounded-2xl",
         )}
         style={floatingShellStyle}
@@ -467,7 +468,7 @@ export function CinematicNav({
           </div>
           <nav
             className="shrink-0 flex-nowrap items-center gap-x-4 text-[0.9375rem] sm:gap-x-5 lg:gap-x-6 lg:text-sm"
-            style={{ display: lgUp ? "flex" : "none" }}
+            style={{ display: mdUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
             onClick={(e: ReactMouseEvent) => {
               const anchor = (e.target as HTMLElement).closest("a");
@@ -483,7 +484,7 @@ export function CinematicNav({
             <button
               type="button"
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
-              style={{ display: lgUp ? "none" : "inline-flex" }}
+              style={{ display: mdUp ? "none" : "inline-flex" }}
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
               onClick={() => setMobileOpen((o) => !o)}
@@ -494,7 +495,7 @@ export function CinematicNav({
         </div>
       </MotionNavShell>
       {/* Only render mobile drawer on mobile */}
-      {!lgUp && (
+      {!mdUp && (
         <MobileNavDrawer open={mobileMenuOpen} onClose={closeMobile} onLinkClick={handleNavLinkClick} variant="floating" topOffset={topOffset}>
           {mobileLinkWrap(
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />,

@@ -63,9 +63,9 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
     }
   }
 
-  // Sluit menu bij resize; zelfde breakpoint als lg: (tablet krijgt hamburger tot 1024px)
+  // Sluit menu bij resize; zelfde breakpoint als md: (≥768px = iPad portrait+ desktop-nav)
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
+    const mq = window.matchMedia("(min-width: 768px)");
     const handleChange = () => {
       setOpen(false);
     };
@@ -137,7 +137,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           )}
         </a>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Hoofdmenu">
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Hoofdmenu">
           {nav.links.map((link) => (
             <a
               key={link.label + link.href}
@@ -161,7 +161,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
 
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--site-fg)] transition hover:bg-[var(--site-fg)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--site-fg)] transition hover:bg-[var(--site-fg)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-primary)]/40 md:hidden"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-label={open ? "Menu sluiten" : "Menu openen"}
@@ -175,7 +175,7 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           type="button"
           aria-label="Menu sluiten"
           className={cn(
-            "fixed inset-0 z-40 bg-black/25 transition-opacity duration-200 lg:hidden",
+            "fixed inset-0 z-40 bg-black/25 transition-opacity duration-200 md:hidden",
             menuVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
           )}
           onClick={() => setOpen(false)}
@@ -189,9 +189,9 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
       {menuMounted && (
         <div
           className={cn(
-            "fixed inset-x-0 top-16 z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] shadow-2xl lg:hidden",
-            "transition-[opacity,transform] duration-200 ease-out will-change-transform",
-            menuVisible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
+            "fixed inset-x-0 top-16 z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] shadow-2xl md:hidden",
+            "transition-[opacity,transform] duration-300 ease-out [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+            menuVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0",
           )}
           aria-hidden={!menuVisible}
         >
