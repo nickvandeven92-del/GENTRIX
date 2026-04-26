@@ -10,6 +10,7 @@ import { studioNavChromeConfigSchema } from "@/lib/site/studio-nav-chrome-schema
 import { buildStudioNavChromeTone } from "@/lib/site/studio-nav-theme";
 import type { NavVisualContract } from "@/lib/site/studio-nav-visual-presets";
 import { resolveNavVisualPreset } from "@/lib/site/studio-nav-visual-presets";
+import { pickMarkCharForSiteIdentity } from "@/lib/site/site-identity-favicon";
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -133,7 +134,8 @@ export function renderStudioNavChromeHtml(
   const ctaClass = ctaDesktopClasses(contract.ctaStyle, r);
   const ctaMobileClass = ctaMobileClasses(contract.ctaStyle, r);
 
-  const brand = `<a href="${escapeAttr(brandHref)}" class="shrink-0 text-base font-semibold tracking-tight text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]">${escapeAttr(config.brandLabel)}</a>`;
+  const markChar = escapeAttr(pickMarkCharForSiteIdentity(config.brandLabel, config.brandLabel));
+  const brand = `<a href="${escapeAttr(brandHref)}" class="flex min-w-0 shrink-0 items-center gap-2.5 text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]"><span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)] text-sm font-bold text-white shadow-sm ring-1 ring-black/10 dark:ring-white/10" aria-hidden="true">${markChar}</span><span class="truncate text-base font-semibold tracking-tight">${escapeAttr(config.brandLabel)}</span></a>`;
 
   const desktopLinks = config.items
     .map((it) => `<a href="${escapeAttr(it.href)}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`)

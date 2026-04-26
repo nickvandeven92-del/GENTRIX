@@ -37,7 +37,7 @@ const SYSTEM = `Je bent een senior product- en merkstrateeg én je vult een **bi
 4. Optioneel: **één** zin met de belangrijkste briefing-nuance (geen bullet-essay).
 
 === contract — basisvelden ===
-- \`heroVisualSubject\` — beschrijft wat de **server-side AI-hero** (één full-bleed foto) visueel moet zijn: **sfeer, materialen, dramatisch licht, textuur, macro/close-up of architectonisch fragment** (geen brede \"stock-kantoor\"-establishing tenzij de briefing dat echt wil). Bij **zakelijke, consultancy- of B2B-service** sectoren: denk **boardroom-/institutioneel** rust, **rim light op glas/metaal**, **abstracte volumes** — **niet** de standaard **laptop op houten tafel + koffiemok + notitieboek**-scene. **Verboden:** fictieve personen, gezichten, klantenmodellen, medewerkers in beeld — team/portret hoort via **KLANTFOTO'S** in HTML, niet in deze AI-raster. Zelfs bij kapper, horeca of coaching: kies **scharen/stoelen/ingrediënten/sportattribuut** in **strak kadreerd** stilleven, leeg interieur, dramatisch licht op materiaal — **geen** menselijke figuur. **Let op:** lichtlijnen, grids en geometrische **structuur** mogen deels in de **HTML** (gradients, hairlines, SVG) zitten — de foto hoeft niet alles te dragen; wel: geef de rasterlaag **karakter** (materiaal/licht), geen \"lieve\" stock-werkplek.
+- \`heroVisualSubject\` — beschrijft wat de **server-side AI-hero** (één full-bleed foto) visueel moet zijn: **sfeer, materialen, dramatisch licht, textuur, macro/close-up of architectonisch fragment** (geen brede \"stock-kantoor\"-establishing tenzij de briefing dat echt wil). **Uniciteit (verplicht denkstap):** één **eigen, out-of-the-box** beeldconcept voor **dit** merk — géén herbruikbaar sjabloon dat op elke willekeurige site zou passen; noem **concreet** hoek, schaal, dominant materiaal of lichtregime zodat de raster-API niet in dezelfde veilige formule valt. Bij **zakelijke, consultancy- of B2B-service** sectoren: denk **boardroom-/institutioneel** rust, **rim light op glas/metaal**, **abstracte volumes** — **niet** de standaard **laptop op houten tafel + koffiemok + notitieboek**-scene. **Webbureau / tool of platform dat websites bouwt of genereert / no-code site-builder:** het raster moet **digitaal-atelier of glas-metaal-craft** uitstralen (bv. macro op displayglas met abstracte reflecties zonder UI, aluminium studio-rack, donker server-/patchpaneel-abstract, fiberlicht op donker veld, nachtelijk glasgevel-compressie) — **niet** een marmeren bureau-stilleven met **schrift, pen en cryptisch gadget** als hoofdonderwerp; dat leest als generieke lifestyle-stock, niet als web/software. **Verboden:** fictieve personen, gezichten, klantenmodellen, medewerkers in beeld — team/portret hoort via **KLANTFOTO'S** in HTML, niet in deze AI-raster. Zelfs bij kapper, horeca of coaching: kies **scharen/stoelen/ingrediënten/sportattribuut** in **strak kadreerd** stilleven, leeg interieur, dramatisch licht op materiaal — **geen** menselijke figuur. **Let op:** lichtlijnen, grids en geometrische **structuur** mogen deels in de **HTML** (gradients, hairlines, SVG) zitten — de foto hoeft niet alles te dragen; wel: geef de rasterlaag **karakter** (materiaal/licht), geen \"lieve\" stock-werkplek.
 - \`paletteMode\`, \`primaryPaletteNotes\` (optioneel), \`motionLevel\`, \`toneSummary\` (optioneel).
 - \`paletteMode\` — **exact één** van: \`"light"\` | \`"dark"\` | \`"either"\` (hoofdthema van de site). **Niet** \`"mixed"\` (dat hoort bij \`referenceVisualAxes.themeMode\` bij referentie). Warm/helder → \`"light"\`; diep/neon → \`"dark"\`; echt licht-of-donker vrij → \`"either"\`.
 - \`motionLevel\` — **exact één** van deze strings (geen synoniemen zoals "high"): \`"none"\` | \`"subtle"\` | \`"moderate"\` | \`"strong"\`. Hoge bewegingswens uit briefing → meestal \`"strong"\`; spaarzaam → \`"subtle"\`.
@@ -88,6 +88,18 @@ function slimFeedbackForRationale(f: GenerationPipelineFeedback): Record<string,
     description: f.interpreted.description,
     sections: f.interpreted.sections,
   };
+  if (f.interpreted.detectedIndustryId) {
+    base.detectedIndustryId = f.interpreted.detectedIndustryId;
+  }
+  if (f.interpreted.detectedIndustry) {
+    base.detectedIndustry = f.interpreted.detectedIndustry;
+  }
+  if (f.interpreted.detectedStyleId) {
+    base.detectedStyleId = f.interpreted.detectedStyleId;
+  }
+  if (f.interpreted.detectedStyle) {
+    base.detectedStyle = f.interpreted.detectedStyle;
+  }
   if (f.interpreted.referenceStyle) {
     base.referenceStyle = f.interpreted.referenceStyle;
   }

@@ -269,16 +269,40 @@ export type BuildOpenAiHeroPromptOptions = {
   variationSeed?: string;
 };
 
+/** Brief + contract: web/software studio / site-builder — extra sturing voor de raster-API (Gemini/OpenAI). */
+const WEB_SOFTWARE_HERO_SIGNAL =
+  /\b(webdesign|webbureau|web\s*agency|digital\s*agency|websites?\s+(?:automatisch\s+)?(?:genereren|maken|bouwen|ontwikkelen|genereert|worden\s+gegenereerd)|genereren.{0,40}\bwebsites?\b|sites?\s+genereren|websitegenerator|site[-\s]?generator|webontwikkeling|webdevelopment|software\s*studio|(?:maakt|bouwt|genereert)\s+websites?|website[-\s]?(builder|bouwer)|site[-\s]?builder|no[-\s]?code|platform\s+(?:voor\s+)?websites?|site[-\s]?studio|webshop\s*laten\s*maken|SEO\s*bureau|UX\s*design|UI\s*design)\b/i;
+
+function buildWebSoftwareStudioHeroBiasParagraph(
+  businessName: string,
+  description: string,
+  contract: DesignGenerationContract | null,
+): string | null {
+  const heroSubj = contract?.heroVisualSubject?.trim() ?? "";
+  const reflect = (contract?.imageryMustReflect ?? []).join(" ");
+  const probe = `${businessName}\n${description}\n${heroSubj}\n${reflect}`;
+  if (!WEB_SOFTWARE_HERO_SIGNAL.test(probe)) return null;
+  return (
+    "**Sector cue — digital / web product or creative studio (from brief or contract):** prioritize **digital-atelier or institutional-tech** mood — e.g. **macro on large display glass** with soft abstract reflections (screen off or uniform grey; **no UI, text, or logos**), **precision-milled aluminum** studio hardware, **dark cable-harness / patch-panel** abstract with restrained bokeh, **fiber-optic light brushes** on matte black, **empty creative-studio interior fragment** (concrete + acoustic baffle; crop furniture to abstraction), **night glass façade** compression with cool practicals. **Hard ban for this sector:** **no** marble desk still-life where the main read is **spiral notebook + pen + mystery gadget / thick phone-on-stand / minimalist hub** (reads as generic “productivity” stock, not web/software). **No** stationery-as-hero unless the brief literally names that prop set."
+  );
+}
+
 export function buildOpenAiHeroPrompt(
   businessName: string,
   description: string,
   contract: DesignGenerationContract | null,
   options?: BuildOpenAiHeroPromptOptions,
 ): string {
+  const webBias = buildWebSoftwareStudioHeroBiasParagraph(businessName, description, contract);
   const parts: string[] = [
     "Photorealistic **environment / materials / still-life** photograph for a **wide 16:9** commercial website hero background — must read as a real photo, not an illustration or 3D render.",
     "**Default composition (unless the brief explicitly demands a full room):** prefer **macro or tight close-up** (macro to ~135mm lens feel): **texture- and light-led** — brushed or bead-blasted metal, smoked/tinted glass with speculars, carbon weave, fine stone/concrete grain, precision hardware, folded paper edges, **or** real architectural fragments (mullions, stair geometry, ceiling louvers, boardroom joinery) with **directional / rim light**. Wide airy **establishing shots** of whole desks/rooms are **second choice** — they read generic fast.",
-    "**Hard ban on lazy B2B stock tropes** (unless the brief names that exact scene): **no** bright Scandinavian home-office clichés — **laptop on pale wood + ceramic mug + spiral notebook + pen + felt desk pad** as the main read. If electronics appear, show **abstract detail** (keyboard edge, hinge metal, brushed lid corner) — not a hero product shot of a consumer laptop.",
+    "**Hard ban on lazy B2B stock tropes** (unless the brief names that exact scene): **no** bright Scandinavian home-office clichés — **laptop on pale wood + ceramic mug + spiral notebook + pen + felt desk pad** as the main read; **also ban** the close cousin **marble desk + spiral notebook + pen + cryptic slab gadget / phone dock** as the hero centerpiece (generic AI productivity still-life). If electronics appear, show **abstract detail** (keyboard edge, hinge metal, brushed lid corner) — not a hero product shot of a consumer laptop.",
+    "**Creative mandate — site-specific, not a reusable template:** one **bespoke** photoreal frame for *this* brief only — not an interchangeable \"default AI site hero.\" **Avoid** formula output: centered overhead flatlays, tame symmetry, vague office still-life, or the same prop recipe you would reuse for unrelated clients. **Prefer a daring but honest** read of the brief: aggressive crop (subject cut by frame edges), oblique camera, dominant diagonal massing, **specific** light (blue hour, single hard practical, raking sun), or an unexpected material **when the brief allows** — still believable and **zero people**.",
+  ];
+  /** Vroeg in de prompt: anders valt het weg bij de 3800-teken cap als de briefing lang is. */
+  if (webBias) parts.push(webBias);
+  parts.push(
     "Lighting: **controlled drama is encouraged** — single strong key, narrow window beam, corridor perspective, justified deep shadows, specular edge light on glass/metal. Still **natural photographic** integrity: **no** HDR halos, oversharpening, neon oversaturation, or \"AI poster\" grading; **no** blown-out white wall + flat fill as the default look.",
     "Subject = **branche mood without people**: believable interior **empty of people**, or **abstracted real architecture**, or **still-life props** filling most of the frame (no hands) — **institutional / advisory / craft** calm, **not** lifestyle bloggers, **not** domestic cozy.",
     "**Strict ban — no exceptions:** no people, no faces, no human silhouettes, no crowd, no customers or staff, no mannequins that read as humans, no body parts (hands, arms, legs). If the business is people-centric, show only **setting + props + materials** that imply the trade.",
@@ -286,7 +310,7 @@ export function buildOpenAiHeroPrompt(
     "Props and tools: plausible real-world objects, slightly imperfect staging — never arranged around an invisible human actor.",
     "No text, no logos, no watermarks, no UI mockups.",
     "Optional subtle film grain; restrained color grade — photographic, not stylized fantasy.",
-  ];
+  );
   const bn = businessName.trim();
   if (bn) parts.push(`Business context (mood only, do not render the name as text): ${bn.slice(0, 120)}.`);
   if (contract?.heroVisualSubject?.trim()) {

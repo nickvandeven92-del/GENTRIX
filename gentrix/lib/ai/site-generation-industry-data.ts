@@ -1022,7 +1022,7 @@ export const INDUSTRY_KEYWORDS: { pattern: RegExp; profileId: string }[] = [
   { pattern: /\b(consultant|adviesbureau|advies\s*bureau|management\s*advies|organisatieadvies|strategie\s*advies)\b/i, profileId: "consultant" },
   {
     pattern:
-      /\b(marketing\s*bureau|reclamebureau|webbureau|digital\s*agency|web\s*agency|branding\s*bureau|SEO\s*bureau|social\s*media\s*bureau|web\s*solutions|premium\s*web|multimedia|motion\s*graphics|videoproductie|video\s*productie|creatieve\s*studio|digital\s*studio|brand\s*experience|digital\s*experience|cinematic\s*canvas)\b/i,
+      /\b(marketing\s*bureau|reclamebureau|webbureau|digital\s*agency|web\s*agency|branding\s*bureau|SEO\s*bureau|social\s*media\s*bureau|web\s*solutions|premium\s*web|multimedia|motion\s*graphics|videoproductie|video\s*productie|creatieve\s*studio|digital\s*studio|brand\s*experience|digital\s*experience|cinematic\s*canvas|websites?\s+(?:automatisch\s+)?(?:genereren|maken|bouwen|ontwikkelen|genereert|worden\s+gegenereerd)|genereren.{0,40}\bwebsites?\b|sites?\s+genereren|websitegenerator|site[-\s]?generator|webontwikkeling|webdevelopment|(?:maakt|bouwt|genereert|automatiseert)\s+websites?|website[-\s]?(builder|bouwer)|site[-\s]?builder|no[-\s]?code\s+(?:website|web|site))\b/i,
     profileId: "marketing_agency",
   },
   { pattern: /\b(verzekering|verzekeringsadviseur|financieel\s*adviseur|hypotheekadviseur|assurantie|pensioenadviseur)\b/i, profileId: "insurance" },

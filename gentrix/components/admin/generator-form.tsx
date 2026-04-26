@@ -31,6 +31,8 @@ import { StudioSupportStrip } from "@/components/sales-os/studio-support-strip";
 import { SaveSitePanel } from "@/components/admin/save-site-panel";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { PublishedSiteView } from "@/components/site/published-site-view";
+import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
+import type { ComposePublicMarketingPlan } from "@/lib/site/public-site-composition";
 import { STUDIO_GENERATION_PACKAGE } from "@/lib/ai/generation-packages";
 import { postProcessTailwindSectionsForStreamingPreview } from "@/lib/ai/generate-site-postprocess";
 import {
@@ -328,17 +330,27 @@ export function GeneratorForm({
 
   /** Zelfde gecompileerde Tailwind als `/site` (geen Play CDN) zodra de server-build klaar is. */
   const [generatorPreviewCompiledCss, setGeneratorPreviewCompiledCss] = useState<string | null>(null);
+  /**
+   * Inline `PublicPublishedTailwind` voert `<script>` uit body niet uit → Tailwind Play CDN werkt daar niet.
+   * We wachten op server-compile; daarna pas inline preview. Na afloop zonder CSS: iframe-fallback (scripts lopen wél).
+   */
+  const [studioInlineTailwindCompileSettled, setStudioInlineTailwindCompileSettled] = useState(true);
 
   useEffect(() => {
     const p = activeStudioPreviewPayload;
     if (!p || p.kind !== "tailwind") {
       setGeneratorPreviewCompiledCss(null);
+      setStudioInlineTailwindCompileSettled(true);
       return;
     }
     if (p.tailwindCompiledCss?.trim()) {
       setGeneratorPreviewCompiledCss(null);
+      setStudioInlineTailwindCompileSettled(true);
       return;
     }
+
+    setStudioInlineTailwindCompileSettled(false);
+    setGeneratorPreviewCompiledCss(null);
 
     const controller = new AbortController();
     let cancelled = false;
@@ -363,10 +375,14 @@ export function GeneratorForm({
           tailwindCompiledCss?: string;
           error?: string;
         };
-        if (cancelled || !json.ok || !json.tailwindCompiledCss?.trim()) return;
-        setGeneratorPreviewCompiledCss(json.tailwindCompiledCss.trim());
+        if (cancelled) return;
+        if (json.ok && json.tailwindCompiledCss?.trim()) {
+          setGeneratorPreviewCompiledCss(json.tailwindCompiledCss.trim());
+        }
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
+      } finally {
+        if (!cancelled) setStudioInlineTailwindCompileSettled(true);
       }
     })();
 
@@ -389,6 +405,36 @@ export function GeneratorForm({
     }
     return withCss;
   }, [activeStudioPreviewPayload, generatorPreviewCompiledCss, designContract]);
+
+  const studioIframeFallbackComposePlan = useMemo((): ComposePublicMarketingPlan | null => {
+    const p = activeStudioPreviewPayload;
+    if (!p || p.kind !== "tailwind") return null;
+    const ord = p.sectionIdsOrdered?.filter((id) => typeof id === "string" && id.trim().length > 0) ?? [];
+    if (p.siteIr == null && ord.length === 0) return null;
+    return {
+      ...(p.siteIr != null ? { siteIr: p.siteIr } : {}),
+      ...(ord.length > 0 ? { sectionIdsOrdered: ord } : {}),
+    };
+  }, [activeStudioPreviewPayload]);
+
+  const studioInlineTailwindNeedsCompile =
+    activeStudioPreviewPayload?.kind === "tailwind" && !activeStudioPreviewPayload.tailwindCompiledCss?.trim();
+
+  const studioInlineTailwindHasMergedCss = Boolean(
+    generatorViewPayload?.kind === "tailwind" && generatorViewPayload.tailwindCompiledCss?.trim(),
+  );
+
+  const studioShowInlineTailwindCompileWait =
+    Boolean(generatorViewPayload?.kind === "tailwind") &&
+    studioInlineTailwindNeedsCompile &&
+    !studioInlineTailwindHasMergedCss &&
+    !studioInlineTailwindCompileSettled;
+
+  const studioShowTailwindIframeCompileFallback =
+    Boolean(generatorViewPayload?.kind === "tailwind") &&
+    studioInlineTailwindNeedsCompile &&
+    !studioInlineTailwindHasMergedCss &&
+    studioInlineTailwindCompileSettled;
 
   const previewIsStreaming = Boolean(streamEndedWithoutComplete && streamingSections.length > 0);
   const previewPendingUntilComplete = Boolean(loading && !generatedTailwind && !streamEndedWithoutComplete);
@@ -1536,15 +1582,55 @@ export function GeneratorForm({
                   </div>
                 ) : (
                   <div className="relative w-full min-w-0 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
-                    <PublishedSiteView
-                      payload={generatorViewPayload}
-                      className="w-full"
-                      publishedSlug={slugFromUrl}
-                      draftPublicPreviewToken={draftPublicPreviewToken}
-                      appointmentsEnabled={detectedModuleFlags.appointmentsEnabled}
-                      webshopEnabled={detectedModuleFlags.webshopEnabled}
-                      studioTailwindPreviewIframe
-                    />
+                    {studioShowInlineTailwindCompileWait ? (
+                      <div className="flex min-h-[min(360px,52dvh)] flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+                        <Loader2 className="size-10 animate-spin text-indigo-500" aria-hidden />
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                          Preview-layout wordt voorbereid…
+                        </p>
+                        <p className="max-w-sm text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                          Er wordt Tailwind-CSS op de server gebouwd (dezelfde laag als na &quot;Opslaan&quot;). Even
+                          geduld — meestal enkele seconden.
+                        </p>
+                      </div>
+                    ) : studioShowTailwindIframeCompileFallback && generatorViewPayload.kind === "tailwind" ? (
+                      <div className="flex min-h-[min(360px,52dvh)] w-full flex-col gap-2">
+                        <p className="px-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                          Inline-stylesheet niet beschikbaar — tijdelijke iframe-preview met dezelfde inhoud.
+                        </p>
+                        <TailwindSectionsPreview
+                          sections={generatorViewPayload.sections}
+                          pageConfig={generatorViewPayload.config}
+                          title="Studio preview"
+                          className="min-h-0 flex-1"
+                          frameClassName="h-[min(72vh,800px)] w-full"
+                          logoSet={generatorViewPayload.logoSet}
+                          rasterBrandSet={generatorViewPayload.rasterBrandSet}
+                          publishedSlug={slugFromUrl}
+                          draftPublicPreviewToken={draftPublicPreviewToken}
+                          appointmentsEnabled={detectedModuleFlags.appointmentsEnabled}
+                          webshopEnabled={detectedModuleFlags.webshopEnabled}
+                          composePlan={studioIframeFallbackComposePlan}
+                          navBrandLabel={generatorViewPayload.clientName?.trim() || previewClientLabel}
+                          designContract={generatorViewPayload.designContract ?? designContract}
+                        />
+                      </div>
+                    ) : (
+                      <PublishedSiteView
+                        key={
+                          generatorViewPayload.kind === "tailwind"
+                            ? `tw-inline-${generatorViewPayload.tailwindCompiledCss?.length ?? 0}-${generatorViewPayload.sections.length}`
+                            : generatorViewPayload.kind
+                        }
+                        payload={generatorViewPayload}
+                        className="w-full"
+                        publishedSlug={slugFromUrl}
+                        draftPublicPreviewToken={draftPublicPreviewToken}
+                        appointmentsEnabled={detectedModuleFlags.appointmentsEnabled}
+                        webshopEnabled={detectedModuleFlags.webshopEnabled}
+                        studioTailwindPreviewIframe
+                      />
+                    )}
                   </div>
                 )
               ) : (

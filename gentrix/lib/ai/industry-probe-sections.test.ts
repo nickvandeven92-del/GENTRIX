@@ -37,6 +37,14 @@ describe("combinedIndustryProbeText + branche-secties", () => {
     expect(buildSectionIdsFromBriefing(probe)).toContain("team");
   });
 
+  it("marketing_agency: website-/site-generator briefing (Nederlands)", () => {
+    const probe = combinedIndustryProbeText(
+      "GENTRIX",
+      "We genereren automatisch websites voor ondernemers; vaste prijs.",
+    );
+    expect(detectIndustry(probe)?.id).toBe("marketing_agency");
+  });
+
   it("hengelsport-profiel: geen gallery in sectielijst (webshop-module dekt productbeeld)", () => {
     const probe = combinedIndustryProbeText("Rudenko", "Visspeciaalzaak met webshop en hengels");
     expect(detectIndustry(probe)?.id).toBe("angling_shop");

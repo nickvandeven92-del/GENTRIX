@@ -33,21 +33,66 @@ export function isStudioRasterBrandImageEnabled(): boolean {
   return getStudioRasterBrandImageSkipReason() === null;
 }
 
+type BrandMarkEnergy = "refined_editorial" | "bold_sector_native";
+
+/**
+ * Lovable-achtige sites (entertainment, events, nachtleven, sport) vragen om **kleurrijke, leesbare** lockups;
+ * zakelijke / zorg / finance blijven bij verfijnde editorial-stijl.
+ */
+function inferBrandMarkEnergy(
+  businessName: string,
+  description: string,
+  contract: DesignGenerationContract | null,
+): BrandMarkEnergy {
+  const axis = contract?.referenceVisualAxes?.paletteIntent?.trim() ?? "";
+  const blob = `${businessName}\n${description}\n${axis}`.toLowerCase();
+  if (
+    /\b(vuurwerk|pyrotechn|festival|nachtleven|nightlife|neon|nachtclub|clubbing|pretpark|attractie|thrill|achtbaan|rollercoaster|roller|kermis|carnaval|\bdj\b|dansvloer|concert|live\s*optreden|spektakel|gaming|esports|skate|surf|action|extreme|jeugd|kids|familiepret|amusement|\bvuur\b|laser|glow|after\s*dark|barbers?\s*noir|tattoo|streetwear|skateshop)\b/i.test(
+      blob,
+    )
+  ) {
+    return "bold_sector_native";
+  }
+  if (
+    contract?.motionLevel === "strong" &&
+    /\b(energiek|playful|speels|jong|youth|feest|party|dynamisch)\b/i.test(blob)
+  ) {
+    return "bold_sector_native";
+  }
+  return "refined_editorial";
+}
+
 function buildPremiumBrandMarkPrompt(
   businessName: string,
   description: string,
   contract: DesignGenerationContract | null,
 ): string {
   const bn = businessName.trim().slice(0, 80);
-  const parts: string[] = [
-    "Create a **single premium brand lockup** on a **clean solid or very soft gradient background** (square 1:1).",
-    "Composition: **distinctive abstract monogram or lettermark** + **refined wordmark** for the business — **high-end editorial** look (think luxury consultancy, architecture studio, private banking collateral).",
-    "Materials: subtle metallic foil, soft emboss, or precision-cut gem-like geometry — **tasteful**, not gamer RGB or clip-art.",
+  const energy = inferBrandMarkEnergy(businessName, description, contract);
+  const parts: string[] = [];
+
+  if (energy === "bold_sector_native") {
+    parts.push(
+      "Create a **single square 1:1 brand lockup** on a **clean solid or controlled gradient** background.",
+      "Composition: **bold sector-native mark** — high-contrast **monogram, badge, circle seal, or split-color wordmark** that feels like **poster / arena / festival** branding (readable at favicon size).",
+      "Color: **confident saturated palette** (often **2–3 strong hues** or one vivid spot + crisp contrast). Avoid muddy, interchangeable gray-blue “SaaS blobs” unless the briefing is explicitly calm corporate.",
+      "Geometry: **crisp vector-like shapes**; optional subtle inner shadow or foil **only if** it stays sharp when tiny — **no** noisy textures, **no** photorealistic clutter.",
+    );
+  } else {
+    parts.push(
+      "Create a **single premium brand lockup** on a **clean solid or very soft gradient background** (square 1:1).",
+      "Composition: **distinctive abstract monogram or lettermark** + **refined wordmark** for the business — **high-end editorial** look (think luxury consultancy, architecture studio, private banking collateral).",
+      "Materials: subtle metallic foil, soft emboss, or precision-cut gem-like geometry — **tasteful**, not gamer RGB or clip-art.",
+    );
+  }
+
+  parts.push(
     "**Strict:** no photorealistic people, faces, hands, or stock lifestyle. No watermarks, no UI mockups, no QR codes.",
     "**Strict:** do **not** imitate famous global brands, luxury fashion houses, or recognizable third-party trademarks — invent an **original** mark for this client only.",
     "The business name may appear as **stylized lettering** in the image — spelling must match the briefing name exactly when shown.",
     "Leave comfortable margin at the edges; the mark must stay **readable when scaled down** to a browser favicon.",
-  ];
+  );
+
   if (bn) parts.push(`Business name (exact when typeset): ${bn}.`);
   if (contract?.referenceVisualAxes?.paletteIntent?.trim()) {
     parts.push(`Palette direction: ${contract.referenceVisualAxes.paletteIntent.trim().slice(0, 220)}`);

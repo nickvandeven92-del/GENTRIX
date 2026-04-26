@@ -54,6 +54,23 @@ describe("ai-hero-image-postprocess", () => {
     expect(p).toMatch(/laptop|mug|notebook/i);
   });
 
+  it("buildOpenAiHeroPrompt: bevat altijd creatief mandaat (geen sjabloon-held)", () => {
+    const p = buildOpenAiHeroPrompt("Bakkerij Jan", "Vers brood dagelijks.", null);
+    expect(p).toMatch(/Creative mandate|site-specific|bespoke/i);
+    expect(p).toMatch(/not an interchangeable|formula output/i);
+  });
+
+  it("buildOpenAiHeroPrompt: website-generator briefing krijgt web-studio sector bias", () => {
+    const p = buildOpenAiHeroPrompt(
+      "GENTRIX",
+      "Platform dat automatisch websites genereert voor ondernemers.",
+      null,
+    );
+    expect(p).toMatch(/Sector cue/i);
+    expect(p).toMatch(/digital-atelier|institutional-tech/i);
+    expect(p).toMatch(/spiral notebook|marble desk/i);
+  });
+
   it("stripHeroRasterPlaceholdersForSiteChatAiHero verwijdert img en background-url zodat AI-inject mag", () => {
     // Geen letterlijke Tailwind arbitrary background-url class in één string: build toolchain kan dat parsen.
     const arbitraryBg =

@@ -1015,6 +1015,18 @@ const LAYOUT_ARCHETYPE_MANDATES = [
   "**Layout-lijn (E):** diensten/USPs als **??n horizontale band/tijdlijn** of **max. 2 kolommen brede kaarten** ??? geen zes gelijke tegeltjes tenzij de briefing expliciet ???pijlers??? noemt.",
 ] as const;
 
+/** Roteert per run om **dezelfde `studioNav`-chrome** (vaak `minimalLight`+`standard`) te doorbreken. */
+const STUDIO_NAV_SHELL_VARIANCE_HINTS = [
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `darkSolid`, `variant`: `bar`, `navBarLayout`: `standard` ??? contrastrijke balk boven lichte content.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `glassLight`, `variant`: `bar`, `navBarLayout`: `standard` ??? matte glas-balk; past vaak bij gradients.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `floatingPill`, `variant`: `pill`, `navBarLayout`: `standard` ??? zwevende pill i.p.v. platte witte utility-balk.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `editorialTransparent`, `variant`: `bar`, `navBarLayout`: `centeredLinks` ??? editorial met gecentreerde desktop-links.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `luxuryGold`, `variant`: `bar`, `navBarLayout`: `standard` ??? warm/luxe merkgevoel.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `softBrand`, `variant`: `pill`, `navBarLayout`: `standard` ??? zachte merk-pill.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `compactBar`, `variant`: `bar`, `navBarLayout`: `standard` ??? compacte dense nav.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `minimalLight`, `variant`: `bar`, `navBarLayout`: `centeredLinks` ??? licht minimal maar ander silhouet dan standaard links/links/CTA.",
+] as const;
+
 function buildVarianceBlock(
   businessName: string,
   description: string,
@@ -1026,17 +1038,21 @@ function buildVarianceBlock(
   );
   const accentIdx = (h >> 3) % ACCENT_FAMILY_MANDATES.length;
   const layoutIdx = (h >> 7) % LAYOUT_ARCHETYPE_MANDATES.length;
+  const navShellIdx = (h >> 11) % STUDIO_NAV_SHELL_VARIANCE_HINTS.length;
   const explicitColors = detectExplicitColors(description);
   const hasExplicitColors = explicitColors.length > 0;
   const accentLine = hasExplicitColors
     ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** ??? gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
     : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
   const layoutLine = `- ${LAYOUT_ARCHETYPE_MANDATES[layoutIdx]} (${layoutIdx + 1}/${LAYOUT_ARCHETYPE_MANDATES.length})`;
+  const navShellLine = `- ${STUDIO_NAV_SHELL_VARIANCE_HINTS[navShellIdx]} (${navShellIdx + 1}/${STUDIO_NAV_SHELL_VARIANCE_HINTS.length}). **Niet** elke site identiek \`minimalLight\` + \`navBarLayout: standard\` + \`variant: bar\` alleen omdat een JSON-sjabloon dat ooit liet zien ??? stem af op \`config.theme\` + briefing (briefing wint).`;
 
   return `=== 0A. COMPOSITIE (deze run) ===
 Kies **??n** duidelijke lijn door de pagina (bijv. editorial type, asymmetrische splits, of een duidelijk licht/donker ritme) en houd die **consequent** vast. Herhaal niet in elke sectie hetzelfde 3-koloms kaarten-grid tenzij de briefing of branche dat echt vraagt.
 
 ${layoutLine}
+
+${navShellLine}
 
 ${accentLine}
 
@@ -1062,6 +1078,7 @@ Recente klanten (vermijd bewust copy-paste van hetzelfde stramien): ${recent}
 
 - Zet in \`config.style\` **??n korte zin** (eigen woorden, **max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens**) welk compositieprincipe je kiest; laat layout en typografie dat ondersteunen.
 - Varieer sectie-opbouw (lijst / split / grid / typografie-led) ??? niet drie keer hetzelfde kaartpatroon achter elkaar zonder reden.
+- **Globale shell-nav:** \`config.studioNav\` ??? varieer \`navVisualPreset\`, \`navBarLayout\` (\`standard\` vs \`centeredLinks\`) en \`variant\` (\`bar\` vs \`pill\`) tussen klanten; steeds dezelfde \`minimalLight\`+standaardlayout is een gemiste kans als de briefing dat niet eist (zie ?0A).
 - Sterke briefing en branche gaan boven gemakzuchtige defaults.
 - **Anti-template:** "veilig" en anoniem ogen is een **mislukking** voor deze studio ??? voorzichtigheid mag **niet** leiden tot generieke SaaS-esthetiek als de briefing iets specifiekers toelaat.`;
 }
@@ -1341,7 +1358,9 @@ function buildMarketingSlugContentHintsLines(slugs: readonly string[]): string {
 
 /** Gedeelde copy-richting: sales/conversie binnen CONTENT AUTHORITY (geen fictie). */
 function buildSiteGenerationSalesCopyGuidanceLine(): string {
-  return `- **Copy (conversie / sales):** **Minder is meer** ??? billboard- en posterlogica: krachtige woorden, geen brochure-lengte. Elke zin moet iets **nieuws** zeggen; **geen** vulling (???ontdek ons??????, ???bij ons staat kwaliteit centraal??????) zonder concrete briefing-hook. **Spaarzame** CTA???s met werkende \`href\` (??n primair + hoogstens ??n secundair). **Geen** verzonnen prijzen, stats, reviews of ???limited time??? ??? zie CONTENT AUTHORITY.`;
+  return `- **Copy (conversie / sales):** **Minder is meer** ??? billboard- en posterlogica: krachtige woorden, geen brochure-lengte. Elke zin moet iets **nieuws** zeggen; **geen** vulling (???ontdek ons??????, ???bij ons staat kwaliteit centraal??????) zonder concrete briefing-hook. **Spaarzame** CTA???s met werkende \`href\` (??n primair + hoogstens ??n secundair). **Geen** verzonnen prijzen, stats, reviews of ???limited time??? ??? zie CONTENT AUTHORITY.
+- **Anti-herhaling (kritisch):** hergebruik **niet** telkens dezelfde openingsritmes of ???standaard NL-site???-zinnen. Wissel bewust: **vraagzin** vs **statement** vs **kort fragment**; kies **andere** kicker-structuur dan de vorige run (geen vaste formule ???Welkom bij??? + merknaam als default). Vermijd generieke afsluiters (???neem vandaag nog contact op???, ???wij staan voor je klaar???, ???uw partner in???) tenzij de briefing dat expliciet vraagt ??? vervang door **specifieke** belofte uit sector/dienst.
+- **Briefing-anker:** minstens **??n** zichtbare zin in de **eerste** zichtbare copyband (kicker of kop-onderregel) moet een **concrete** term uit de opdracht bevatten (product, plaats, doelgroep, aanbod) ??? geen wisselbare plakzinnen die op elke branche passen.`;
 }
 
 /**
@@ -1378,6 +1397,7 @@ function buildMinimalMarketingCopyContractMarkdown(): string {
 - **USP / feature-kaarten / stappen:** per item **titel + hoogstens ??n korte regel** (**??? 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
 - **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina???s: **kern + witruimte** ??? geen drie identieke marketing-alinea???s achter elkaar.
 - **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van ???professioneel klinkend door veel woorden???.
+- **Microcopy-variatie:** labels op knoppen, kicker-woordjes (uppercase regel boven kop), en sectiekoppen mogen **niet** telkens dezelfde woordenlijst volgen (???Ontdek???, ???Meer weten???, ???Lees verder??? als standaardtriple) ??? kies per site **eigen** werkwoorden passend bij de briefing.
 - **Telefoon & openingstijden ??? niet spammen:** Zelfde \`tel:\`/\`wa.me\` en dezelfde volledige openingstijdenregel **niet** in hero, testimonials, split-sectie, CTA-band **?n** footer tegelijk. **Maximaal ??n** compacte plek boven de vouw (nav-knop of dunne infostrip) **plus** de footer/contactkolom ??? of alleen footer als je twijfelt. Geen copy-paste van identieke urenzin in drie banden achter elkaar.
 
 ${buildStockImageryAgencyDefaultMarkdown()}`;
@@ -1408,7 +1428,7 @@ function buildMarketingMultiPageOperationalTail(
 - Top-level keys: \`config\`, \`sections\`, \`marketingPages\`, \`contactSections\` ??? **alle vier** aanwezig.
 - \`marketingPages\`: **exact** deze ${uniqueSlugCount} key(s), geen extra, geen misser: ${slugList}.
 - Per key: **minstens 2** secties met unieke \`id\`'s op die pagina + genoeg zichtbare tekst (geen lege shells).
-- **Navigatie (studio shell):** bouw **geen** eigen top-\`<header>\`/\`<nav>\`-chrome (geen vaste balk, geen scroll/fixed-nav utilities op een primaire header). Vul **\`config.studioNav\`** met \`brandLabel\`, \`brandHref\`, \`items[]\` (alle routes dezelfde labels/hrefs), optioneel \`cta\`, optioneel \`navVisualPreset\` (één van: minimalLight, darkSolid, glassLight, floatingPill, luxuryGold, editorialTransparent, softBrand, compactBar) ??? bij briefing **“floating / zwevende menubalk”** altijd \`floatingPill\` (server accepteert ook het synoniem \`"floating"\` in JSON); zet dan \`variant\`: \`"pill"\` of laat \`bar\` staan ??? wordt automatisch naar \`pill\` gezet, optioneel \`navVisualOverrides\` (**alleen** \`height\` / \`ctaStyle\` / \`activeIndicator\`), optioneel \`navBarLayout\`: \`"standard"\` (standaard) of \`"centeredLinks"\` wanneer de briefing **gecentreerde menulinks** wil (merk links, linkcluster midden op desktop, CTA rechts) ??? **zet dit veld** i.p.v. eigen flex-markup in secties; optioneel \`navChromeTheme\`: \`{ "primary"?: "#hex", "accent"?: "#hex" }\` voor **alleen de nav-shell** (CTA/accentlijnen/balk-tint) zonder de rest van \`config.theme\` te wijzigen. **Optioneel** \`"studioShellNav": true\` in \`config\`: dan **moet** \`studioNav\` geldig zijn (server valideert; geen infer uit AI-\`<header>\`). **Zwevende navbar:** vraagt de briefing “floating / zwevend / pill” ??? zet \`"variant":"pill"\` **en** \`"navVisualPreset":"floatingPill"\` (niet de standaard \`bar\` + \`minimalLight\`). **Geen favicon als merkbeeld in secties:** geen \`<img src="???favicon???">\` of 32×32-tab-icoon als logo ??? merk = \`studioNav.brandLabel\` en/of \`logoSet\` / server **header**-raster; het tab-icoon komt uit de head. **FAQ** staat **niet** in \`studioNav.items\` ??? alleen footer-link \`href="__STUDIO_SITE_BASE__/faq"\` op de landing. Elke marketing-key **behalve** \`faq\` wél als item met \`href="__STUDIO_SITE_BASE__/<slug>"\`.
+- **Navigatie (studio shell):** bouw **geen** eigen top-\`<header>\`/\`<nav>\`-chrome (geen vaste balk, geen scroll/fixed-nav utilities op een primaire header). Vul **\`config.studioNav\`** met \`brandLabel\`, \`brandHref\`, \`items[]\` (alle routes dezelfde labels/hrefs), optioneel \`cta\`, optioneel \`navVisualPreset\` (één van: minimalLight, darkSolid, glassLight, floatingPill, luxuryGold, editorialTransparent, softBrand, compactBar) ??? bij briefing **“floating / zwevende menubalk”** altijd \`floatingPill\` (server accepteert ook het synoniem \`"floating"\` in JSON); zet dan \`variant\`: \`"pill"\` of laat \`bar\` staan ??? wordt automatisch naar \`pill\` gezet, optioneel \`navVisualOverrides\` (**alleen** \`height\` / \`ctaStyle\` / \`activeIndicator\`), optioneel \`navBarLayout\`: \`"standard"\` of \`"centeredLinks"\` wanneer de briefing **gecentreerde menulinks** wil (merk links, linkcluster midden op desktop, CTA rechts) ??? **zet dit veld** i.p.v. eigen flex-markup in secties; optioneel \`navChromeTheme\`: \`{ "primary"?: "#hex", "accent"?: "#hex" }\` voor **alleen de nav-shell** (CTA/accentlijnen/balk-tint) zonder de rest van \`config.theme\` te wijzigen. **Optioneel** \`"studioShellNav": true\` in \`config\`: dan **moet** \`studioNav\` geldig zijn (server valideert; geen infer uit AI-\`<header>\`). **Zwevende navbar:** vraagt de briefing “floating / zwevend / pill” ??? zet \`"variant":"pill"\` **en** \`"navVisualPreset":"floatingPill"\` (niet de standaard \`bar\` + \`minimalLight\`). **Anti-sjabloon:** kies \`navVisualPreset\` / \`navBarLayout\` / \`variant\` **bewust** passend bij theme+briefing ??? **niet** automatisch telkens \`minimalLight\` + \`standard\` + \`bar\` omdat een JSON-voorbeeld dat lijkt te tonen; zie **?0A** voor ??n concrete shell-nav suggestie bij **deze** run. **Geen favicon als merkbeeld in secties:** geen \`<img src="???favicon???">\` of 32×32-tab-icoon als logo ??? merk = \`studioNav.brandLabel\` en/of \`logoSet\` / server **header**-raster; het tab-icoon komt uit de head. **FAQ** staat **niet** in \`studioNav.items\` ??? alleen footer-link \`href="__STUDIO_SITE_BASE__/faq"\` op de landing. Elke marketing-key **behalve** \`faq\` wél als item met \`href="__STUDIO_SITE_BASE__/<slug>"\`.
 
 `;
 
@@ -1455,7 +1475,7 @@ Lever **uitsluitend** ??n JSON-object. Geen markdown, geen code fences, geen tek
 Structuur ??? \`marketingPages\` met **precies** deze keys (elk **???2** secties):
 
 {
-  "config": { "style": "???", "theme": { "primary": "#???", "accent": "#???", "primaryLight": "#???", "primaryMain": "#???", "primaryDark": "#???" }, "font": "???", "studioShellNav": true, "studioNav": { "variant": "bar", "brandLabel": "???", "brandHref": "__STUDIO_SITE_BASE__", "items": [{"label": "???", "href": "#features"}], "cta": {"label": "Contact", "href": "__STUDIO_CONTACT_PATH__"}, "navVisualPreset": "minimalLight", "navBarLayout": "standard" },
+  "config": { "style": "???", "theme": { "primary": "#???", "accent": "#???", "primaryLight": "#???", "primaryMain": "#???", "primaryDark": "#???" }, "font": "???", "studioShellNav": true, "studioNav": { "variant": "???", "brandLabel": "???", "brandHref": "__STUDIO_SITE_BASE__", "items": [{"label": "???", "href": "#features"}], "cta": {"label": "Contact", "href": "__STUDIO_CONTACT_PATH__"}, "navVisualPreset": "???", "navBarLayout": "???" },
   "sections": [
     { "id": "hero", "html": "<section id=\\"hero\\" class=\\"...\\">???</section>" }
   ],
@@ -1972,7 +1992,7 @@ ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
 ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding, marketingMultiPage, ultraCompactLanding: strictLandingSectionIds?.length === 3 }) : ""}
 
-**Vrijheid:** ${strictLanding && strictLandingSectionIds ? `Binnen de **${strictLandingSectionIds.length}** vaste landings-secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij ??? **geen** wijziging van volgorde of \`id\`'s.` : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led ??? allemaal toegestaan)."} **Nav:** \`config.studioNav\` + optioneel \`navVisualPreset\`; **geen** eigen top-header-chrome in HTML. Legacy: \`studio-nav-scroll-dim\` alleen als er géén \`studioNav\` is en een bron-header blijft staan.
+**Vrijheid:** ${strictLanding && strictLandingSectionIds ? `Binnen de **${strictLandingSectionIds.length}** vaste landings-secties (zie STRIKTE LANDINGS) is visuele uitwerking vrij ??? **geen** wijziging van volgorde of \`id\`'s.` : "hero, secties en lay-out stem je af op de **briefing**; geen verplicht sjabloon (editorial, kaarten, foto-hero, typografie-led ??? allemaal toegestaan)."} **Nav:** \`config.studioNav\` + \`navVisualPreset\` / \`navBarLayout\` / \`variant\` ??? varieer tussen sites (zie ?0A); **geen** eigen top-header-chrome in HTML. Legacy: \`studio-nav-scroll-dim\` alleen als er géén \`studioNav\` is en een bron-header blijft staan.
 
 **Navigatie (${marketingMultiPage ? `multi-page: landing + marketing-subroutes (${mpKeysLine || "zie ?3B"}) + contact` : "one-pager"}):** Vul \`config.studioNav\` met merk + **minstens twee** bruikbare links + merkregel. ${marketingMultiPage ? `In \`studioNav.items\`: elke marketing-key **behalve** \`faq\` als \`__STUDIO_SITE_BASE__/<slug>\` (${mpKeysLine || "zie ?3B"}); FAQ alleen in de **footer** van de landing. **Geen** \`#???\` in nav-items naar inhoud op een andere route. ` : ""}Op **??n** pagina: \`href="#sectie-id"\` in sectie-body alleen naar id's op **die** pagina. **Contact:** \`href="__STUDIO_CONTACT_PATH__"\` in \`studioNav.cta\` of items. **Geen tweede** volledige menu-HTML. ${marketingMultiPage ? "Zelfde \`studioNav\` op alle pagina's. " : ""}**Legacy (geen \`studioNav\`):** één simpele \`sticky\` bron-\`<header>\` + Alpine; mobiel menu dicht bij load.
 
