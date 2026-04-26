@@ -221,6 +221,17 @@ describe("repairHeaderMobileMenuButton", () => {
     expect(out).toMatch(/\blg:hidden\b/);
   });
 
+  it("behoudt `md:hidden` op `studio-nav-chrome-menu-btn` (768px = desktop-nav)", () => {
+    const html = `<header data-studio-nav-chrome="1" x-data="{ navOpen: false }" class="bg-white">
+  <button type="button" class="studio-nav-chrome-menu-btn md:hidden flex items-center justify-center gap-1 gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen">
+    <span class="gentrix-menu-icon"><svg x-show="!navOpen"></svg><svg x-show="navOpen"></svg></span>
+  </button>
+</header>`;
+    const out = repairHeaderMobileMenuButton(html);
+    expect(out).toMatch(/\bmd:hidden\b/);
+    expect(out).not.toMatch(/\blg:hidden\b/);
+  });
+
   it("vervangt AI-output met losse x-show spans in een flex-col parent (MOSHAM-case)", () => {
     // Dit is precies de broken AI-output die in mosham.html staat:
     // 3 bars voor !navOpen + 2 gedraaide bars voor navOpen, binnen een flex flex-col gap-[5px] button.
@@ -377,5 +388,16 @@ describe("convertMobileDrawerToPushDown", () => {
 </header>`;
     const out = convertMobileDrawerToPushDown(html);
     expect(out).toMatch(/\bpy-\d/);
+  });
+
+  it("laat declaratieve studio-nav-chrome (fixed inset-x sheet) ongemoeid — geen gentrix-push-drawer", () => {
+    const html = `<header data-studio-nav-chrome="1" x-data="{ navOpen: false }" class="bg-white">
+  <button type="button" class="studio-nav-chrome-menu-btn md:hidden flex items-center justify-center gap-1 gentrix-menu-repaired" aria-label="Menu" @click="navOpen = !navOpen"><span class="gentrix-menu-icon">x</span></button>
+  <div id="studio-nav-chrome-mobile-sheet" x-show="navOpen" class="fixed inset-x-0 top-[4.5rem] z-[60] md:hidden"><a href="#a">Home</a></div>
+</header>`;
+    const out = convertMobileDrawerToPushDown(html);
+    expect(out).toBe(html);
+    expect(out).not.toContain("gentrix-push-drawer");
+    expect(out).toContain("fixed inset-x-0");
   });
 });

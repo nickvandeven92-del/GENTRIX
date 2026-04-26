@@ -499,6 +499,8 @@ function stripAlpineVisualBlockersFromGentrixMenuIconInner(html: string): string
  * (2) alleen `md:hidden` → `lg:hidden` (zelfde bedoeling als “mobiel tot lg-breakpoint”).
  */
 function normalizeMobileMenuButtonHiddenClassesInAttrs(attrs: string): string {
+  /** Declaratieve `studioNav`-chrome: bewust `md:hidden` (tablet = desktop-nav); niet naar `lg` omzetten. */
+  if (/\bstudio-nav-chrome-menu-btn\b/.test(attrs)) return attrs;
   return attrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/gi, (full, q: string, c: string) => {
     if (!/\bmd:hidden\b/.test(c)) return full;
     let next = c;
@@ -896,6 +898,8 @@ export function convertMobileDrawerToPushDown(html: string): string {
   const sliced = sliceFirstSiteChromeNavBlock(html);
   if (!sliced) return html;
   const fullHeader = sliced.block;
+  /** Renderer-levering: vast volle-breedte sheet + eigen transitie — niet naar push-drawer muteren. */
+  if (/\bdata-studio-nav-chrome\s*=\s*["']1["']/i.test(fullHeader)) return html;
 
   const drawerOpenRe =
     /<(div|nav|aside)(\b[^>]*\bx-show\s*=\s*["'][^"']*\b(?:navOpen|menuOpen|mobileOpen|menuVisible|mobileMenuOpen|drawerOpen|sheetOpen)\b[^"']*["'][^>]*)>/gi;
