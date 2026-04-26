@@ -48,6 +48,17 @@ describe("buildStudioNavChromeTone", () => {
     expect(t.ctaRadiusClass).toBe("rounded-full");
   });
 
+  it("heroOverlayBar: donkere glas-cluster + schaduw (geen transparante strip)", () => {
+    const t = buildStudioNavChromeTone(
+      { primary: "#0f172a", accent: "#06b6d4" } as MasterPromptTheme,
+      STUDIO_NAV_VISUAL_PRESETS.minimalLight,
+      { heroOverlayBar: true },
+    );
+    expect(t.barHostStyle).toContain("rgba(15,23,42,0.48)");
+    expect(t.hostShadowClass).toBe("shadow-lg");
+    expect(t.spacerLayerStyle).toBe("background:transparent");
+  });
+
   it("zonder theme.borderRadius: CTA/hamburger scherp (rounded-none), pill-shell default lg", () => {
     const t = buildStudioNavChromeTone(
       { primary: "#0f172a", accent: "#eab308" } as MasterPromptTheme,

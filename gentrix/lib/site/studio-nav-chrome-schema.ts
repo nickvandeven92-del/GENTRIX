@@ -5,7 +5,9 @@ import {
 } from "@/lib/site/studio-nav-visual-presets";
 
 /** NL / model-synoniemen → canonieke layout (ongeldig → weglaten). */
-export function coerceStudioNavBarLayout(raw: unknown): "standard" | "centeredLinks" | undefined {
+export function coerceStudioNavBarLayout(
+  raw: unknown,
+): "standard" | "centeredLinks" | "linksRightInHero" | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
   const s = String(raw)
     .trim()
@@ -27,12 +29,27 @@ export function coerceStudioNavBarLayout(raw: unknown): "standard" | "centeredLi
   ) {
     return "centeredLinks";
   }
+  if (
+    [
+      "linksrightinhero",
+      "heroright",
+      "overlayright",
+      "inhero",
+      "herooverlay",
+      "navinhero",
+      "overlayhero",
+      "rechtsinhero",
+      "navbovenhero",
+    ].includes(s)
+  ) {
+    return "linksRightInHero";
+  }
   return undefined;
 }
 
 const studioNavBarLayoutSchema = z.preprocess(
   (v) => coerceStudioNavBarLayout(v),
-  z.enum(["standard", "centeredLinks"]).optional(),
+  z.enum(["standard", "centeredLinks", "linksRightInHero"]).optional(),
 );
 
 /**
@@ -75,6 +92,10 @@ export const studioNavChromeConfigSchema = z
   /**
    * Desktop-opmaak van merk + links + CTA. Zet op `centeredLinks` wanneer de opdracht vraagt om
    * gecentreerde menulinks (merk links, linkgroep visueel in het midden, CTA rechts). Standaard: `standard`.
+   *
+   * `linksRightInHero`: alleen voor **lichte/glas bar-presets** (`minimalLight`, `softBrand`, `compactBar`, `glassLight`):
+   * **zwevende** cluster rechtsboven op de hero (`rounded-2xl`, donker glas + lichte type), geen volle-breedte balk/spacer; desktop links + CTA rechts; mobiel **CTA + hamburger** en rechts uitklapbaar sheet (zelfde palet).
+   * Bij andere `navVisualPreset`-waarden wordt dit veld **genegeerd** (normale bar + spacer). Alleen `variant: "bar"`.
    */
   navBarLayout: studioNavBarLayoutSchema.optional(),
   /** Eigen primary/accent hex voor de nav-shell; overschrijft niet `config.theme` voor de rest van de pagina. */

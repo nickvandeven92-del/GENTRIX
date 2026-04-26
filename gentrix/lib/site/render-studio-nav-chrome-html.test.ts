@@ -54,6 +54,55 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toMatch(/--studio-nav-accent:#c026d3/i);
   });
 
+  it("linksRightInHero + darkSolid: geen hero-overlay (alleen lichte bar-presets)", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "bar",
+        brandLabel: "X",
+        brandHref: "#top",
+        items: [
+          { label: "A", href: "#a" },
+          { label: "B", href: "#b" },
+        ],
+        navVisualPreset: "darkSolid",
+        navBarLayout: "linksRightInHero",
+      },
+      { primary: "#0f172a", accent: "#ca8a04" },
+    );
+    expect(html).not.toContain('data-studio-nav-hero-overlay="1"');
+    expect(html).not.toContain("studio-nav-chrome-spacer--hero-overlay");
+    expect(html).not.toContain("shellScrolled");
+    expect(html).toContain("justify-between");
+  });
+
+  it("navBarLayout linksRightInHero: overlay-attribuut, spacer hoogte 0, justify-end, shellScrolled in x-data", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "bar",
+        brandLabel: "Gentrix",
+        brandHref: "#top",
+        items: [
+          { label: "Wat wij doen", href: "#diensten" },
+          { label: "Werkwijze", href: "#werk" },
+        ],
+        cta: { label: "Contact opnemen", href: "#contact" },
+        navVisualPreset: "minimalLight",
+        navBarLayout: "linksRightInHero",
+      },
+      { primary: "#0f172a", accent: "#06b6d4" },
+    );
+    expect(html).toContain('data-studio-nav-bar-layout="linksRightInHero"');
+    expect(html).toContain('data-studio-nav-hero-overlay="1"');
+    expect(html).toContain("studio-nav-chrome-spacer--hero-overlay");
+    expect(html).toContain("justify-end");
+    expect(html).toContain("shellScrolled");
+    expect(html).toContain("studio-nav-shell-scrolled");
+    expect(html).toContain("fixed top-4 right-4");
+    expect(html).toContain("rounded-2xl");
+    expect(html).toContain("studio-nav-chrome-mobile-triggers");
+    expect(html).not.toContain("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)]");
+  });
+
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
     const html = renderStudioNavChromeHtml(
       {

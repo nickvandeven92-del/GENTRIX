@@ -495,6 +495,31 @@ export const STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS = `@media (max-width: 102
   }
 }`;
 
+/** `navBarLayout: linksRightInHero` — zwevende cluster; na scroll iets vollere donkere glas-laag (geen witte vol-breedte-balk). */
+export const STUDIO_NAV_CHROME_HERO_OVERLAY_SHELL_CSS = `
+header[data-studio-nav-chrome="1"][data-studio-nav-hero-overlay="1"] {
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    color 180ms ease,
+    backdrop-filter 220ms ease,
+    -webkit-backdrop-filter 220ms ease;
+}
+header[data-studio-nav-chrome="1"][data-studio-nav-hero-overlay="1"].studio-nav-shell-scrolled {
+  background: rgba(10, 10, 18, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35) !important;
+  color: rgba(248, 250, 252, 0.96) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  --studio-nav-fg: rgba(248, 250, 252, 0.96);
+  --studio-nav-fg-muted: rgba(248, 250, 252, 0.8);
+  --studio-nav-fg-hover: #ffffff;
+  --studio-nav-hover-bg: rgba(255, 255, 255, 0.12);
+}
+`;
+
 /**
  * Hamburger↔X via `:class="gentrix-menu-open"` op `.gentrix-menu-toggle-css` (niet `x-show` op de SVG's):
  * vóór Alpine init zouden anders beide SVG's even zichtbaar zijn (“X door strepen”), ook bij SPA-nav.
@@ -3257,6 +3282,7 @@ ${headMetaExtras ? `${headMetaExtras}\n` : ""}${tailwindPreloadLine}${fontHeadFr
     ${STUDIO_IFRAME_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
     ${STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS}
+    ${STUDIO_NAV_CHROME_HERO_OVERLAY_SHELL_CSS}
     ${GENTRIX_MENU_ICON_TOGGLE_CSS}
     ${STUDIO_FIXED_NAV_HERO_INSET_CSS}
     ${STUDIO_SITE_CREDIT_CSS}

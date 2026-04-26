@@ -61,6 +61,19 @@ function firstChromeBlockFromSections(sections: readonly TailwindSection[]): str
   return null;
 }
 
+/** Donkere/full-bleed hero: overlay-nav (rechts) i.p.v. aparte witte balk + spacer. */
+function firstSectionSuggestsDarkHeroOverlay(sections: readonly TailwindSection[]): boolean {
+  const h = sections[0]?.html ?? "";
+  if (!h) return false;
+  const low = h.toLowerCase();
+  const hasHero = /\bid\s*=\s*["']hero["']/i.test(low) || /\bdata-section\s*=\s*["'][^"']*hero/i.test(low);
+  if (!hasHero) return false;
+  if (/\btext-white\b/.test(low)) return true;
+  if (/\bbg-(zinc|slate|neutral|stone)-(9|950)\b/.test(low)) return true;
+  if (/\bfrom-(zinc|slate|neutral|stone)-(9|950)\b/.test(low)) return true;
+  return false;
+}
+
 function pickVariantFromChrome(html: string): "bar" | "pill" {
   if (/\brounded-full\b/i.test(html)) return "pill";
   const h = html.toLowerCase();
@@ -127,6 +140,10 @@ export function inferStudioNavChromeFromSections(sections: readonly TailwindSect
     brandHref: brand.href,
     items: navItems.slice(0, 16),
     ...(cta ? { cta } : {}),
+    /* Alleen i.c.m. minimalLight-bar; renderer past overlay alleen toe voor lichte/glas-presets. */
+    ...(variant === "bar" && firstSectionSuggestsDarkHeroOverlay(sections)
+      ? { navBarLayout: "linksRightInHero" as const }
+      : {}),
   };
 
   const parsed = studioNavChromeConfigSchema.safeParse(raw);

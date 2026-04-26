@@ -14,6 +14,11 @@ describe("coerceStudioNavBarLayout", () => {
   it("onzin → undefined", () => {
     expect(coerceStudioNavBarLayout("radial")).toBeUndefined();
   });
+
+  it("mapt hero-overlay synoniemen naar linksRightInHero", () => {
+    expect(coerceStudioNavBarLayout("hero overlay")).toBe("linksRightInHero");
+    expect(coerceStudioNavBarLayout("rechts in hero")).toBe("linksRightInHero");
+  });
 });
 
 describe("studioNavChromeConfigSchema + navVisualPreset synoniemen", () => {
@@ -62,5 +67,19 @@ describe("studioNavChromeConfigSchema + navBarLayout", () => {
     });
     expect(r.success).toBe(true);
     expect(r.data?.navBarLayout).toBe("centeredLinks");
+  });
+
+  it("parsed linksRightInHero", () => {
+    const r = studioNavChromeConfigSchema.safeParse({
+      variant: "bar",
+      brandLabel: "X",
+      items: [
+        { label: "A", href: "#a" },
+        { label: "B", href: "#b" },
+      ],
+      navBarLayout: "in hero",
+    });
+    expect(r.success).toBe(true);
+    expect(r.data?.navBarLayout).toBe("linksRightInHero");
   });
 });

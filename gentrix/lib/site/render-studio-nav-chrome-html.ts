@@ -8,9 +8,19 @@ import type { MasterPromptTheme, TailwindSection } from "@/lib/ai/tailwind-secti
 import type { StudioNavChromeConfig } from "@/lib/site/studio-nav-chrome-schema";
 import { studioNavChromeConfigSchema } from "@/lib/site/studio-nav-chrome-schema";
 import { buildStudioNavChromeTone } from "@/lib/site/studio-nav-theme";
-import type { NavVisualContract } from "@/lib/site/studio-nav-visual-presets";
+import type { NavVisualContract, NavVisualPresetId } from "@/lib/site/studio-nav-visual-presets";
 import { resolveNavVisualPreset } from "@/lib/site/studio-nav-visual-presets";
 import { pickMarkCharForSiteIdentity } from "@/lib/site/site-identity-favicon";
+
+/** Alleen dit “lichte balk”-silhouet krijgt hero-overlay + `linksRightInHero`-layout; donkere/gouden presets niet. */
+const HERO_OVERLAY_ELIGIBLE_PRESETS = new Set<NavVisualPresetId>(["minimalLight", "softBrand", "compactBar", "glassLight"]);
+
+function studioNavChromeHeroOverlayEligible(presetId: NavVisualPresetId | null, contract: NavVisualContract): boolean {
+  if (contract.variant !== "bar") return false;
+  if (presetId != null) return HERO_OVERLAY_ELIGIBLE_PRESETS.has(presetId);
+  /* Geen expliciete preset in JSON: alleen surface light/glass (typisch server-infer → minimalLight). */
+  return contract.surface === "light" || contract.surface === "glass";
+}
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -69,7 +79,10 @@ function ctaMobileClasses(cta: NavVisualContract["ctaStyle"], radiusClass: strin
   return `${base} border border-[color:var(--studio-nav-accent)] text-[color:var(--studio-nav-accent)] hover:opacity-90`;
 }
 
-function spacerClass(contract: NavVisualContract): string {
+function spacerClass(contract: NavVisualContract, heroOverlay: boolean): string {
+  if (heroOverlay && contract.variant === "bar") {
+    return "studio-nav-chrome-spacer studio-nav-chrome-spacer--hero-overlay w-full shrink-0 h-0 min-h-0 max-h-0 overflow-hidden border-0 p-0 m-0 pointer-events-none";
+  }
   const base = "studio-nav-chrome-spacer w-full shrink-0";
   if (contract.variant === "pill") {
     return contract.height === "spacious" ? `${base} h-28` : `${base} h-24`;
@@ -106,13 +119,19 @@ export function renderStudioNavChromeHtml(
 ): string {
   const brandHref = config.brandHref ?? "__STUDIO_SITE_BASE__";
   const { contract, presetId } = resolveNavVisualPreset(config, theme ?? null, designContract ?? null);
-  const tone = buildStudioNavChromeTone(themeEffectiveForNavChrome(theme ?? undefined, config) ?? null, contract);
+  const navBarLayout = config.navBarLayout ?? "standard";
+  const isHeroOverlay =
+    navBarLayout === "linksRightInHero" && studioNavChromeHeroOverlayEligible(presetId, contract);
+  const tone = buildStudioNavChromeTone(themeEffectiveForNavChrome(theme ?? undefined, config) ?? null, contract, {
+    heroOverlayBar: isHeroOverlay,
+  });
   const hostStyle = contract.variant === "pill" ? tone.pillHostStyle : tone.barHostStyle;
   const shadow = tone.hostShadowClass.trim();
   const shadowPart = shadow ? ` ${shadow}` : "";
 
-  const hostClass =
-    contract.variant === "pill"
+  const hostClass = isHeroOverlay
+    ? `fixed top-4 right-4 z-50 flex w-max max-w-[min(100vw-2rem,56rem)] flex-col items-stretch overflow-visible rounded-2xl ring-1 ring-white/15${shadowPart}`.trim()
+    : contract.variant === "pill"
       ? `fixed top-4 left-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 items-center justify-between gap-4 overflow-visible px-4 sm:px-5 sm:gap-6 ${tone.pillRadiusClass}${shadowPart}`.trim()
       : `fixed top-0 left-0 right-0 z-50 w-full overflow-visible ${tone.barBottomRadiusClass}${shadowPart}`.trim();
 
@@ -120,9 +139,9 @@ export function renderStudioNavChromeHtml(
   const innerWrapClass =
     contract.variant === "pill"
       ? `flex w-full min-w-0 items-center justify-between gap-3 sm:gap-6 ${innerPad}`
-      : `mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 sm:gap-6 ${innerPad}`;
-
-  const navBarLayout = config.navBarLayout ?? "standard";
+      : isHeroOverlay
+        ? `flex w-full min-w-0 flex-nowrap items-center justify-end gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5 ${innerPad}`
+        : `mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 sm:gap-6 ${innerPad}`;
 
   const r = tone.ctaRadiusClass;
   const ind = linkIndicatorClasses(contract.activeIndicator, r);
@@ -135,7 +154,11 @@ export function renderStudioNavChromeHtml(
   const ctaMobileClass = ctaMobileClasses(contract.ctaStyle, r);
 
   const markChar = escapeAttr(pickMarkCharForSiteIdentity(config.brandLabel, config.brandLabel));
-  const brand = `<a href="${escapeAttr(brandHref)}" class="flex min-w-0 shrink-0 items-center gap-2.5 text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]"><span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)] text-sm font-bold text-white shadow-sm ring-1 ring-black/10 dark:ring-white/10" aria-hidden="true">${markChar}</span><span class="truncate text-base font-semibold tracking-tight">${escapeAttr(config.brandLabel)}</span></a>`;
+  const brandLabelEsc = escapeAttr(config.brandLabel);
+  /** Hero-float: geen monogram-“postzegel”; compact woordmerk links in de pill (≥sm), mobiel alleen sheet. */
+  const brand = isHeroOverlay
+    ? `<a href="${escapeAttr(brandHref)}" class="group mr-auto hidden min-w-0 max-w-[10rem] shrink-0 items-center sm:flex text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--studio-nav-accent)]/35 rounded-sm" aria-label="${brandLabelEsc}"><span class="truncate text-sm font-semibold tracking-tight">${brandLabelEsc}</span></a>`
+    : `<a href="${escapeAttr(brandHref)}" class="group flex min-w-0 shrink-0 items-center gap-2.5 text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]"><span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)] text-sm font-bold text-white shadow-sm ring-1 ring-black/10 dark:ring-white/10" aria-hidden="true">${markChar}</span><span class="truncate text-base font-semibold tracking-tight">${brandLabelEsc}</span></a>`;
 
   const desktopLinks = config.items
     .map((it) => `<a href="${escapeAttr(it.href)}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`)
@@ -155,6 +178,10 @@ export function renderStudioNavChromeHtml(
 
   const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center ${r} text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] lg:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
 
+  const mobileMenuTriggerRow = isHeroOverlay
+    ? `<div class="studio-nav-chrome-mobile-triggers flex shrink-0 items-center gap-2 lg:hidden">${ctaBlock}${menuBtn}</div>`
+    : menuBtn;
+
   const desktopLinksCluster = `<div class="flex flex-wrap items-center justify-center gap-6">${desktopLinks}</div>`;
 
   const desktopRowStandard = `<div class="hidden min-w-0 flex-wrap items-center gap-6 lg:flex">${desktopLinks}${
@@ -167,10 +194,15 @@ export function renderStudioNavChromeHtml(
     navBarLayout === "centeredLinks" && ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
   }${menuBtn}</div>`;
 
-  const desktopRow =
-    navBarLayout === "centeredLinks"
+  const desktopRow = isHeroOverlay
+    ? `${desktopRowStandard}${mobileMenuTriggerRow}`
+    : navBarLayout === "centeredLinks"
       ? `${desktopRowCentered}${desktopTrailing}`
       : `${desktopRowStandard}${menuBtn}`;
+
+  const mobileSheetClass = isHeroOverlay
+    ? "absolute right-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] origin-top rounded-xl px-3 pb-3 pt-2 shadow-xl ring-1 ring-white/10 lg:hidden"
+    : "absolute inset-x-0 top-full z-[60] origin-top px-4 pb-4 pt-1 shadow-lg lg:hidden";
 
   const mobileSheet = `<div
     id="studio-nav-chrome-mobile-sheet"
@@ -183,15 +215,23 @@ export function renderStudioNavChromeHtml(
     x-transition:leave="transition ease-in duration-150 transform"
     x-transition:leave-start="translate-y-0 opacity-100"
     x-transition:leave-end="-translate-y-2 opacity-0"
-    class="absolute inset-x-0 top-full z-[60] origin-top px-4 pb-4 pt-1 shadow-lg lg:hidden"
+    class="${mobileSheetClass}"
     style="background:var(--studio-nav-sheet-bg);border-top:1px solid var(--studio-nav-sheet-border)"
   >${mobileLinks}${mobileCta}</div>`;
 
-  const spacer = spacerClass(contract);
+  const spacer = spacerClass(contract, isHeroOverlay);
   const presetAttr = presetId ? ` data-studio-nav-preset="${escapeAttr(presetId)}"` : "";
   const layoutAttr = ` data-studio-nav-bar-layout="${escapeAttr(navBarLayout)}"`;
+  const heroOverlayAttr = isHeroOverlay ? ` data-studio-nav-hero-overlay="1"` : "";
+  const xDataAttr = isHeroOverlay
+    ? `x-data="{ ${NAV_KEY}: false, shellScrolled: false }"`
+    : `x-data="{ ${NAV_KEY}: false }"`;
+  const scrollShellAttr = isHeroOverlay
+    ? ` @scroll.window="shellScrolled = ((window.pageYOffset || document.documentElement.scrollTop || 0) > 32)"`
+    : "";
+  const shellClassAttr = isHeroOverlay ? ` :class="{ 'studio-nav-shell-scrolled': shellScrolled }"` : "";
 
-  return `<header class="${hostClass}" style="${hostStyle}" x-data="{ ${NAV_KEY}: false }" @keydown.escape.window="${NAV_KEY} = false" @click.outside="${NAV_KEY} = false" data-studio-nav-chrome="1" data-gentrix-scroll-nav="1" data-gentrix-scrolled="0"${presetAttr}${layoutAttr}>
+  return `<header class="${hostClass}" style="${hostStyle}" ${xDataAttr}${scrollShellAttr} @keydown.escape.window="${NAV_KEY} = false" @click.outside="${NAV_KEY} = false"${shellClassAttr} data-studio-nav-chrome="1" data-gentrix-scroll-nav="1" data-gentrix-scrolled="0"${presetAttr}${layoutAttr}${heroOverlayAttr}>
   <div class="${innerWrapClass}">
     ${brand}
     ${desktopRow}

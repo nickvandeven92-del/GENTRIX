@@ -30,6 +30,19 @@ describe("inferStudioNavChromeFromSections", () => {
     expect(inferStudioNavChromeFromSections([{ sectionName: "hero", html: "<div>only</div>" }])).toBeNull();
   });
 
+  it("zet linksRightInHero bij bar + donkere hero (tekst wit / id hero)", () => {
+    const html = `<header class="sticky top-0 z-50 bg-white/90 border-b">
+  <a href="__STUDIO_SITE_BASE__">GENTRIX</a>
+  <a href="#diensten">Wat wij doen</a>
+  <a href="#contact">Contact</a>
+</header>
+<section id="hero" class="relative min-h-screen bg-zinc-950 text-white"><p>Hero</p></section>`;
+    const sections: TailwindSection[] = [{ sectionName: "Hero", html }];
+    const cfg = inferStudioNavChromeFromSections(sections);
+    expect(cfg?.variant).toBe("bar");
+    expect(cfg?.navBarLayout).toBe("linksRightInHero");
+  });
+
   it("herkent zwevende shell met rounded-2xl + shadow zonder rounded-full", () => {
     const html = `<header class="fixed top-4 left-1/2 z-50 flex w-full max-w-5xl -translate-x-1/2 rounded-2xl bg-slate-900/80 px-4 py-3 shadow-xl ring-1 ring-white/10">
   <a href="__STUDIO_SITE_BASE__">WW83</a>

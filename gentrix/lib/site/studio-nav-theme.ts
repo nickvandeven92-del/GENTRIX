@@ -73,15 +73,62 @@ function borderBottomCss(
   return `border-bottom:1px solid ${line}`;
 }
 
+export type BuildStudioNavChromeToneOptions = {
+  /** Transparante bar + lichte type over donkere hero; spacer hoogte 0 (geen aparte balk boven de hero). */
+  heroOverlayBar?: boolean;
+};
+
 /**
  * Kleuren + shell volgens `theme` en het **visuele contract** (preset + overrides).
  */
 export function buildStudioNavChromeTone(
   theme: MasterPromptTheme | null | undefined,
   visual: NavVisualContract,
+  opts?: BuildStudioNavChromeToneOptions,
 ): StudioNavChromeTone {
   const primary = sanitizeHex(theme?.primary, "#0f172a");
   const accent = sanitizeHex(theme?.accent, "#d4a853");
+
+  if (opts?.heroOverlayBar) {
+    const fg = "rgba(248,250,252,0.96)";
+    const fgMuted = "rgba(248,250,252,0.82)";
+    const fgHover = "#ffffff";
+    /** Zwevende cluster over donkere hero: dekkend genoeg voor contrast, geen volle-breedte “witte balk”. */
+    const barBg = "rgba(15,23,42,0.48)";
+    const pillBg = "rgba(15,23,42,0.48)";
+    const blur = "backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);";
+    const sheetBg = "rgba(15,23,42,0.96)";
+    const sheetBorder = "rgba(255,255,255,0.12)";
+    const hoverUi = "rgba(255,255,255,0.12)";
+    const brToken = theme?.borderRadius ?? "lg";
+    const pillRadiusClass = RADIUS_MAP[brToken] ?? RADIUS_MAP.lg;
+    const ctaBrToken = theme?.borderRadius ?? "none";
+    const ctaRadiusClass = RADIUS_MAP[ctaBrToken] ?? RADIUS_MAP.none;
+    const borderBar = "border:1px solid rgba(255,255,255,0.16)";
+    const borderPill = `border:1px solid rgba(255,255,255,0.18)`;
+    const cssVars = [
+      `--studio-nav-fg:${fg}`,
+      `--studio-nav-fg-muted:${fgMuted}`,
+      `--studio-nav-fg-hover:${fgHover}`,
+      `--studio-nav-accent:${accent}`,
+      `--studio-nav-hover-bg:${hoverUi}`,
+      `--studio-nav-sheet-bg:${sheetBg}`,
+      `--studio-nav-sheet-border:${sheetBorder}`,
+    ].join(";");
+    const barHostStyle = `${borderBar};background:${barBg};color:${fg};${blur}${cssVars}`;
+    const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars}`;
+    return {
+      barHostStyle,
+      pillHostStyle,
+      spacerLayerStyle: "background:transparent",
+      isDarkChrome: false,
+      pillRadiusClass,
+      ctaRadiusClass,
+      barBottomRadiusClass: "",
+      hostShadowClass: "shadow-lg",
+    };
+  }
+
   const isDarkChrome = visual.surface === "dark";
 
   const fg = isDarkChrome ? "rgba(248,250,252,0.96)" : "rgba(15,23,42,0.94)";
