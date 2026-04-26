@@ -310,24 +310,6 @@ export function SiteAiChatPanel({
         </div>
       </div>
 
-      <details className="mx-4 mt-2 text-xs text-zinc-700 dark:text-zinc-300">
-        <summary className="cursor-pointer select-none font-medium text-zinc-800 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100">
-          Tips: hero, logo en technische grenzen
-        </summary>
-        <div className="mt-2 space-y-2 rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-3 py-2.5 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-50">
-          <p className="font-semibold text-emerald-900 dark:text-emerald-100">Video in de hero</p>
-          <p className="text-emerald-900/95 dark:text-emerald-100/95">
-            Een echte <code className="rounded bg-emerald-200/60 px-1 dark:bg-emerald-900/60">&lt;video&gt;</code>-achtergrond alleen met een{" "}
-            <strong>concrete https-MP4/WebM-URL</strong> in je bericht (of upload hieronder en verwijs naar de URL). Zonder link: vraag om dynamiek
-            met foto, gradient of scroll/hover-animaties — de generator gebruikt geen vaste stock-video’s meer.
-          </p>
-          <p className="text-emerald-900/90 dark:text-emerald-100/90">
-            Logo of video: <strong>sleep naar het tekstvak</strong> of <strong>plak vanaf het klembord</strong>; gebruik daarna
-            die URL in je instructie.
-          </p>
-        </div>
-      </details>
-
       <div
         ref={listRef}
         className="mx-4 mt-3 flex min-h-[min(160px,28dvh)] flex-1 flex-col space-y-3 overflow-y-auto rounded-lg border border-zinc-200/80 bg-white p-3 dark:border-zinc-700/60 dark:bg-zinc-950/80"

@@ -17,11 +17,12 @@ type Props = {
   bookingModuleEnabled: boolean;
   webshopModuleEnabled: boolean;
   sessionType: GentrixSessionType;
-  renderSurface: Extract<GentrixRenderSurface, "public_inline" | "react_page">;
+  renderSurface: Extract<GentrixRenderSurface, "public_inline" | "public_iframe" | "react_page">;
 };
 
 /**
- * Publiek: inline Tailwind in Next (`/site/...`) of React-legacy. Zet super-context en meet scroll op `window`.
+ * Publiek: Tailwind inline op `/site`, React-legacy, of studio-generator-preview in iframe. Zet super-context;
+ * scrolldiepte volgt het **admin**-`window` (niet de iframe-doc).
  */
 export function GentrixPublicSiteAnalytics({
   siteSlug,

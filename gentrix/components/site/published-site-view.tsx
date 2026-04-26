@@ -56,9 +56,9 @@ type PublishedSiteViewProps = {
   /** Flyer/QR: interne links behouden `flyer=1` zodat de actiebalk op alle subpagina’s blijft. */
   flyerPreview?: boolean;
   /**
-   * Site-studio generator (split-pane): zelfde **inline** preview als live `/site` + QR/flyer (`PublicPublishedTailwindInline`),
-   * in een host met `transform` zodat `position:fixed` ten opzichte van de preview kleeft i.p.v. de hele admin.
-   * Geen `iframe` — die gaf o.a. scroll- en hoogteproblemen in de ingebouwde editor.
+   * Site-studio generator (split-pane): **iframe**-preview (`PublicPublishedTailwind`) i.p.v. inline + `transform`,
+   * zodat `position: fixed` / zwevende nav dezelfde containing block heeft als de HTML-editor-preview en een echte
+   * browsertab (niet het getransformeerde preview-paneel — dat gaf uitlijningverschil t.o.v. live `/site`).
    */
   studioTailwindPreviewIframe?: boolean;
 };
@@ -207,7 +207,7 @@ export function PublishedSiteView({
           ? "contact"
           : "home";
 
-    /** Publieke weergave: dezelfde `PublicPublishedTailwindInline` stack als live `/site` (geen iframe in admin; zie `studioTailwindPreviewIframe`). */
+    /** Publieke weergave: standaard `PublicPublishedTailwindInline` als live `/site`; studio-generator gebruikt iframe (zie `studioTailwindPreviewIframe`). */
     if (visibility === "public") {
       const slugForA = publishedSlug?.trim() ?? "";
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
@@ -246,15 +246,36 @@ export function PublishedSiteView({
               bookingModuleEnabled={appointmentsEnabled}
               webshopModuleEnabled={webshopEnabled}
               sessionType={isPreview ? "public_preview" : "public_site"}
-              renderSurface="public_inline"
+              renderSurface={studioTailwindPreviewIframe ? "public_iframe" : "public_inline"}
             />
           ) : null}
           {studioTailwindPreviewIframe ? (
             <div
-              className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto will-change-transform [transform:translateZ(0)]"
-              data-gentrix-studio-inline-preview="1"
+              className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
+              data-gentrix-studio-generator-iframe-preview="1"
             >
-              {publicInlinePreview}
+              <PublicPublishedTailwind
+                sections={twSections}
+                pageConfig={payload.config}
+                className="min-h-0 flex-1"
+                publishedSlug={publishedSlug}
+                draftPublicPreviewToken={draftPublicPreviewToken}
+                userCss={payload.customCss}
+                userJs={payload.customJs}
+                logoSet={payload.logoSet}
+                rasterBrandSet={payload.rasterBrandSet}
+                compiledTailwindCss={payload.tailwindCompiledCss}
+                documentTitle={iframeTitle}
+                navBrandLabel={docTitle}
+                appointmentsEnabled={appointmentsEnabled}
+                webshopEnabled={webshopEnabled}
+                contactSubpageNavBase={contactNavBase}
+                designContract={payload.designContract}
+                previewPostMessageBridge
+                autoResizeFromPostMessage
+                documentHeightMode="panel"
+                maxMeasuredHeight={3200}
+              />
             </div>
           ) : (
             publicInlinePreview

@@ -36,12 +36,18 @@ export type GentrixAnalyticsContext = {
   is_internal_actor: boolean;
   actor: GentrixActor;
   /**
-   * Waar HTML draaide: `public_inline` = /site in Next DOM; `portal_iframe` = portaal site-preview-iframe; `other`.
+   * Waar HTML draaide: `public_inline` = /site in Next DOM; `public_iframe` = site-studio generator-preview (iframe);
+   * `portal_iframe` = portaal site-preview-iframe; `react_page` = legacy React-site; `other`.
    */
   render_surface: GentrixRenderSurface;
 };
 
-export type GentrixRenderSurface = "public_inline" | "portal_iframe" | "react_page" | "other";
+export type GentrixRenderSurface =
+  | "public_inline"
+  | "public_iframe"
+  | "portal_iframe"
+  | "react_page"
+  | "other";
 
 /** v1 catalogus — breid met nieuwe regels, verander bestaande namen liever niet. */
 export const GENTRIX_EVENT_NAMES = [
