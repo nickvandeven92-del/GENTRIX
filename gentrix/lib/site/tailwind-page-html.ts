@@ -194,42 +194,23 @@ html[data-gentrix-site-credit-variant="2"] [data-studio-site-credit]{
 }
 `;
 
-/**
- * `scroll-padding` op `html` helpt alleen bij hash-scroll; `fixed` nav laat inhoud visueel onder de balk starten.
- *
- * **Dubbele inset:** veel AI-hero’s hebben al `pt-12` / `pt-16` op de eerste content-`div` na `header`. Dan is
- * `padding-top` op `#hero` **overbodig** en ontstaat een wit/grijs band **boven** de vaste balk + extra ruimte
- * tussen nav en hero (dubbele “navbar offset”).
- */
-export const STUDIO_FIXED_NAV_HERO_INSET_CSS = `html[data-gentrix-studio-iframe="1"] section#hero:has(> header[class*="fixed"]),
-html[data-gentrix-studio-iframe="1"] #hero:has(> header[class*="fixed"]) {
-  padding-top: 5.5rem;
-}
-html[data-gentrix-studio-iframe="1"] section[data-section] > header[class*="fixed"] + #hero,
-html[data-gentrix-studio-iframe="1"] section[data-section] > header[class*="fixed"] + section#hero {
-  padding-top: 5.5rem;
-}
-html[data-gentrix-studio-iframe="1"] section#hero:has(> header[class*="fixed"] + *[class*="pt-"]),
-html[data-gentrix-studio-iframe="1"] #hero:has(> header[class*="fixed"] + *[class*="pt-"]),
-html[data-gentrix-studio-iframe="1"] section[data-section] > header[class*="fixed"] + section#hero:has(> *[class*="pt-"]) {
-  padding-top: 0 !important;
-}
-`;
+/** Voorheen iframe-padding t.o.v. vaste nav op `#hero`; verwijderd — laat model-Tailwind de hero bepalen. */
+export const STUDIO_FIXED_NAV_HERO_INSET_CSS = "";
 
 /**
  * Veel templates: vaste primary nav `fixed … z-50`, mobiel menu-backdrop `fixed inset-0 z-40`.
  * Dan blijft de balk en hamburger zichtbaar boven het open menu (iframe + smalle viewport).
  * Deze fix verhoogt typische full-screen / full-height menu-lagen op kleine viewports — alleen in srcDoc.
  *
- * **Geen** brede selector `body .fixed.inset-0 { … }`: hero’s gebruiken vaak `fixed inset-0` + gradient/video
+ * **Geen** brede selector `body .fixed.inset-0 { … }`: full-bleed secties gebruiken vaak `fixed inset-0` + gradient/video
  * **zonder** menu-z; `!important` til die dan boven de content → zwarte balk. Alleen bekende overlay-z-lagen.
  *
  * Z-waarden **> 220**: `STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS` zet `header` op 220; lagere z-index liet backdrop
  * en sheet **onder** de header vallen (hamburger/sluit icoon tegelijk, geen collapse).
  *
- * **Geen** `z-10`/`z-20` op alle `inset-0`-lagen: dat tilde willekeurige hero/sectie-overlays naar 260 (“zwarte
+ * **Geen** `z-10`/`z-20` op alle `inset-0`-lagen: dat tilde willekeurige sectie-overlays naar 260 (“zwarte
  * balk overal”). Alleen `z-30+` op `inset-0` / zijpanelen — **geen** `bg-black`-substring (matcht te vaak
- * hero/sectie-dims in preview). Hero: `revert` zodat hero-gradients niet worden verstoord.
+ * achtergrond-dims in preview).
  *
  * Menu-backdrop blijft ≤261; `STUDIO_IFRAME_PREVIEW_HEADER_Z_CSS` zet **header** hoger zodat hamburger/sluit
  * klikbaar blijven (anders vangt de overlay pointer-events boven de balk).
@@ -280,24 +261,6 @@ export const STUDIO_MOBILE_MENU_STACKING_FIX_CSS = `@media (max-width: 1023px) {
   body .fixed.top-0.left-0.min-h-screen[class*="z-[7"],
   body .fixed.top-0.left-0.min-h-screen[class*="z-[8"] {
     z-index: 261 !important;
-  }
-  body section#hero .fixed.inset-0,
-  body #hero .fixed.inset-0 {
-    z-index: revert !important;
-  }
-  body section#hero .fixed.top-0.bottom-0.right-0,
-  body section#hero .fixed.top-0.bottom-0.left-0,
-  body section#hero .fixed.top-0.right-0.h-full,
-  body section#hero .fixed.top-0.left-0.h-full,
-  body section#hero .fixed.top-0.right-0.min-h-screen,
-  body section#hero .fixed.top-0.left-0.min-h-screen,
-  body #hero .fixed.top-0.bottom-0.right-0,
-  body #hero .fixed.top-0.bottom-0.left-0,
-  body #hero .fixed.top-0.right-0.h-full,
-  body #hero .fixed.top-0.left-0.h-full,
-  body #hero .fixed.top-0.right-0.min-h-screen,
-  body #hero .fixed.top-0.left-0.min-h-screen {
-    z-index: revert !important;
   }
 }`;
 
@@ -709,7 +672,7 @@ export function buildStudioHeaderNavAlpineClampScript(): string {
  * content op keyframe 0% (opacity:0) hangen als IntersectionObserver in een iframe traag uitblijft, waardoor
  * sites “niet bewegen” of leeg lijken. `.studio-in-view` triggert de transitie; fallback-script zet die klasse
  * alsnog na timeout.
- * Hero + eerste secties: **keyframes** blijven voor een duidelijke load-animatie (zelfde timing als vroeger).
+ * Eerste schermsecties (`body > section.w-full:nth-of-type(-n+3)`): **keyframes** voor load-animatie.
  */
 export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-preference) {
   /* will-change via JS gezet net vóór de IO triggert (zie STUDIO_SCROLL_REVEAL_SCRIPT);
@@ -766,57 +729,27 @@ export const STUDIO_DATA_ANIMATION_CSS = `@media (prefers-reduced-motion: no-pre
     transform: none;
   }
   /* Boven de vouw: keyframes lopen direct (geen afhankelijkheid van IO in iframe). */
-  section#hero [data-animation="fade-up"],
   body > section.w-full:nth-of-type(-n+3) [data-animation="fade-up"] {
     animation: studio-fade-up 0.9s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
     transition: none;
   }
-  section#hero [data-animation="fade-in"],
   body > section.w-full:nth-of-type(-n+3) [data-animation="fade-in"] {
     animation: studio-fade-in 0.85s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
     transition: none;
   }
-  section#hero [data-animation="slide-in-left"],
   body > section.w-full:nth-of-type(-n+3) [data-animation="slide-in-left"] {
     animation: studio-slide-left 0.85s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
     transition: none;
   }
-  section#hero [data-animation="slide-in-right"],
   body > section.w-full:nth-of-type(-n+3) [data-animation="slide-in-right"] {
     animation: studio-slide-right 0.85s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
     transition: none;
   }
-  section#hero [data-animation="scale-in"],
   body > section.w-full:nth-of-type(-n+3) [data-animation="scale-in"] {
-    animation: studio-scale-in 0.7s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: var(--studio-stagger, 0ms);
-    transition: none;
-  }
-  #hero [data-animation="fade-up"] {
-    animation: studio-fade-up 0.9s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: var(--studio-stagger, 0ms);
-    transition: none;
-  }
-  #hero [data-animation="fade-in"] {
-    animation: studio-fade-in 0.85s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: var(--studio-stagger, 0ms);
-    transition: none;
-  }
-  #hero [data-animation="slide-in-left"] {
-    animation: studio-slide-left 0.85s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: var(--studio-stagger, 0ms);
-    transition: none;
-  }
-  #hero [data-animation="slide-in-right"] {
-    animation: studio-slide-right 0.85s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: var(--studio-stagger, 0ms);
-    transition: none;
-  }
-  #hero [data-animation="scale-in"] {
     animation: studio-scale-in 0.7s cubic-bezier(0.22,1,0.36,1) both;
     animation-delay: var(--studio-stagger, 0ms);
     transition: none;
@@ -905,13 +838,9 @@ export const STUDIO_BORDER_REVEAL_CSS = `@media (prefers-reduced-motion: no-pref
     transform: translateX(-50%) scaleY(1);
   }
   /* Eerste scherm: zelfde vrijstelling als data-animation — geen “half” lijnwerk boven de vouw */
-  section#hero .studio-border-reveal--h::after,
-  #hero .studio-border-reveal--h::after,
   body > section.w-full:nth-of-type(-n+3) .studio-border-reveal--h::after {
     transform: translateX(-50%) scaleX(1);
   }
-  section#hero .studio-border-reveal--v::after,
-  #hero .studio-border-reveal--v::after,
   body > section.w-full:nth-of-type(-n+3) .studio-border-reveal--v::after {
     transform: translateX(-50%) scaleY(1);
   }
@@ -1329,26 +1258,6 @@ html[data-gentrix-scroll-nav-fallback="1"] body {
   width: 100% !important;
   max-width: 100% !important;
   touch-action: pan-y !important;
-}
-/*
- * Gentrix-home mobiele hero: sommige AI-runs zetten een halve gradient-overlay
- * over de achtergrond. Dat geeft een harde verticale lijn en kan horizontaal pannen triggeren.
- * Forceer die overlays full-bleed op de eerste hero-zone.
- */
-html[data-gentrix-scroll-nav-fallback="1"] section#hero [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
-html[data-gentrix-scroll-nav-fallback="1"] #hero [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type [class*="absolute"][class*="bg-gradient"][class*="w-1/2"],
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type [class*="absolute"][class*="bg-gradient"][class*="w-1/2"] {
-  left: 0 !important;
-  right: 0 !important;
-  width: 100% !important;
-  max-width: none !important;
-}
-html[data-gentrix-scroll-nav-fallback="1"] section#hero,
-html[data-gentrix-scroll-nav-fallback="1"] #hero,
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type {
-  overflow-x: clip !important;
 }
 header[data-gentrix-scroll-nav="1"]:not([data-studio-nav-chrome]),
 nav[data-gentrix-scroll-nav="1"] {

@@ -43,4 +43,17 @@ describe("applyRasterBrandMarkToSections", () => {
     expect(out[0]!.html).toContain(">X</a>");
     expect(out[0]!.html).not.toContain("data-gentrix-raster-brand");
   });
+
+  it("injecteert geen raster wanneer declaratieve studio-nav-chrome al in de HTML staat", () => {
+    const raster = baseRaster({});
+    const sections = [
+      {
+        sectionName: "Hero",
+        html: `<header data-studio-nav-chrome="1"><a href="#top">G</a></header><section id="hero"><a href="__STUDIO_SITE_BASE__">In hero</a></section>`,
+      },
+    ];
+    const out = applyRasterBrandMarkToSections(sections, raster, "Gentrix");
+    expect(out[0]!.html).toContain(">In hero</a>");
+    expect(out[0]!.html).not.toContain("data-gentrix-raster-brand");
+  });
 });

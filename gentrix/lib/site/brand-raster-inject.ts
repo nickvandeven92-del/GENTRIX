@@ -91,6 +91,12 @@ export function applyRasterBrandMarkToSections(
   if (rasterHeaderUrlIsConfusableWithFavicon(url, raster)) return sections;
 
   const full = sections.map((s) => s.html).join("\n");
+  /**
+   * `config.studioNav` → `prependStudioNavChromeToFirstSection` zet al merk (monogram + label).
+   * Raster vervangt anders de **eerste** `href="__STUDIO_SITE_BASE__"` elders (bv. in de hero) wanneer
+   * `brandHref` geen placeholder is — dat levert een tweede postzegel-logo naast de balk.
+   */
+  if (/\bdata-studio-nav-chrome\s*=\s*["']1["']/i.test(full)) return sections;
   if (full.includes(RASTER_BRAND_ATTR) && full.includes(url)) {
     return sections;
   }

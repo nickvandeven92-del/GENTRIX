@@ -28,7 +28,6 @@ describe("buildTailwindIframeSrcDoc mobile horizontal lock", () => {
   it("injects published home mobile x-lock to prevent sideways panning", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toContain('html[data-gentrix-scroll-nav-fallback="1"]');
-    expect(doc).toContain("overflow-x: clip !important;");
     expect(doc).toContain("overflow-x: hidden !important;");
     expect(doc).toContain("touch-action: pan-y !important;");
   });
