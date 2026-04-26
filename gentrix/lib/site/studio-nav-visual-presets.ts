@@ -140,11 +140,12 @@ export const NAV_VISUAL_PRESETS: Record<NavVisualPresetId, NavVisualContract> = 
     activeIndicator: "underline",
     ctaStyle: "ghost",
   },
+  /** Zwevende pill: frosted glass + subtiele primary-tint rand — minder “kartonnen wit”, meer site-integratie. */
   floatingPill: {
     variant: "pill",
-    surface: "light",
+    surface: "glass",
     height: "normal",
-    border: "none",
+    border: "subtle",
     shadow: "medium",
     activeIndicator: "pill",
     ctaStyle: "solid",

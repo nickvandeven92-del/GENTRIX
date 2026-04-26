@@ -147,10 +147,11 @@ export function renderStudioNavChromeHtml(
   const pillShellVisual = `${tone.pillRadiusClass}${shadowPart}`.trim();
   const usePillFlexCenter = contract.variant === "pill" && !isHeroOverlay;
 
+  /** Mobiel (<md): volle-breedte balk bovenaan (Vugts-patroon); vanaf tablet/desktop zwevende pill/hero-cluster waar van toepassing. */
   const hostClass = isHeroOverlay
-    ? `fixed top-4 right-4 z-50 flex w-max max-w-[min(100vw-2rem,56rem)] flex-col items-stretch overflow-visible rounded-2xl ring-1 ring-white/15${shadowPart}`.trim()
+    ? `fixed z-50 flex w-full flex-col items-stretch overflow-visible max-md:left-0 max-md:right-0 max-md:top-0 max-md:max-w-none max-md:rounded-none max-md:ring-0 md:right-4 md:top-4 md:left-auto md:w-max md:max-w-[min(100vw-2rem,56rem)] md:rounded-2xl md:ring-1 md:ring-white/15${shadowPart}`.trim()
     : contract.variant === "pill"
-      ? `fixed top-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4 pointer-events-none overflow-visible`.trim()
+      ? `fixed left-0 right-0 z-50 flex overflow-visible max-md:top-0 max-md:justify-stretch max-md:px-0 max-md:pointer-events-auto md:pointer-events-none md:top-4 md:justify-center md:px-4`.trim()
       : `fixed top-0 left-0 right-0 z-50 w-full overflow-visible ${tone.barBottomRadiusClass}${shadowPart}`.trim();
 
   const innerPad = innerYClasses(contract);
@@ -158,7 +159,7 @@ export function renderStudioNavChromeHtml(
     contract.variant === "pill"
       ? `flex w-full min-w-0 items-center justify-between gap-3 sm:gap-6 ${innerPad}`
       : isHeroOverlay
-        ? `flex w-full min-w-0 flex-nowrap items-center justify-end gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5 ${innerPad}`
+        ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5 md:justify-end ${innerPad}`
         : `mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 sm:gap-6 ${innerPad}`;
 
   const r = tone.ctaRadiusClass;
@@ -179,7 +180,7 @@ export function renderStudioNavChromeHtml(
    * t.o.v. de volledige balkbreedte (brand-wrapper en trailing-wrapper zijn beide flex-1).
    */
   const brandLink = isHeroOverlay
-    ? `<a href="${escapeAttr(brandHref)}" class="group mr-auto hidden min-w-0 max-w-[10rem] shrink-0 items-center sm:flex text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--studio-nav-accent)]/35 rounded-sm" aria-label="${brandLabelEsc}"><span class="truncate text-sm font-semibold tracking-tight">${brandLabelEsc}</span></a>`
+    ? `<a href="${escapeAttr(brandHref)}" class="group mr-auto flex min-w-0 max-w-[min(100%,14rem)] shrink-0 items-center text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--studio-nav-accent)]/35 rounded-sm" aria-label="${brandLabelEsc}"><span class="truncate text-sm font-semibold tracking-tight">${brandLabelEsc}</span></a>`
     : `<a href="${escapeAttr(brandHref)}" class="group flex min-w-0 shrink-0 items-center gap-2.5 text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]"><span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)] text-sm font-bold text-white shadow-sm ring-1 ring-black/10 dark:ring-white/10" aria-hidden="true">${markChar}</span><span class="truncate text-base font-semibold tracking-tight">${brandLabelEsc}</span></a>`;
   const brand = (navBarLayout === "centeredLinks" && !isHeroOverlay)
     ? `<div class="flex min-w-0 flex-1 shrink-0 items-center justify-start">${brandLink}</div>`
@@ -225,10 +226,10 @@ export function renderStudioNavChromeHtml(
       ? `${desktopRowCentered}${desktopTrailing}`
       : `${desktopRowStandard}${menuBtn}`;
 
-  /** Vast onder de navbar, volle breedte; `md:` = iPad + desktop horizontale nav (768px). */
+  /** Alleen <md zichtbaar: vast onder de balk, volle breedte, slide-down (sheet heeft `md:hidden`). */
   const mobileSheetClass = isHeroOverlay
-    ? "fixed inset-x-0 top-[4.25rem] z-[60] max-h-[min(88dvh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain rounded-b-2xl px-4 pb-5 pt-3 shadow-2xl ring-1 ring-black/10 md:hidden"
-    : "fixed inset-x-0 top-[4.5rem] z-[60] max-h-[min(88dvh,calc(100dvh-4.75rem))] overflow-y-auto overscroll-contain px-4 pb-5 pt-2 shadow-2xl md:hidden";
+    ? "fixed inset-x-0 top-16 z-[60] max-h-[min(88dvh,calc(100dvh-4rem))] overflow-y-auto overscroll-contain px-4 pb-5 pt-3 shadow-2xl ring-1 ring-black/10 md:hidden"
+    : "fixed inset-x-0 top-16 z-[60] max-h-[min(88dvh,calc(100dvh-4rem))] overflow-y-auto overscroll-contain px-4 pb-5 pt-2 shadow-2xl md:hidden";
 
   const mobileSheetClassFinal = usePillFlexCenter ? `${mobileSheetClass} pointer-events-auto` : mobileSheetClass;
 
@@ -260,7 +261,7 @@ export function renderStudioNavChromeHtml(
   const shellClassAttr = isHeroOverlay ? ` :class="{ 'studio-nav-shell-scrolled': shellScrolled }"` : "";
 
   const headerStyleAttr = usePillFlexCenter ? "" : ` style="${escapeAttr(hostStyle)}"`;
-  const pillInnerClass = `pointer-events-auto flex w-full min-w-0 max-w-5xl items-center justify-between gap-3 sm:gap-6 ${innerPad} ${pillShellVisual}`.trim();
+  const pillInnerClass = `pointer-events-auto flex w-full min-w-0 max-w-5xl items-center justify-between gap-3 sm:gap-6 max-md:max-w-none max-md:rounded-none max-md:shadow-none ${innerPad} ${pillShellVisual}`.trim();
   const innerStyleAttr = usePillFlexCenter ? ` style="${escapeAttr(hostStyle)}"` : "";
 
   const innerBlock = usePillFlexCenter

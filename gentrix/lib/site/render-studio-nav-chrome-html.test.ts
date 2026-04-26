@@ -93,7 +93,9 @@ describe("renderStudioNavChromeHtml", () => {
     );
     expect(html).toContain('data-studio-nav-hero-overlay="1"');
     expect(html).toContain("studio-nav-chrome-spacer--hero-overlay");
-    expect(html).toContain("fixed top-4 right-4");
+    expect(html).toContain("max-md:top-0");
+    expect(html).toContain("md:right-4");
+    expect(html).toContain("md:top-4");
     expect(html).not.toMatch(/\bstudio-nav-chrome-spacer[^"]*h-24/);
   });
 
@@ -119,8 +121,9 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("justify-end");
     expect(html).toContain("shellScrolled");
     expect(html).toContain("studio-nav-shell-scrolled");
-    expect(html).toContain("fixed top-4 right-4");
-    expect(html).toContain("rounded-2xl");
+    expect(html).toContain("max-md:top-0");
+    expect(html).toContain("md:right-4");
+    expect(html).toContain("md:rounded-2xl");
     expect(html).toContain("studio-nav-chrome-mobile-triggers");
     expect(html).not.toContain("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)]");
   });
@@ -143,6 +146,7 @@ describe("renderStudioNavChromeHtml", () => {
     );
     expect(html).toMatch(/studio-nav-chrome-spacer[^"]*\bh-0\b/);
     expect(html).not.toMatch(/studio-nav-chrome-spacer[^"]*\bh-24\b/);
+    expect(html).toContain("max-md:top-0");
     expect(html).toContain("justify-center");
     expect(html).toContain("pointer-events-none");
     expect(html).toContain("pointer-events-auto");

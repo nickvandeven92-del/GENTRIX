@@ -62,9 +62,11 @@ describe("resolveNavVisualPreset", () => {
     expect(r.contract.surface).toBe("dark");
   });
 
-  it("legacy pill zonder preset → floatingPill", () => {
+  it("legacy pill zonder preset → floatingPill (glass + subtiele rand)", () => {
     const r = resolveNavVisualPreset({ variant: "pill" }, null, null);
     expect(r.contract.variant).toBe("pill");
+    expect(r.contract.surface).toBe("glass");
+    expect(r.contract.border).toBe("subtle");
     expect(r.contract.ctaStyle).toBe("solid");
   });
 

@@ -72,8 +72,12 @@ function pillShellDepthStyle(visual: NavVisualContract, isDarkChrome: boolean): 
   if (visual.surface === "transparent") {
     return "box-shadow:0 1px 0 rgba(255,255,255,0.22) inset,0 0 0 1px rgba(255,255,255,0.14),0 22px 48px -14px rgba(0,0,0,0.55);";
   }
-  /* light + glass */
-  return "box-shadow:0 1px 0 rgba(255,255,255,0.5) inset,0 0 0 1px rgba(15,23,42,0.08),0 26px 55px -14px rgba(0,0,0,0.5);";
+  if (visual.surface === "glass") {
+    /* Frosted pill: duidelijke “kaart”-rand + zachte lift (nabij hero feature-cards / ring-white/10). */
+    return "box-shadow:0 1px 0 rgba(255,255,255,0.55) inset,0 0 0 1px rgba(15,23,42,0.13),0 0 0 1px rgba(255,255,255,0.28),0 12px 36px -10px rgba(15,23,42,0.2),0 28px 60px -16px rgba(0,0,0,0.45);";
+  }
+  /* light surface pill */
+  return "box-shadow:0 1px 0 rgba(255,255,255,0.52) inset,0 0 0 1px rgba(15,23,42,0.11),0 14px 40px -10px rgba(15,23,42,0.18),0 26px 55px -14px rgba(0,0,0,0.48);";
 }
 
 function borderBottomCss(
@@ -161,9 +165,16 @@ export function buildStudioNavChromeTone(
     barBg = rgbaFromHex(primary, 0.9);
     pillBg = rgbaFromHex(primary, 0.88);
   } else if (visual.surface === "glass") {
-    barBg = "rgba(255,255,255,0.68)";
-    pillBg = "rgba(255,255,255,0.72)";
-    blur = "backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);";
+    if (visual.variant === "pill") {
+      /* Iets transparanter + sterkere blur: hero/achtergrond leest mee; oogt minder als los wit blok. */
+      barBg = "rgba(252,252,254,0.52)";
+      pillBg = "rgba(252,252,254,0.58)";
+      blur = "backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px) saturate(1.15);";
+    } else {
+      barBg = "rgba(255,255,255,0.68)";
+      pillBg = "rgba(255,255,255,0.72)";
+      blur = "backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);";
+    }
   } else if (visual.surface === "transparent") {
     barBg = "transparent";
     pillBg = "rgba(255,255,255,0.06)";
@@ -175,7 +186,9 @@ export function buildStudioNavChromeTone(
   const pillBorder = isDarkChrome ? "rgba(255,255,255,0.18)" : rgbaFromHex(primary, 0.28);
   const sheetBg =
     visual.surface === "glass"
-      ? "rgba(255,255,255,0.94)"
+      ? visual.variant === "pill"
+        ? "rgba(250,251,253,0.93)"
+        : "rgba(255,255,255,0.94)"
       : visual.surface === "transparent"
         ? "rgba(255,255,255,0.96)"
         : isDarkChrome

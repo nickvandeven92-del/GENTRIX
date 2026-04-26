@@ -68,13 +68,16 @@ describe("buildStudioNavChromeTone", () => {
     expect(t.ctaRadiusClass).toBe("rounded-none");
   });
 
-  it("floatingPill: pill krijgt box-shadow-diepte (rand/lift zoals hero-cards)", () => {
+  it("floatingPill: frosted glass + subtiele rand + box-shadow-diepte (geen vlak wit)", () => {
     const t = buildStudioNavChromeTone(
       { primary: "#0f172a", accent: "#06b6d4" } as MasterPromptTheme,
       STUDIO_NAV_VISUAL_PRESETS.floatingPill,
     );
+    expect(t.pillHostStyle).toContain("backdrop-filter:blur(18px)");
+    expect(t.pillHostStyle).toMatch(/border:1px solid/);
     expect(t.pillHostStyle).toContain("box-shadow:");
     expect(t.pillHostStyle).toMatch(/inset/);
+    expect(t.pillHostStyle).toContain("rgba(252,252,254");
   });
 
   it("heroOverlayBar: pill krijgt eveneens diepte-box-shadow", () => {

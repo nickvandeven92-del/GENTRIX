@@ -195,17 +195,6 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
           )}
           aria-hidden={!menuVisible}
         >
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--site-fg)]/10 px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-widest text-[var(--site-fg)]/75">Menu</span>
-          <button
-            type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--site-fg)] transition hover:bg-[var(--site-fg)]/10"
-            onClick={() => setOpen(false)}
-            aria-label="Menu sluiten"
-          >
-            <X className="size-5" strokeWidth={2} />
-          </button>
-        </div>
         <nav className="flex flex-col gap-1 px-4 py-4" aria-label="Mobiel menu">
           {nav.links.map((link) => (
             <a

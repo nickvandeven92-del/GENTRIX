@@ -443,14 +443,15 @@ export function CinematicNav({
     <header
       ref={headerRef}
       className={cn(
-        "z-50 flex w-full justify-center px-4 pt-5 sm:pt-6",
+        "z-50 flex w-full justify-center max-md:px-0 max-md:pt-0 px-4 pt-5 sm:pt-6",
         embedded ? "sticky top-0" : "pointer-events-none fixed inset-x-0 top-0",
       )}
     >
       <MotionNavShell
         className={cn(
           "pointer-events-auto flex w-full max-w-5xl items-center rounded-2xl border border-white/12 px-4 py-3 backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4",
-          navElevated > 0.65 && "rounded-xl sm:rounded-2xl",
+          "max-md:max-w-none max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:border-b max-md:shadow-none",
+          navElevated > 0.65 && "max-md:rounded-none rounded-xl sm:rounded-2xl",
         )}
         style={floatingShellStyle}
       >
