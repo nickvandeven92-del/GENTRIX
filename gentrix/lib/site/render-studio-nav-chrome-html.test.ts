@@ -75,6 +75,28 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("justify-between");
   });
 
+  it("linksRightInHero + floatingPill: zelfde hero-overlay (geen pill-spacer h-24)", () => {
+    const html = renderStudioNavChromeHtml(
+      {
+        variant: "pill",
+        brandLabel: "GENTRIX",
+        brandHref: "#top",
+        items: [
+          { label: "Wat wij doen", href: "#diensten" },
+          { label: "Werkwijze", href: "#werk" },
+        ],
+        cta: { label: "Contact opnemen", href: "#contact" },
+        navVisualPreset: "floatingPill",
+        navBarLayout: "linksRightInHero",
+      },
+      { primary: "#0f172a", accent: "#06b6d4" },
+    );
+    expect(html).toContain('data-studio-nav-hero-overlay="1"');
+    expect(html).toContain("studio-nav-chrome-spacer--hero-overlay");
+    expect(html).toContain("fixed top-4 right-4");
+    expect(html).not.toMatch(/\bstudio-nav-chrome-spacer[^"]*h-24/);
+  });
+
   it("navBarLayout linksRightInHero: overlay-attribuut, spacer hoogte 0, justify-end, shellScrolled in x-data", () => {
     const html = renderStudioNavChromeHtml(
       {

@@ -12,14 +12,28 @@ import type { NavVisualContract, NavVisualPresetId } from "@/lib/site/studio-nav
 import { resolveNavVisualPreset } from "@/lib/site/studio-nav-visual-presets";
 import { pickMarkCharForSiteIdentity } from "@/lib/site/site-identity-favicon";
 
-/** Alleen dit “lichte balk”-silhouet krijgt hero-overlay + `linksRightInHero`-layout; donkere/gouden presets niet. */
-const HERO_OVERLAY_ELIGIBLE_PRESETS = new Set<NavVisualPresetId>(["minimalLight", "softBrand", "compactBar", "glassLight"]);
+/**
+ * Presets waarmee `navBarLayout: linksRightInHero` een zwevende cluster over de hero mag (geen `h-24` spacer-strook).
+ * `floatingPill` is `variant: "pill"` — die moet hier ook in, anders blijft een witte reserveruimte onder de shell.
+ */
+const HERO_OVERLAY_ELIGIBLE_PRESETS = new Set<NavVisualPresetId>([
+  "minimalLight",
+  "softBrand",
+  "compactBar",
+  "glassLight",
+  "floatingPill",
+]);
 
 function studioNavChromeHeroOverlayEligible(presetId: NavVisualPresetId | null, contract: NavVisualContract): boolean {
-  if (contract.variant !== "bar") return false;
-  if (presetId != null) return HERO_OVERLAY_ELIGIBLE_PRESETS.has(presetId);
-  /* Geen expliciete preset in JSON: alleen surface light/glass (typisch server-infer → minimalLight). */
-  return contract.surface === "light" || contract.surface === "glass";
+  const presetOk =
+    presetId != null
+      ? HERO_OVERLAY_ELIGIBLE_PRESETS.has(presetId)
+      : contract.surface === "light" || contract.surface === "glass";
+  if (!presetOk) return false;
+  if (contract.variant === "bar") return true;
+  /* Zwevende pill: zelfde overlay-pad als bar (fixed top-right cluster, spacer hoogte 0). */
+  if (contract.variant === "pill" && presetId === "floatingPill") return true;
+  return false;
 }
 
 function escapeAttr(value: string): string {
@@ -80,7 +94,7 @@ function ctaMobileClasses(cta: NavVisualContract["ctaStyle"], radiusClass: strin
 }
 
 function spacerClass(contract: NavVisualContract, heroOverlay: boolean): string {
-  if (heroOverlay && contract.variant === "bar") {
+  if (heroOverlay) {
     return "studio-nav-chrome-spacer studio-nav-chrome-spacer--hero-overlay w-full shrink-0 h-0 min-h-0 max-h-0 overflow-hidden border-0 p-0 m-0 pointer-events-none";
   }
   const base = "studio-nav-chrome-spacer w-full shrink-0";

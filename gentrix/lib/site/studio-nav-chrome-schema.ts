@@ -93,9 +93,10 @@ export const studioNavChromeConfigSchema = z
    * Desktop-opmaak van merk + links + CTA. Zet op `centeredLinks` wanneer de opdracht vraagt om
    * gecentreerde menulinks (merk links, linkgroep visueel in het midden, CTA rechts). Standaard: `standard`.
    *
-   * `linksRightInHero`: alleen voor **lichte/glas bar-presets** (`minimalLight`, `softBrand`, `compactBar`, `glassLight`):
-   * **zwevende** cluster rechtsboven op de hero (`rounded-2xl`, donker glas + lichte type), geen volle-breedte balk/spacer; desktop links + CTA rechts; mobiel **CTA + hamburger** en rechts uitklapbaar sheet (zelfde palet).
-   * Bij andere `navVisualPreset`-waarden wordt dit veld **genegeerd** (normale bar + spacer). Alleen `variant: "bar"`.
+   * `linksRightInHero`: voor **lichte/glas bar-presets** (`minimalLight`, `softBrand`, `compactBar`, `glassLight`) en
+   * **`floatingPill`** (zwevende pill): **zwevende** cluster rechtsboven op de hero (`rounded-2xl`, donker glas + lichte type),
+   * geen volle-breedte balk / geen `h-24` spacer-strook; desktop links + CTA rechts; mobiel **CTA + hamburger** en rechts
+   * uitklapbaar sheet. Bij donkere/gouden presets wordt dit veld **genegeerd** (normale bar + spacer).
    */
   navBarLayout: studioNavBarLayoutSchema.optional(),
   /** Eigen primary/accent hex voor de nav-shell; overschrijft niet `config.theme` voor de rest van de pagina. */
