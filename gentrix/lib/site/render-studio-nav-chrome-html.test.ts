@@ -198,6 +198,9 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("studio-nav-chrome-spacer");
     expect(html).toContain("@click.outside");
     expect(html).toContain("x-transition:enter-start");
+    expect(html).toContain("!max-h-0");
+    expect(html).toContain("top-[4.75rem]");
+    expect(html).not.toContain("-translate-y-full");
     expect(html).not.toContain("@scroll.window");
     expect(html).not.toContain("backdrop-blur-md");
     expect(html).toMatch(/style="[^"]*--studio-nav-accent:#ca8a04/);

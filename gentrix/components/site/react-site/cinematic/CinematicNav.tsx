@@ -152,13 +152,16 @@ function MobileNavDrawer({
       />
       {/* Sheet: glijdt neer vanonder de navbar — content-hoogte, niet fullscreen. */}
       <div
-        className={cn(
-          "fixed inset-x-0 z-[210] overflow-hidden",
-          "transition-[transform,opacity] duration-[320ms] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-          sheet,
-          visible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0",
-        )}
-        style={{ ...topStyle, maxHeight: `calc(100dvh - ${topOffset}px)` }}
+        className={cn("fixed inset-x-0 z-[210] overflow-hidden", sheet, "will-change-[max-height,opacity]")}
+        style={{
+          ...topStyle,
+          maxHeight: visible
+            ? `min(88dvh, calc(100dvh - ${topOffset}px))`
+            : 0,
+          opacity: visible ? 1 : 0,
+          transition:
+            "max-height 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
       >
         <nav
           ref={navRef}
