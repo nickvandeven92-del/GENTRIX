@@ -42,7 +42,8 @@ ${ic}
 \`\`\`
 
 Regels:
-- Geen extra drop-shadows, filters, gradients of 3D op deze merk-SVG's.
+- Voeg **geen** zware extra \`drop-shadow\`/\`filter\`/\`backdrop\` **rondom** deze vaste SVG-snippers (dubbele gloed maakt het merk vaak korrelig op mobiel); **inhoud van de SVG zelf** (inclusief subtiele schaduw, gradient of diepte-illusie) laat je met rust.
+- **Snelheid / grootte:** het merk wordt **klein** getoond (\`h-8\`–\`h-9\`); houd de **bron-SVG licht** (weinig paden, geen zware ingebedde foto’s/base64). **Isometrische of zachte 3D-vector** in de SVG is prima zolang het compact en scherp op klein formaat blijft; inline SVG of \`data:image/svg+xml\` blijft de voorkeur.
 - Behoud aspect ratio (\`w-auto h-8\` of \`h-9\`); niet rekken.
 - Gebruik **niet** tegelijk een ander fictief logo naast deze set.
 - Zet op de **directe wrapper** rond het merk (div of a) het attribuut \`data-studio-brand-mark="1"\` zodat de studio weet dat het logo aanwezig is; zelfde attribuut op **elke** merk-link (header én footer).

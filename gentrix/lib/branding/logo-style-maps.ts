@@ -18,9 +18,16 @@ const BASE_AVOID = [
   "speech bubbles",
   "swooshes and motion trails",
   "clipart-style illustrations",
-  "3D or glossy effects",
   "hairline strokes that disappear at small sizes",
+  "large embedded raster images (PNG/JPEG) inside SVG unless strictly necessary",
 ] as const;
+
+/**
+ * Appended in `getPresetLogoDna` so every preset encodes fast first paint:
+ * compact paths, no heavy base64 art; isometric / soft-3D **vector** is OK.
+ */
+export const LOGO_WEB_VECTOR_PERFORMANCE_HINT =
+  "Web: prefer **compact inline SVG** (few paths, no full-size embedded bitmaps); mark must read clean at ~24–32px. **Isometric or soft-3D vector** (facets, light gradient, subtle shadow on paths) is welcome if it stays sharp and lightweight.";
 
 /** Logo-stijl-ID → DNA voor merkgeneratie (onafhankelijk van oude site design-preset). */
 const PRESET_LOGO_DNA: Record<PresetId, LogoPresetDna> = {
@@ -39,7 +46,7 @@ const PRESET_LOGO_DNA: Record<PresetId, LogoPresetDna> = {
     typographyDirection: "wide",
     logoStyle: "combination",
     symbolDirection:
-      "Friendly open sans wordmark + **simple abstract symbol** (e.g. 2–4 parallel wave lines, ripple, or soft droplet curve) — flat vector, legible at favicon size; **not** initials trapped in a square as the only idea.",
+      "Friendly open sans wordmark + **simple abstract symbol** (e.g. 2–4 parallel wave lines, ripple, or soft droplet curve) — vector, legible at favicon size (diepte/glans mag zolang het scherp blijft); **not** initials trapped in a square as the only idea.",
     visualKeywordPool: ["water rhythm", "soft curve", "open forms", "teal + warm accent", "B2C clarity"],
     extraAvoid: [...BASE_AVOID, "heavy black slabs", "default monogram-in-box as entire logo", "corporate globe"],
     colorMode: "brand-accent",
@@ -49,7 +56,7 @@ const PRESET_LOGO_DNA: Record<PresetId, LogoPresetDna> = {
     typographyDirection: "geometric",
     logoStyle: "combination",
     symbolDirection:
-      "Abstract minimal geometry (facets, planes, grids) — flat vector only, no glassmorphism inside the logo itself.",
+      "Abstract minimal geometry (facets, planes, grids) — vector; geen **letterlijke** glazen lens/UI-glassmorphism *in* het embleem tenzij het merk dat expliciet vraagt (liever vlakke facetten).",
     visualKeywordPool: ["layered planes", "precision grid", "depth without noise", "frosted restraint"],
     extraAvoid: [...BASE_AVOID, "literal glass lens icons", "lens flares"],
     colorMode: "brand-accent",
@@ -147,7 +154,11 @@ const PRESET_LOGO_DNA: Record<PresetId, LogoPresetDna> = {
 };
 
 export function getPresetLogoDna(presetId: PresetId): LogoPresetDna {
-  return PRESET_LOGO_DNA[presetId];
+  const d = PRESET_LOGO_DNA[presetId] ?? PRESET_LOGO_DNA.minimal_light;
+  return {
+    ...d,
+    symbolDirection: `${d.symbolDirection} ${LOGO_WEB_VECTOR_PERFORMANCE_HINT}`.trim(),
+  };
 }
 
 export function mergeAvoidLists(base: string[], extra: string[]): string[] {
