@@ -155,6 +155,8 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("px-5 sm:px-7 md:px-9");
     expect(html).toMatch(/<header class="[^"]*" style="[^"]*--studio-nav-sheet-bg:/);
     expect(html).toContain("var(--studio-nav-sheet-bg, rgba(250,251,253,0.97))");
+    expect(html).toContain("top-[4.25rem]");
+    expect(html).toContain("-mt-px");
   });
 
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
@@ -199,7 +201,8 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("@click.outside");
     expect(html).toContain("x-transition:enter-start");
     expect(html).toContain("!max-h-0");
-    expect(html).toContain("top-[4.75rem]");
+    expect(html).toContain("top-16");
+    expect(html).toContain("-mt-px");
     expect(html).not.toContain("-translate-y-full");
     expect(html).not.toContain("@scroll.window");
     expect(html).not.toContain("backdrop-blur-md");

@@ -229,16 +229,30 @@ export function renderStudioNavChromeHtml(
       : `${desktopRowStandard}${menuBtn}`;
 
   const sheetPT = isHeroOverlay ? "pt-3" : "pt-2";
-  const sheetHExpr = "min(88dvh,calc(100dvh-4.75rem))";
   /**
-   * Geen `-translate-y-full`: dat laat de inhoud vánaf de bovenkant vh scherm binnenglijden.
-   * `max-h` 0 → `max-h[open]` met vaste `top` onder de balk: het vouwt omlaag (Vugts-patroon).
+   * `top` moet overeenkomen met de echte balkhoogte (anders een lichte spleet met hero erdoor).
+   * - bar: typisch `h-16`-achtig → `4rem`
+   * - hero-overlay mobiel: compactere rij (`py-2`) → `3.75rem`
+   * - pill: `py-3` + `h-11` knop ≈ 68px → `4.25rem`
+   * `-mt-px`: sluit subpixel-haartje tussen shell en sheet.
+   *
+   * Geen `-translate-y-full`: `max-h` 0 → open vouwt omlaag (Vugts-patroon).
    */
-  const mobileSheetClass = isHeroOverlay
-    ? `fixed inset-x-0 z-[60] top-[4.75rem] overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl ring-1 ring-black/10 md:hidden max-h-[${sheetHExpr}]`
-    : `fixed inset-x-0 z-[60] top-[4.75rem] overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl md:hidden max-h-[${sheetHExpr}]`;
+  const mobileSheetClass =
+    contract.variant === "bar"
+      ? `fixed inset-x-0 z-[60] top-16 -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl md:hidden max-h-[min(88dvh,calc(100dvh-4rem))]`
+      : isHeroOverlay
+        ? `fixed inset-x-0 z-[60] top-[3.75rem] -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl ring-1 ring-black/10 md:hidden max-h-[min(88dvh,calc(100dvh-3.75rem))]`
+        : `fixed inset-x-0 z-[60] top-[4.25rem] -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl md:hidden max-h-[min(88dvh,calc(100dvh-4.25rem))]`;
 
   const mobileSheetClassFinal = usePillFlexCenter ? `${mobileSheetClass} pointer-events-auto` : mobileSheetClass;
+
+  const sheetMaxHExpr =
+    contract.variant === "bar"
+      ? "min(88dvh,calc(100dvh-4rem))"
+      : isHeroOverlay
+        ? "min(88dvh,calc(100dvh-3.75rem))"
+        : "min(88dvh,calc(100dvh-4.25rem))";
 
   const mobileSheet = `<div
     id="studio-nav-chrome-mobile-sheet"
@@ -247,9 +261,9 @@ export function renderStudioNavChromeHtml(
     @click="if ($event.target.closest('a')) { ${NAV_KEY} = false }"
     x-transition:enter="transition ease-out duration-300 [transition-property:max-height,opacity] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]"
     x-transition:enter-start="!max-h-0 !opacity-0"
-    x-transition:enter-end="!max-h-[${sheetHExpr}] !opacity-100"
+    x-transition:enter-end="!max-h-[${sheetMaxHExpr}] !opacity-100"
     x-transition:leave="transition ease-in duration-220 [transition-property:max-height,opacity]"
-    x-transition:leave-start="!max-h-[${sheetHExpr}] !opacity-100"
+    x-transition:leave-start="!max-h-[${sheetMaxHExpr}] !opacity-100"
     x-transition:leave-end="!max-h-0 !opacity-0"
     class="${mobileSheetClassFinal}"
     style="background:var(--studio-nav-sheet-bg, rgba(250,251,253,0.97));border-top:1px solid var(--studio-nav-sheet-border, rgba(15,23,42,0.14))"
