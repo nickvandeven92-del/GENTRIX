@@ -123,7 +123,7 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("studio-nav-shell-scrolled");
     expect(html).toContain("max-md:top-0");
     expect(html).toContain("md:right-4");
-    expect(html).toContain("md:rounded-2xl");
+    expect(html).toContain("md:rounded-none");
     expect(html).toContain("studio-nav-chrome-mobile-triggers");
     expect(html).not.toContain("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)]");
   });
@@ -151,6 +151,8 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("pointer-events-none");
     expect(html).toContain("pointer-events-auto");
     expect(html).not.toContain("-translate-x-1/2");
+    expect(html).toContain("rounded-none");
+    expect(html).toContain("px-5 sm:px-7 md:px-9");
   });
 
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {

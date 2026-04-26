@@ -449,9 +449,8 @@ export function CinematicNav({
     >
       <MotionNavShell
         className={cn(
-          "pointer-events-auto flex w-full max-w-5xl items-center rounded-2xl border border-white/12 px-4 py-3 backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4",
-          "max-md:max-w-none max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:border-b max-md:shadow-none",
-          navElevated > 0.65 && "max-md:rounded-none rounded-xl sm:rounded-2xl",
+          "pointer-events-auto flex w-full max-w-5xl items-center rounded-none border border-white/12 px-6 py-3 backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-8 sm:py-4 md:px-10",
+          "max-md:max-w-none max-md:border-x-0 max-md:border-t-0 max-md:border-b max-md:shadow-none",
         )}
         style={floatingShellStyle}
       >
