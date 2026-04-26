@@ -44,6 +44,11 @@ export type StudioNavChromeTone = {
   /** Donkere shell (licht op tekst). */
   isDarkChrome: boolean;
   pillRadiusClass: string;
+  /**
+   * Hoeken voor CTA, hamburgerknop en mobiele menurijen — volgt `theme.borderRadius`, default **none**
+   * (scherpe knoppen zoals primaire site-CTA’s); los van `pillRadiusClass` (zwevende nav-shell).
+   */
+  ctaRadiusClass: string;
   barBottomRadiusClass: string;
   /** Tailwind shadow-* op host (bar of pill). */
   hostShadowClass: string;
@@ -116,6 +121,8 @@ export function buildStudioNavChromeTone(
 
   const brToken = theme?.borderRadius ?? "lg";
   const pillRadiusClass = RADIUS_MAP[brToken] ?? RADIUS_MAP.lg;
+  const ctaBrToken = theme?.borderRadius ?? "none";
+  const ctaRadiusClass = RADIUS_MAP[ctaBrToken] ?? RADIUS_MAP.none;
   const barBottomRadiusClass = "";
   const borderBar = borderBottomCss(visual, primary, accent, isDarkChrome);
   const borderPill =
@@ -151,6 +158,7 @@ export function buildStudioNavChromeTone(
     spacerLayerStyle,
     isDarkChrome,
     pillRadiusClass,
+    ctaRadiusClass,
     barBottomRadiusClass,
     hostShadowClass: hostShadowClass(visual.shadow),
   };

@@ -86,6 +86,7 @@ describe("renderStudioNavChromeHtml", () => {
       },
       { primary: "#0f172a", accent: "#ca8a04" },
     );
+    expect(html).toContain("inline-flex shrink-0 items-center rounded-none");
     expect(html).toContain('data-studio-nav-chrome="1"');
     expect(html).toContain('data-gentrix-scroll-nav="1"');
     expect(html).toContain("gentrix-menu-icon");

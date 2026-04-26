@@ -45,5 +45,15 @@ describe("buildStudioNavChromeTone", () => {
       STUDIO_NAV_VISUAL_PRESETS.floatingPill,
     );
     expect(t.pillRadiusClass).toBe("rounded-full");
+    expect(t.ctaRadiusClass).toBe("rounded-full");
+  });
+
+  it("zonder theme.borderRadius: CTA/hamburger scherp (rounded-none), pill-shell default lg", () => {
+    const t = buildStudioNavChromeTone(
+      { primary: "#0f172a", accent: "#eab308" } as MasterPromptTheme,
+      STUDIO_NAV_VISUAL_PRESETS.minimalLight,
+    );
+    expect(t.pillRadiusClass).toBe("rounded-lg");
+    expect(t.ctaRadiusClass).toBe("rounded-none");
   });
 });

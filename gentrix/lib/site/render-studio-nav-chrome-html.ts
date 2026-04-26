@@ -43,16 +43,15 @@ function innerYClasses(v: NavVisualContract): string {
   return "py-3 sm:py-3";
 }
 
-function linkIndicatorClasses(ai: NavVisualContract["activeIndicator"]): string {
+function linkIndicatorClasses(ai: NavVisualContract["activeIndicator"], linkRadius: string): string {
   if (ai === "underline")
     return "underline-offset-[6px] decoration-2 decoration-transparent hover:underline hover:decoration-[color:var(--studio-nav-accent)]";
-  if (ai === "pill") return "rounded-full px-2.5 py-1 hover:bg-[color:var(--studio-nav-hover-bg)]";
+  if (ai === "pill") return `${linkRadius} px-2.5 py-1 hover:bg-[color:var(--studio-nav-hover-bg)]`;
   return "";
 }
 
-function ctaDesktopClasses(cta: NavVisualContract["ctaStyle"]): string {
-  const base =
-    "inline-flex shrink-0 items-center rounded-md px-3 py-1.5 text-sm font-medium transition-opacity";
+function ctaDesktopClasses(cta: NavVisualContract["ctaStyle"], radiusClass: string): string {
+  const base = `inline-flex shrink-0 items-center ${radiusClass} px-3 py-1.5 text-sm font-medium transition-opacity`;
   if (cta === "solid")
     return `${base} border border-transparent bg-[color:var(--studio-nav-accent)] text-white shadow-sm hover:opacity-92`;
   if (cta === "ghost")
@@ -60,8 +59,8 @@ function ctaDesktopClasses(cta: NavVisualContract["ctaStyle"]): string {
   return `${base} border border-[color:var(--studio-nav-accent)] text-[color:var(--studio-nav-accent)] hover:opacity-90`;
 }
 
-function ctaMobileClasses(cta: NavVisualContract["ctaStyle"]): string {
-  const base = "mt-2 block rounded-md px-3 py-2 text-center text-sm font-medium transition-opacity";
+function ctaMobileClasses(cta: NavVisualContract["ctaStyle"], radiusClass: string): string {
+  const base = `mt-2 block ${radiusClass} px-3 py-2 text-center text-sm font-medium transition-opacity`;
   if (cta === "solid")
     return `${base} border border-transparent bg-[color:var(--studio-nav-accent)] text-white hover:opacity-92`;
   if (cta === "ghost")
@@ -124,14 +123,15 @@ export function renderStudioNavChromeHtml(
 
   const navBarLayout = config.navBarLayout ?? "standard";
 
-  const ind = linkIndicatorClasses(contract.activeIndicator);
+  const r = tone.ctaRadiusClass;
+  const ind = linkIndicatorClasses(contract.activeIndicator, r);
   const linkDesktop =
     `text-sm font-medium transition-colors text-[color:var(--studio-nav-fg-muted)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
   const linkMobile =
-    `block rounded-md px-2 py-2 text-base font-medium text-[color:var(--studio-nav-fg-muted)] transition-colors hover:bg-[color:var(--studio-nav-hover-bg)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
+    `block ${r} px-2 py-2 text-base font-medium text-[color:var(--studio-nav-fg-muted)] transition-colors hover:bg-[color:var(--studio-nav-hover-bg)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
 
-  const ctaClass = ctaDesktopClasses(contract.ctaStyle);
-  const ctaMobileClass = ctaMobileClasses(contract.ctaStyle);
+  const ctaClass = ctaDesktopClasses(contract.ctaStyle, r);
+  const ctaMobileClass = ctaMobileClasses(contract.ctaStyle, r);
 
   const brand = `<a href="${escapeAttr(brandHref)}" class="shrink-0 text-base font-semibold tracking-tight text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]">${escapeAttr(config.brandLabel)}</a>`;
 
@@ -151,7 +151,7 @@ export function renderStudioNavChromeHtml(
     ? `<a href="${escapeAttr(config.cta.href)}" class="${ctaMobileClass}">${escapeAttr(config.cta.label)}</a>`
     : "";
 
-  const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] lg:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
+  const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center ${r} text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] lg:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
 
   const desktopLinksCluster = `<div class="flex flex-wrap items-center justify-center gap-6">${desktopLinks}</div>`;
 
