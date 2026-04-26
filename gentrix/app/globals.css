@@ -191,6 +191,14 @@ body {
   }
 }
 
+/* Showroom: lange lusbewegingen uitzetten op smalle viewports = minder layer/compositor-druk, snellere first paint. */
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  .showroom-drift,
+  .showroom-drift-reverse,
+  .showroom-holo-shift {
+    animation: none;
+  }
+}
 
 /* Facturen/offertes: schone A4-print (geen shell) */
 @media print {

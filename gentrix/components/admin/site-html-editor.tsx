@@ -32,7 +32,7 @@ import type { GeneratedLogoSet } from "@/types/logo";
 import { ResizableEditorPanels } from "@/components/admin/resizable-editor-panels";
 import { SiteAiChatPanel } from "@/components/admin/site-ai-chat-panel";
 import type { SnapshotPageType } from "@/lib/site/snapshot-page-type";
-import { PublicPublishedTailwindInline } from "@/components/site/public-published-tailwind-inline";
+import { TailwindSectionsPreview } from "@/components/site/tailwind-sections-preview";
 import {
   composePublicMarketingTailwindSections,
   type ComposePublicMarketingPlan,
@@ -56,7 +56,6 @@ import {
   resolvePublicTailwindContactPlan,
   selectTailwindSectionsForPublicView,
 } from "@/lib/site/tailwind-contact-subpage";
-import { useStudioTailwindPreviewViewportModes } from "@/lib/site/studio-tailwind-preview-viewport";
 import { cn } from "@/lib/utils";
 
 /** Debounce na laatste wijziging (undo/AI/…) voordat concept naar Supabase gaat — vergelijkbaar met Lovable. */
@@ -175,8 +174,8 @@ export function SiteHtmlEditor({
   const [previewKey, setPreviewKey] = useState(0);
   /** Welke (sub)pagina de rechter preview toont; `postMessage`-nav wisselt alleen de preview. */
   const [previewRoute, setPreviewRoute] = useState<SiteHtmlEditorPreviewRoute>({ kind: "landing" });
-  /** Standaard desktop (1280px layout): gelijk aan live `/site` voor `lg:`-nav; `auto` volgt smalle preview-kolom. */
-  const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("desktop");
+  /** `auto`: breakpoints volgen het preview-paneel (sleepbalk). `desktop`: vaste 1280px-layout. `mobile`: telefoonframe. */
+  const [previewViewportMode, setPreviewViewportMode] = useState<"auto" | "mobile" | "desktop">("auto");
   const [stepsOpen, setStepsOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
@@ -206,12 +205,6 @@ export function SiteHtmlEditor({
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistInFlightRef = useRef(false);
   const previewInitResetDoneRef = useRef(false);
-  const previewPanelRef = useRef<HTMLDivElement>(null);
-  const { previewMatchParentWindowBreakpoints, studioMobileEditorFrame } = useStudioTailwindPreviewViewportModes(
-    previewViewportMode,
-    previewPanelRef,
-  );
-
   const payload = useMemo(
     () =>
       ({
@@ -1010,63 +1003,43 @@ export function SiteHtmlEditor({
                 </div>
                 <p
                   className="mt-1 line-clamp-2 max-w-[56rem] text-[9px] leading-snug text-zinc-500 dark:text-zinc-400"
-                  title="Preview = werkversie. Openbare /site/… zonder token = live snapshot. Automatische weergave schaalt mee met het preview-paneel; Desktop-knop toont vaste brede layout."
+                  title="Preview = werkversie in een iframe: breakpoints volgen het paneel (auto) of de gekozen modus. Openbare /site zonder token = live snapshot."
                 >
-                  Preview = <strong className="font-medium">werkversie</strong>.{" "}
+                  Preview = <strong className="font-medium">werkversie</strong> in een{" "}
+                  <strong className="font-medium">iframe</strong> (eigen viewport).{" "}
                   <code className="rounded bg-zinc-200/80 px-0.5 font-mono dark:bg-zinc-800/80">/site/…</code> zonder token ={" "}
-                  <strong className="font-medium">live</strong> snapshot. Automatisch: tablet/telefoon-layout bij smal paneel;
-                  Desktop-knop: vaste brede layout (1280px), inline (geen iframe).
+                  <strong className="font-medium">live</strong> snapshot. Automatisch: layout volgt de breedte van het
+                  preview-paneel; Desktop-knop: vaste 1280px-breedte; Mobiel: smal telefoonframe.
                 </p>
               </div>
-              <div
-                ref={previewPanelRef}
-                className={cn(
-                  "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-                  previewMatchParentWindowBreakpoints ? "overflow-x-auto" : "overflow-x-hidden",
-                )}
-              >
-                <div
-                  className={cn(
-                    "min-h-0 min-h-[280px] w-full min-w-0 will-change-transform [transform:translateZ(0)]",
-                    previewMatchParentWindowBreakpoints && "overflow-x-auto",
-                  )}
-                  style={previewMatchParentWindowBreakpoints ? { scrollbarGutter: "stable" } : undefined}
-                  data-gentrix-studio-inline-preview="1"
-                >
-                  <div
-                    className={cn(
-                      previewMatchParentWindowBreakpoints && "w-[1280px] min-w-[1280px] max-w-none shrink-0",
-                    )}
-                  >
-                    <PublicPublishedTailwindInline
-                      key={`${previewKey}-${previewViewportMode}`}
-                      sections={previewSections}
-                      pageConfig={config}
-                      userCss={customCss}
-                      userJs={customJs}
-                      logoSet={initialLogoSet}
-                      rasterBrandSet={initialRasterBrandSet}
-                      publishedSlug={subfolderSlug}
-                      draftPublicPreviewToken={draftPublicPreviewToken}
-                      appointmentsEnabled={appointmentsEnabled}
-                      webshopEnabled={webshopEnabled}
-                      compiledTailwindCss={previewCompiledCss}
-                      documentTitle={`Preview ${subfolderSlug}`}
-                      navBrandLabel={initialName.trim() || subfolderSlug}
-                      className={cn(
-                        "min-h-[280px] w-full rounded-none border-0 bg-white",
-                        previewMatchParentWindowBreakpoints && "w-[1280px] min-w-[1280px]",
-                      )}
-                      studioHtmlEditorPreview={{
-                        contactSubpageNav: contactSubpageNavForHtmlEditor ?? undefined,
-                        studioHtmlEditorParentNav: true,
-                        previewMatchParentWindowBreakpoints,
-                        studioMobileEditorFrame,
-                        iframeDocumentPathname: iframeDocumentPathname ?? undefined,
-                      }}
-                    />
-                  </div>
-                </div>
+              <div className="flex min-h-0 min-h-[280px] flex-1 flex-col overflow-y-auto overscroll-contain">
+                <TailwindSectionsPreview
+                  key={`${previewKey}-${previewViewportMode}`}
+                  sections={previewSections}
+                  pageConfig={config}
+                  title={`Preview ${subfolderSlug}`}
+                  className="min-h-0 flex-1 rounded-none border-0 bg-transparent"
+                  frameClassName="min-h-[280px] w-full max-w-full bg-white"
+                  previewPostMessageBridge
+                  autoResizeFromPostMessage
+                  documentHeightMode="panel"
+                  maxMeasuredHeight={3200}
+                  userCss={customCss}
+                  userJs={customJs}
+                  logoSet={initialLogoSet}
+                  rasterBrandSet={initialRasterBrandSet}
+                  publishedSlug={subfolderSlug}
+                  draftPublicPreviewToken={draftPublicPreviewToken}
+                  appointmentsEnabled={appointmentsEnabled}
+                  webshopEnabled={webshopEnabled}
+                  skipPublicMarketingCompose
+                  viewportMode={previewViewportMode}
+                  compiledTailwindCss={previewCompiledCss}
+                  navBrandLabel={initialName.trim() || subfolderSlug}
+                  contactSubpageNavForHtmlEditor={contactSubpageNavForHtmlEditor}
+                  iframeDocumentPathname={iframeDocumentPathname}
+                  studioHtmlEditorParentNav
+                />
               </div>
             </div>
           </div>

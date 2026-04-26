@@ -8,6 +8,27 @@ function isLoginPath(pathname: string) {
 }
 
 /**
+ * Sessie uit @supabase/ssr gebruikt o.a. `sb-<projectref>-auth-token` en `.0` chunk-cookies.
+ * Alleen wanneer zo'n cookie meegegeven is, is `getUser()` in middleware zinvol — anders
+ * wacht elke (mobiele) pageload op een onnodige Supabase roundtrip.
+ */
+function hasSupabaseAuthTokenCookie(request: NextRequest): boolean {
+  for (const { name } of request.cookies.getAll()) {
+    if (name.startsWith("sb-") && name.includes("auth-token")) return true;
+  }
+  return false;
+}
+
+function needsAuthAndMfaPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/portal") ||
+    pathname === "/home" ||
+    pathname === "/dashboard"
+  );
+}
+
+/**
  * Bepaal een veilige "next"-redirect voor ingelogde users op login-paden.
  * Geeft `null` terug als middleware de pagina moet laten renderen (geen redirect).
  */
@@ -37,6 +58,21 @@ export async function updateSession(request: NextRequest) {
   // maar deze guard scheelt Supabase-calls voor api-paden die wél door de matcher komen.
   if (pathname.startsWith("/api/")) return supabaseResponse;
 
+  /** Sessie wordt in route gezet; geen auth-work in middleware. */
+  if (pathname.startsWith("/auth/")) return supabaseResponse;
+
+  if (!hasSupabaseAuthTokenCookie(request)) {
+    if (pathname === "/login/mfa" || pathname === "/login/mfa-email") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    if (needsAuthAndMfaPath(pathname)) {
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
@@ -58,18 +94,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  /** Uitnodiging / wachtwoord: sessie wordt gezet in route handler. */
-  if (pathname.startsWith("/auth/")) return supabaseResponse;
-
   if ((pathname === "/login/mfa" || pathname === "/login/mfa-email") && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const needsAuthAndMfa =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/portal") ||
-    pathname === "/home" ||
-    pathname === "/dashboard";
+  const needsAuthAndMfa = needsAuthAndMfaPath(pathname);
 
   if (needsAuthAndMfa) {
     if (!user) {

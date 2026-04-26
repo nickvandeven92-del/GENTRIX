@@ -34,7 +34,7 @@ function GlassPanel({ className, children }: { className?: string; children: Rea
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-[0_0_60px_-15px_rgba(34,211,238,0.18)] backdrop-blur-xl",
+        "relative rounded-2xl border border-white/[0.08] bg-white/[0.06] shadow-[0_0_60px_-15px_rgba(34,211,238,0.18)] max-md:backdrop-blur-none md:bg-white/[0.03] md:backdrop-blur-xl",
         className,
       )}
     >
@@ -99,7 +99,7 @@ export function ShowroomFallback() {
         aria-hidden
       />
 
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#05080d]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#05080d]/55">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#05080d]/92 max-md:backdrop-blur-none md:bg-[#05080d]/80 md:backdrop-blur-xl supports-[backdrop-filter]:md:bg-[#05080d]/55">
         <div className="mx-auto flex min-h-[4.25rem] max-w-6xl items-center justify-between gap-4 px-5 py-3.5 md:min-h-[4.75rem] md:px-8 md:py-4">
           <ShowroomWordmark />
           <nav className="flex flex-wrap items-center justify-end gap-4 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500 md:gap-8">
