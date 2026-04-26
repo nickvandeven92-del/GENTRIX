@@ -1,9 +1,16 @@
+
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import {
   publishedSiteViewTransitionMetadata,
   publishedSiteViewTransitionScopedCss,
 } from "@/lib/site/published-view-transition-shell";
+import {
+  STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS,
+  STUDIO_NAV_CHROME_HERO_OVERLAY_SHELL_CSS,
+  GENTRIX_MENU_ICON_TOGGLE_CSS,
+  STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS,
+} from "@/lib/site/tailwind-page-html";
 
 export const metadata: Metadata = publishedSiteViewTransitionMetadata;
 
@@ -21,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function SiteSlugLayout({ children }: { children: ReactNode }) {
   return (
-    <>
+        <>
       {/* Inline override: voorkomt donkere body-achtergrond op apparaten met dark mode */}
       <style>{`
         body{background:#fff!important;color:#171717!important}
@@ -30,6 +37,10 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
           tap-highlight-color:transparent;
         }
         ${publishedSiteViewTransitionScopedCss}
+        ${STUDIO_NAV_CHROME_MENU_BTN_VISIBILITY_CSS}
+        ${STUDIO_NAV_CHROME_HERO_OVERLAY_SHELL_CSS}
+        ${GENTRIX_MENU_ICON_TOGGLE_CSS}
+        ${STUDIO_DESKTOP_NAV_HIDDEN_UTIL_FIX_CSS}
       `}</style>
       {children}
     </>
