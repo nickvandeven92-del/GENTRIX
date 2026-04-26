@@ -1,4 +1,4 @@
-/**
+﻿/**
  * **Server-side** HTML voor declaratieve primaire nav (`studioNav` + theme).
  * Visueel contract: `resolveNavVisualPreset` (presets + toegestane overrides); legacy `surface` + infer (theme/contract).
  */
@@ -169,10 +169,17 @@ export function renderStudioNavChromeHtml(
 
   const markChar = escapeAttr(pickMarkCharForSiteIdentity(config.brandLabel, config.brandLabel));
   const brandLabelEsc = escapeAttr(config.brandLabel);
-  /** Hero-float: geen monogram-“postzegel”; compact woordmerk links in de pill (≥sm), mobiel alleen sheet. */
-  const brand = isHeroOverlay
+  /**
+   * Hero-float: geen monogram-postzegel; compact woordmerk links in de pill (sm), mobiel alleen sheet.
+   * centeredLinks: brand gewikkeld in flex-1 wrapper zodat de links-cluster echt gecenterd staat
+   * t.o.v. de volledige balkbreedte (brand-wrapper en trailing-wrapper zijn beide flex-1).
+   */
+  const brandLink = isHeroOverlay
     ? `<a href="${escapeAttr(brandHref)}" class="group mr-auto hidden min-w-0 max-w-[10rem] shrink-0 items-center sm:flex text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--studio-nav-accent)]/35 rounded-sm" aria-label="${brandLabelEsc}"><span class="truncate text-sm font-semibold tracking-tight">${brandLabelEsc}</span></a>`
     : `<a href="${escapeAttr(brandHref)}" class="group flex min-w-0 shrink-0 items-center gap-2.5 text-[color:var(--studio-nav-fg)] hover:text-[color:var(--studio-nav-fg-hover)]"><span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--studio-nav-accent)] text-sm font-bold text-white shadow-sm ring-1 ring-black/10 dark:ring-white/10" aria-hidden="true">${markChar}</span><span class="truncate text-base font-semibold tracking-tight">${brandLabelEsc}</span></a>`;
+  const brand = (navBarLayout === "centeredLinks" && !isHeroOverlay)
+    ? `<div class="flex flex-1 min-w-0 items-center">${brandLink}</div>`
+    : brandLink;
 
   const desktopLinks = config.items
     .map((it) => `<a href="${escapeAttr(it.href)}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`)
@@ -204,7 +211,7 @@ export function renderStudioNavChromeHtml(
 
   const desktopRowCentered = `<div class="hidden min-w-0 flex-1 justify-center lg:flex">${desktopLinksCluster}</div>`;
 
-  const desktopTrailing = `<div class="flex shrink-0 items-center gap-2">${
+  const desktopTrailing = `<div class="flex flex-1 justify-end items-center gap-2">${
     navBarLayout === "centeredLinks" && ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
   }${menuBtn}</div>`;
 

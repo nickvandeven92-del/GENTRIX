@@ -192,12 +192,12 @@ export function buildStudioNavChromeTone(
   const barHostStyle = `${borderBar};background:${barBg};color:${fg};${blur}${cssVars}`;
   const pillHostStyle = `${borderPill};background:${pillBg};color:${fg};${blur}${cssVars}`;
 
-  /*
-   * Spacer: altijd **dekkend**. Dezelfde rgba als de bar (bijv. 0,92 wit) laat nog steeds #primary
-   * van html/body doorschemen → zichtbare donkere strook onder de vaste header. Hero is meestal effen wit.
+    /*
+   * Spacer: transparant. De nav-header is `fixed` en zweeft boven de pagina;
+   * de spacer reserveert alleen verticale ruimte zodat content er niet ónder schuift.
+   * Een vaste kleur zou een zichtbare gekleurde balk tonen die niet bij de hero past.
    */
-  const spacerSolidBg = isDarkChrome ? rgbaFromHex(primary, 0.98) : "rgb(255,255,255)";
-  const spacerLayerStyle = `background:${spacerSolidBg}`;
+  const spacerLayerStyle = "background:transparent";
 
   return {
     barHostStyle,
