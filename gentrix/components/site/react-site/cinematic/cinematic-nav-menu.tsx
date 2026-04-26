@@ -78,15 +78,19 @@ export function CinematicNavMenuEntries({
 
         if (!hasChildren) {
           return (
-            <a key={key} href={resolveHref(item.href!)} className={flatLinkClass(variant, textSizeClass)}>
+            <a
+              key={key}
+              href={resolveHref(item.href!)}
+              className={cn(flatLinkClass(variant, textSizeClass), "shrink-0 whitespace-nowrap")}
+            >
               {item.label}
             </a>
           );
         }
 
         return (
-          <details key={key} className="group relative">
-            <summary className={summaryClass(variant)}>
+          <details key={key} className="group relative shrink-0">
+            <summary className={cn(summaryClass(variant), "whitespace-nowrap")}>
               <span className={textSizeClass}>{item.label}</span>
               <ChevronDown
                 className="size-4 shrink-0 opacity-70 transition duration-200 group-open:rotate-180"

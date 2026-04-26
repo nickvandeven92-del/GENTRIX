@@ -315,18 +315,20 @@ export function CinematicNav({
         className="sticky top-0 z-50 w-full border-b border-zinc-200/90 bg-white/92 backdrop-blur-md shadow-sm"
         style={fontSans}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-          <a
-            href={homeHref}
-            data-studio-brand-mark="1"
-            className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-900 sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            style={fontSerifLogo}
-            onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
-          >
-            {logoText}
-          </a>
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">
+          <div className="flex min-w-0 flex-1 basis-0 justify-start">
+            <a
+              href={homeHref}
+              data-studio-brand-mark="1"
+              className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-900 sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              style={fontSerifLogo}
+              onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
+            >
+              {logoText}
+            </a>
+          </div>
           <nav
-            className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
+            className="shrink-0 flex-nowrap items-center gap-x-4 text-[0.9375rem] sm:gap-x-5 lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
             onClick={(e: ReactMouseEvent) => {
@@ -339,16 +341,18 @@ export function CinematicNav({
           >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_light" />
           </nav>
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100"
-            style={{ display: lgUp ? "none" : "inline-flex" }}
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
-            onClick={() => setMobileOpen((o) => !o)}
-          >
-            {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
-          </button>
+          <div className="flex min-w-0 flex-1 basis-0 justify-end">
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100"
+              style={{ display: lgUp ? "none" : "inline-flex" }}
+              aria-expanded={mobileMenuOpen}
+              aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
+            </button>
+          </div>
         </div>
         {/* Only render mobile drawer on mobile */}
         {!lgUp && (
@@ -370,18 +374,20 @@ export function CinematicNav({
         className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-950/92 text-white backdrop-blur-md"
         style={fontSans}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-          <a
-            href={homeHref}
-            data-studio-brand-mark="1"
-            className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg rounded-sm text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-            onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
-            style={fontSerifLogo}
-          >
-            {logoText}
-          </a>
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">
+          <div className="flex min-w-0 flex-1 basis-0 justify-start">
+            <a
+              href={homeHref}
+              data-studio-brand-mark="1"
+              className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg rounded-sm text-inherit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+              onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
+              style={fontSerifLogo}
+            >
+              {logoText}
+            </a>
+          </div>
           <nav
-            className="items-center gap-x-5 gap-y-2 text-[0.9375rem] lg:text-sm"
+            className="shrink-0 flex-nowrap items-center gap-x-4 text-[0.9375rem] sm:gap-x-5 lg:text-sm"
             style={{ display: lgUp ? "flex" : "none" }}
             aria-label="Hoofdnavigatie"
             onClick={(e: ReactMouseEvent) => {
@@ -394,16 +400,18 @@ export function CinematicNav({
           >
             <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="bar_dark" />
           </nav>
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
-            style={{ display: lgUp ? "none" : "inline-flex" }}
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
-            onClick={() => setMobileOpen((o) => !o)}
-          >
-            {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
-          </button>
+          <div className="flex min-w-0 flex-1 basis-0 justify-end">
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
+              style={{ display: lgUp ? "none" : "inline-flex" }}
+              aria-expanded={mobileMenuOpen}
+              aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
+            </button>
+          </div>
         </div>
         {/* Only render mobile drawer on mobile */}
         {!lgUp && (
@@ -440,46 +448,50 @@ export function CinematicNav({
     >
       <MotionNavShell
         className={cn(
-          "pointer-events-auto flex w-full max-w-5xl flex-col gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6",
+          "pointer-events-auto flex w-full max-w-5xl items-center rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-5 sm:py-4",
           navElevated > 0.65 && "rounded-xl sm:rounded-2xl",
         )}
         style={floatingShellStyle}
       >
-        <div className="flex w-full items-center justify-between gap-3 lg:contents">
-          <a
-            href={homeHref}
-            data-studio-brand-mark="1"
-            className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950/90"
-            onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
-            style={fontSerifLogo}
+        <div className="flex w-full items-center gap-3 sm:gap-4">
+          <div className="flex min-w-0 flex-1 basis-0 justify-start">
+            <a
+              href={homeHref}
+              data-studio-brand-mark="1"
+              className="min-w-0 truncate text-base font-semibold tracking-tight text-white sm:text-lg rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950/90"
+              onClick={(e) => handleNavLinkClick(e as any as MouseEvent, homeHref)}
+              style={fontSerifLogo}
+            >
+              {logoText}
+            </a>
+          </div>
+          <nav
+            className="shrink-0 flex-nowrap items-center gap-x-4 text-[0.9375rem] sm:gap-x-5 lg:gap-x-6 lg:text-sm"
+            style={{ display: lgUp ? "flex" : "none" }}
+            aria-label="Hoofdnavigatie"
+            onClick={(e: ReactMouseEvent) => {
+              const anchor = (e.target as HTMLElement).closest("a");
+              if (anchor) {
+                const href = anchor.getAttribute("href");
+                if (href) handleNavLinkClick(e as any as MouseEvent, href);
+              }
+            }}
           >
-            {logoText}
-          </a>
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
-            style={{ display: lgUp ? "none" : "inline-flex" }}
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
-            onClick={() => setMobileOpen((o) => !o)}
-          >
-            {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
-          </button>
+            <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />
+          </nav>
+          <div className="flex min-w-0 flex-1 basis-0 justify-end">
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
+              style={{ display: lgUp ? "none" : "inline-flex" }}
+              aria-expanded={mobileMenuOpen}
+              aria-label={mobileMenuOpen ? "Menu sluiten" : "Menu openen"}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              {mobileMenuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
+            </button>
+          </div>
         </div>
-        <nav
-          className="items-center gap-x-6 gap-y-2 text-[0.9375rem] lg:text-sm"
-                    onClick={(e: ReactMouseEvent) => {
-                      const anchor = (e.target as HTMLElement).closest("a");
-                      if (anchor) {
-                        const href = anchor.getAttribute("href");
-                        if (href) handleNavLinkClick(e as any as MouseEvent, href);
-                      }
-                    }}
-          style={{ display: lgUp ? "flex" : "none" }}
-          aria-label="Hoofdnavigatie"
-        >
-          <CinematicNavMenuEntries items={links} resolveHref={resolveHref} variant="floating" />
-        </nav>
       </MotionNavShell>
       {/* Only render mobile drawer on mobile */}
       {!lgUp && (
