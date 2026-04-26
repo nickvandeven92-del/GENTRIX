@@ -160,7 +160,7 @@ export function renderStudioNavChromeHtml(
   const r = tone.ctaRadiusClass;
   const ind = linkIndicatorClasses(contract.activeIndicator, r);
   const linkDesktop =
-    `text-sm font-medium transition-colors text-[color:var(--studio-nav-fg-muted)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
+    `shrink-0 whitespace-nowrap text-sm font-medium transition-colors text-[color:var(--studio-nav-fg-muted)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
   const linkMobile =
     `block ${r} px-2 py-2 text-base font-medium text-[color:var(--studio-nav-fg-muted)] transition-colors hover:bg-[color:var(--studio-nav-hover-bg)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
 
@@ -203,9 +203,9 @@ export function renderStudioNavChromeHtml(
     ? `<div class="studio-nav-chrome-mobile-triggers flex shrink-0 items-center gap-2 lg:hidden">${ctaBlock}${menuBtn}</div>`
     : menuBtn;
 
-  const desktopLinksCluster = `<div class="flex flex-wrap items-center justify-center gap-6">${desktopLinks}</div>`;
+  const desktopLinksCluster = `<div class="flex flex-nowrap items-center justify-center gap-4 sm:gap-6">${desktopLinks}</div>`;
 
-  const desktopRowStandard = `<div class="hidden min-w-0 flex-wrap items-center gap-6 lg:flex">${desktopLinks}${
+  const desktopRowStandard = `<div class="hidden min-w-0 flex-nowrap items-center gap-4 sm:gap-6 lg:flex">${desktopLinks}${
     ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
   }</div>`;
 
