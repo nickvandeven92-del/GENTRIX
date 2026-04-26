@@ -153,6 +153,8 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).not.toContain("-translate-x-1/2");
     expect(html).toContain("rounded-none");
     expect(html).toContain("px-5 sm:px-7 md:px-9");
+    expect(html).toMatch(/<header class="[^"]*" style="[^"]*--studio-nav-sheet-bg:/);
+    expect(html).toContain("var(--studio-nav-sheet-bg, rgba(250,251,253,0.97))");
   });
 
   it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {

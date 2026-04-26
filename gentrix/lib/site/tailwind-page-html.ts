@@ -538,11 +538,13 @@ export const GENTRIX_MENU_ICON_TOGGLE_CSS = `
   opacity: 0;
   visibility: hidden;
 }
-.gentrix-menu-toggle-css.gentrix-menu-open > svg:first-of-type {
+.gentrix-menu-toggle-css.gentrix-menu-open > svg:first-of-type,
+button[aria-expanded="true"] .gentrix-menu-toggle-css > svg:first-of-type {
   opacity: 0;
   visibility: hidden;
 }
-.gentrix-menu-toggle-css.gentrix-menu-open > svg:last-of-type {
+.gentrix-menu-toggle-css.gentrix-menu-open > svg:last-of-type,
+button[aria-expanded="true"] .gentrix-menu-toggle-css > svg:last-of-type {
   opacity: 1;
   visibility: visible;
 }
@@ -1254,10 +1256,10 @@ nav.studio-nav-tone-light button span[class*="bg-white"] {
  * Mobiele sheets/drawers zitten DOM-gewijs in de header maar zijn vrijwel altijd donker — dan worden
  * Lucide-sluiticonen (stroke currentColor) en links onzichtbaar. Zet dit vlak expliciet terug naar licht.
  */
-header.studio-nav-tone-light :is(nav[aria-label="Mobiel menu"], nav[aria-label="Mobile menu"], div[aria-label="Mobiel menu"], div[aria-label="Mobile menu"], #site-mobile-sheet) :is(a, button, span, li, label) {
+header.studio-nav-tone-light :is(nav[aria-label="Mobiel menu"], nav[aria-label="Mobile menu"], div[aria-label="Mobiel menu"], div[aria-label="Mobile menu"], #site-mobile-sheet, #studio-nav-chrome-mobile-sheet) :is(a, button, span, li, label) {
   color: rgb(248 250 252) !important;
 }
-header.studio-nav-tone-light :is(nav[aria-label="Mobiel menu"], nav[aria-label="Mobile menu"], div[aria-label="Mobiel menu"], div[aria-label="Mobile menu"], #site-mobile-sheet) svg {
+header.studio-nav-tone-light :is(nav[aria-label="Mobiel menu"], nav[aria-label="Mobile menu"], div[aria-label="Mobiel menu"], div[aria-label="Mobile menu"], #site-mobile-sheet, #studio-nav-chrome-mobile-sheet) svg {
   color: rgb(248 250 252) !important;
   fill: currentColor !important;
   stroke: currentColor !important;

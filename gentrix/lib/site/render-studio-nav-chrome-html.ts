@@ -247,7 +247,7 @@ export function renderStudioNavChromeHtml(
     x-transition:leave-start="translate-y-0 opacity-100"
     x-transition:leave-end="-translate-y-full opacity-0"
     class="${mobileSheetClassFinal}"
-    style="background:var(--studio-nav-sheet-bg);border-top:1px solid var(--studio-nav-sheet-border)"
+    style="background:var(--studio-nav-sheet-bg, rgba(250,251,253,0.97));border-top:1px solid var(--studio-nav-sheet-border, rgba(15,23,42,0.14))"
   >${mobileLinks}${mobileCta}</div>`;
 
   const spacer = spacerClass(contract, isHeroOverlay);
@@ -262,7 +262,10 @@ export function renderStudioNavChromeHtml(
     : "";
   const shellClassAttr = isHeroOverlay ? ` :class="{ 'studio-nav-shell-scrolled': shellScrolled }"` : "";
 
-  const headerStyleAttr = usePillFlexCenter ? "" : ` style="${escapeAttr(hostStyle)}"`;
+  /** Pill-inner draagt `hostStyle`; variabelen ook op `<header>` zodat het mobiele sheet (sibling) `var(--studio-nav-sheet-bg)` krijgt. */
+  const headerStyleAttr = usePillFlexCenter
+    ? ` style="${escapeAttr(tone.chromeScopeStyle)}"`
+    : ` style="${escapeAttr(hostStyle)}"`;
   const pillInnerClass = `pointer-events-auto flex w-full min-w-0 max-w-5xl items-center justify-between gap-3 sm:gap-6 px-5 sm:px-7 md:px-9 max-md:max-w-none max-md:rounded-none max-md:shadow-none ${innerPad} ${pillShellVisual}`.trim();
   const innerStyleAttr = usePillFlexCenter ? ` style="${escapeAttr(hostStyle)}"` : "";
 

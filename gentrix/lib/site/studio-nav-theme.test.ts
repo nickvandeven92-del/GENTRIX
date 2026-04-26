@@ -10,6 +10,7 @@ describe("buildStudioNavChromeTone", () => {
       STUDIO_NAV_VISUAL_PRESETS.minimalLight,
     );
     expect(t.isDarkChrome).toBe(false);
+    expect(t.chromeScopeStyle).toContain("--studio-nav-sheet-bg:");
     expect(t.barHostStyle).toContain("rgba(255,255,255");
     expect(t.spacerLayerStyle).toBe("background:transparent");
     expect(t.barHostStyle).toContain("--studio-nav-accent:#eab308");

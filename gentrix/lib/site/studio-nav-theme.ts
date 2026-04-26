@@ -39,6 +39,11 @@ const RADIUS_MAP: Record<string, string> = {
 export type StudioNavChromeTone = {
   barHostStyle: string;
   pillHostStyle: string;
+  /**
+   * Alleen `--studio-nav-*` custom properties (zelfde als in host-styles), voor op `<header>` te zetten
+   * wanneer visuele shell op een **kind** zit: siblings (mobiel sheet) erven `var(--studio-nav-sheet-bg)` dan wél.
+   */
+  chromeScopeStyle: string;
   /** Zelfde vlakkleur als de bar-host (geen blur); vult `studio-nav-chrome-spacer` zodat app-shell-rand (#primary) niet doorschemert. */
   spacerLayerStyle: string;
   /** Donkere shell (licht op tekst). */
@@ -142,6 +147,7 @@ export function buildStudioNavChromeTone(
     return {
       barHostStyle,
       pillHostStyle,
+      chromeScopeStyle: cssVars,
       spacerLayerStyle: "background:transparent",
       isDarkChrome: false,
       pillRadiusClass,
@@ -234,6 +240,7 @@ export function buildStudioNavChromeTone(
   return {
     barHostStyle,
     pillHostStyle,
+    chromeScopeStyle: cssVars,
     spacerLayerStyle,
     isDarkChrome,
     pillRadiusClass,
