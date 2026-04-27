@@ -56,10 +56,11 @@ describe("buildTailwindIframeSrcDoc gentrix scroll nav", () => {
     expect(doc).toMatch(/html\s*\{\s*scroll-padding-top:\s*0(?:rem)?;/);
   });
 
-  it("adds immediate top-state transparency fallback rule for home slug", () => {
+  it("adds home top-state solid nav (no see-through to hero) + html overscroll color", () => {
     const doc = buildTailwindIframeSrcDoc(simpleSections, null, { publishedSlug: "home" });
     expect(doc).toContain('html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]');
-    expect(doc).toContain("background-color: transparent !important;");
+    expect(doc).toContain("background-color: rgb(2 6 23) !important");
+    expect(doc).toMatch(/html\[data-gentrix-scroll-nav-fallback="1"\][^}]+background-color:\s*rgb\(2 6 23\)/s);
   });
 
   it("keeps scroll-overlay bookkeeping but applies chrome purely on scrolled state", () => {

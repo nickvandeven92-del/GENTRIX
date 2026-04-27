@@ -1276,13 +1276,15 @@ header.studio-nav-tone-light button[class*="text-white"] svg {
   stroke: currentColor !important;
 }
 /*
- * Alleen expliciet gemarkeerde GENTRIX primary nav:
- * - top van pagina: transparant (geen witte balk over hero)
- * - na scroll: subtiele frosted laag voor leesbaarheid
+ * GENTRIX home scroll-nav (fallback + gemarkeerde data-gentrix-*):
+ * - bovenaan: effen balk (donker of, bij .studio-nav-tone-light, bijna-wit) — geen "losse" zwarte strook
+ *   of rubberband-ruimte *door* transparantie; html-kleur vangt overscroll bovenaan mee
+ * - na scroll: frosted laag
  */
 html[data-gentrix-scroll-nav-fallback="1"] {
   overflow-x: hidden !important;
   overscroll-behavior-x: none !important;
+  background-color: rgb(2 6 23) !important;
 }
 html[data-gentrix-scroll-nav-fallback="1"] body {
   overflow-x: hidden !important;
@@ -1299,7 +1301,6 @@ nav[data-gentrix-scroll-nav="1"] {
   right: 0 !important;
   width: 100% !important;
   z-index: 90 !important;
-  background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
@@ -1311,6 +1312,22 @@ nav[data-gentrix-scroll-nav="1"] {
     backdrop-filter 220ms ease,
     -webkit-backdrop-filter 220ms ease;
 }
+header[data-gentrix-scroll-nav="1"]:not([data-studio-nav-chrome]):not([data-gentrix-scrolled="1"]):not(.studio-nav-tone-light),
+nav[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]):not(.studio-nav-tone-light) {
+  background-color: rgb(2 6 23) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+header[data-gentrix-scroll-nav="1"]:not([data-studio-nav-chrome]):not([data-gentrix-scrolled="1"]).studio-nav-tone-light,
+nav[data-gentrix-scroll-nav="1"]:not([data-gentrix-scrolled="1"]).studio-nav-tone-light {
+  background-color: rgb(255 255 255 / 0.98) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] header[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
 html[data-gentrix-scroll-nav-fallback="1"] nav[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]),
@@ -1321,28 +1338,48 @@ html[data-gentrix-scroll-nav-fallback="1"] nav[class*="fixed"][class*="top-0"]:n
   right: 0 !important;
   width: 100% !important;
   z-index: 90 !important;
-  background-color: transparent !important;
+  background-color: rgb(2 6 23) !important;
   border-color: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type:not([data-studio-nav-chrome]),
-html[data-gentrix-scroll-nav-fallback="1"] body > nav:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type:not([data-studio-nav-chrome]),
-html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > nav:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > header:first-of-type:not([data-studio-nav-chrome]),
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > nav:first-of-type,
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > header:first-of-type:not([data-studio-nav-chrome]),
-html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > nav:first-of-type {
+html[data-gentrix-scroll-nav-fallback="1"] header[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]).studio-nav-tone-light,
+html[data-gentrix-scroll-nav-fallback="1"] header[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]).studio-nav-tone-light,
+html[data-gentrix-scroll-nav-fallback="1"] nav[class*="sticky"][class*="top-0"]:not([data-gentrix-scrolled="1"]).studio-nav-tone-light,
+html[data-gentrix-scroll-nav-fallback="1"] nav[class*="fixed"][class*="top-0"]:not([data-gentrix-scrolled="1"]).studio-nav-tone-light {
+  background-color: rgb(255 255 255 / 0.98) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
+html[data-gentrix-scroll-nav-fallback="1"] body > nav:first-of-type:not([data-gentrix-scrolled="1"]),
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > nav:first-of-type:not([data-gentrix-scrolled="1"]),
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > nav:first-of-type:not([data-gentrix-scrolled="1"]),
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]),
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > nav:first-of-type:not([data-gentrix-scrolled="1"]) {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
   z-index: 90 !important;
-  background-color: transparent !important;
+  background-color: rgb(2 6 23) !important;
   border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-gentrix-scroll-nav-fallback="1"] body > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]).studio-nav-tone-light,
+html[data-gentrix-scroll-nav-fallback="1"] body > section:first-of-type > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]).studio-nav-tone-light,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]).studio-nav-tone-light,
+html[data-gentrix-scroll-nav-fallback="1"] .gentrix-published-root > section:first-of-type > header:first-of-type:not([data-gentrix-scrolled="1"]):not([data-studio-nav-chrome]).studio-nav-tone-light {
+  background-color: rgb(255 255 255 / 0.98) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;

@@ -10,6 +10,21 @@ function escapeXml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function relativeLuminanceHex6(hex6: string): number {
+  const h = hex6.replace(/^#/, "");
+  if (h.length !== 6) return 0.4;
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  const lin = (x: number) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/** Leesbaar op merk-vlak: donkere of lichte inkt (zelfde regel als site-identiteitsfavicon). */
+function inkOnPrimaryFill(fill: string): string {
+  return relativeLuminanceHex6(fill) > 0.52 ? "#0f172a" : "#ffffff";
+}
+
 function applyCase(text: string, c: LogoSpec["wordmark"]["case"]): string {
   const t = text.trim();
   if (c === "upper") return t.toUpperCase();
@@ -201,14 +216,19 @@ export function renderFinalLogoSet(spec: LogoSpec, brand: BrandIdentity): Genera
   };
 }
 
-/** 32×32 favicon; simpele geometrie voor leesbaarheid. */
+/** 32×32 favicon; simpele geometrie voor leesbaarheid. Geen stroke-“kader”: vol vlak + teken, zoals merk in de header. */
 export function renderFaviconSvg(spec: LogoSpec, brand: BrandIdentity, fill: string): string {
   const hint = primaryHint(spec);
   const letter = initials(brand.brandName, spec.wordmark.text).charAt(0);
   const ff = fontStack(brand, spec.wordmark.fontStyle);
+  const ink = inkOnPrimaryFill(fill);
 
   if (spec.style === "monogram" || spec.symbol.type === "monogram") {
-    return `${SVG_OPEN} viewBox="0 0 32 32"><rect x="3" y="3" width="26" height="26" rx="7" stroke="${escapeXml(fill)}" stroke-width="2" fill="none"/><text x="16" y="21.5" text-anchor="middle" font-family="${escapeXml(ff)}" font-weight="700" font-size="13" fill="${escapeXml(fill)}">${escapeXml(letter)}</text></svg>`;
+    return `${SVG_OPEN} viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="${escapeXml(
+      fill,
+    )}"/><text x="16" y="21" text-anchor="middle" font-family="${escapeXml(
+      ff,
+    )}" font-weight="700" font-size="15" fill="${escapeXml(ink)}">${escapeXml(letter)}</text></svg>`;
   }
 
   if (spec.symbol.type === "geometric" && hint.includes("vertical")) {
@@ -219,5 +239,9 @@ export function renderFaviconSvg(spec: LogoSpec, brand: BrandIdentity, fill: str
     return `${SVG_OPEN} viewBox="0 0 32 32"><circle cx="10" cy="10" r="3.5" fill="${escapeXml(fill)}"/><circle cx="22" cy="10" r="3.5" fill="${escapeXml(fill)}"/><circle cx="10" cy="22" r="3.5" fill="${escapeXml(fill)}"/><circle cx="22" cy="22" r="3.5" fill="${escapeXml(fill)}"/></svg>`;
   }
 
-  return `${SVG_OPEN} viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24" rx="6" fill="${escapeXml(fill)}"/></svg>`;
+  return `${SVG_OPEN} viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="${escapeXml(
+    fill,
+  )}"/><text x="16" y="21" text-anchor="middle" font-family="${escapeXml(
+    ff,
+  )}" font-weight="700" font-size="15" fill="${escapeXml(ink)}">${escapeXml(letter)}</text></svg>`;
 }
