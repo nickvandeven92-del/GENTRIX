@@ -26,11 +26,6 @@ import { PublishedTailwindNavBridge } from "@/components/site/published-tailwind
 import { PublicSitePageSkeleton } from "@/components/site/public-site-page-skeleton";
 import { isStudioPreviewPostMessage } from "@/lib/site/preview-post-message";
 import { cn } from "@/lib/utils";
-import {
-  initGentrixAnalytics,
-  isGentrixAnalyticsEnabled,
-  setGentrixPageContext,
-} from "@/lib/analytics/gentrix-analytics";
 
 function escapeHtmlForSrcDocTitle(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -145,30 +140,6 @@ export function PublicPublishedTailwind({
   const [panelClipPx, setPanelClipPx] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!isGentrixAnalyticsEnabled()) return;
-    if (visibility !== "portal" || !publishedSlug?.trim()) return;
-    initGentrixAnalytics();
-    setGentrixPageContext({
-      session_type: "client_portal_iframe",
-      site_slug: publishedSlug.trim(),
-      page_key: iframeDocumentPathname && iframeDocumentPathname.length > 0 ? iframeDocumentPathname : "portal_iframe:home",
-      is_preview: Boolean(draftPublicPreviewToken?.trim()),
-      booking_module_enabled: appointmentsEnabled,
-      webshop_module_enabled: webshopEnabled,
-      actor: "known_customer",
-      is_internal_actor: false,
-      render_surface: "portal_iframe",
-    });
-  }, [
-    visibility,
-    publishedSlug,
-    draftPublicPreviewToken,
-    appointmentsEnabled,
-    webshopEnabled,
-    iframeDocumentPathname,
-  ]);
-
-  useEffect(() => {
     queueMicrotask(() => setMeasuredHeight(null));
   }, [srcDoc]);
 
@@ -255,8 +226,6 @@ export function PublicPublishedTailwind({
           previewScriptOrigin: window.location.origin,
           navBrandLabel: navBrandLabel?.trim() || undefined,
           iframeDocumentPathname,
-          /** Portaal site-preview: postMessage → PostHog via `GentrixIframeAnalyticsListener`. */
-          gentrixIframeAnalytics: visibility === "portal",
           ...(contactSubpageNav ? { contactSubpageNav } : {}),
         });
         if (typeof window !== "undefined") {

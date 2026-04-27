@@ -82,10 +82,11 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
 
   const sp = await searchParams;
   const previewToken = typeof sp.token === "string" ? sp.token : "";
-  const bundle = await getPublishedSiteBySlug(slug, previewToken);
+  const [bundle, prettyCtx] = await Promise.all([
+    getPublishedSiteBySlug(slug, previewToken),
+    readPrettyPublicUrlContext(),
+  ]);
   if (!bundle) notFound();
-
-  const prettyCtx = await readPrettyPublicUrlContext();
   const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
   const hasCompiledTailwindCss =

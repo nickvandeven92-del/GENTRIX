@@ -81,6 +81,34 @@ const SITE_STREAM_LOG_MAX_CHARS = 400_000;
 /** Briefing-screenshots / referenties bij de opdracht — los van klantfoto's (max. in schema / API); server leest zichtbare tekst via vision. */
 const BRIEFING_REF_IMAGES_MAX = 6;
 
+/**
+ * Brieftekst uit `clients` — apart van `name`. Eerder werd `${name}\n\n${description}` in het grote
+ * veld getoond: strip die prefix zodat de merknaam in Bedrijfsnaam kan blijven.
+ */
+function studioBriefingFieldFromClientNameAndDescription(
+  clientName: string,
+  clientDescription: string,
+): string {
+  const n = clientName.trim();
+  const d = clientDescription.trim();
+  if (n && d) {
+    if (d === n) return "";
+    if (d.startsWith(`${n}\n\n`)) return d.slice(n.length + 2);
+    if (d.startsWith(`${n}\n`)) return d.slice(n.length + 1);
+    return d;
+  }
+  if (n && !d) return "";
+  return d;
+}
+
+/** Los veld "Bedrijfsnaam" — `derive` uit vrije briefing is niet toepasbaar op de DB-naam zelf. */
+function studioNameFieldFromInitialClientName(initial: string | undefined): string {
+  const n = (initial ?? "").trim();
+  if (!n) return "";
+  if (isStudioUndecidedBrandName(n)) return "";
+  return n;
+}
+
 function extractFirstHttpUrl(text: string): string | undefined {
   const m = text.match(/https?:\/\/[^\s<>"')]+/i);
   if (!m?.[0]) return undefined;
@@ -134,10 +162,10 @@ export function GeneratorForm({
 
   const [briefingText, setBriefingText] = useState(() => {
     if (!slugFromUrl) return "";
-    const name = initialClientName?.trim() ?? "";
-    const desc = (initialClientDescription ?? "").trim();
-    if (name && desc) return `${name}\n\n${desc}`;
-    return name || desc;
+    return studioBriefingFieldFromClientNameAndDescription(
+      initialClientName ?? "",
+      initialClientDescription ?? "",
+    );
   });
   /** Laatst verzonden opdracht — blijft beschikbaar als het veld na verzenden leeg is (zoals Lovable). */
   const [sentBriefingSnapshot, setSentBriefingSnapshot] = useState<string | null>(null);
@@ -146,12 +174,9 @@ export function GeneratorForm({
 
   const briefingForDerivation = briefingText.trim() || sentBriefingSnapshot?.trim() || "";
   /** Optioneel vak bij de opdracht: voorkomt lange URL-slugs en vult merknaam i.p.v. alleen uit briefing te halen. */
-  const [studioBedrijfsnaam, setStudioBedrijfsnaam] = useState(() => {
-    const n = initialClientName?.trim() ?? "";
-    if (!n) return "";
-    const derived = deriveStudioBusinessNameFromBriefing(n);
-    return isStudioUndecidedBrandName(derived) ? "" : n;
-  });
+  const [studioBedrijfsnaam, setStudioBedrijfsnaam] = useState(() =>
+    studioNameFieldFromInitialClientName(initialClientName),
+  );
   const resolvedBusinessName = useMemo(() => {
     const explicit = studioBedrijfsnaam.trim();
     if (explicit) return explicit;
@@ -615,9 +640,13 @@ export function GeneratorForm({
   useEffect(() => {
     if (!slugFromUrl) return;
     if (existingDraftLocked) return;
-    const name = initialClientName?.trim() ?? "";
-    const desc = (initialClientDescription ?? "").trim();
-    setBriefingText(name && desc ? `${name}\n\n${desc}` : name || desc);
+    setBriefingText(
+      studioBriefingFieldFromClientNameAndDescription(
+        initialClientName ?? "",
+        initialClientDescription ?? "",
+      ),
+    );
+    setStudioBedrijfsnaam(studioNameFieldFromInitialClientName(initialClientName));
   }, [slugFromUrl, initialClientName, initialClientDescription, existingDraftLocked]);
 
   useEffect(() => {

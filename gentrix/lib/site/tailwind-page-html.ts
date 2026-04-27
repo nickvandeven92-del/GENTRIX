@@ -1827,8 +1827,7 @@ export const STUDIO_STICKY_NAV_OVERFLOW_FIX_SCRIPT = `<script>
 </script>`;
 
 export function buildLucideRuntimeScriptBlock(): string {
-  return `<script src="${STUDIO_LUCIDE_UMD_SRC}"></script>
-<script>try{typeof lucide!=="undefined"&&lucide.createIcons();}catch(e){}</script>`;
+  return `<script defer src="${STUDIO_LUCIDE_UMD_SRC}" onload="try{typeof lucide!=='undefined'&&lucide.createIcons&&lucide.createIcons();}catch(_){}"></script>`;
 }
 
 /** Na Alpine (x-show/x-for): iconen opnieuw initialiseren zodat `@click` op knoppen niet “verdwijnt”. */
@@ -2450,38 +2449,6 @@ const STUDIO_PREVIEW_BRIDGE_SCRIPT = `<script>
 })();
 </script>`;
 
-/** `source: gentrix-iframe-analytics` — overeen met `lib/analytics/iframe-messages.ts` (portaal site-preview-iframe). */
-const GENTRIX_IFRAME_ANALYTICS_SCRIPT = `<script>
-(function(){
-  var SRC="gentrix-iframe-analytics";
-  function gtx(m){try{if(window.parent!==window)window.parent.postMessage(Object.assign({source:SRC},m),"*");}catch(e){}}
-  gtx({type:"gentrix_iframe_ready",page_path:location.pathname+location.search});
-  var done={};
-  function tick(){
-    var el=document.documentElement,b=document.body,sh=Math.max(b?b.scrollHeight:0,el.scrollHeight,1);
-    var st=window.scrollY||el.scrollTop||0;
-    var vh=window.innerHeight;
-    var atBottom=st+vh>=sh-8;
-    var p=Math.min(100,Math.floor(((st+vh)/sh)*100));
-    var ps=[25,50,75,100];
-    for(var i=0;i<ps.length;i++){
-      var m=ps[i];
-      if(done[m])continue;
-      if(p>=m||(m===100&&atBottom)){
-        done[m]=1;
-        gtx({type:"gentrix_site_scroll",depth_pct:m,page_path:location.pathname+location.search});
-      }
-    }
-  }
-  var r=0;
-  function onSc(){if(r)return;r=requestAnimationFrame(function(){r=0;tick();});}
-  window.addEventListener("scroll",onSc,{passive:true});
-  window.addEventListener("resize",onSc,{passive:true});
-  if(document.readyState==="complete")tick();
-  else window.addEventListener("load",function(){tick();});
-})();
-</script>`;
-
 /**
  * Gegenereerde one-pagers gebruiken vaak `href="/diensten"` of **absolute** `https://host/site/slug#x`
  * i.p.v. `#sectie`. In een `srcDoc`-iframe laadt dat de **hele Next-pagina opnieuw in de iframe**
@@ -2953,11 +2920,6 @@ export type BuildTailwindIframeSrcDocOptions = {
    * admin niet naar `/site/…` navigeert; alleen de preview wisselt.
    */
   studioHtmlEditorParentNav?: boolean;
-  /**
-   * Portaal: postMessage `gentrix-iframe-analytics` (scroll, ready) naar parent; geen effect op publieke
-   * inline `/site` (daar draait scroll op `window` in de Next-pagina).
-   */
-  gentrixIframeAnalytics?: boolean;
   /** Zie `BuildTailwindSectionsBodyOptions.designContract` — nav-preset infer bij ontbrekende `navVisualPreset`. */
   designContract?: DesignGenerationContract | null;
 };
@@ -3172,7 +3134,6 @@ export function buildTailwindIframeSrcDoc(
         : "";
 
   const bridge = options?.previewPostMessageBridge !== false ? STUDIO_PREVIEW_BRIDGE_SCRIPT : "";
-  const gentrixBridge = options?.gentrixIframeAnalytics === true ? GENTRIX_IFRAME_ANALYTICS_SCRIPT : "";
   const userCssRaw = options?.userCss?.trim() ?? "";
   const userJsRaw = options?.userJs?.trim() ?? "";
   const userCssBlock = userCssRaw
@@ -3218,17 +3179,16 @@ export function buildTailwindIframeSrcDoc(
   const compiledStyleBlock = useCompiledTailwind
     ? `<style id="studio-compiled-tailwind">\n${sanitizeCompiledTailwindCssForStyleTag(compiledRaw)}\n</style>\n`
     : "";
-  const tailwindPreloadLine = useCompiledTailwind
-    ? ""
-    : `  <link rel="preload" href="${STUDIO_TAILWIND_PLAY_CDN_SRC}" as="script"/>\n`;
+  /** Geen `<link rel=preload as=script>` voor Tailwind Play: concurreert met LCP (hero) en telt als unused preload in Lighthouse. */
+  const tailwindPreloadLine = "";
   const foucCssBlock = useCompiledTailwind || relaxedTailwindCdn ? "" : `    ${STUDIO_TAILWIND_FOUC_HEAD_CSS}\n`;
   const twLoadingScript =
     useCompiledTailwind || relaxedTailwindCdn ? "" : `<script>document.documentElement.classList.add("tw-loading")</script>\n`;
   const tailwindCdnScripts = useCompiledTailwind
     ? ""
     : relaxedTailwindCdn
-      ? `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}"></script>\n`
-      : `<script src="${STUDIO_TAILWIND_PLAY_CDN_SRC}" onload="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)" onerror="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)"></script>
+      ? `<script defer src="${STUDIO_TAILWIND_PLAY_CDN_SRC}"></script>\n`
+      : `<script defer src="${STUDIO_TAILWIND_PLAY_CDN_SRC}" onload="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)" onerror="(function(e){e.classList.remove('tw-loading');e.classList.add('tw-ready')})(document.documentElement)"></script>
 <script>setTimeout(function(){var e=document.documentElement;if(e.classList.contains("tw-loading")){e.classList.remove("tw-loading");e.classList.add("tw-ready")}},4500)</script>
 `;
   const studioTailwindPlayConsoleMute = useCompiledTailwind
@@ -3365,7 +3325,7 @@ ${buildStudioSinglePageInternalNavScript(
     previewOriginTrimmed || null,
     options?.studioHtmlEditorParentNav ? STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE : STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
   )}
-${bridge}${gentrixBridge}
+${bridge}
 ${userJsBlock}
 </body>
 </html>`;

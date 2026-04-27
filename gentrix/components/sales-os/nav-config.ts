@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   Brain,
   Building2,
   CircleDollarSign,
@@ -39,6 +40,7 @@ export const SALES_NAV_MAIN: SalesNavItem[] = [
   { href: "/admin/ops/tasks", label: "Taken", icon: LayoutList },
   { href: "/admin/ops/support-inbox", label: "Support-inbox", icon: MessageCircle },
   { href: "/admin/ops/insights", label: "Inzichten", icon: Brain },
+  { href: "/admin/ops/analytics", label: "Site-analytics", icon: BarChart3 },
   { href: "/admin/settings", label: "Instellingen", icon: Settings },
 ];
 
@@ -114,6 +116,12 @@ export function pageMetaForPath(pathname: string): { title: string; subtitle: st
   }
   if (pathname.startsWith("/admin/ops/insights")) {
     return { title: "Inzichten", subtitle: "Feiten uit de database — geen gegenereerde praatjes." };
+  }
+  if (pathname.startsWith("/admin/ops/analytics")) {
+    return {
+      title: "Site-analytics",
+      subtitle: "Eerstepartij /site meetdata — page views, CTA’s, scroll, engagement.",
+    };
   }
   if (pathname.startsWith("/admin/ops/clients")) {
     return { title: "Klanten", subtitle: "Gezondheid, betalingen en koppelingen." };

@@ -189,19 +189,25 @@ export function renderStudioNavChromeHtml(
     : brandLink;
 
   const desktopLinks = config.items
-    .map((it) => `<a href="${escapeAttr(it.href)}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`)
+    .map(
+      (it, i) =>
+        `<a href="${escapeAttr(it.href)}" data-analytics="nav:link:${i}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`,
+    )
     .join("");
 
   const ctaBlock = config.cta
-    ? `<a href="${escapeAttr(config.cta.href)}" class="${ctaClass}">${escapeAttr(config.cta.label)}</a>`
+    ? `<a href="${escapeAttr(config.cta.href)}" data-analytics="nav:cta" class="${ctaClass}">${escapeAttr(config.cta.label)}</a>`
     : "";
 
   const mobileLinks = config.items
-    .map((it) => `<a href="${escapeAttr(it.href)}" class="${linkMobile}">${escapeAttr(it.label)}</a>`)
+    .map(
+      (it, i) =>
+        `<a href="${escapeAttr(it.href)}" data-analytics="nav:link:${i}" class="${linkMobile}">${escapeAttr(it.label)}</a>`,
+    )
     .join("");
 
   const mobileCta = config.cta
-    ? `<a href="${escapeAttr(config.cta.href)}" class="${ctaMobileClass}">${escapeAttr(config.cta.label)}</a>`
+    ? `<a href="${escapeAttr(config.cta.href)}" data-analytics="nav:cta" class="${ctaMobileClass}">${escapeAttr(config.cta.label)}</a>`
     : "";
 
   const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center ${r} text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] md:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;

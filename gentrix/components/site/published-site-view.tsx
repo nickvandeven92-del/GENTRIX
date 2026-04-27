@@ -19,8 +19,8 @@ import {
 import { ensureFooterAppendedFromLanding } from "@/lib/site/ensure-footer-on-subpage";
 import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
-import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
 import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
+import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;

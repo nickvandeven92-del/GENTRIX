@@ -10,7 +10,6 @@ import {
 import { userMayActAsStudioForPortalApis } from "@/lib/portal/portal-access-policy";
 import { getPortalSupportUnreadSummary } from "@/lib/data/portal-support-unread";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { GentrixPortalAnalyticsBoot } from "@/components/analytics/gentrix-portal-analytics-boot";
 
 type Props = {
   children: React.ReactNode;
@@ -62,11 +61,6 @@ export default async function PortalSlugLayout({ children, params }: Props) {
       portalSessionMismatch={portalSessionMismatch}
       showStudioPreviewBanner={showStudioPreviewBanner}
     >
-      <GentrixPortalAnalyticsBoot
-        siteSlug={decodedSlug}
-        bookingModuleEnabled={client.appointments_enabled}
-        webshopModuleEnabled={client.webshop_enabled}
-      />
       {children}
     </PortalShell>
   );

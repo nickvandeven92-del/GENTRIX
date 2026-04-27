@@ -56,9 +56,9 @@ function useBodyScrollLock(locked: boolean) {
  * blijft eronder gewoon zichtbaar, wat rustig en elegant oogt.
  *
  * - `topOffset` = onderkant van de zichtbare navbar (gemeten vanaf top van viewport).
- * - Sheet: transform van `-translate-y-full` naar `translate-y-0` (glijdt neer), met
- *   subtiele opacity-fade en cubic-bezier easing voor rustige, dure beweging.
- *   Hoogte is `auto` (clamp via `max-height` voor hele lange menu's).
+ * - Sheet: `translateY(-100%)` → `translateY(0)` zodat het paneel **onder de navbar
+ *   vandaan** naar beneden schuift; z-index onder de header zodat overlap tijdens de
+ *   transitie de sluit-X niet blokkeert. Lange lijsten: `max-height` op de `<nav>`.
  * - Click-catcher: **onzichtbare** laag onder de sheet die alleen klikken afvangt
  *   om het menu te sluiten — géén dim/darkening over de hero.
  * - Hamburger-knop in de navbar toggelt al naar een X → geen extra X in de sheet.
@@ -144,28 +144,32 @@ function MobileNavDrawer({
           zonder de hero te verdonkeren. */}
       <button
         type="button"
-        className="fixed inset-x-0 bottom-0 z-[200] bg-transparent"
+        className="fixed inset-x-0 bottom-0 z-40 bg-transparent"
         style={{ ...topStyle, pointerEvents: visible ? undefined : "none" }}
         aria-label="Menu sluiten"
         onClick={onClose}
         tabIndex={-1}
       />
-      {/* Sheet: glijdt neer vanonder de navbar — content-hoogte, niet fullscreen. */}
+      {/* Sheet: schuift uit onder de navbar (transform); z-44 < header z-50. */}
       <div
-        className={cn("fixed inset-x-0 z-[210] overflow-hidden", sheet, "will-change-[max-height,opacity]")}
+        className={cn(
+          "fixed inset-x-0 z-[44] overflow-hidden",
+          sheet,
+          "will-change-transform",
+          visible ? "pointer-events-auto" : "pointer-events-none",
+        )}
         style={{
           ...topStyle,
-          maxHeight: visible
-            ? `min(88dvh, calc(100dvh - ${topOffset}px))`
-            : 0,
-          opacity: visible ? 1 : 0,
-          transition:
-            "max-height 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transform: visible ? "translateY(0)" : "translateY(-100%)",
+          transition: "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <nav
           ref={navRef}
           className="flex w-full max-w-none flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-5 sm:px-6 sm:pt-6"
+          style={{
+            maxHeight: `min(88dvh, calc(100dvh - ${topOffset}px))`,
+          }}
           aria-label="Mobiel menu"
         >
           {children}
@@ -212,7 +216,9 @@ export function CinematicNav({
     if (!el) return;
     const update = () => {
       const rect = el.getBoundingClientRect();
-      setTopOffset(Math.max(0, Math.round(rect.bottom)));
+      // `Math.round` kan rect.bottom naar boven afronden → 1px spleet onder de navbar;
+      // `floor` plakt de sheet visueel strak tegen de onderkant.
+      setTopOffset(Math.max(0, Math.floor(rect.bottom)));
     };
     update();
     const ro = new ResizeObserver(update);

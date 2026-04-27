@@ -13,6 +13,7 @@ import {
   inactivePublicSiteModuleIds,
   type PublicSiteModuleFlags,
 } from "@/lib/site/public-site-modules-registry";
+import { ensurePublicSiteAnalyticsDataAttributesOnHtml } from "@/lib/site/ensure-public-site-analytics-attrs";
 import {
   stripInactivePublicModuleMarkupFromHtml,
   stripPublicSiteComposeDataAttributesFromHtml,
@@ -64,7 +65,7 @@ export function composePublicMarketingTailwindSections(
 
   const tagged = preTagged.map((s) => ({
     ...s,
-    html: ensureStudioModuleMarkersOnAnchors(s.html),
+    html: ensurePublicSiteAnalyticsDataAttributesOnHtml(ensureStudioModuleMarkersOnAnchors(s.html)),
   }));
 
   const strippedMarkup = tagged.map((s) => ({

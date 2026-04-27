@@ -76,10 +76,11 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
   if (sp.flyer === "1") qs.set("flyer", "1");
   const tq = qs.toString() ? `?${qs.toString()}` : "";
 
-  const bundle = await getPublishedSiteBySlug(slug, previewToken);
+  const [bundle, prettyCtx] = await Promise.all([
+    getPublishedSiteBySlug(slug, previewToken),
+    readPrettyPublicUrlContext(),
+  ]);
   if (!bundle) notFound();
-
-  const prettyCtx = await readPrettyPublicUrlContext();
   const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
 
   if (bundle.payload.kind !== "tailwind") {

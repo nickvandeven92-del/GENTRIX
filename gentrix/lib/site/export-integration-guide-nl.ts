@@ -48,7 +48,7 @@ Firebase
 A/B-testen en conversies
 ------------------------
 Er zit geen ingebouwde ABTestManager in deze export. Praktische opties:
-- **PostHog** of **Plausible** (experiments / funnels waar beschikbaar).
+- **Plausible** of vergelijkbaar (privacy-vriendelijke analytics, indien gewenst).
 - **VWO**, **Optimizely**, of vergelijkbare tools voor traffic-split + metrics.
 - Zelf bouwen: twee varianten hosten + edge middleware of load balancer — veel werk;
   meestal is SaaS sneller.

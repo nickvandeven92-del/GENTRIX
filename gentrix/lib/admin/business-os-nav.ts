@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   Brain,
   Briefcase,
   BookOpen,
@@ -72,6 +73,7 @@ export const BUSINESS_OS_SIDEBAR_NAV: BusinessOsNavItem[] = [
       { type: "item", label: "Taken", href: "/admin/ops/tasks", icon: LayoutList },
       { type: "item", label: "Support-inbox", href: "/admin/ops/support-inbox", icon: MessageCircle },
       { type: "item", label: "Inzichten", href: "/admin/ops/insights", icon: Brain },
+      { type: "item", label: "Site-analytics", href: "/admin/ops/analytics", icon: BarChart3 },
       { type: "item", label: "Vragen & antwoorden", href: "/admin/ops/werkwijze", icon: BookOpen },
     ],
   },
