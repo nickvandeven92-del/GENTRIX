@@ -189,8 +189,8 @@ export function SiteNav({ site, publishedSlug }: { site: GeneratedSite; publishe
       {menuMounted && (
         <div
           className={cn(
-            // `-mt-px`: header heeft `border-b` → totale hoogte > 4rem; plakt sheet tegen balk zonder 1px spleet.
-            "fixed inset-x-0 top-16 z-50 -mt-px overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] shadow-2xl md:hidden",
+            // `4rem` = binnenste balk; `+1px` = `border-b` op `<header>` → anders 1px heldere spleet.
+            "fixed inset-x-0 top-[calc(4rem+1px)] z-50 overflow-hidden border-t border-[var(--site-fg)]/10 bg-[var(--site-bg)] shadow-2xl md:hidden",
             "transition-[opacity,transform] duration-300 ease-out [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] will-change-transform",
             menuVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0",
           )}

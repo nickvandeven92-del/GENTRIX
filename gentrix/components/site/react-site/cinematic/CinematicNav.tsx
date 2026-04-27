@@ -56,6 +56,8 @@ function useBodyScrollLock(locked: boolean) {
  * blijft eronder gewoon zichtbaar, wat rustig en elegant oogt.
  *
  * - `topOffset` = onderkant van de zichtbare navbar (gemeten vanaf top van viewport).
+ *   De sheet gebruikt `calc(topOffset - 1px)` om een resterende 1px-spleet (DPR /
+ *   compositing t.o.v. de header) dicht te trekken.
  * - Sheet: `translateY(-100%)` → `translateY(0)` zodat het paneel **onder de navbar
  *   vandaan** naar beneden schuift; z-index onder de header zodat overlap tijdens de
  *   transitie de sluit-X niet blokkeert. Lange lijsten: `max-height` op de `<nav>`.
@@ -135,8 +137,8 @@ function MobileNavDrawer({
         ? "border-b border-white/10 bg-zinc-950 text-white shadow-[0_24px_40px_-24px_rgba(0,0,0,0.55)]"
         : "border-b border-white/12 bg-zinc-950/96 text-white backdrop-blur-md shadow-[0_24px_40px_-24px_rgba(0,0,0,0.55)]";
 
-  // Sheet + click-catcher starten exact onder de navbar.
-  const topStyle: CSSProperties = { top: `${topOffset}px` };
+  // 1px omhoog: sluit haarlijntje tussen header-border en sheet (subpixels / lagen).
+  const topStyle: CSSProperties = { top: `calc(${topOffset}px - 1px)` };
 
   const ui = (
     <div className="pointer-events-auto">
@@ -168,7 +170,7 @@ function MobileNavDrawer({
           ref={navRef}
           className="flex w-full max-w-none flex-col gap-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-5 sm:px-6 sm:pt-6"
           style={{
-            maxHeight: `min(88dvh, calc(100dvh - ${topOffset}px))`,
+            maxHeight: `min(88dvh, calc(100dvh - ${topOffset}px + 1px))`,
           }}
           aria-label="Mobiel menu"
         >
