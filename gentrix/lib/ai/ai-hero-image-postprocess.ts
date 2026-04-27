@@ -67,6 +67,32 @@ export function briefingWantsAiGeneratedHeroImage(description: string): boolean 
 }
 
 /**
+ * `true` wanneer de briefing expliciet een **gesplitste / twee-koloms hero** wil.
+ * De site-generatieprompt bevat anders “anti-50/50 + voorkeur full-bleed”-regels die
+ * dit tegenwerken, ook al staat “split hero” in de opdracht.
+ */
+export function briefingWantsSplitHero(description: string): boolean {
+  const t = description.trim();
+  if (!t) return false;
+  const lower = t.toLowerCase();
+
+  if (/\bsplit[\s-]?(hero|head|header|sectie|layout)\b/i.test(lower)) return true;
+  if (/\b(hero|head|header|bovenkant|fold)\b/i.test(lower) && /\b(twee|2|dual|dubbele)[\s-]koloms?\b/i.test(lower))
+    return true;
+  if (/\b(50|fifty)[\s/:-]*(50|fifty)\b/i.test(lower) && /\bhero\b/i.test(lower)) return true;
+  if (/\bhero\b/i.test(lower) && /\b(twee|2)\s*kolom/i.test(lower)) return true;
+  if (/\b(helft|half|gesplitst|zij[\s-]aan[\s-]zij)\b/i.test(lower) && /\bhero\b/i.test(lower)) return true;
+  if (
+    /\b(foto|afbeelding|beeld|visual|illustration)\b/i.test(lower) &&
+    /\b(links|rechts)\b/i.test(lower) &&
+    /\b(hero|kop|bovenkant|tekst|copy|cta)\b/i.test(lower)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * `true` wanneer de tekst **duidelijk** eigen/geüploade beelden in `#hero` reserveert — dan slaan we
  * de server-side hero-raster (prebake + inject) liever over zodat we geen AI-beeld over een
  * bewuste klant-keuze heen duwen.
