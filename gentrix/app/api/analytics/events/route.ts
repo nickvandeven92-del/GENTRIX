@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import {
+  analyticsIngestMaxRequestsPerWindow,
+  analyticsIngestWindowMs,
+  capEventPropertiesSize,
+  getRequestIpForRateLimit,
+  hashUserAgentForStorage,
+  isAnalyticsIngestOverRateLimit,
+  refererForStorage,
+} from "@/lib/api/analytics-ingest-helpers";
 
 const MAX_EVENTS = 32;
-const MAX_STR = 2000;
 const MAX_SLUG = 200;
 const MAX_ID = 80;
+const MAX_BODY_BYTES = 256 * 1024;
 
 const ALLOWED_TYPES = new Set([
   "page_view",
@@ -35,16 +44,28 @@ function sanitizeId(s: string | null | undefined): string {
   return t && t.length > 0 ? t : "unknown";
 }
 
+function stripForbiddenKeysFromProperties(raw: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, unknown> = {};
+  for (const [k0, v] of Object.entries(raw)) {
+    const k = k0.slice(0, 64);
+    if (k.toLowerCase() === "client_id") continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 function sanitizeProperties(
   raw: Record<string, unknown> | null | undefined,
   stripKeys: string[],
 ): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};
   if (!raw || typeof raw !== "object") return out;
-  const strip = new Set(stripKeys);
+  const strip = new Set([...stripKeys, "client_id", "Client_ID"]);
   for (const [k0, v] of Object.entries(raw)) {
     if (strip.has(k0)) continue;
     const k = k0.slice(0, 64);
+    if (k.toLowerCase() === "client_id") continue;
     if (typeof v === "string") {
       out[k] = v.length > 1024 ? v.slice(0, 1024) : v;
     } else if (typeof v === "number" && Number.isFinite(v)) {
@@ -64,10 +85,29 @@ function deviceClassFromUa(ua: string | null): "mobile" | "desktop" | "tablet" |
 }
 
 /**
- * Publieke ingest: valideer slug → `clients`-rij, schrijf via service role. Geen publieke lees-RLS.
- * Antwoord minimal — fouten niet naar de bezoeker (204).
+ * Publieke ingest: `client_id` alleen server-side uit `site_slug` (clients.subfolder_slug).
+ * Rate limit, property-size cap, geen volledige UA in DB. Ruwe IP alleen in-memory rate limit, niet in DB.
  */
 export async function POST(request: Request) {
+  const ip = getRequestIpForRateLimit(request);
+  if (
+    isAnalyticsIngestOverRateLimit(
+      `analytics:ip:${ip}`,
+      analyticsIngestMaxRequestsPerWindow(),
+      analyticsIngestWindowMs(),
+    )
+  ) {
+    return new NextResponse(null, { status: 429, headers: { "Retry-After": "60" } });
+  }
+
+  const cl = request.headers.get("content-length");
+  if (cl != null && cl !== "" && /^\d+$/.test(cl)) {
+    const n = Number.parseInt(cl, 10);
+    if (Number.isFinite(n) && n > MAX_BODY_BYTES) {
+      return new NextResponse(null, { status: 413 });
+    }
+  }
+
   let siteSlug: string;
   let events: IncomingEvent[];
   try {
@@ -100,8 +140,9 @@ export async function POST(request: Request) {
 
     const clientId = String((clientRow as { id: string }).id);
     const ua = request.headers.get("user-agent");
-    const referer = request.headers.get("referer");
     const device = deviceClassFromUa(ua);
+    const uaStore = hashUserAgentForStorage(ua);
+    const refStore = refererForStorage(request.headers.get("referer"));
 
     const rows: {
       client_id: string;
@@ -121,11 +162,16 @@ export async function POST(request: Request) {
       const t = String(e?.event_type ?? "");
       if (!ALLOWED_TYPES.has(t)) continue;
 
-      const mergedProps: Record<string, unknown> = { ...(e.properties ?? {}) };
-      const vid = sanitizeId((e.visitor_id ?? (mergedProps.visitor_id as string) ?? null) as string | null);
-      const sid = sanitizeId((e.session_id ?? (mergedProps.session_id as string) ?? null) as string | null);
+      const mergedProps = stripForbiddenKeysFromProperties(
+        (e && typeof e === "object" ? (e as IncomingEvent).properties : null) as Record<string, unknown> | null,
+      );
+      const vid = sanitizeId((e?.visitor_id ?? (mergedProps.visitor_id as string) ?? null) as string | null);
+      const sid = sanitizeId((e?.session_id ?? (mergedProps.session_id as string) ?? null) as string | null);
       delete mergedProps.visitor_id;
       delete mergedProps.session_id;
+
+      let safeProps = sanitizeProperties(mergedProps, []);
+      safeProps = capEventPropertiesSize(safeProps);
 
       rows.push({
         client_id: clientId,
@@ -135,10 +181,10 @@ export async function POST(request: Request) {
         session_id: sid,
         page_path: trimStr(e?.page_path ?? null, 2000),
         page_key: trimStr(e?.page_key ?? null, 400),
-        properties: sanitizeProperties(mergedProps, []),
-        user_agent: trimStr(ua, MAX_STR),
+        properties: safeProps,
+        user_agent: uaStore,
         device_class: device,
-        referrer: trimStr(referer, MAX_STR),
+        referrer: refStore,
       });
     }
 

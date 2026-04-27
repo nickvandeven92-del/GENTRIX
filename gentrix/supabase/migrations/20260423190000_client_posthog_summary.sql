@@ -1,4 +1,4 @@
--- Samenvatting productgedrag uit PostHog (dagelijkse sync via cron); leesbaar in admin-klantdossier.
+-- Samenvatting productgedrag per klant (dagelijkse sync via cron); leesbaar in admin-klantdossier.
 create table if not exists public.client_posthog_summary (
   client_id uuid primary key references public.clients (id) on delete cascade,
   subfolder_slug text not null,
@@ -25,7 +25,7 @@ create index if not exists client_posthog_summary_fetched_at_idx
   on public.client_posthog_summary (fetched_at desc);
 
 comment on table public.client_posthog_summary is
-  'PostHog-samenvatting per klant; gevuld door /api/cron/posthog-summaries (service role).';
+  'Samenvatting productgedrag per klant; gevuld door geplande sync (service role).';
 
 alter table public.client_posthog_summary enable row level security;
 
