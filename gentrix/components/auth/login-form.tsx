@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { mapAuthErrorToDutch } from "@/lib/auth/auth-error-messages";
+import { salesOsPrimaryButtonClass, salesOsTextInputClass } from "@/lib/sales-os/ui-classes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +49,7 @@ export function LoginForm() {
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="email" className="block text-xs font-medium text-neutral-700">
           E-mail
         </label>
         <input
@@ -59,14 +60,11 @@ export function LoginForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={cn(
-            "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900",
-            "focus:border-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-800/20",
-          )}
+          className={cn("mt-1", salesOsTextInputClass())}
         />
       </div>
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="password" className="block text-xs font-medium text-neutral-700">
           Wachtwoord
         </label>
         <input
@@ -77,10 +75,7 @@ export function LoginForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={cn(
-            "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900",
-            "focus:border-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-800/20",
-          )}
+          className={cn("mt-1", salesOsTextInputClass())}
         />
       </div>
       {authErrText && (
@@ -96,7 +91,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-blue-900 py-2.5 text-sm font-medium text-white hover:bg-blue-950 disabled:opacity-60"
+        className={salesOsPrimaryButtonClass}
       >
         {loading ? "Bezig…" : "Inloggen"}
       </button>

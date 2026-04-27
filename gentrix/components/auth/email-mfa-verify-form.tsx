@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { salesOsPrimaryButtonClass, salesOsTextInputClass } from "@/lib/sales-os/ui-classes";
 import { cn } from "@/lib/utils";
 
 type Phase = "sending" | "waiting" | "verifying" | "error";
@@ -105,7 +106,7 @@ export function EmailMfaVerifyForm() {
   }
 
   if (phase === "sending") {
-    return <p className="text-center text-sm text-slate-500">Code versturen…</p>;
+    return <p className="text-center text-sm text-neutral-500">Code versturen…</p>;
   }
 
   if (phase === "error" && !codeId) {
@@ -115,8 +116,9 @@ export function EmailMfaVerifyForm() {
           {error}
         </p>
         <button
+          type="button"
           onClick={() => void sendCode()}
-          className="w-full rounded-lg bg-blue-900 py-2.5 text-sm font-medium text-white hover:bg-blue-950"
+          className={salesOsPrimaryButtonClass}
         >
           Opnieuw proberen
         </button>
@@ -127,7 +129,7 @@ export function EmailMfaVerifyForm() {
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
       <div>
-        <label htmlFor="mfa-email-code" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="mfa-email-code" className="block text-xs font-medium text-neutral-700">
           Code uit je e-mail
         </label>
         <input
@@ -140,8 +142,8 @@ export function EmailMfaVerifyForm() {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           className={cn(
-            "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-center font-mono text-lg tracking-widest text-slate-900",
-            "focus:border-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-800/20",
+            "mt-1 text-center font-mono text-lg tracking-widest",
+            salesOsTextInputClass(),
           )}
           placeholder="000000"
           maxLength={6}
@@ -157,21 +159,21 @@ export function EmailMfaVerifyForm() {
       <button
         type="submit"
         disabled={phase === "verifying" || code.replace(/\s/g, "").length < 6}
-        className="w-full rounded-lg bg-blue-900 py-2.5 text-sm font-medium text-white hover:bg-blue-950 disabled:opacity-60"
+        className={salesOsPrimaryButtonClass}
       >
         {phase === "verifying" ? "Controleren…" : "Verifiëren"}
       </button>
 
       <div className="text-center">
         {resendCooldown > 0 ? (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-neutral-400">
             Nieuwe code aanvragen kan over {resendCooldown}s
           </p>
         ) : (
           <button
             type="button"
             onClick={() => void sendCode()}
-            className="text-xs text-blue-800 hover:underline"
+            className="text-xs font-medium text-neutral-900 underline underline-offset-2 hover:no-underline"
           >
             Geen code ontvangen? Stuur opnieuw
           </button>
