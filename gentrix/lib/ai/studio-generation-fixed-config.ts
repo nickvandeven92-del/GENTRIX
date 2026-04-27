@@ -18,6 +18,6 @@ export const STUDIO_SITE_GENERATION = {
    */
   maxOutputTokens: 64_000,
   briefingVisionEnabled: true,
-  /** Tweede LLM-pass: layout/typografie/claims nalopen (extra latency + kosten). */
-  selfReviewEnabled: true,
+  /** Tweede LLM-pass: was rem op creativiteit + duplicaat regels. Standaard uit. */
+  selfReviewEnabled: false,
 } as const;

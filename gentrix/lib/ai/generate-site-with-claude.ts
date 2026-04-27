@@ -869,14 +869,11 @@ export function detectStyle(description: string): StyleProfile | null {
  */
 function buildSectorRouterAndCreativeMandateMarkdown(industry: IndustryProfile | null): string {
   if (industry) {
-    return `=== BRANCHE-ROUTER (trefwoorden ??? preset) ===
-De pipeline matcht automatisch op keywords: **${industry.label}** (\`${industry.id}\`). Dat is **startinspiratie** ??? geen korset. Bedoelt de briefing een **andere** niche of toon, dan **wint de briefing**.
-- **Niet "veilig" generiek:** specialistisch en onderscheidend **ja**; saai grijs-blauw + willekeurig drie identieke icoonkaarten **nee** ??? tenzij dat expliciet bij deze klant past.`;
+    return `=== BRANCHE-ROUTER (trefwoorden → preset) ===
+Pipeline-suggestie: **${industry.label}** (\`${industry.id}\`). **Startpunt, geen korset** — de briefing wint altijd.`;
   }
-  return `=== SECTOR (geen keyword-match op vaste branche-preset) ===
-De interne branche-router vond **geen** profiel op **bedrijfsnaam + briefing** ??? normaal voor niches die (nog) geen eigen \`profileId\` in de lijst hebben.
-- **Jij = branche-onderzoek:** lees naam + briefing als **evidence-first** sectorbepaling (aanbod, jargon, doelgroep, regio) en kies **zelf** een logische set sectie-\`id\`'s (uit o.a. \`hero\`, \`features\`, \`about\`, \`gallery\`, \`team\`, \`pricing\`, \`testimonials\`, \`faq\`, \`cta\`, \`footer\`) die bij **die** sector passen ??? zoals een agency v??r het ontwerp onderzoekt. Geen generieke SaaS-stack als de briefing iets anders is.
-- **Verboden:** "veilig" terugvallen op anonieme SaaS-defaults. **Gewenst:** gedurfde maar coherente layout, kleur en typografie die de **inhoud** ondersteunen.`;
+  return `=== SECTOR (geen vaste branche-preset) ===
+Lees naam + briefing; kies zelf passende sectie-\`id\`'s. Geen verplichte SaaS-stack.`;
 }
 
 /**
@@ -893,13 +890,9 @@ function buildIndustryPromptHint(businessName: string, description: string): str
   parts.push(buildSectorRouterAndCreativeMandateMarkdown(industry));
 
   if (industry) {
-    parts.push(`=== BRANCHE-INSPIRATIE (gedetecteerd: ${industry.label}) ===
-
-Structuur- en contenthint voor deze branche (geen vast sjabloon). Visuele stijl: zie hieronder of de briefing.
-
+    parts.push(`=== BRANCHE-INSPIRATIE (${industry.label}) ===
 ${industry.promptHint}
-
-**Suggesties:** hero ??? ${industry.heroStrategy === "photo" ? "foto-gedreven" : industry.heroStrategy === "typographic" ? "typografisch" : "productfocus"}; diensten ??? ${industry.servicesFormat === "price-list" ? "prijslijst" : industry.servicesFormat === "card-grid" ? "kaarten/grid" : industry.servicesFormat === "split" ? "split" : "spotlight"} ??? alleen als het de briefing versterkt.`);
+*(Hero/diensten-voorkeur: ${industry.heroStrategy === "photo" ? "foto" : industry.heroStrategy === "typographic" ? "typo" : "product"} / ${industry.servicesFormat} — optioneel, briefing wint.)*`);
   }
 
   const explicitColors = detectExplicitColors(description);
@@ -907,43 +900,30 @@ ${industry.promptHint}
 
   if (style) {
     parts.push(`=== DESIGNTAAL (hint: ${style.label}) ===
-
-Onderstaande tekst is een **richtlijn**. Als de briefing of branche iets anders vraagt, volg je de briefing.
+Richtlijn; **briefing wint** op template-tekst.
 
 ${style.designLanguage}`);
 
     if (hasExplicitColors) {
-      parts.push(`=== KLEUR + STIJL ===
-Briefing noemt **${explicitColors.join(", ")}** met stijl **${style.label}**. Gebruik die kleuren als basis (donkere/lichte tinten), laat typografie en ritme bij de stijl passen, en voeg geen extra kleurfamilies toe tenzij de briefing dat vraagt.`);
+      parts.push(`**Kleur:** briefing noemt **${explicitColors.join(", ")}** — dat is leidend bij **${style.label}**.`);
     } else {
-      parts.push(`=== KLEURPALET (geen expliciete kleuren in briefing) ===\n\n${style.colorPalette}`);
+      parts.push(
+        `**Kleurgevoel:** kies zelf een coherent palet passend bij **${style.label}** en de opdracht (geen verplicht palet uit de pijplijn).`,
+      );
     }
 
     const secondaries = getSecondaryStyleProfilesForBlend(description, style.id);
     if (secondaries.length > 0) {
-      parts.push(`=== MEERDERE STIJL-SIGNALEN (geen verplichte mix) ===
-**Primair (pipeline):** ${style.label}. **Ook in de tekst:** ${secondaries.map((s) => s.label).join(" ? ")}.
-
-**Regels ??? coherentie boven ???leuk mixen???:**
-1. **E?n hoofd-esthetiek.** Bouw de site alsof er **??n** duidelijke visuele identiteit is.
-2. **Secundair alleen als het echt past** bij primair **?n** bij de briefing. Gebruik het dan **spaarzaam** (??n sectie, ??n componenttype, of kleine accenten ??? geen halve pagina in stijl A en halve in stijl B).
-3. **Als twee signalen botsen**, kies **alleen primair** en laat het andere **weg** ??? tenzij de briefing **expliciet** contrast/juxtapositie vraagt. Voorbeelden van **riskante combinaties** (niet samen als gelijkwaardig hoofdbeeld): Brutalism ??? Neumorphism; Skeuomorphism ??? Brutalism; Neumorphism ??? Glassmorphism als beide dominant; Flat/minimal als **totale** vlakstijl ??? zware skeuomorfe UI.
-4. **Combinaties die vaak w?l logisch zijn** (??n dominant): Cyberpunk/futuristisch + **lichte** glass-accenten op donker; Minimal/flat + **enkele** frosted panels; Editorial + luxe-typografie; Gradient/vibrant + modern strakke grid.
-
-Als je twijfelt: **kies primair en negeer secundair** ??? liever strak ??n stijl dan een onsamenhangende mash-up.`);
+      parts.push(
+        `**Meerdere stijl-signalen:** primair **${style.label}**; in de tekst ook: ${secondaries.map((s) => s.label).join(", ")}. Eén hoofd-esthetiek; secundair alleen spaarzaam als het echt past — bij twijfel: primair houden.`,
+      );
     }
   } else {
-    parts.push(`=== VISUELE STIJL (geen keyword-match ??? kies zelf) ===
-
-Geen "modern/luxe/vintage" gedetecteerd in de tekst. Kies de sterkste richting voor deze branche${industry ? ` (${industry.label})` : ""} en naam.
-
-- Vermijd generieke SaaS-starters: standaard indigo-slate + drie identieke feature-cards zonder reden.
-- Liever ??n duidelijk palet en typografie met karakter dan veilige defaults.`);
+    parts.push(`=== VISUELE STIJL (eigen keuze) ===
+Kies sterk palet + typografie voor${industry ? ` ${industry.label}` : " deze opdracht"}.`);
   }
 
-  const uniquenessNote = `\n\n**Doel:** een site die **duidelijk bij deze klant** hoort ??? ${style && industry ? `Combinatie "${style.label}" met ${industry.label.toLowerCase()} mag fundamenteel anders zijn dan dezelfde branche met een andere stijl.` : `Compositie en detail maken het verschil, niet alleen kleur.`}`;
-
-  return `\n\n${parts.join("\n\n")}${uniquenessNote}\n`;
+  return `\n\n${parts.join("\n\n")}\n`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1001,15 +981,6 @@ function briefingWantsStrictAllWhiteLayout(description: string): boolean {
   return false;
 }
 
-function fnv1aHash(input: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
 function formatRecentClientsLine(names: string[]): string {
   if (names.length === 0) {
     return "(Geen recente klantnamen in DB ??? varieer desondanks waar het past.)";
@@ -1017,74 +988,33 @@ function formatRecentClientsLine(names: string[]): string {
   return names.map((n) => `"${n.replace(/"/g, "'")}"`).join(", ");
 }
 
-const ACCENT_FAMILY_MANDATES = [
-  "Accent-familie **teal/petrol** (vertrouwd, fris): bijv. `#0f7669`, `#0d9488`, `#115e59` ??? **niet** oranje tenzij de branche expliciet warm/food vraagt.",
-  "Accent-familie **violet/indigo** (premium tech): bijv. `#5b21b6`, `#6d28d9`, `#4f46e5` ??? contrasteer met lichte of zandkleurige basis.",
-  "Accent-familie **robijn/roze** (energie, zorg, lifestyle): bijv. `#9f1239`, `#be123c`, `#db2777` ??? alleen op knoppen en highlights.",
-  "Accent-familie **elektrisch blauw** (SaaS, finance): bijv. `#1d4ed8`, `#2563eb`, `#1e40af` op warme of grijze achtergrond.",
-  "Accent-familie **mosterd/oker** (warm, niet standaard orange): bijv. `#a16207`, `#ca8a04` gecombineerd met **navy** als primary ??? vermijd `#f97316` als default.",
-  "Accent-familie **smaragd/bos** (groei, duurzaamheid, gezondheid): bijv. `#047857`, `#059669`, `#065f46`.",
-  "Accent-familie **slate + koper** (luxury modern): CTA in `#b45309` / `#c2410c` (koper) of diep `#0c4a6e` i.p.v. fel oranje.",
-] as const;
-
-/** Roteert per run om ???dezelfde marketing-layout??? te doorbreken (hash in buildVarianceBlock). */
-const LAYOUT_ARCHETYPE_MANDATES = [
-  "**Layout-lijn (A):** geen bullet-daaltrein met **identieke** kaarten onder elkaar ??? gebruik **asymmetrie**, \`md:col-span-2\` breakout, of ??n brede **editoriale band** met groot citaat/cijfer i.p.v. 3??2 mini-columns.",
-  "**Layout-lijn (B):** vermijd dat de **hele** pagina ???hero + 3???koloms USP???grid??? is ??? kies **horizontale scroll-strip**, **bento** (\`grid-cols-4\` met ongelijke cellen), of een **typografie-only** trust-blok **zonder** pictogram-raster.",
-  "**Layout-lijn (C):** wissel sectieritme: **staggered cards** (alternerend \`md:translate-y-*\`), **twee kolommen met ??n megakaart**, of **??n lichte editorial split** alleen als de briefing expliciet split/twee-kolom vraagt ??? **niet** standaard overal 50/50; ook niet drie keer hetzelfde \`grid md:grid-cols-3 gap-6\`.",
-  "**Layout-lijn (D):** hero: geef **voorkeur** aan **full-bleed** (beeld/gradient over **volle breedte** + tekst op overlay) of **asymmetrische overlay** ??? **niet** automatisch een strakke **50/50 twee-koloms** (foto | tekst) tenzij de briefing expliciet split vraagt; kort in \`config.style\`.",
-  "**Layout-lijn (E):** diensten/USPs als **??n horizontale band/tijdlijn** of **max. 2 kolommen brede kaarten** ??? geen zes gelijke tegeltjes tenzij de briefing expliciet ???pijlers??? noemt.",
-] as const;
-
 const SPLIT_HERO_MANDATE_LINE =
   "**Layout (briefing vraagt split hero):** bouw de **\`#hero\`** bewust als **twee kolommen** (bijv. \`grid grid-cols-1 md:grid-cols-2\` op de buitenste \`<section id=\\\"hero\\\">\` + \`min-h-\*\` zoals in VIEWPORT): **copy + minstens ??n zichtbare CTA** in de ene helft; **media** (foto, abstract, gradient, lijnwerk) in de andere. Vraagt de briefing **wit / licht / goud-zwart**: **geen** hele sectie omdraaien naar donkere full-bleed + lichte type tenzij de woorden in de briefing dat echt vragen. Zet in \`config.style\` kort bv. \`hero:split-50\` of \`hero:split-asym\`.";
-
-/** Roteert per run om **dezelfde `studioNav`-chrome** (vaak `minimalLight`+`standard`) te doorbreken. */
-const STUDIO_NAV_SHELL_VARIANCE_HINTS = [
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `darkSolid`, `variant`: `bar`, `navBarLayout`: `standard` ??? contrastrijke balk boven lichte content.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `glassLight`, `variant`: `bar`, `navBarLayout`: `standard` ??? matte glas-balk; past vaak bij gradients.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `glassLight`, `variant`: `bar`, `navBarLayout`: `centeredLinks` ??? matte glas-**balk** (volle breedte) met gecentreerde desktop-links ??? **geen** `floatingPill` tenzij de briefing expliciet zwevend/floating vraagt.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `editorialTransparent`, `variant`: `bar`, `navBarLayout`: `centeredLinks` ??? editorial met gecentreerde desktop-links.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `luxuryGold`, `variant`: `bar`, `navBarLayout`: `standard` ??? warm/luxe merkgevoel.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `softBrand`, `variant`: `pill`, `navBarLayout`: `standard` ??? zachte merk-pill.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `compactBar`, `variant`: `bar`, `navBarLayout`: `standard` ??? compacte dense nav.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `minimalLight`, `variant`: `bar`, `navBarLayout`: `linksRightInHero` ??? lichte type over donkere full-bleed hero (cluster rechts, geen witte reservestrook).",
-] as const;
 
 function buildVarianceBlock(
   businessName: string,
   description: string,
   recentClientNames: string[],
-  varianceNonce?: string,
+  _varianceNonce?: string,
   wantsSplitHero?: boolean,
 ): string {
-  const h = fnv1aHash(
-    `${businessName}\n${description.slice(0, 120)}\n${recentClientNames.join(",")}\n${varianceNonce ?? ""}`,
-  );
-  const accentIdx = (h >> 3) % ACCENT_FAMILY_MANDATES.length;
-  const layoutIdx = (h >> 7) % LAYOUT_ARCHETYPE_MANDATES.length;
-  const navShellIdx = (h >> 11) % STUDIO_NAV_SHELL_VARIANCE_HINTS.length;
+  void businessName;
+  void recentClientNames;
   const explicitColors = detectExplicitColors(description);
   const hasExplicitColors = explicitColors.length > 0;
-  const accentLine = hasExplicitColors
-    ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** ??? gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
-    : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
+  const colorLine = hasExplicitColors
+    ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** — gebruik die in \`config.theme\` + HTML.`
+    : "- **Kleur:** kies een sterk, coherent \`config.theme\` + markup dat bij naam en briefing past (geen verplicht accentpalet).";
+
   const layoutLine = wantsSplitHero
-    ? `- ${SPLIT_HERO_MANDATE_LINE} (telt boven willekeurige layout-lijn (A–E) uit deze set; zie ?VIEWPORT.)`
-    : `- ${LAYOUT_ARCHETYPE_MANDATES[layoutIdx]} (${layoutIdx + 1}/${LAYOUT_ARCHETYPE_MANDATES.length})`;
-  const navShellLine = `- ${STUDIO_NAV_SHELL_VARIANCE_HINTS[navShellIdx]} (${navShellIdx + 1}/${STUDIO_NAV_SHELL_VARIANCE_HINTS.length}). **Niet** elke site identiek \`minimalLight\` + \`navBarLayout: standard\` + \`variant: bar\` alleen omdat een JSON-sjabloon dat ooit liet zien ??? stem af op \`config.theme\` + briefing (briefing wint). **\`floatingPill\` / zwevende capsule-nav:** alleen als de briefing woorden als **zwevend**, **floating**, **pill-nav** of duidelijk speels/consumer-UI vraagt ??? anders **bar**-presets (\`minimalLight\`, \`glassLight\`, \`darkSolid\`, \`compactBar\`, …).${wantsSplitHero ? " **Split hero + lichte/witte bovenkant:** gebruik \`linksRightInHero\` **niet** te combineren met \`minimalLight\`/lichte type-over-donker ??? dat is voor **donkere** full-bleed; kies \`navVisualPreset\` (bv. \`luxuryGold\`, \`minimalLight\`+standaard layout) passend bij een **lichte** hero." : ""}`;
+    ? `- ${SPLIT_HERO_MANDATE_LINE} (zie ?VIEWPORT.)`
+    : "- **Layout/hero:** geen vaste sjabloon: full-bleed, split, of asymmetrische compositie zijn toegelaten. **Split hero** in de tekst: volg de VIEWPORT-splitregels, geen willekeurig full-bleed opleggen.";
 
   return `=== 0A. COMPOSITIE (deze run) ===
-Kies **??n** duidelijke lijn door de pagina (bijv. editorial type, asymmetrische splits, of een duidelijk licht/donker ritme) en houd die **consequent** vast. Herhaal niet in elke sectie hetzelfde 3-koloms kaarten-grid tenzij de briefing of branche dat echt vraagt.
-
+- **De briefing wint** op sjabloon, branche-\"defaults\" of vaste marketingpatronen.
 ${layoutLine}
-
-${navShellLine}
-
-${accentLine}
-
-**Prioriteit:** sterke briefing > deze zinnetjes.
-**Niet "veilig":** de accent-suggestie is bedoeld om **herkenbare** merkkleur te forceren ??? **niet** om visueel timide te zijn.`;
+- **\`config.studioNav\`:** kies \`navVisualPreset\` / \`navBarLayout\` / \`variant\` passend bij sfeer en leesbaarheid; \`linksRightInHero\` alleen logisch (vaak op donkere/hero-beeldachtergrond) — **niet** willekeurig. ${wantsSplitHero ? " **Lichte split hero + wit:** combineer `linksRightInHero`+donkere bar niet onnodig met een helder witte bovenkant; een lichte/balken-nav past vaak beter." : ""}
+${colorLine}`;
 }
 
 function buildUpgradePreserveLayoutBlock(): string {
@@ -1101,13 +1031,9 @@ Deze opdracht is een **uitbreiding** op een bestaande site, **geen** volledige h
 
 function buildUniquenessProtocolSection(recent: string): string {
   return `=== 1. VARIATIE ===
-Recente klanten (vermijd bewust copy-paste van hetzelfde stramien): ${recent}
-
-- Zet in \`config.style\` **??n korte zin** (eigen woorden, **max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens**) welk compositieprincipe je kiest; laat layout en typografie dat ondersteunen.
-- Varieer sectie-opbouw (lijst / split / grid / typografie-led) ??? niet drie keer hetzelfde kaartpatroon achter elkaar zonder reden.
-- **Globale shell-nav:** \`config.studioNav\` ??? varieer \`navVisualPreset\`, \`navBarLayout\` (\`standard\`, \`centeredLinks\`, \`linksRightInHero\`) en \`variant\` (\`bar\` vs \`pill\`) tussen klanten; **\`floatingPill\` niet als default** ??? alleen bij expliciete zwevend/floating-wens in de briefing. Steeds dezelfde \`minimalLight\`+standaardlayout is een gemiste kans als de briefing dat niet eist (zie ?0A).
-- Sterke briefing en branche gaan boven gemakzuchtige defaults.
-- **Anti-template:** "veilig" en anoniem ogen is een **mislukking** voor deze studio ??? voorzichtigheid mag **niet** leiden tot generieke SaaS-esthetiek als de briefing iets specifiekers toelaat.`;
+Recente klanten (iets anders maken dan copy-paste): ${recent}
+- Korte \`config.style\` (**max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens**) die je compositie benoemt.
+- Wissel ritme tussen secties waar het helpt; **briefing wint** op sjabloon-herhaling.`;
 }
 
 function buildUpgradeMergeSection(): string {
@@ -1404,15 +1330,7 @@ function buildContactStackStructureLine(): string {
  * Stock beperken; **klant-uploads** (blok KLANTFOTO'S) en briefing-vision blijven expliciet toegestaan.
  */
 function buildStockImageryAgencyDefaultMarkdown(): string {
-  return `- **Beeld (studio):**
-  - **Spaarzaamheid (verplicht):** vul de site **niet** met gegenereerde of decoratieve foto's. **Geen** raster waarin elke USP-, team- of prijskaart **verplicht** een eigen \`<img>\` + zware border/schaduw krijgt. Zonder blok **KLANTFOTO'S**: liever **nul** \`<img>\` op de hele landingspagina ??? typografie, witruimte, gradient, SVG. **Met** KLANTFOTO'S: alleen **die** URL's; **niet** elke sectie volplakken ??? ??n sterke plek (vaak hero) + gericht hergebruik waar het echt dient; geen ???6?? dezelfde stock-stijl???.
-  - **Klant-uploads** (blok **KLANTFOTO'S**): als die URL's in de opdracht staan, **verplicht** prominent gebruiken met \`<img src="???">\` (**exact** dezelfde https-URL als in de lijst) + zinvolle \`alt\` ??? **niet** vervangen door externe stock of verzonnen URL's.
-  - **Briefing-screenshots** + eventuele **vision**-tekst: gebruik voor **inhoud en toon**; geen volledige ???browser???-schermafdruk als ??n giant \`<img>\` tenzij de briefing dat expliciet vraagt ??? zie blok **BRIEFING-REFERENTIEBEELDEN**.
-  - **Geen externe stock-foto-URL's** (Pexels-embeds als stock-raster, generieke stock-CDN's, ???): die horen niet in de studio-output; gebruik **KLANTFOTO'S**, gradient, SVG of server-side **AI-hero** (zie contract). **\`gallery\`:** alleen als de briefing **expliciet** een fotogalerij wil ??? **geen** standaard collage ???omdat het kan???.
-  - **Server AI-hero / kant-en-klare hero-foto-URL:** behandel als **documentaire materiaal- of architectuurfotografie** (macro/close-up of dramatisch belicht fragment; **geen** default **laptop-op-houten-tafel + mok + notitieboek**-stock) — geen mensen in het beeld — geen fictieve gezichten of modellen; portret/team alleen met echte **KLANTFOTO'S** in HTML. Combineer raster met **HTML-structuur** waar de briefing **premium / zakelijk** vraagt: dunne lichtlijnen, hairline-gradients, subtiele mesh/radial overlays, SVG-geometry — het beeld hoeft niet alles te zijn. Geen **AI-poster**-look door extreme \`mix-blend-mode\`, \`contrast-*\`, \`saturate-*\` of dubbele HDR-stacks op het beeld; overlays **alleen** licht genoeg voor leesbare typografie (vergelijkbaar met premium editorial sites).
-  - **Vermijd standaard ???monogram-hero???:** geen **vaste** visuele formule ???split + rechterkolom met **dubbele ring/cirkel + initialen** + adres in het rondje??? als decoratieve mediavulling ??? dat is een herhaalbaar sjabloon. Zonder klantfoto: kies ?f **full-bleed typografie** (??n kolom, sterk beeld via type/gradient), ?f een split waarbij de rechter **geen** ondoorzichtig effen vlak over de volle hoogte nodig heeft (zie **?VIEWPORT ??? server AI-hero**); **geen** tweede pseudo-foto uit pure SVG-decoratie.
-  - **Geen** \`via.placeholder\`, \`example.com\`-foto's of verzonnen beeld-URL's.
-  - **\`<video>\` / \`<iframe>\`:** alleen met **concrete** https-URL in de geschreven briefing; anders gradient + \`data-animation\` / AOS.`;
+  return `- **Beeld (studio):** spaarzaam. **KLANTFOTO'S** in de opdracht → die URL's **exact** gebruiken; anders typografie, gradient, SVG, of server **AI-hero** (geen tafel+laptop-mok-stock; leesbare overlay). **Geen** verzonnen, placeholder- of externe stock-**URL's**. **\`gallery\`:** alleen als de briefing expliciet wil. \`<video>\`/\`<iframe>\`: alleen met https-URL uit de briefing.`;
 }
 
 /** Gedeelde copy-dichtheid: voorkomt dat het model hero + USP-kaarten volschrijft met alinea???s. */
@@ -1461,8 +1379,7 @@ function buildMarketingMultiPageOperationalTail(
 
   return `${multipageCloseChecklist}=== 3B. OPERATIONELE SITE ??? TEKSTEN & WERKENDE LINKS (verplicht) ===
 
-- **Copy:** Nederlands, **strak en kort** (geen Lorem ipsum) ??? zelfde CONTENT AUTHORITY; zie **COPY ??? MINDER IS MEER** op de landing.
-${buildSiteGenerationSalesCopyGuidanceLine()}
+- **Copy:** Nederlands, **strak en kort** (geen Lorem ipsum) ??? zelfde CONTENT AUTHORITY; zie **COPY ??? MINDER IS MEER** (hierboven) + dezelfde **sales-anti-herhaling** en **briefing-anker** als in ?3: één primair+hoogstens één secundair CTA, geen vullerzinnen, eerste zichtbare regel ankeren aan de opdracht.
 - **Meerdere echte pagina???s in ??n JSON:**
   - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort). **Geen** dubbele ???tweede hero??? met dezelfde CTA???s als de eerste; **geen** marketing-fotogalerij-raster voor producten die in de webshop horen.
   - \`marketingPages\` = **verplicht** exact deze keys (geen extra???s, geen missers), elk **minstens twee** HTML-secties met **eigen** \`id\`'s binnen die pagina: ${slugList}. **Elke** key in die lijst moet in \`marketingPages\` voorkomen ??? **ontbrekende** keys (bijv. \`faq\`) maken de JSON **ongeldig** en breken de generatie. **Geen** tweede homepage: typisch **2???4** secties (kop/hero voor die route + **??n** duidelijke inhoudsband + evt. korte afsluiter) ??? dezelfde globale nav als op de landing, maar **unieke** copy per key.
@@ -1689,26 +1606,16 @@ function buildSection3UpgradeTailMarkdown(preserve: boolean): string {
 }
 
 /**
- * ?3 scroll-reveal (`data-animation`) ??? identiek in volledige en **minimale** user-prompt.
- * Minimale modus miste eerder de ???verplicht bij motion???-regel, waardoor keyword-briefings geen reveals kregen.
+ * Geconsolideerd i.p.v. drie lange + losse laser-paragraaf: minder token-ruis,zelfde harde checks (motion/border/anti-marquee).
  */
-function buildSiteGenerationDataAnimationInstructionsMarkdown(): string {
-  return `**Animatie ??? twee opties (??n per element):**
-- **\`data-animation\` (studio-native):** optioneel op koppen, blokken, kaarten; de studio injecteert CSS + een klein script: bij scroll krijgt het element \`.studio-in-view\` en lopen o.a. \`fade-up\` / \`fade-in\` / \`slide-in-left\` / \`slide-in-right\` / \`scale-in\`.
-- **AOS (\`data-aos\`):** de studio laadt **AOS v2** (CSS+JS via CDN) en roept \`AOS.init\` aan. Gebruik bv. \`data-aos="fade-up"\`, \`data-aos="fade-left"\`, \`data-aos="zoom-in"\` ??? zie [AOS-documentatie](https://michalsnik.github.io/aos/). **Niet** \`data-aos\` en \`data-animation\` op **dezelfde** node combineren (dubbele animatie).
-- **GSAP 3 (geavanceerd):** de studio laadt **gsap.min.js** + **ScrollTrigger**, **Flip**, **MotionPathPlugin**, **Observer** (jsDelivr) en registreert de plugins ??? \`window.gsap\` is beschikbaar. **Verboden in \`sections[].html\`:** eigen \`<script>\` / inline JS (sanitatie + XSS-risico; conflicten met streaming/self-review). **Geen** \`<script src="???gsap???">\` in secties ??? de shell laadt GSAP al. Gebruik GSAP alleen wanneer de briefing **expliciet** premium/timeline/ScrollTrigger-gedrag vraagt dat \`data-animation\` / \`data-aos\` niet kan: leg dan **\`id\` / \`class\` targets** in de HTML en beschrijf in \`config.style\` of copy dat de gebruiker **Eigen JS** in de editor moet vullen (documenteer kort welke selectors); in de JSON zelf **geen** GSAP-code. Voor standaard scroll-entrances: blijf bij \`data-animation\` / \`data-aos\`.
-**Verplicht zodra de briefing erom vraagt (Nederlands of Engels):** woorden en zinnen zoals **interactief** / **interactieve site**, **dynamisch** / **dynamische** / **dynamische website**, **animatie** / **animaties**, **motion**, **micro-interactions** / **micro-interacties**, **scroll-animaties**, **animated on scroll** / **animate on scroll** / **scroll-driven** / **scroll-triggered** / **as you scroll**, **AOS** / **Animate on scroll**, **in beweging**, **beweging** (bedoeld als bewegende UI ??? niet alleen ???een bedrijf in beweging??? als platte copy), **beweegbare secties** / **secties die animeren bij scroll**, **levend** / **levendige** site of presentatie, **niet te statisch**, **veel visuele dynamiek**: zet dan op **minstens 10** zichtbare blokken (koppen \`h2\`/\`h3\`, feature-kaarten, grotere tekstkolommen ??? niet op elk klein label) **\`data-animation\` ?f \`data-aos\`** (mag mixen over de pagina, niet op hetzelfde element). Voorbeelden: \`data-animation="fade-up"\` of \`data-aos="fade-up"\` / \`data-aos="fade-left"\`. Eerste scherm (hero + evt. nav): mag subtiel; onder de vouw duidelijker.
-**Zelfcheck v??r je de JSON sluit:** (1) Motion-signalen in de briefing ??? **minstens 10** gecombineerde \`data-animation=\` **of** \`data-aos=\` in de samengevoegde landing-\`sections[].html\` (subpagina???s: ook enkele reveals als het past). (2) Zie ook **border-reveal** hieronder: rand/border/kader/scroll-lijn ??? **minstens 3** \`studio-border-reveal\`. Zo niet ??? aanvullen **zonder** sectie-\`id\` of volgorde te wijzigen.`;
-}
-
-/** ?3B ??? scroll-accentlijnen (Lovable-achtig); studio-CSS +zelfde IO als data-animation. */
-function buildSiteGenerationBorderRevealInstructionsMarkdown(): string {
-  return `**Accent-lijn / kader ???uitgroeien??? bij scroll (\`studio-border-reveal\`):** Zelfde idee als professionele sites waar een lijn **~72% ??? 100%** loopt zodra het blok in beeld komt. Zet een **lege** \`<div>\` met exact \`studio-border-reveal studio-border-reveal--h\` (horizontaal) of \`studio-border-reveal studio-border-reveal--v\` (verticaal) plus Tailwind voor maat (\`w-full max-w-xl mx-auto mt-6 h-1\` bij \`--h\`; \`min-h-[6rem] w-1 shrink-0\` bij \`--v\`). **Geen** \`<script>\` in secties ??? de studio levert CSS + observer.
-- **Kleur:** op diezelfde \`div\` optioneel \`[--studio-br-rgb:212_175_55]\` (goud), \`[--studio-br-rgb:34_197_94]\`, enz., en/of \`[--studio-br-a:0.85]\`.
-- **Waar:** onder \`h2\`/\`h3\`, tussen kop en paragraaf, onder prijs-/USP-kaarten ??? waar een **editoriale / premium** lijn past.
-- **Verplicht** als de briefing vraagt om **rand**, **randen**, **border**, **kader**, **omlijning**, **gouden/teken accent-lijn**, **lijntjes die meebewegen / meegroeien met scroll**, of vergelijkbare UI-motion: **minstens 3** reveals op de landing (\`--h\` en/of \`--v\`). Combineer met \`data-animation\`; **niet** op horizontaal scrollende ticker-/logo-banden plakken.
-- **Laser (\`studio-laser-*\`):** blijft een **aparte, zeldzame** sfeer-optie (cyber/neon/sci-fi) ??? **niet** verplicht en **niet** als vervanging van border-reveal voor normale winkel-/retail-/premium-briefings.
-- **Volledige omtrek ?? document-scroll (\`data-studio-scroll-border\`):** alleen als de briefing echt een **kaderrand om een blok** vraagt die **met scroll** verder ???dichtloopt???. Wrapper: \`data-studio-scroll-border\` + verplicht \`style="--studio-sb-stroke:???"\` (hex/rgb ??? **geen** fallback-kleur in de studio). Optioneel \`--studio-sb-width\` (px). **Geen** \`<script>\` in secties ??? de shell levert JS + SVG.`;
+function buildSiteGenerationMotionAndStudioEffectsMarkdown(): string {
+  return `**Studio motion (compact):**
+- **\`data-animation\` (studio) of \`data-aos\` (AOS, CDN) ??? niet beide op dezelfde node.** O.a. \`fade-up\`, \`fade-in\`, \`slide-in-*\`, \`scale-in\`; AOS: \`fade-up\`, \`zoom-in\`, \`fade-left\`, …
+- **Geen** \`<script>\` in secties. **GSAP** zit in de shell; in JSON geen inline JS. Zware wensen: \`id\`/\`class\`-targets + in \`config.style\` verwijzen naar **Eigen JS**; standaard entrances via \`data-*\` hierboven.
+- **Briefing met motion-signalen** (interactief, animatie, scroll-animaties, AOS, \`niet te statisch\`, dynamische site, …): op de landing minstens **10** \`data-animation\` of \`data-aos\` op zichtbare blokken (h2/h3, kaarten, brede copy ??? niet op elk label); hero subtiel, onder de vouw sterker. **Einde-JSON zelfcheck:** o.a. die 10+ op \`sections[].html\` (subpagina's: enkele reveals mee als het past).
+- **\`studio-border-reveal\` (\`--h\` / \`--v\`):** lege \`div\` + classes + Tailwind-maat; optioneel \`[--studio-br-rgb:…]\`. Onder h2/h3, tussen kop en body, onder kaarten. Als de briefing expliciet **rand/border/kader/scroll‑accentlijn/omlijning** vraagt: **minstens 3** reveals op de landing, niet op tickers. **\`data-studio-scroll-border\`:** alleen als echte kader-anim; \`style="--studio-sb-stroke:…"\` verplicht.
+- **Marquee / horizontale logo-tickers:** **verboden** (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); trust stilstaand in grid/flex. Video: alleen \`https\` uit briefing.
+- **\`studio-laser-*\`:** standaard **niet**; alleen duidelijk futuristisch/neon/sci-fi; max. één hero-rail. Anders border-reveal + \`data-animation\`. (Detailclasses volgen bestaande studio-CSS; geen extra paragraaf herhalen.)`;
 }
 
 function buildStrictLandingPageComposerMarkdown(sectionIds: readonly string[]): string {
@@ -1789,27 +1696,18 @@ ${tailList}
 `;
 }
 
-function buildMarqueeForbiddenPromptLine(): string {
-  return `- **Marquee/ticker (verboden):** geen \`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`, of oneindig horizontaal scrollende logo-/tekstbanden. Toon logo's/trust **stilstaand** (grid, flex-wrap of vaste rij). **Laser (\`studio-laser-*\`):** alleen bij **duidelijke** futuristische/neon/sci-fi briefing; geen laser ???om maar iets te laten bewegen???. Video alleen met **werkende** MP4-URL in de briefing.`;
-}
-
 /**
  * Vrije (niet-strikte) runs: het model stapelde te vaak tweede hero-CTA's + fotogalerij naast webshop.
  * Strikte one-pager heeft eigen contract; daarom alleen wanneer `strictLanding` false is.
  */
 function buildProfessionalLandingDisciplineMarkdown(marketingMultiPage: boolean): string {
   const multiPageLine = marketingMultiPage
-    ? `- **Multi-page homepage:** houd \`sections\` bondig (**max. ${HOMEPAGE_SECTION_BUDGET_MAX}** secties in deze studio-run); **geen** volledige ???over ons???-longread op de landing als \`over-ons\` / \`werkwijze\` al eigen subpagina's hebben ??? verwijs met ??n zin + link.
-- **Marketing-subpagina (\`marketingPages\`):** zelfde regel als hierboven voor **contact**: **geen** twee keer dezelfde **primaire** contact-knop (vol accentvlak naar \`__STUDIO_CONTACT_PATH__\`) op ??n route ??? ??n slot-CTA is genoeg; tussendoor geen tweede “direct contact”-knop.
-- **Nav-pariteit:** dezelfde \`config.studioNav\` op alle routes (zie multipage-checklist); geen mix van eigen header-chrome per pagina.\n`
+    ? `- **Multipage:** \`sections\` bondig; dezelfde \`config.studioNav\` over routes; **geen** dubbele slot-CTA’s naar \`__STUDIO_CONTACT_PATH__\` op één subpagina.\n`
     : "";
-  return `=== PROFESSIONELE BONDIGHEID (anti-dubbel) ===
-- **Geen tweede hero / tweede signature-split:** geen extra full-bleed blok met **dezelfde** hoofdbelofte **en** dezelfde twee primaire knoppen als in de hero (shop/assortiment + contact). Ook geen **tweede** near-identieke full-viewport **split** (tekst | groot media) die opnieuw als hoofdtheater voelt ??? wissel lay-outritme (band, grid, editorial). Elke sectie heeft een **eigen** rol; dezelfde saleszin opnieuw = fout.
-- **CTA-schaarsheid:** naast de nav: **??n** primaire knoppenrij in de hero + **hoogstens ??n** extra conversieband v??r de footer. **Geen** derde band met weer dezelfde twee acties; de footer sluit af met navigatie/contact.${marketingMultiPage ? " Op elke **marketing-subroute** idem: **hoogstens ??n** primaire contact-knop in de body buiten de header (meestal onderaan)." : ""}
-- **Praktische info (tel / bellen / WhatsApp / uren):** **??n** duidelijke bron op de pagina (footer of \`#contact\`) + optioneel **??n** extra compacte CTA (zelfde nummer mag, maar **geen** vijfde herhaling van dezelfde urenzin in bodyteksten). Identieke openingstijden als proza in een split-sectie **en** in de footer = **fout** ??? laat ??n variant staan.
-- **Tekstvolume:** geen ???lappen tekst??? om secties vol te maken ??? volg **COPY ??? MINDER IS MEER** (hero en USP-kaarten extreem kort).
-- **Webshop / productverkoop:** **geen** sectie \`id: "gallery"\` met multi-foto collage; product- en catalogusbeelden horen in de **webshop-module**. **Geen** externe stock op marketing/landingspagina's; andere secties = typografie/gradient of **spaarzame klantfoto** (zie **Beeld (studio)** ??? g??n volsite-raster).
-${multiPageLine}`;
+  return `=== BONDIGHEID (geen herhaling) ===
+- Geen tweede pseudo-hero met dezelfde belofte+knoppen; wissel ritme (grid, band, editorial).
+- Na hero: beperk dubbele primaire CTA’s; praktische info liever op één duidelijke plek (footer/\`#contact\`) — zie **COPY** voor lengte.
+- \`id: "gallery"\` = geen productraster; shop blijft in de shop-module. ${multiPageLine}`.trimEnd();
 }
 
 /**
@@ -1825,19 +1723,18 @@ function buildLandingOutputQualityGuardsMarkdown(input: {
 }): string {
   if (input.preserve) return "";
   const multiPageLine = input.marketingMultiPage
-    ? "- **Multi-page:** een subpagina in \`marketingPages\` mag een eigen koppenblok hebben, maar **herhaal niet** op de **homepage** dezelfde hoofdbelofte + dezelfde primaire knoppen als een tweede ???landing-hero???; gebruik de subroute voor detail en link ernaar. **Geen dubbele primaire contact-knop** (`__STUDIO_CONTACT_PATH__`) op ??n subpagina-body (stappen + slot-CTA): **??n** volle contact-knop is genoeg.\n"
+    ? "- **Multipage:** herhaal de homepage-hero-belofte+knoppen niet opnieuw op dezelfde manier; detail op subroutes. **Eén** duidelijke primaire contact-knop per marketing-subpagina in de body.\n"
     : "";
   const strictLine =
     input.strictLanding && !input.ultraCompactLanding
-      ? "- **Compacte landing:** \`stats\`/\`brands\` is je **enige** aparte bewijsband ??? **geen** tweede ???wij werken met???- of logo-rij in \`features\`/\`footer\` die hetzelfde vertrouwen opnieuw verpakt. Footer: hoogstens **??n** discrete merkenrij **als** de briefing partners/merken noemt.\n"
+      ? "- **Strikt/compacte landing:** één duidelijk bewijsblok; geen extra merken-rij die hetzelfde vertrouwen herhaalt.\n"
       : input.strictLanding && input.ultraCompactLanding
-        ? "- **Ultra-compacte landing (3 secties):** vertrouwen en diensten horen **in** \`features\` samen ??? **geen** aparte \`stats\`/\`brands\`/\`steps\`-sectie op de homepage.\n"
+        ? "- **3-sectie-landing:** geen losse `stats`/`brands`/`steps` bovenop — combineer in `features` indien passend.\n"
         : "";
-  return `
-=== ONTWERP-RITME & TRUST (premium zonder oppervlakkige herhaling) ===
-- **Hoogstens ??n zware ???signature??? boven de vouw op de landing:** als de \`hero\` al full-bleed split (tekst | groot beeld) of gelijkwaardig zwaar visueel blok is, mag **geen** volgende landingssectie opnieuw dezelfde dramatische full-viewport split als **tweede pseudo-hero**. Kies daarna band, grid, kaarten of editorial ??? **andere rol, ander ritme**.
-- **Mediaruimte nooit zichtbaar leeg:** geen grote kale/zwarte placeholder-kolom naast copy. Gebruik **gradient/textuur** of typografie-led; **klantfoto** alleen als die in de opdracht zit en het rustig oogt ??? **geen** externe stock-foto's; geen tweede ???stock-theater??? naast de hero, en **geen** opeenstapeling van decoratieve fotokaarten om secties ???vol??? te maken.
-- **Merken / ???wij werken met???:** alleen waar de briefing partners, leveranciers, merken, retail-assortiment of expliciet logo-trust noemt. **Geen** decoratieve fictieve merken; **geen** redundante trust-laag die hetzelfde doet als je bewijsblok.
+  return `=== RITME & BEELD ===
+- Na een zware hero: volgende sectie = ander ritme (niet nóg éénzelfde full split als tweede “hero”).
+- Vul grote mediakolommen: gradient/typo/echte klant-URL; geen lege zwarte kolom of stockraster.
+- **Merken-rij** alleen als de briefing die partners noemt.
 ${strictLine}${multiPageLine}`;
 }
 
@@ -2061,13 +1958,7 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 
 **Decoratie:** optioneel kleine **inline SVG** of \`data-lucide\` ??? niet verplicht.
 
-${buildSiteGenerationDataAnimationInstructionsMarkdown()}
-
-${buildSiteGenerationBorderRevealInstructionsMarkdown()}
-
-${buildMarqueeForbiddenPromptLine()}
-
-**Laserlijn / scan (optioneel ??? alleen passende sfeer):** **Standaard: geen** \`studio-laser-*\`. Gebruik liever \`studio-border-reveal\` + \`data-animation\`. Zet een laser **alleen** als de klant **duidelijk** futuristisch/neon/sci-fi vraagt (woorden als **cyberpunk, synthwave, neon-UI, sci-fi, hologram, scan-lijn**, of expliciete \`Stijl: ???\`). **Niet** op donker thema of ???branche is X??? alleen. Techniek (als je het w?l inzet): pure studio-CSS; horizontaal \`<div class="studio-laser-h absolute inset-x-0 top-0 z-20" aria-hidden="true"></div>\` binnen \`relative\` parent; varianten \`studio-laser-h--neon\`, \`--magenta\`, \`--slow\` / \`--fast\`; verticaal \`studio-laser-v\` + hoogte; max. **??n** sweep-rail per hero (niet overal).
+${buildSiteGenerationMotionAndStudioEffectsMarkdown()}
 
 **Hover:** optioneel \`transition\` / lichte schaal of schaduw op knoppen en kaarten.
 
