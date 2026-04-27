@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { generateDesignRationaleWithClaude } from "@/lib/ai/generate-design-rationale-with-claude";
 import {
@@ -537,7 +537,6 @@ const STYLE_PROFILES: StyleProfile[] = [
 - **Sfeer:** nostalgie, vakmanschap, erfgoed. De site voelt als een ambachtelijke menukaart of tijdschrift uit de jaren '50-'70.
 - **Decoratie:** ornamentele lijn-dividers, ster-symbolen (???) als scheiders, vintage branche-iconen. SVG-decoratie in dunne lijnstijl.
 - **Spacing:** genereuze padding (\`py-20 md:py-28\`), content niet te breed (\`max-w-4xl\` voor tekst).
-- **Hero:** typografisch met groot \`text-6xl md:text-7xl font-serif italic\` op **warm licht** (cr?me/stone) **of** op donker, OF cinematic foto met warme tonen ??? overlay alleen als de briefing of beeld dat vraagt (geen verplicht donker vlak).
 - **Secties:** wissel donkere en warme lichte banden; liever warme off-white/stone i.p.v. koud klinisch wit als het past bij de briefing.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Aardekleuren als basis: warm bruin (\`bg-[#2c1810]\`, \`bg-amber-950\`) voor donkere secties, cr?me (\`bg-[#f5f0e8]\`, \`bg-stone-100\`) voor lichte secties, goud/amber als accent.`,
@@ -551,7 +550,6 @@ Aardekleuren als basis: warm bruin (\`bg-[#2c1810]\`, \`bg-amber-950\`) voor don
 - **Sfeer:** strak, professioneel, confident. Minder is meer. Geen rommel, geen decoratie die niet functioneel is.
 - **Decoratie:** GEEN of minimaal ??? hoogstens ??n subtiele geometrische lijn. Geen branche-symbolen tenzij heel abstract. Geen ornamentele dividers.
 - **Spacing:** strakke spacing, consistent grid. \`gap-8\` niet \`gap-12\`. Compacter voelt moderner.
-- **Hero:** ??n strakke foto met hoog contrast, of typografisch met oversized sans ??? gebruik \`font-light\` of \`font-medium\`, **niet** \`font-black\` + lange subtekst. **Uitzondering ??? barbershop / salon / spa / hotel in de briefing:** gebruik in de hero **serif** + weinig woorden (high-end editorial), geen "fastfood"-layout met twee volle knoppen en een paragraaf.
 - **Secties:** scherp contrast tussen secties; wissel rustige neutrale vlakken (\`bg-white\`, \`bg-stone-50\`, \`bg-zinc-100\`) ??? **geen** vaste donkere band als signatuur tenzij de briefing donker vraagt.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Zwart/wit basis met ??n krachtig accent (emerald, electric blue, of felrood). Minimaal kleurgebruik ??? de kracht zit in contrast.`,
@@ -566,13 +564,7 @@ Zwart/wit basis met ??n krachtig accent (emerald, electric blue, of felrood). Mi
 - **Decoratie:** MINIMAAL en verfijnd ??? dunne lijnen (\`border-[0.5px]\`), subtiele dividers, geen drukke patronen. Geen emoji's. Geen speelse elementen.
 - **Cards/lijsten:** geen standaard rounded kaarten met schaduw. Gebruik \`border-[0.5px]\` met \`hover:bg-[kleur]/5\` transities. Of helemaal geen cards ??? een elegante \`divide-y\` lijst is luxueuzer.
 - **Knoppen:** minimalistisch ??? \`border\` met \`uppercase tracking-widest text-xs\` tekst. Geen grote ronde gekleurde knoppen. Subtiel, niet schreeuwerig.
-- **Hero:** minstens **twee** evenwaardige families ??? kies wat de briefing het beste draagt (inclusief referentiebeeld/site als die licht is); **luxe ??? donker**:
-  - **Optie A (licht / editorial):** veel witruimte, \`bg-stone-50\` / \`bg-[#faf8f5]\` / off-white, donkere serif-kop (\`text-stone-900\`), dunne hairlines, eventueel **lichte** split met sfeerfoto ??? **minimale** copy in de hero.
-  - **Optie B (foto-gedreven):** cinematic full-bleed met **lichte tot middel** overlay ?f donkere overlay **alleen** als het beeld dat nodig heeft voor contrast; **korte** oversized serif-kop. Grote beeldhoogte (\`min-h-[72vh] md:min-h-[80vh]\` of vergelijkbaar).
-  - **Optie C (typografisch donker):** mag, maar niet de default ??? alleen als de briefing of referentie expliciet donker/minimal noir vraagt; combineer met gradient, textuur of split-beeld zodat het geen kaal zwart vlak wordt.
-  - **Vermijd:** standaard iedere luxe-site op near-black te zetten "omdat het premium oogt".
-  - **Vermijd:** kale effen hero zonder enige laag (foto, gradient of subtiele textuur) tenzij de briefing expliciet minimalistisch wil.
-  - **Vermijd:** lange alinea + twee grote knoppen in de hero ??? meestal werkt rustiger beter.
+- **Luxe-hero (sfeer, binnen HERO-CONTRACT):** licht editorial, cinematic, of donker-typo **alleen** als brief/referentie dat vraagt; **niet** automatisch near-black omdat het "premium" heet.
 - **Secties:** ritme licht/donker is **vrijwillig**; veel high-end sites zijn overwegend **licht** met ??n donker accentblok. Lichte secties: \`bg-white\`, \`bg-neutral-50\`, \`bg-stone-50\`.
 - **Prijzen/diensten:** lijst met dividers of een bewust ander patroon ??? niet standaard overal dezelfde productkaarten.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
@@ -589,7 +581,6 @@ Zwart/wit basis met ??n krachtig accent (emerald, electric blue, of felrood). Mi
 - **Sfeer:** huiselijk, persoonlijk, als een warm welkom. De site voelt als een uitnodiging, niet als een verkooppraatje.
 - **Decoratie:** organische vormen, warmte-iconen (hart, zon, bloem). Zachte illustratieve accenten. Mag vriendelijker dan andere stijlen.
 - **Spacing:** ruim maar niet afstandelijk. \`py-16 md:py-24\`. Content mag iets breder ??? \`max-w-5xl\`.
-- **Hero:** warm licht, zachte schaduwen, typografie of **stilleven/interieur** (materialen, branche-rekwisiet) ??? persoonlijk door sfeer, **niet** door AI-stockmensen; echte gezichten alleen via **KLANTFOTO'S**.
 - **Secties:** warme lichte achtergronden, optioneel een donkerdere sectie maar nooit koud-zwart. Zachte overgangen.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Warme tinten: terracotta, warm oranje, zachtgeel. Achtergronden in \`bg-orange-50\`, \`bg-amber-50\`, \`bg-[#faf5ef]\`. Donkere secties in \`bg-stone-800\` of \`bg-amber-950\`.`,
@@ -603,7 +594,6 @@ Warme tinten: terracotta, warm oranje, zachtgeel. Achtergronden in \`bg-orange-5
 - **Sfeer:** werkplaats, loft, staal en beton. Rauw en eerlijk. Geen gepolijste luxe-spa ??? wel **ruw vakmanschap**.
 - **Decoratie:** technische symbolen (tandwielen, bouten, moersleutel-silhouet) in monochroom met lage opacity. Geen speelse emoji of ronde "vriendelijke" iconen.
 - **Spacing:** compact maar niet claustrofobisch; donkere banden mogen \`py-20\` hebben.
-- **Hero:** full-bleed **sfeerbeeld** dat industrieel aanvoelt (exposed brick, leder/staal, dramatisch licht, workshop) + korte kop; of typografisch op **donker beton/zwart** met subtiele gradient/noise ??? **geen** witte hero met twee knalrode knoppen.
 - **Sector ??? zware industrie:** bij **sportvisserij / visartikelen / tackle / boten** betekent ???stoer industrieel??? **rauw metaal, molens, braided line, nat dek/hout, kleine vissersboot/kotter, haven met vissersschepen** ??? **niet** bulkterminals, havenkranen, hoogovens, bergtoppen of alpiene landschappen (dat mist de branche).
 - **Barbershop + industrieel:** combineer rauwe loft-sfeer met vakmanschap: donkere tonen, koper/roest/barnijs als accent ??? **typografie + gradient/textuur** (geen stock buiten \`gallery\`).`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
@@ -618,7 +608,6 @@ Beton- en staaltinten: \`bg-zinc-900\`, \`bg-neutral-900\`, \`bg-slate-950\`, \`
 - **Sfeer:** plezier, originaliteit, creativiteit. De site mag glimlachen ??? maar niet kinderachtig.
 - **Decoratie:** speelse SVG-vormen, kleurrijke iconen, optioneel subtiele emoji's. Gradient-accenten op tekst of achtergronden.
 - **Spacing:** vari?rend ??? soms strak, soms ruim. Het ritme mag verspringen.
-- **Hero:** levendig, vol energie. Grote foto met felle kleuren, of bold typografie met gradient-tekst (\`bg-gradient-to-r ... bg-clip-text text-transparent\`).
 - **Secties:** afwisseling van kleurrijke en neutrale secties. Gradients toegestaan en aangemoedigd.`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Levendige kleuren: paars, koraal, turquoise, lime. Durf te combineren. Gradient-accenten zijn een pluspunt.`,
@@ -656,7 +645,7 @@ Neutrale grijs-blauwe basis (\`#e0e5ec\`, \`slate-200/300\`); tekst \`slate-600\
 - **Iconen/UI:** 2D, lijn-iconen (\`data-lucide\`) of simpele geometrie; geen verloop op knoppen tenzij briefing vraagt om gradient-stijl.
 - **Typografie:** strak, veel witruimte, duidelijke hi?rarchie; \`font-medium\` / \`font-semibold\` i.p.v. overbodige weights.
 - **Grid:** strakke uitlijning, consequente \`gap\`; geen decoratieve ruis.
-- **Hero:** typografisch of ??n sterk plat kleurblok + beperkte copy ??? past bij SaaS en designstudio???s.`,
+`,
     colorPalette: `**KLEURADVIES (als briefing geen kleuren noemt):**
 Beperkt palet: wit/off-white basis + 1???2 primaire tinten (bijv. zwart + ??n signaalkleur); geen mesh-gradients tenzij briefing anders vraagt.`,
   },
@@ -991,13 +980,73 @@ function formatRecentClientsLine(names: string[]): string {
 const SPLIT_HERO_MANDATE_LINE =
   "**Layout (briefing vraagt split hero):** bouw de **\`#hero\`** bewust als **twee kolommen** (bijv. \`grid grid-cols-1 md:grid-cols-2\` op de buitenste \`<section id=\\\"hero\\\">\` + \`min-h-\*\` zoals in VIEWPORT): **copy + minstens ??n zichtbare CTA** in de ene helft; **media** (foto, abstract, gradient, lijnwerk) in de andere. Vraagt de briefing **wit / licht / goud-zwart**: **geen** hele sectie omdraaien naar donkere full-bleed + lichte type tenzij de woorden in de briefing dat echt vragen. Zet in \`config.style\` kort bv. \`hero:split-50\` of \`hero:split-asym\`.";
 
+type HeroCompositionArchetype = { id: string; line: string };
+
+const HERO_COMPOSITION_ARCHETYPES: readonly HeroCompositionArchetype[] = [
+  { id: "full_bleed_scrim", line: "Full-bleed: achtergrond + scrim; copy in `relative z-10`." },
+  { id: "editorial_masthead", line: "Editorial masthead: sterke typografie, asymmetrische witruimte." },
+  { id: "bento_hero", line: "Bento: 2–4 compacte tegels + kop (geen lange proza-blokken)." },
+  { id: "asymmetric_split", line: "Asymmetrische verdeling (niet 50/50) tenzij split-brief; mediakant altijd gevuld." },
+  { id: "typography_texture", line: "Typografie + gradient/SVG/texture-laag; geen nep-stock-URL." },
+  { id: "product_spotlight", line: "Één helder visueel anker (klant-URL, abstract, of typografie-risico)." },
+  { id: "trust_kpi_band", line: "Kop + één compacte trust/KPI-rij (max. 3 feiten uit de briefing), geen infodump." },
+  { id: "cinematic_warm", line: "Cinematic full-bleed, spaarzame copy; geen laptop-bureau-motive." },
+] as const;
+
+function indexFromDeterministicSeed(seed: string, modulo: number): number {
+  const h = createHash("sha256").update(seed, "utf8").digest();
+  return h.readUInt32BE(0) % modulo;
+}
+
+/** Deterministisch per `varianceNonce`+naam: echte variatie t.o.v. recente-klantnamen alleen. */
+function pickHeroCompositionArchetype(
+  varianceNonce: string | undefined,
+  businessName: string,
+): HeroCompositionArchetype {
+  const salt = (varianceNonce?.trim() || "default") + "\n" + businessName.trim();
+  return HERO_COMPOSITION_ARCHETYPES[indexFromDeterministicSeed(salt, HERO_COMPOSITION_ARCHETYPES.length)]!;
+}
+
+/**
+ * Eén plek: hero-techniek, copy, beeld, archetype. Validators/postprocess vullen gaten; niet herhalen in andere blokken.
+ */
+function buildHeroContractMarkdown(
+  preserve: boolean,
+  wantsSplitHero: boolean,
+  archetype: HeroCompositionArchetype,
+): string {
+  if (preserve) {
+    return `=== HERO (upgrade) ===
+- Behoud bestaande \`id="hero"\` + lay-out **tenzij** §0A/upgrade anders vereist; geen gratuit hero-redesign.
+
+`;
+  }
+  const splitAdd = wantsSplitHero
+    ? `- **Split (briefing):** \`id="hero"\` op de buitenste \`<section>\`, \`min-h-[65vh] md:min-h-[72vh]\` minstens, grid met copy + medialaag. Server mag \`data-gentrix-ai-hero-img\` in de mediakolom zetten; bij lichte brief: geen ondoorzichtig zwart over de hele helder-witte bovenkant.
+`
+    : `- **Layout:** geen standaard-50/50 "foto links" als default; kies full-bleed, asymmetrie of het **run-archetype** — **split** alleen als de briefing of split-blok expliciet vraagt.
+- **Server AI-hero (geen split):** server mag \`<img data-gentrix-ai-hero-img="1">\` als \`absolute inset-0 object-cover\` **achter** copy; copy/gradients \`relative z-10\`. Geen volledig ondoorzichtige \`bg-*\` over het hele beeld zonder gradient.
+`;
+  return `=== HERO-CONTRACT (volg dit; herhaal regels nergens anders) ===
+- Buitenste \`<section id="hero">\`: **\`id\` op deze \`<section>\`**, niet op inner \`<div>\`. \`min-h-[72vh] md:min-h-[80vh]\` (foto) of \`min-h-[65vh] md:min-h-[72vh]\` (type); zonder \`min-h-*\` = smalle strook/wit gat in preview = fout.
+- Inhoud: kicker (optioneel) + \`h1\` + **max. één** korte regel; **max. 2** CTA’s (\`<a>\`). **Verboden in #hero:** openingstijdenlijst, volledig adresblok, kaart-embed, contactpaneel, 2+ body-\`<p>\` — verplaats naar \`#footer\` / \`contactSections\` / subpagina.
+- **Beeld:** \`src\` = **exacte** URL uit **KLANTFOTO'S** wanneer passend; anders gradient, SVG, typografie, of server-**AI-hero**. **Geen** verzonnen externe stock-URL’s.
+- **Compositie (deze run):** \`hero:${archetype.id}\` in \`config.style\` — ${archetype.line}
+${splitAdd}- **Kopregels:** geen \`leading-none\` op grote display; min. \`leading-tight\` of \`leading-snug\`.
+- **Niet-hero-secties:** **geen** \`min-h-screen\` / \`h-screen\` (wel optioneel \`100dvh\` alleen op \`#hero\`). Achtergrondbanden (geen hero): max. \`min-h-[40vh] md:min-h-[50vh]\`.
+
+`;
+}
+
 function buildVarianceBlock(
   businessName: string,
   description: string,
   recentClientNames: string[],
-  _varianceNonce?: string,
-  wantsSplitHero?: boolean,
+  _varianceNonce: string | undefined,
+  wantsSplitHero: boolean,
+  heroArchetype: HeroCompositionArchetype,
 ): string {
+  void _varianceNonce; // zit in de upstream-gekozen `heroArchetype`
   void businessName;
   void recentClientNames;
   const explicitColors = detectExplicitColors(description);
@@ -1007,12 +1056,13 @@ function buildVarianceBlock(
     : "- **Kleur:** kies een sterk, coherent \`config.theme\` + markup dat bij naam en briefing past (geen verplicht accentpalet).";
 
   const layoutLine = wantsSplitHero
-    ? `- ${SPLIT_HERO_MANDATE_LINE} (zie ?VIEWPORT.)`
-    : "- **Layout/hero:** geen vaste sjabloon: full-bleed, split, of asymmetrische compositie zijn toegelaten. **Split hero** in de tekst: volg de VIEWPORT-splitregels, geen willekeurig full-bleed opleggen.";
+    ? `- ${SPLIT_HERO_MANDATE_LINE} (gecombineerd met **HERO-CONTRACT**.)`
+    : "- **Layout/hero:** geen vaste sjabloon: full-bleed, split, of asymmetrische compositie zijn toegelaten. **Split hero** in de tekst: zie **HERO-CONTRACT** + briefing; geen willekeurig full-bleed opleggen.";
 
   return `=== 0A. COMPOSITIE (deze run) ===
 - **De briefing wint** op sjabloon, branche-\"defaults\" of vaste marketingpatronen.
 ${layoutLine}
+- **Run-seed (hero, van \`varianceNonce\`):** \`hero:${heroArchetype.id}\` — ${heroArchetype.line}
 - **\`config.studioNav\`:** kies \`navVisualPreset\` / \`navBarLayout\` / \`variant\` passend bij sfeer en leesbaarheid; \`linksRightInHero\` alleen logisch (vaak op donkere/hero-beeldachtergrond) — **niet** willekeurig. ${wantsSplitHero ? " **Lichte split hero + wit:** combineer `linksRightInHero`+donkere bar niet onnodig met een helder witte bovenkant; een lichte/balken-nav past vaak beter." : ""}
 ${colorLine}`;
 }
@@ -1333,17 +1383,15 @@ function buildStockImageryAgencyDefaultMarkdown(): string {
   return `- **Beeld (studio):** spaarzaam. **KLANTFOTO'S** in de opdracht → die URL's **exact** gebruiken; anders typografie, gradient, SVG, of server **AI-hero** (geen tafel+laptop-mok-stock; leesbare overlay). **Geen** verzonnen, placeholder- of externe stock-**URL's**. **\`gallery\`:** alleen als de briefing expliciet wil. \`<video>\`/\`<iframe>\`: alleen met https-URL uit de briefing.`;
 }
 
-/** Gedeelde copy-dichtheid: voorkomt dat het model hero + USP-kaarten volschrijft met alinea???s. */
+/** Copy onder de vouw + USP-dichtheid. **#hero** staat volledig in `buildHeroContractMarkdown` — niet dupliceren. */
 function buildMinimalMarketingCopyContractMarkdown(): string {
-  return `=== COPY ??? MINDER IS MEER (verplicht) ===
-- **Hero (\`#hero\`):** **geen** lange lichaamstekst. Maximaal: **??n** \`h1\` (of vergelijkbaar display) + optioneel **??n** korte kicker/regel erboven (**??? 6 woorden**) + **hoogstens ??n** extra regel onder de kop (**??? 12 woorden**, ??n zin of fragment). **Verboden in de hero:** twee of meer \`<p>\`-alinea???s; uitleg die beter onder de vouw past; ???vertel???-marketing in plaats van **klap**; **praktische infodump** ??? zelfs als de briefing adres, telefoon of openingstijden noemt: **geen** dag-voor-dag openingstijdenlijst, **geen** volledig adresblok (straat + postcode + plaats als apart paneel), **geen** kaart-embed, **geen** tweede kolom die ???alles op ??n plek??? contact voelt. Zet die feiten in **\`#footer\`**, **\`contactSections\`** of een latere sectie. In de hero mag **hoogstens ??n** plaatsnaam in de korte regel (bv. ???Vught???) ??? niet straat + postcode + uren eronder.
-- **Hero ??? media:** zie **Beeld (studio)**. **Zonder** blok KLANTFOTO'S: geen \`<img>\` naar verzonnen URL's ??? typografie, gradient, SVG. **Met** KLANTFOTO'S: gebruik de **beste** upload prominent in de hero (\`src\` = exacte klant-URL).
-- **Hero ??? visuele rijkdom (binnen copy-limiet):** vermijd de standaard **alleen** losse kop + ??n regel op effen gradient als **vaste** fallback elke run. Voeg **compacte** niet-proza structuren toe waar het past: micro-grid, badges/chips, **??n** dunne trust/KPI-rij, subtiel SVG-ornament, bento-**2-4** tegels, of asymmetrisch paneel ??? zie ook **VIEWPORT / hero-variatie**; geen tweede alinea of infodump.
-- **USP / feature-kaarten / stappen:** per item **titel + hoogstens ??n korte regel** (**??? 14 woorden**); **geen** tweede alinea of doorlopende zin om de kaart te vullen.
-- **Over / lange secties:** zelfs bij \`about\` of marketing-subpagina???s: **kern + witruimte** ??? geen drie identieke marketing-alinea???s achter elkaar.
-- **Toon:** Nederlands mag strak en volwassen zijn; **kort** wint van ???professioneel klinkend door veel woorden???.
-- **Microcopy-variatie:** labels op knoppen, kicker-woordjes (uppercase regel boven kop), en sectiekoppen mogen **niet** telkens dezelfde woordenlijst volgen (???Ontdek???, ???Meer weten???, ???Lees verder??? als standaardtriple) ??? kies per site **eigen** werkwoorden passend bij de briefing.
-- **Telefoon & openingstijden ??? niet spammen:** Zelfde \`tel:\`/\`wa.me\` en dezelfde volledige openingstijdenregel **niet** in hero, testimonials, split-sectie, CTA-band **?n** footer tegelijk. **Maximaal ??n** compacte plek boven de vouw (nav-knop of dunne infostrip) **plus** de footer/contactkolom ??? of alleen footer als je twijfelt. Geen copy-paste van identieke urenzin in drie banden achter elkaar.
+  return `=== COPY (niet-hero) ===
+- **#hero** volgt **uitsluitend** **HERO-CONTRACT** hierboven; herhaal hero-regels hier niet.
+- **USP / feature-kaarten / stappen:** per item **titel + hoogstens één korte regel** (max. ca. 14 woorden); geen tweede alinea om de kaart te vullen.
+- **Over / lange secties / subpagina's:** kern + witruimte; geen drie identieke marketing-alinea's.
+- **Toon:** kort, volwassen; geen plakzinnen.
+- **Microcopy-varieteit:** wissel werkwoorden op knoppen/koppen; geen vaste triple ("Ontdek / Meer weten / Lees verder") elke run.
+- **Telefoon & openingstijden:** dezelfde \`tel:\`/\`wa.me\` of dezelfde lange urenregel max. één keer boven de vouw + in footer; niet in drie identieke banden (zie **HERO-CONTRACT** — hero blijft schoon).
 
 ${buildStockImageryAgencyDefaultMarkdown()}`;
 }
@@ -1379,7 +1427,7 @@ function buildMarketingMultiPageOperationalTail(
 
   return `${multipageCloseChecklist}=== 3B. OPERATIONELE SITE ??? TEKSTEN & WERKENDE LINKS (verplicht) ===
 
-- **Copy:** Nederlands, **strak en kort** (geen Lorem ipsum) ??? zelfde CONTENT AUTHORITY; zie **COPY ??? MINDER IS MEER** (hierboven) + dezelfde **sales-anti-herhaling** en **briefing-anker** als in ?3: één primair+hoogstens één secundair CTA, geen vullerzinnen, eerste zichtbare regel ankeren aan de opdracht.
+- **Copy:** Nederlands, **strak en kort** (geen Lorem ipsum) ??? zelfde CONTENT AUTHORITY; zie **HERO-CONTRACT** + **COPY (niet-hero)** (hierboven) + dezelfde **sales-anti-herhaling** en **briefing-anker** als in ?3: één primair+hoogstens één secundair CTA, geen vullerzinnen, eerste zichtbare regel ankeren aan de opdracht.
 - **Meerdere echte pagina???s in ??n JSON:**
   - \`sections\` = **landingspagina** (compact: hero + evt. korte trust/USP; **geen** volledige longread die al op een marketing-subpagina hoort). **Geen** dubbele ???tweede hero??? met dezelfde CTA???s als de eerste; **geen** marketing-fotogalerij-raster voor producten die in de webshop horen.
   - \`marketingPages\` = **verplicht** exact deze keys (geen extra???s, geen missers), elk **minstens twee** HTML-secties met **eigen** \`id\`'s binnen die pagina: ${slugList}. **Elke** key in die lijst moet in \`marketingPages\` voorkomen ??? **ontbrekende** keys (bijv. \`faq\`) maken de JSON **ongeldig** en breken de generatie. **Geen** tweede homepage: typisch **2???4** secties (kop/hero voor die route + **??n** duidelijke inhoudsband + evt. korte afsluiter) ??? dezelfde globale nav als op de landing, maar **unieke** copy per key.
@@ -1436,34 +1484,6 @@ Minimaal deze landings-sectie-\`id\`'s (eigen volgorde mag): ${requiredIdsLine}.
 **Laatste controle ??? \`marketingPages\`:** tel de top-level keys in jouw JSON en vergelijk met **exact**: ${slugList}. **Alle** moeten aanwezig zijn; **geen** weglating.
 
 JSON moet geldig zijn.`;
-}
-
-function buildHeroViewportRulesMarkdown(preserve: boolean, wantsSplitHero = false): string {
-  if (preserve) return "";
-  if (wantsSplitHero) {
-    return `
-- **VIEWPORT / HERO (briefing: split hero) — dit vervangt de standaard ???anti-50/50 + full-bleed???-sturing:**
-  - **\`<section id="hero">\` (buitenste tag):** \`id="hero"\` op **deze** \`<section>\`, niet op een inner \`<div>\` ??? anders raakt server-side beeldinjectie mis. Zet \`min-h-[65vh] md:min-h-[72vh]\` (of \`min-h-[72vh] md:min-h-[80vh]\` bij zware beeld-kolom) zodat de bovenkant nooit dekt als ??n enkele regel met leeg wit eronder.
-  - **Structuur:** bouw bewust **twee kolommen** (typisch \`grid grid-cols-1 md:grid-cols-2\` op de \`<section>\` of op ??n \`div\` die de volle \`min-h\` vult). **Kolom A:** kicker, \`h1\`, max. ??n korte regel, **primaire CTA** + optioneel secundair. **Kolom B:** beeld, abstract, gradient, of SVG ??? **niet** een lege/zwarte placeholder. Op desktop mag **asymmetrie** (\`md:grid-cols-5\` met \`col-span-2\`/\`col-span-3\`) in plaats van exact 50/50.
-  - **Server AI-hero (split):** de server mag \`<img data-gentrix-ai-hero-img="1">\` in de **mediakolom** / split-grid zetten (niet per se \`absolute inset-0\` over de hele sectie). Leg **niet** de hele \`#hero\` met ondoorzichtig zwart als de briefing **wit, licht, of helder goud-zwart** vraagt ??? hou copy-kolommen licht en leesbaar; contrast alleen op media of accentvlakken.
-  - **Volle viewport** met \`min-h-[100dvh]\` / \`100dvh\` **alleen** op \`#hero\` als het klopt; elders op de pagina **geen** \`min-h-screen\` op \`#features\`, \`#about\`, footer, enz. (zelfde verbod als standaard).
-  - **Achtergrond-banden** (niet-hero): max. \`min-h-[40vh] md:min-h-[50vh]\`, geen volledige viewport.
-  - Zet in \`config.style\` ??n duidelijke term, bv. \`hero:split-50\`, \`hero:split-asym\`, \`hero:split-mediaright\`.
-  - **Hero kopregels:** grote \`h1\` nooit \`leading-none\` ??? min. \`leading-tight\` / \`leading-snug\`.
-`;
-  }
-  return `
-- **VIEWPORT / HERO-HOOGTE (kritisch ??? voorkomt ???smalle strook + wit gat??? onder de fold):**
-  - **\`<section id="hero">\` (buitenste tag):** het attribuut \`id="hero"\` hoort op **deze** \`<section>\`, niet op een inner \`<div>\` ??? anders kan de server geen AI-hero-beeld injecteren. Zet **altijd** een expliciete minimale hoogte op die sectie: \`min-h-[72vh] md:min-h-[80vh]\` (foto-/video-hero) of minstens \`min-h-[65vh] md:min-h-[72vh]\` (typografisch). **Zonder** deze \`min-h-*\` krimpt de hero tot ??n regel hoogte en vult het iframe-onderste deel met leeg wit ??? dat is een fout.
-  - **Server AI-hero (stacking):** de server kan automatisch een \`<img data-gentrix-ai-hero-img="1">\` als **eerste** child in \`#hero\` zetten (**full-bleed** achtergrond onder de inhoud, \`absolute inset-0 object-cover\`). Zet copy/nav/gradients **boven** dat beeld (\`relative z-10\` op wrappers waar nodig). Een **volledig ondoorzichtige** \`bg-*\` over de **volle** hero zonder gradient legt het beeld **dood** ??? hou mediakanten licht/transparant of alleen achter tekstkaarten.
-  - **Volle viewport op de hero** is toegestaan met **dynamische eenheden**: \`min-h-[100dvh]\` of \`min-h-[min(100dvh,100svh)]\` mag **alleen** op \`#hero\`, niet op andere secties. Gebruik liever \`72vh/80vh\` als je twijfelt.
-  - **Verbod (niet-hero secties):** gebruik **geen** \`min-h-screen\`, \`h-screen\`, \`min-h-[100vh]\`, \`h-[100vh]\` op \`#features\`, \`#about\`, shop, footer, enz. ??? dat maakt lege kolommen en rare scroll in previews. Daar: \`py-16 md:py-24\` + inhoud.
-  - **Achtergrond-banden** (CTA/galerij met \`background-image\`, geen hero): max. \`min-h-[40vh] md:min-h-[50vh]\`, geen volledige viewport.
-  - **Padding:** op \`#hero\` mag \`py-*\` b?j \`min-h-*\`, maar voorkom extreem hoge \`py-32+\` **zonder** \`min-h-*\` (dan blijft de strook alsnog laag ten opzichte van het scherm).
-  - **Hero-layout (standaard):** vermijd een vaste **\`grid md:grid-cols-2\` / 50-50** ???foto links, tekst rechts??? als default ??? dat herhaalt elke run. Voorkeur: **full-bleed**: sectie \`relative\`, achtergrondbeeld \`absolute inset-0 object-cover\`, inhoud \`relative z-10\` met **gradient/scrim** (\`bg-gradient-to-r from-black/70\`, ???) zodat koppen leesbaar zijn. **Split (twee-koloms)** alleen wanneer de **briefing** dat vraagt (bv. ???split hero???) ??? zie dan het aparte **VIEWPORT / split hero**-blok; meng die twee regels niet in ??n onduidelijke hybride.
-  - **Hero-variatie (anti-sjabloon):** lever **niet** standaard alleen een kale \`h1\` + ??n korte regel op effen gradient zonder extra visuele laag. Laat in \`config.style\` **??n korte term** zien welk **hero-archetype** je kiest (bv. \`hero:full-bleed-scrim\`, \`hero:bento-4\`, \`hero:asymmetric-panel\`, \`hero:editorial-masthead\`, \`hero:product-spotlight\`, \`hero:texture-type\`). Kies per site minstens **??n** van: klant- of server-**beeld** met scrim, **asymmetrische** panelen (niet spiegel-50/50), compacte **trust/KPI-rij** in de hero, subtiele **SVG/lijnwerk-laag**, of **2-4 tegels** naast/onder de kop ??? binnen de **COPY ??? MINDER IS MEER**-limieten (geen tweede alinea, geen infodump).
-  - **Hero kopregels (kritisch):** op meerregelige \`h1\`/display **nooit** \`leading-none\` (letters vallen dan op elke elkaar). Gebruik minstens \`leading-tight\`, liever \`leading-snug\` of \`leading-[1.08]\` bij grote serif/sans-display; zet eventueel \`max-w-*\` op de kop-container i.p.v. extreem krappe interlinie.
-`;
 }
 
 function buildExistingSiteJsonBlock(existingJson: string | undefined | null): string {
@@ -1630,7 +1650,7 @@ Alleen voor **landings-\`sections\`** in deze JSON ??? subpagina's staan in \`ma
 
 **Van toepassing op deze opdracht:** lever precies **3** rijen in \`sections\` met **exact** deze volgorde en JSON-\`id\`'s: \`hero\` ??? \`features\` ??? \`footer\`.
 
-1. \`hero\` ??? **alleen** krachtige kop + **max. ??n** ultrakorte regel (???12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of ???vertel???-tekst in de hero. **Geen** openingstijden/adres/kaart/contactpaneel in de hero ??? zie **COPY ??? MINDER IS MEER**. **Split/immersive:** mediakant **gevuld** met **gradient/textuur/SVG** of **klantfoto-URL** ??? **geen** externe stock; **geen** lege/zwarte placeholderkolom.
+1. \`hero\` ??? **alleen** krachtige kop + **max. ??n** ultrakorte regel (???12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of ???vertel???-tekst in de hero. **Geen** openingstijden/adres/kaart/contactpaneel in de hero ??? zie **HERO-CONTRACT**. **Split/immersive:** mediakant **gevuld** met **gradient/textuur/SVG** of **klantfoto-URL** ??? **geen** externe stock; **geen** lege/zwarte placeholderkolom.
 2. \`features\` ??? **kernblok:** diensten/USP's **en** eventueel compacte trust (2???3 cijfers of een kleine logo-rij) in **dezelfde** sectie ??? **geen** aparte \`stats\`/\`brands\`/\`steps\` op de homepage in deze run.
 3. \`footer\` ??? **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op de landing in deze run.
 
@@ -1682,7 +1702,7 @@ ${faqDetect}
 
 **Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan ??? \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
 
-1. \`hero\` ??? **alleen** krachtige kop + **max. ??n** ultrakorte regel (???12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of ???vertel???-tekst in de hero. **Geen** openingstijden/adres/kaart/contactpaneel in de hero ??? zie **COPY ??? MINDER IS MEER**. **Split/immersive:** mediakant **gevuld** met **gradient/textuur/SVG** of **klantfoto-URL** ??? **geen** externe stock; **geen** lege/zwarte placeholderkolom.
+1. \`hero\` ??? **alleen** krachtige kop + **max. ??n** ultrakorte regel (???12 woorden); **max. 2** CTA-links (\`<a>\` met button-styling); **max. 3** social-proof-items (alleen uit briefing). **Geen** tweede alinea of ???vertel???-tekst in de hero. **Geen** openingstijden/adres/kaart/contactpaneel in de hero ??? zie **HERO-CONTRACT**. **Split/immersive:** mediakant **gevuld** met **gradient/textuur/SVG** of **klantfoto-URL** ??? **geen** externe stock; **geen** lege/zwarte placeholderkolom.
 2. \`stats\` **of** \`brands\` ??? precies **??n** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen. **Geen** tweede ???wij werken met???-strook in \`features\`/\`footer\` die hetzelfde doet ??? ??n trust-laag op de homepage.
 3. \`steps\` **of** \`features\` ??? precies **??n** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Bij **kapper/barbershop/salon**-profielen: **uitsluitend** \`features\` (geen \`steps\` op de landing). Elk item **titel + max. ??n korte regel** ??? geen kaart-vullende alinea???s.
 ${tailList}
@@ -1746,7 +1766,7 @@ function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTail
   const { preserve, requiredIdsLine, section4Nav, section5IdsNote } = input;
   return `=== 3B. OPERATIONELE SITE ??? TEKSTEN & WERKENDE LINKS (verplicht) ===
 
-- **Copy:** **Nederlands, strak en menselijk** ??? **geen** Lorem ipsum. **Niet** betekenen: lange alinea???s overal; zie **COPY ??? MINDER IS MEER** (hero en kaarten **kort**). **Geen verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (CONTENT AUTHORITY). FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands.
+- **Copy:** **Nederlands, strak en menselijk** ??? **geen** Lorem ipsum. **Niet** betekenen: lange alinea???s overal; zie **HERO-CONTRACT** + **COPY (niet-hero)**. **Geen verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (CONTENT AUTHORITY). FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Sectie-ankers:** Het **buitenste** element van elke sectie-\`html\` (eerste tag, meestal \`<section>\`) heeft \`id="???"\` dat **exact gelijk** is aan de JSON-\`id\` van die sectie (bijv. \`"id": "faq"\` ??? \`<section id="faq" class="???">\`). Zo werkt elke interne link.
 - **Interne links (\`#???\`):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#???">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen ??? plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).
@@ -1817,9 +1837,18 @@ export function buildWebsiteGenerationUserPrompt(
   const preserve = Boolean(options?.preserveLayoutUpgrade);
   const wantsSplitHero = !preserve && briefingWantsSplitHero(description);
   const wantsStrictAllWhite = !preserve && briefingWantsStrictAllWhiteLayout(description);
+  const heroComposition = pickHeroCompositionArchetype(options?.varianceNonce, businessName);
+  const heroContractBlock = buildHeroContractMarkdown(preserve, wantsSplitHero, heroComposition);
   const variance = preserve
     ? buildUpgradePreserveLayoutBlock()
-    : buildVarianceBlock(businessName, description, recentClientNames, options?.varianceNonce, wantsSplitHero);
+    : buildVarianceBlock(
+        businessName,
+        description,
+        recentClientNames,
+        options?.varianceNonce,
+        wantsSplitHero,
+        heroComposition,
+      );
   const appointmentsEnabled = options?.appointmentsEnabled === true;
   const webshopEnabled = options?.webshopEnabled === true;
   const packageBlock = getGenerationPackagePromptBlock(undefined, {
@@ -1839,7 +1868,6 @@ export function buildWebsiteGenerationUserPrompt(
     : "";
 
   const section3Tail = buildSection3UpgradeTailMarkdown(preserve);
-  const section3HeroHeight = buildHeroViewportRulesMarkdown(preserve, wantsSplitHero);
   const industryProbe = combinedIndustryProbeText(businessName, description);
   const marketingMultiPage = options?.marketingMultiPageHint ?? !preserve;
   const marketingPageSlugsForTail = marketingMultiPage ? (options?.marketingPageSlugs ?? []) : [];
@@ -1884,11 +1912,12 @@ export function buildWebsiteGenerationUserPrompt(
   return `Je genereert **??n** JSON (Tailwind) met ${marketingMultiPage ? "**landingspagina + subpagina's + contact** (`sections` + `marketingPages` + `contactSections`)" : "**??n** one-pager (`sections`)"}. Maak een **professionele, onderscheidende** site die past bij de briefing ??? **niet** anoniem-veilig; je hebt ruimte voor sterk ontwerp.
 ${multipageJsonCritical}
 
-=== ROL: JIJ BENT DE DESIGNER; DE TEKST IS VAN DE KLANT ===
+=== ROL: RENDERER; DE TEKST IS VAN DE KLANT ===
 - **Context / branche** (hieronder) schrijft een **klant**, geen webdesigner: informeel, kort, incompleet of zonder vaktermen is **normaal**.
-- Jij bent de **senior website- en merkdesigner**: je **vertaalt** wat ze zeggen — ook alleen sfeerwoorden ("warm", "strak", "betrouwbaar", "luxe", "rustig", "modern") — naar **concrete** keuzes: \`config\` (kleuren, \`font\`-stack, vibe), typografie in de HTML, layout, ritme en copy-structuur. De klant hoeft **geen** lettertypen, hex-kleuren of Tailwind-termen te noemen; jij kiest professioneel passende defaults die bij hun woorden en sector passen.
-- Briefing is dun of vaag: lever toch **één coherente, geloofwaardige** site en vul redelijk aan (secties, hiërarchie, CTA) op basis van branche en wat wél genoemd is. Blijf strikt binnen **CONTENT AUTHORITY** verderop: geen verzonnen prijzen, cijfers, reviews of garanties.
-- **Tegenstrijdige klantwensen** (bv. tegelijk “ultra speels” en “strak corporate” zonder nuance): kies **één** dominante hoofdrichting die het meest logisch is bij de sector; voorkom een ongelooflijke mix. De studio kan de klant apart om verduidelijking vragen — jouw output blijft één consistent ontwerp.
+- Je **implementeert** de briefing, stijl-/brancheblok, **HERO-CONTRACT** in §3, en het Denklijn- / designcontract wanneer aanwezig, in **één** consistente output. **Geen tweede, vrije huisstijl** ernaast verzinnen: visuele variatie = run-archetype (§0A) + brief, geen tegengesteld palet.
+- Vertaal sfeerwoorden concreet naar \`config\`, typografie en copy **binnen** die kaders. De klant hoeft **geen** vaktermen te noemen.
+- Briefing is dun: lever **één coherente** site; blijf strikt binnen **CONTENT AUTHORITY** verderop: geen verzonnen prijzen, cijfers, reviews of garanties.
+- **Tegenstrijdige wensen:** één dominante richting. **Bij twijfel:** vaste stijl / Denklijn wint boven extra creatieve zijpaden.
 
 ${buildStudioBrandNameUserPromptBlock(businessName)}
 Context / branche: ${description}
@@ -1937,6 +1966,7 @@ ${psychColorLead}Vul \`config.theme\` passend bij de branche: \`primary\` + \`pr
 **Kleur in HTML:** laat \`config.theme\` ook in de markup terugkomen (achtergronden, accenten, CTA) ??? niet alleen in metadata. Als de briefing warm beige/zand vraagt, vermijd een volledig koud-grijs default-palet tenzij dat bewust past. ${wantsStrictAllWhite ? "*(Behalve wanneer bovenstaand blok **volledig wit** vraagt ??? dan wint dat boven beige/steen-tips.)*" : ""}
 
 === 3. PAGINA COMPOSEREN ??? HTML (Tailwind) ===
+${heroContractBlock}
 ${strictLanding && strictLandingSectionIds ? buildStrictLandingPageComposerMarkdown(strictLandingSectionIds) : ""}
 ${buildMinimalMarketingCopyContractMarkdown()}
 ${!strictLanding ? `\n${buildProfessionalLandingDisciplineMarkdown(marketingMultiPage)}\n` : ""}
@@ -1948,9 +1978,9 @@ ${!preserve ? buildLandingOutputQualityGuardsMarkdown({ preserve, strictLanding,
 
 **???n site, ??n systeem:** kies **??n** duidelijke typografie-hi?rarchie (bijv. ??n sans-familie door de hele pagina, of **??n** serif voor koppen **als** \`config.font\` daar logisch bij aansluit). **Vermijd** willekeurig \`font-serif\` op body/footer als de rest brutal/cyberpunk sans is ??? dan oogt het als browser-Times. Body op donker: **minimaal** \`text-gray-200\`???\`text-gray-300\`, liever \`font-normal\`/\`medium\` dan \`font-light\` + te lage contrast.
 
-**Hero (\`#hero\`):** eerste indruk = **typografie + (optioneel) eigen beeld of gradient** + **minstens ??n** bijkomende visuele laag (zie VIEWPORT), niet een **brochure**: zie **COPY ??? MINDER IS MEER** ??? **geen** twee alinea???s onder de kop; **geen** openingstijden, volledig adres of contactkaart in de hero (dat hoort in footer/contact). **???n primaire CTA** en optioneel **??n secundaire** (werkende \`href\`); knoppen moeten visueel duidelijk in de **eerste** sectie staan (niet verstopt in een latere subkop). **Verboden:** decoratief **scroll**-label in de hero. Volg **?VIEWPORT**.${wantsSplitHero ? " **De briefing vraagt expliciet een split hero** ??? bouw **\`#hero\`** als **twee-koloms** (zie VIEWPORT **briefing: split hero**); wees **niet** terughoudend omdat andere zinnen ???full-bleed??? bevelen — die staan die run **uit**." : " **Standaard (geen split-hero in briefing):** geen strakke 50/50 enkel als **template** volgen ??? voorkeur **full-bleed** met overlay-tekst (VIEWPORT) **tenzij** de briefing split/twee koloms vraagt."} **Geen** externe stock in de hero ??? **wel** klant-upload-URL's als die sterk genoeg zijn; anders **gradient/textuur/SVG** i.p.v. verzonnen foto-URL's. **Achtergrond-\`<video>\`:** alleen met **concrete https-URL** in de briefing; anders gradient + \`data-animation\` / AOS. Houd je aan **BRANCHE-INSPIRATIE**.
+**Hero (\`#hero\`):** volg **uitsluitend** **HERO-CONTRACT** bovenaan §3. **Geen** decoratief scroll-label. **\`<video>\`:** alleen met concrete **https-URL** in de briefing. Split-brief: zie **HERO-CONTRACT** + §0A. Voor sfeer: zie **BRANCHE-INSPIRATIE** (geen tweede, los hero-regelwerk).
 
-**Klantfoto's:** zie blok **KLANTFOTO'S** ??? hero **mag** met upload.
+**Klantfoto's:** zie **KLANTFOTO'S** (hero mag op upload, tenzij AI-hero/lege modus in dat blok).
 
 **Verdere secties:** typisch \`py-16 md:py-24\` en \`max-w-7xl mx-auto px-4 sm:px-6\` ??? wijk af als de briefing of jouw ontwerp dat vraagt. Wissel achtergronden voor ritme; **geen** harde eis op aantal donkere banden.
 
@@ -1964,7 +1994,7 @@ ${buildSiteGenerationMotionAndStudioEffectsMarkdown()}
 
 **Video / foto's:** geen verzonnen stock of placeholder-URL's; **wel** klant-uploads volgens **KLANTFOTO'S**; overige regels onder **Beeld (studio)** en COPY.
 
-${section3Tail}${section3HeroHeight}
+${section3Tail}
 
 ${getAlpineInteractivityPromptBlock()}
 ${brancheSectionBlocks}
@@ -2510,7 +2540,7 @@ export async function executeGenerateSitePhase2(
 
   const reviewed = await applySelfReviewToGeneratedPage({
     client: p.client,
-    model: p.supportModel,
+    model: STUDIO_SITE_GENERATION.selfReviewModel,
     businessName,
     description,
     draft: data,
@@ -3072,7 +3102,7 @@ export function createGenerateSiteReadableStream(
           try {
             reviewed = await applySelfReviewToGeneratedPage({
               client: p.client,
-              model: p.supportModel,
+              model: STUDIO_SITE_GENERATION.selfReviewModel,
               businessName,
               description,
               draft: data,

@@ -18,6 +18,10 @@ export const STUDIO_SITE_GENERATION = {
    */
   maxOutputTokens: 64_000,
   briefingVisionEnabled: true,
-  /** Tweede LLM-pass: was rem op creativiteit + duplicaat regels. Standaard uit. */
-  selfReviewEnabled: false,
+  /**
+   * Tweede LLM-pass (HTML-QA, hero, nav, marquees). Aan: merkbare kwaliteitsfix.
+   * Zelfde modelklasse als generate; Haiku is te zwak voor visuele/revisie JSON.
+   */
+  selfReviewEnabled: true,
+  selfReviewModel: "claude-sonnet-4-6" as const,
 } as const;
