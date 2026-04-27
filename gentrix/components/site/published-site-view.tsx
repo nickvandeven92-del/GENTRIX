@@ -22,6 +22,10 @@ import { formatSlugForDisplay } from "@/lib/slug";
 import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
 import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
 import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
+import {
+  enhanceTailwindHeroSectionHtmlForPublicDelivery,
+  invokeHeroLcpImagePreloadFromHtml,
+} from "@/lib/site/tailwind-hero-public-delivery";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -175,6 +179,15 @@ export function PublishedSiteView({
     const twSections = isPublicSubpage
       ? ensureFooterAppendedFromLanding(twSectionsRaw, sections)
       : twSectionsRaw;
+    const twSectionsForDelivery = twSections.map((row) =>
+      row.id === "hero"
+        ? { ...row, html: enhanceTailwindHeroSectionHtmlForPublicDelivery(row.html) }
+        : row,
+    );
+    if (visibility === "public" && !studioTailwindPreviewIframe) {
+      const heroRow = twSectionsForDelivery.find((r) => r.id === "hero");
+      if (heroRow) invokeHeroLcpImagePreloadFromHtml(heroRow.html);
+    }
     const iframeTitle =
       marketingKey !== "" && marketingPageSections != null && marketingPageSections.length > 0
         ? `${docTitle} · ${formatSlugForDisplay(marketingKey)}`
@@ -226,7 +239,7 @@ export function PublishedSiteView({
         slugForA && contactNavBase ? { siteSlug: slugForA, prettyPublicUrls } : null;
       const publicInlinePreview = (
         <PublicPublishedTailwindInline
-          sections={twSections}
+          sections={twSectionsForDelivery}
           pageConfig={payload.config}
           publishedSlug={publishedSlug}
           draftPublicPreviewToken={draftPublicPreviewToken}
@@ -267,7 +280,7 @@ export function PublishedSiteView({
               data-gentrix-studio-generator-iframe-preview="1"
             >
               <PublicPublishedTailwind
-                sections={twSections}
+                sections={twSectionsForDelivery}
                 pageConfig={payload.config}
                 className="min-h-0 flex-1"
                 publishedSlug={publishedSlug}
@@ -304,7 +317,7 @@ export function PublishedSiteView({
         )}
       >
         <PublicPublishedTailwind
-          sections={twSections}
+          sections={twSectionsForDelivery}
           pageConfig={payload.config}
           className={cn("min-h-0 flex flex-1 flex-col", className)}
           visibility={visibility}

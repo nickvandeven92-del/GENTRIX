@@ -311,12 +311,8 @@ export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
 }
 
 /**
- * Hero-HTML: elke `<img>` met Supabase **render**-`src` krijgt `srcset` + afgeleide `sizes`.
- * Slaat over als `srcset` of `sizes` al gezet is.
- */
-/**
  * Publieke `…/ai-hero/<stem>/<w>.webp`-set (object/public): vult `srcset` + `sizes` als die ontbreken.
- * Breedtes moeten gelijk lopen aan {@link HERO_PUBLISH_WEBP_WIDTH_TARGETS} in `hero-responsive-webp-variants.ts`.
+ * Breedtes moeten gelijk lopen aan `HERO_PUBLISH_WEBP_WIDTH_TARGETS` in `hero-responsive-webp-variants.ts`.
  */
 const AI_HERO_OBJECT_SRCSET_WIDTHS = [640, 960, 1280, 1920, 2400] as const;
 
@@ -344,6 +340,10 @@ export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
   });
 }
 
+/**
+ * Hero-HTML: elke `<img>` met Supabase **render**-`src` krijgt `srcset` + afgeleide `sizes`.
+ * Slaat over als `srcset` of `sizes` al gezet is.
+ */
 export function addResponsiveSrcsetToHeroSupabaseRenderImages(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
     /** Raster-/SVG-merk in nav of foutief in hero: geen hero-srcset (`sizes=100vw` ≠ logo). */

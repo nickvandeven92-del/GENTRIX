@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addResponsiveSrcsetToAiHeroObjectImages,
   addResponsiveSrcsetToHeroSupabaseRenderImages,
   buildSupabaseRenderSrcsetFromRenderUrl,
   inferHeroImgSizesFromAttrs,
@@ -130,6 +131,24 @@ describe("promoteHeroSupabaseBackgroundUrlToImg", () => {
     const out = promoteHeroSupabaseBackgroundUrlToImg(html);
     expect(out.indexOf("bg-" + String.fromCharCode(91) + "url(")).toBe(-1);
     expect(out).toContain("object-cover");
+  });
+});
+
+describe("addResponsiveSrcsetToAiHeroObjectImages", () => {
+  it("vult srcset en sizes voor publish-time ai-hero object/public-URL", () => {
+    const src =
+      "https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/1776-abc/1280.webp";
+    const html = `<section id="hero"><img class="absolute inset-0 w-full h-full object-cover object-center" src="${src}" alt="X"/></section>`;
+    const out = addResponsiveSrcsetToAiHeroObjectImages(html);
+    expect(out).toContain("srcset=");
+    expect(out).toContain("640w");
+    expect(out).toContain("1920w");
+    expect(out).toMatch(/sizes="/);
+  });
+
+  it("laat bestaande srcset met rust", () => {
+    const html = `<img src="https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/x/1280.webp" srcset="x 1x" alt="">`;
+    expect(addResponsiveSrcsetToAiHeroObjectImages(html)).toBe(html);
   });
 });
 
