@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appendPrebakedHeroImageToUserContent,
+  briefingReservesHeroForClientUpload,
   buildOpenAiHeroPrompt,
   heroSectionOpenTagHasInjectableHeroId,
   injectAiHeroImageIntoHeroSectionHtml,
@@ -10,6 +11,22 @@ import {
 } from "@/lib/ai/ai-hero-image-postprocess";
 
 describe("ai-hero-image-postprocess", () => {
+  it("briefingReservesHeroForClientUpload: expliciet eigen foto in hero", () => {
+    expect(briefingReservesHeroForClientUpload("Gebruik mijn geüploade foto in de hero")).toBe(true);
+    expect(briefingReservesHeroForClientUpload("Hero: onze eigen sfeerfoto")).toBe(true);
+    expect(briefingReservesHeroForClientUpload("Geen AI hero, alleen ons materiaal")).toBe(true);
+  });
+
+  it("briefingReservesHeroForClientUpload: alleen uploads of vage briefing → false", () => {
+    expect(briefingReservesHeroForClientUpload("Logo en wat screenshots bijgevoegd.")).toBe(false);
+    expect(briefingReservesHeroForClientUpload("Website voor kapper in Amsterdam")).toBe(false);
+  });
+
+  it("briefingReservesHeroForClientUpload: expliciet geen foto in hero → false", () => {
+    expect(briefingReservesHeroForClientUpload("Hero zonder foto, alleen typografie")).toBe(false);
+    expect(briefingReservesHeroForClientUpload("Geen foto in de hero")).toBe(false);
+  });
+
   it("siteChatMessageSuggestsAiHeroRaster herkent hero + luxe en sluit verwijder-flow uit", () => {
     expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero luxer en high-end")).toBe(true);
     expect(siteChatMessageSuggestsAiHeroRaster("Maak de hero afbeelding luxer")).toBe(true);

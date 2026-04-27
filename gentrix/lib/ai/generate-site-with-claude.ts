@@ -1010,7 +1010,7 @@ const ACCENT_FAMILY_MANDATES = [
 const LAYOUT_ARCHETYPE_MANDATES = [
   "**Layout-lijn (A):** geen bullet-daaltrein met **identieke** kaarten onder elkaar ??? gebruik **asymmetrie**, \`md:col-span-2\` breakout, of ??n brede **editoriale band** met groot citaat/cijfer i.p.v. 3??2 mini-columns.",
   "**Layout-lijn (B):** vermijd dat de **hele** pagina ???hero + 3???koloms USP???grid??? is ??? kies **horizontale scroll-strip**, **bento** (\`grid-cols-4\` met ongelijke cellen), of een **typografie-only** trust-blok **zonder** pictogram-raster.",
-  "**Layout-lijn (C):** wissel sectieritme: **split met veel negatieve ruimte**, **staggered cards** (alternerend \`md:translate-y-*\`), of **twee kolommen met ??n megakaart** ??? niet overal dezelfde \`grid md:grid-cols-3 gap-6\`.",
+  "**Layout-lijn (C):** wissel sectieritme: **staggered cards** (alternerend \`md:translate-y-*\`), **twee kolommen met ??n megakaart**, of **??n lichte editorial split** alleen als de briefing expliciet split/twee-kolom vraagt ??? **niet** standaard overal 50/50; ook niet drie keer hetzelfde \`grid md:grid-cols-3 gap-6\`.",
   "**Layout-lijn (D):** hero: geef **voorkeur** aan **full-bleed** (beeld/gradient over **volle breedte** + tekst op overlay) of **asymmetrische overlay** ??? **niet** automatisch een strakke **50/50 twee-koloms** (foto | tekst) tenzij de briefing expliciet split vraagt; kort in \`config.style\`.",
   "**Layout-lijn (E):** diensten/USPs als **??n horizontale band/tijdlijn** of **max. 2 kolommen brede kaarten** ??? geen zes gelijke tegeltjes tenzij de briefing expliciet ???pijlers??? noemt.",
 ] as const;
@@ -1019,7 +1019,7 @@ const LAYOUT_ARCHETYPE_MANDATES = [
 const STUDIO_NAV_SHELL_VARIANCE_HINTS = [
   "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `darkSolid`, `variant`: `bar`, `navBarLayout`: `standard` ??? contrastrijke balk boven lichte content.",
   "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `glassLight`, `variant`: `bar`, `navBarLayout`: `standard` ??? matte glas-balk; past vaak bij gradients.",
-  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `floatingPill`, `variant`: `pill`, `navBarLayout`: `standard` ??? zwevende pill i.p.v. platte witte utility-balk.",
+  "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `glassLight`, `variant`: `bar`, `navBarLayout`: `centeredLinks` ??? matte glas-**balk** (volle breedte) met gecentreerde desktop-links ??? **geen** `floatingPill` tenzij de briefing expliciet zwevend/floating vraagt.",
   "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `editorialTransparent`, `variant`: `bar`, `navBarLayout`: `centeredLinks` ??? editorial met gecentreerde desktop-links.",
   "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `luxuryGold`, `variant`: `bar`, `navBarLayout`: `standard` ??? warm/luxe merkgevoel.",
   "**Shell-nav (`config.studioNav`):** overweeg `navVisualPreset`: `softBrand`, `variant`: `pill`, `navBarLayout`: `standard` ??? zachte merk-pill.",
@@ -1045,7 +1045,7 @@ function buildVarianceBlock(
     ? `- **Kleur:** de briefing noemt **${explicitColors.join(", ")}** ??? gebruik die als basis voor \`theme\` en UI; geen willekeurig extra palet tenzij de briefing dat vraagt.`
     : `- **Accentsuggestie (${accentIdx + 1}/${ACCENT_FAMILY_MANDATES.length}):** ${ACCENT_FAMILY_MANDATES[accentIdx]}`;
   const layoutLine = `- ${LAYOUT_ARCHETYPE_MANDATES[layoutIdx]} (${layoutIdx + 1}/${LAYOUT_ARCHETYPE_MANDATES.length})`;
-  const navShellLine = `- ${STUDIO_NAV_SHELL_VARIANCE_HINTS[navShellIdx]} (${navShellIdx + 1}/${STUDIO_NAV_SHELL_VARIANCE_HINTS.length}). **Niet** elke site identiek \`minimalLight\` + \`navBarLayout: standard\` + \`variant: bar\` alleen omdat een JSON-sjabloon dat ooit liet zien ??? stem af op \`config.theme\` + briefing (briefing wint).`;
+  const navShellLine = `- ${STUDIO_NAV_SHELL_VARIANCE_HINTS[navShellIdx]} (${navShellIdx + 1}/${STUDIO_NAV_SHELL_VARIANCE_HINTS.length}). **Niet** elke site identiek \`minimalLight\` + \`navBarLayout: standard\` + \`variant: bar\` alleen omdat een JSON-sjabloon dat ooit liet zien ??? stem af op \`config.theme\` + briefing (briefing wint). **\`floatingPill\` / zwevende capsule-nav:** alleen als de briefing woorden als **zwevend**, **floating**, **pill-nav** of duidelijk speels/consumer-UI vraagt ??? anders **bar**-presets (\`minimalLight\`, \`glassLight\`, \`darkSolid\`, \`compactBar\`, …).`;
 
   return `=== 0A. COMPOSITIE (deze run) ===
 Kies **??n** duidelijke lijn door de pagina (bijv. editorial type, asymmetrische splits, of een duidelijk licht/donker ritme) en houd die **consequent** vast. Herhaal niet in elke sectie hetzelfde 3-koloms kaarten-grid tenzij de briefing of branche dat echt vraagt.
@@ -1078,7 +1078,7 @@ Recente klanten (vermijd bewust copy-paste van hetzelfde stramien): ${recent}
 
 - Zet in \`config.style\` **??n korte zin** (eigen woorden, **max. ${MASTER_PROMPT_CONFIG_STYLE_MAX} tekens**) welk compositieprincipe je kiest; laat layout en typografie dat ondersteunen.
 - Varieer sectie-opbouw (lijst / split / grid / typografie-led) ??? niet drie keer hetzelfde kaartpatroon achter elkaar zonder reden.
-- **Globale shell-nav:** \`config.studioNav\` ??? varieer \`navVisualPreset\`, \`navBarLayout\` (\`standard\`, \`centeredLinks\`, \`linksRightInHero\`) en \`variant\` (\`bar\` vs \`pill\`) tussen klanten; steeds dezelfde \`minimalLight\`+standaardlayout is een gemiste kans als de briefing dat niet eist (zie ?0A).
+- **Globale shell-nav:** \`config.studioNav\` ??? varieer \`navVisualPreset\`, \`navBarLayout\` (\`standard\`, \`centeredLinks\`, \`linksRightInHero\`) en \`variant\` (\`bar\` vs \`pill\`) tussen klanten; **\`floatingPill\` niet als default** ??? alleen bij expliciete zwevend/floating-wens in de briefing. Steeds dezelfde \`minimalLight\`+standaardlayout is een gemiste kans als de briefing dat niet eist (zie ?0A).
 - Sterke briefing en branche gaan boven gemakzuchtige defaults.
 - **Anti-template:** "veilig" en anoniem ogen is een **mislukking** voor deze studio ??? voorzichtigheid mag **niet** leiden tot generieke SaaS-esthetiek als de briefing iets specifiekers toelaat.`;
 }
@@ -1550,12 +1550,15 @@ function buildOperationalNavParts(
 function buildClientImagesPromptBlock(
   clientImages: ClientImage[],
   wantsGeneratedHeroImage = false,
+  expectServerHeroAssetFirst = false,
 ): string {
   if (clientImages.length === 0) return "";
   const list = clientImages.map((img, i) => `${i + 1}. ${img.url}${img.label ? ` ??? ${img.label}` : ""}`).join("\n");
   const heroRule = wantsGeneratedHeroImage
     ? `- **Hero (\`#hero\`) ??? AI-beeld gevraagd (verplicht):** de briefing vraagt expliciet om een **AI-gegenereerde** hero-afbeelding. Gebruik de klantfoto's **niet** in de hero-sectie ??? zet **geen** \`<img>\` of \`background-image\` van de lijst hierboven in \`#hero\`. Gebruik gradient + typografie in de hero; de server injecteert automatisch een AI-beeld. Gebruik de klantfoto's **w?l** in andere secties (diensten, over ons, galerij, ???).`
-    : `- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) ??? gebruik dan \`<img src="???">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (geen externe stock als vervanger).`;
+    : expectServerHeroAssetFirst
+      ? `- **Hero (\`#hero\`) ??? server-sfeerbeeld:** de studio genereert een **AI-sfeerbeeld** voor de hero (asset-first blok onderaan deze prompt, of injectie direct na HTML). Gebruik klant-uploads **niet** als dominant full-bleed hoofdbeeld in \`#hero\` (**klein logo** of subtiel accent mag). Bouw \`#hero\` met typografie + **lichte** scrim/gradient zodat het server-beeld zichtbaar blijft. Gebruik de uploads **w?l** prominent in **andere** secties.`
+      : `- **Hero mag** met de **beste** upload (scherp, goed belicht, passend bij de kop) ??? gebruik dan \`<img src="???">\` met de **exacte** URL uit de lijst hierboven. Geen hero zonder beeld **tenzij** geen enkele upload geschikt is: dan **typografie + gradient** (geen externe stock als vervanger).`;
   return `
 === KLANTFOTO'S (VERPLICHT IN DE SITE ALS ZE MEESTUUR) ===
 
@@ -1923,6 +1926,7 @@ export function buildWebsiteGenerationUserPrompt(
   const clientImagesBlock = buildClientImagesPromptBlock(
     clientImages,
     briefingWantsAiGeneratedHeroImage(description),
+    shouldRunStudioHeroImagePipeline(description, clientImages.length),
   );
   const briefingRefImages = options?.briefingReferenceImages?.filter((img) => img.url) ?? [];
   const briefingRefBlock = buildBriefingReferenceImagesPromptBlock(
@@ -2681,8 +2685,7 @@ export async function generateSiteWithClaude(
     }
   }
 
-  const skipHeroPrefetch =
-    clientImgCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
+  const skipHeroPrefetch = !shouldRunStudioHeroImagePipeline(description, clientImgCount);
   prefetchedHeroB64Promise =
     !skipHeroPrefetch && !prebakedHero
       ? startOpenAiHeroImagePrefetch({
@@ -2987,8 +2990,7 @@ export function createGenerateSiteReadableStream(
           }
         }
 
-        const skipHeroPrefetch =
-          clientImgCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
+        const skipHeroPrefetch = !shouldRunStudioHeroImagePipeline(description, clientImgCount);
         prefetchedHeroB64Promise =
           !skipHeroPrefetch && !prebakedHero
             ? startOpenAiHeroImagePrefetch({

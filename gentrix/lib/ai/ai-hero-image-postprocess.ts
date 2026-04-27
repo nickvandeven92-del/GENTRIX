@@ -67,6 +67,47 @@ export function briefingWantsAiGeneratedHeroImage(description: string): boolean 
 }
 
 /**
+ * `true` wanneer de tekst **duidelijk** eigen/geüploade beelden in `#hero` reserveert — dan slaan we
+ * de server-side hero-raster (prebake + inject) liever over zodat we geen AI-beeld over een
+ * bewuste klant-keuze heen duwen.
+ *
+ * **Default `false`:** alleen uploads (bv. logo + screenshot) zonder hero-tekst triggert dit **niet**;
+ * vroeger werd elke upload als "klant vult hero zelf" gezien waardoor de pipeline **altijd** uitbleef
+ * en split-heroes leeg/gradient bleven.
+ */
+export function briefingReservesHeroForClientUpload(description: string): boolean {
+  const t = description.trim();
+  if (!t) return false;
+  const lower = t.toLowerCase();
+
+  if (/\b(geen|niet|zonder)\b.{0,50}\b(foto|afbeelding|beeld|image)\b.{0,40}\bin\b.{0,15}(\bde\s+)?hero\b/i.test(lower))
+    return false;
+  if (/\bhero\b.{0,70}\b(zonder|geen)\b.{0,25}\b(foto|afbeelding|beeld|image)\b/i.test(lower)) return false;
+
+  if (/\b(geen|niet)\b.{0,50}\b(ai|gegenereerde|automatische|automatisch gegenereerde)\b.{0,35}\b(hero|hoofdbeeld|sfeerbeeld)\b/i.test(lower))
+    return true;
+
+  if (
+    /\b(gebruik|zet|plaats|wil|wensen|only|use)\b.{0,55}\b(mijn|onze|deze|de\s+geüploade|de\s+upload|uploaded|attached)\b.{0,55}\b(foto|afbeelding|beeld|image|photo)\b.{0,45}\b(in|voor|als)\b.{0,22}(\bde\s+)?hero\b/i.test(
+      lower,
+    )
+  )
+    return true;
+  if (
+    /\b(foto|afbeelding|beeld|image|photo)\b.{0,40}\b(in|voor|als)\b.{0,22}(\bde\s+)?hero\b/i.test(lower) &&
+    /\b(mijn|onze|geüploade|geuploadde|upload|eigen|uploaded|attached)\b/i.test(lower)
+  )
+    return true;
+  if (
+    /\bhero\b.{0,60}\b(mijn|onze|geüploade|geuploadde|upload|eigen|uploaded|attached)\b.{0,30}\b(foto|afbeelding|beeld|image|photo|sfeerfoto)\b/i.test(
+      lower,
+    )
+  )
+    return true;
+  return false;
+}
+
+/**
  * Site-chat: ruimere detectie dan {@link briefingWantsAiGeneratedHeroImage} zodat prompts als
  * "Maak de hero luxer (high-end)" óók de server-side Gemini/OpenAI-hero-pipeline starten,
  * zonder valse triggers op bv. "verwijder de hero" (geen visueel upgrade-signaal).
@@ -346,17 +387,23 @@ export type OpenAiHeroPrefetchInput = {
 };
 
 /**
- * Zelfde drempel als `startOpenAiHeroImagePrefetch`: wanneer `false`, geen server-side hero-beeld
- * (meestal klantfoto's voor de hero, tenzij briefing expliciet AI-hero vraagt).
+ * Wanneer `false`: geen server-side hero-raster (prebake / inject / parallel prefetch).
+ *
+ * **Voorheen:** elke upload (`clientImageCount > 0`) zonder "AI hero"-trefwoorden schakelde de
+ * volledige pipeline uit — zelfs bij alleen een logo, waardoor de HTML vaak een **lege** split-hero
+ * overhield. **Nu:** alleen uitschakelen als de briefing {@link briefingReservesHeroForClientUpload}
+ * expliciet eigen beeld in `#hero` reserveert (of AI-hero expliciet ongewenst is binnen die
+ * detectie).
  */
 export function shouldRunStudioHeroImagePipeline(
   description: string,
   clientImageCount: number,
 ): boolean {
   if (!isAiHeroImagePostProcessEnabled()) return false;
-  const skipPrefetchBecauseLikelyClientHero =
-    clientImageCount > 0 && !briefingWantsAiGeneratedHeroImage(description);
-  return !skipPrefetchBecauseLikelyClientHero;
+  if (clientImageCount === 0) return true;
+  if (briefingWantsAiGeneratedHeroImage(description)) return true;
+  if (briefingReservesHeroForClientUpload(description)) return false;
+  return true;
 }
 
 type GeminiGenerateContentResponse = {

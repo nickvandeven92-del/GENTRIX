@@ -54,6 +54,18 @@ describe("inferStudioNavChromeFromSections", () => {
     expect(cfg?.variant).toBe("pill");
     expect(cfg?.navVisualPreset).toBe("floatingPill");
   });
+
+  it("volle-breedte sticky bar met rounded-full alleen op CTA-knop blijft variant bar", () => {
+    const html = `<header class="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/95 backdrop-blur">
+  <a href="__STUDIO_SITE_BASE__">GENTRIX</a>
+  <a href="#diensten">Wat wij doen</a>
+  <a href="#contact" class="rounded-full bg-zinc-900 px-5 py-2 text-sm text-white">Contact</a>
+</header>`;
+    const sections: TailwindSection[] = [{ sectionName: "hero", html }];
+    const cfg = inferStudioNavChromeFromSections(sections);
+    expect(cfg?.variant).toBe("bar");
+    expect(cfg?.navVisualPreset).toBe("minimalLight");
+  });
 });
 
 describe("buildTailwindSectionsBodyInnerHtml auto-infer", () => {

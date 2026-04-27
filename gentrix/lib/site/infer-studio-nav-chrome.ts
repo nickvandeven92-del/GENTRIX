@@ -74,19 +74,44 @@ function firstSectionSuggestsDarkHeroOverlay(sections: readonly TailwindSection[
   return false;
 }
 
+/**
+ * Alleen echte zwevende pill / narrow shell → `pill` + `floatingPill`.
+ * Niet: volle-breedte `sticky top-0`-balk met ergens een `rounded-full` CTA-knop — dat was te agressief
+ * en gaf bijna elke infer-run `floatingPill`.
+ */
 function pickVariantFromChrome(html: string): "bar" | "pill" {
-  if (/\brounded-full\b/i.test(html)) return "pill";
+  const t = html.trimStart();
+  const rootIdx = (() => {
+    const a = t.search(/<header\b/i);
+    const b = t.search(/<nav\b/i);
+    const c = t.search(/<div\b[^>]*\brole\s*=\s*["']banner["']/i);
+    const xs = [a, b, c].filter((i) => i >= 0);
+    return xs.length ? Math.min(...xs) : -1;
+  })();
+  if (rootIdx < 0) return "bar";
+  const root = sliceOpenTagContent(t, rootIdx);
+  if (!root) return "bar";
+  const rootAttrs = root.attrs;
   const h = html.toLowerCase();
-  /** Zwevende / “floating” shells: vaak `rounded-2xl` + schaduw + inset vanaf top, zonder `rounded-full`. */
-  const hasFloatedInset = /\b(top-4|top-5|top-6)\b/.test(h);
+  const rootLow = rootAttrs.toLowerCase();
+
+  if (/\brounded-full\b/i.test(rootAttrs)) return "pill";
+
+  const hasFloatedInset = /\b(top-4|top-5|top-6)\b/.test(rootLow) || /\b(top-4|top-5|top-6)\b/.test(h);
   const hasFloatedCenter =
     /left-1\/2/.test(h) ||
     /-translate-x-1\/2/.test(h) ||
-    (/\bmx-auto\b/.test(h) && /\bmax-w-(5xl|6xl|7xl)\b/.test(h));
-  if (hasFloatedInset && hasFloatedCenter && /\brounded-(2xl|3xl|xl)\b/.test(h) && /\b(shadow-(lg|xl|2xl)|shadow-md|ring-1)\b/.test(h)) {
+    (/\bmx-auto\b/.test(h) && /\bmax-w-(4xl|5xl|6xl|7xl)\b/.test(h));
+  const narrowShell = /\bmax-w-(4xl|5xl|6xl|7xl)\b/i.test(rootAttrs) || /\bmax-w-(4xl|5xl|6xl|7xl)\b/.test(h);
+  if (
+    hasFloatedInset &&
+    hasFloatedCenter &&
+    narrowShell &&
+    /\brounded-(2xl|3xl|xl)\b/.test(h) &&
+    /\b(shadow-(lg|xl|2xl)|shadow-md|ring-1)\b/.test(h)
+  ) {
     return "pill";
   }
-  if (hasFloatedInset && /\brounded-(2xl|3xl)\b/.test(h) && /\b(shadow-(lg|xl|2xl)|ring-1)\b/.test(h)) return "pill";
   return "bar";
 }
 
