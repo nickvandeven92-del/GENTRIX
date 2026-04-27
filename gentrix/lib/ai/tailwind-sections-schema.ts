@@ -461,10 +461,10 @@ const tailwindMarketingPagesRecordSchema = z
     }
   });
 
-/** Gemini/OpenAI raster-merk + PNG-favicon’s (site-assets); premium alternatief naast SVG `logoSet`. */
+/** Gemini/OpenAI raster-merk (header-WebP op site-assets); favicon-PNG’s optioneel (best-effort upload). */
 export const studioRasterBrandSetSchema = z.object({
   headerLogoUrl: z.string().url().max(2048),
-  favicon32Url: z.string().url().max(2048),
+  favicon32Url: z.string().url().max(2048).optional(),
   favicon192Url: z.string().url().max(2048).optional(),
 });
 
@@ -489,7 +489,7 @@ const tailwindPayloadStrictObjectSchema = z
     customJs: z.string().max(48_000).optional(),
     /** Optioneel model-`logoSet`; na succesvolle server-rasterpost wordt dit weggelaten i.f.v. `rasterBrandSet`. */
     logoSet: generatedLogoSetSchema.optional(),
-    /** Server Gemini/OpenAI raster-merk (header + favicon); bij succes het zichtbare merk i.p.v. generiek SVG-letterlogo. */
+    /** Server Gemini/OpenAI raster-merk (header-WebP); favicon via `logoSet` of site-identiteit-SVG. */
     rasterBrandSet: studioRasterBrandSetSchema.optional(),
     /** Optioneel: server-gecompileerde utilities (geen Tailwind Play CDN op live/preview). */
     tailwindCompiledCss: z.string().max(SNAPSHOT_TAILWIND_COMPILED_CSS_MAX).optional(),

@@ -2314,7 +2314,7 @@ export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig |
 
 /**
  * `<link rel="icon">` voor geëxporteerde HTML en iframe-srcDoc.
- * `rasterBrandSet`-PNG’s wanneer aanwezig; anders `logoSet.variants.favicon`; anders deterministische site-identiteit.
+ * Alleen SVG (`logoSet.variants.favicon` of deterministische site-identiteit) — geen externe raster-favicon’s.
  */
 export function buildFaviconLinkTagForPublishedSite(input: {
   logoSet?: GeneratedLogoSet | null;
@@ -2324,20 +2324,6 @@ export function buildFaviconLinkTagForPublishedSite(input: {
   pageConfig?: TailwindPageConfig | null;
   themePrimaryHex?: string | null;
 }): string {
-  const r32 = input.rasterBrandSet?.favicon32Url?.trim();
-  if (r32?.startsWith("https://")) {
-    const r192 = input.rasterBrandSet?.favicon192Url?.trim();
-    /** Grotere PNG eerst: browsers/tabbladen pakken die voor scherpere weergave op retina. */
-    const lines: string[] = [];
-    if (r192?.startsWith("https://")) {
-      lines.push(`<link rel="icon" href="${escapeDataAttr(r192)}" type="image/png" sizes="192x192"/>`);
-    }
-    lines.push(`<link rel="icon" href="${escapeDataAttr(r32)}" type="image/png" sizes="32x32"/>`);
-    if (r192?.startsWith("https://")) {
-      lines.push(`<link rel="apple-touch-icon" href="${escapeDataAttr(r192)}" sizes="192x192"/>`);
-    }
-    return lines.join("\n");
-  }
   const svg = resolvePublicSiteFaviconSvg({
     logoFavicon: input.logoSet?.variants?.favicon,
     displayName: input.displayName,

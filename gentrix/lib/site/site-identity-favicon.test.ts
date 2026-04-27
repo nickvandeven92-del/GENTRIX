@@ -57,16 +57,13 @@ describe("site-identity-favicon", () => {
 });
 
 describe("buildNextPublishedSiteIcons", () => {
-  it("zet altijd apple naast raster icon (ook zonder 192)", () => {
+  it("gebruikt SVG (geen raster-URL’s) ook wanneer oude payloads raster-favicon zouden hebben", () => {
     const icons = buildNextPublishedSiteIcons({
-      rasterFavicon32Url: "https://cdn.example/fav32.png",
-      rasterFavicon192Url: undefined,
       displayName: "X",
       slug: "x",
     });
-    expect(icons.apple?.length).toBe(1);
-    expect(icons.apple?.[0]?.url).toBe("https://cdn.example/fav32.png");
-    expect(icons.icon?.length).toBeGreaterThanOrEqual(1);
+    expect(icons.icon?.[0]?.url).toContain("data:image/svg+xml");
+    expect(icons.apple?.[0]?.url).toBe(icons.icon?.[0]?.url);
   });
 
   it("zet apple op dezelfde SVG data-URL als tabblad-icon bij fallback", () => {

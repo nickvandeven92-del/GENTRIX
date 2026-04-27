@@ -128,9 +128,6 @@ export function renderSiteIdentityFaviconSvg(input: {
 
 export type ResolvePublicSiteFaviconInput = {
   logoFavicon?: string | null | undefined;
-  /** Gemini/OpenAI PNG-favicon (site-assets); wint op SVG-tabblad. */
-  rasterFavicon32Url?: string | null | undefined;
-  rasterFavicon192Url?: string | null | undefined;
   displayName: string;
   slug: string;
   pageConfig?: TailwindPageConfig | null;
@@ -148,33 +145,12 @@ export function resolvePublicSiteFaviconSvg(input: ResolvePublicSiteFaviconInput
   });
 }
 
-function isHttpsRasterUrl(s: string | null | undefined): s is string {
-  const t = s?.trim() ?? "";
-  return t.startsWith("https://") && t.length < 2048;
-}
-
 export function buildNextPublishedSiteIcons(input: ResolvePublicSiteFaviconInput): NonNullable<Metadata["icons"]> {
-  const r32 = input.rasterFavicon32Url?.trim();
-  if (isHttpsRasterUrl(r32)) {
-    const r192 = input.rasterFavicon192Url?.trim();
-    const icon: Array<{ url: string; type?: string; sizes?: string }> = [];
-    if (isHttpsRasterUrl(r192)) {
-      icon.push({ url: r192, type: "image/png", sizes: "192x192" });
-    }
-    icon.push({ url: r32, type: "image/png", sizes: "32x32" });
-    /**
-     * Verplicht `apple` meegeven: anders blijft `app/layout.tsx` (Portaal) `apple-touch-icon` in de merge
-     * hangen — tabblad / iOS-toast toont dan overal het studio-icoon i.p.v. de klantfavicon.
-     * Zonder 192px-asset: 32px- PNG (klein maar uniek per site).
-     */
-    const appleUrl = isHttpsRasterUrl(r192) ? r192! : r32;
-    const appleSizes = isHttpsRasterUrl(r192) ? "192x192" : "32x32";
-    return {
-      icon,
-      apple: [{ url: appleUrl, sizes: appleSizes, type: "image/png" }],
-    } as NonNullable<Metadata["icons"]>;
-  }
-
+  /**
+   * Alleen SVG (model-`logoFavicon` of deterministische site-identiteit). Geen externe raster-PNG’s meer:
+   * die hangen aan Supabase-public-URL’s en breken tabblad-SEO wanneer storage/keys niet kloppen.
+   * `apple` blijft verplicht meegegeven zodat de merge met `app/layout.tsx` niet het studio-icoon laat hangen.
+   */
   const svg = resolvePublicSiteFaviconSvg(input);
   const safe =
     svg.length <= MAX_FAVICON_DATA_URL_CHARS

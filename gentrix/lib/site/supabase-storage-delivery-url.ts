@@ -102,6 +102,12 @@ export function supabaseStorageObjectUrlToRenderUrl(
   const base = raw.split(/[?#]/)[0] ?? raw;
   if (base.toLowerCase().includes("favicon")) return raw;
   try {
+    const bu = new URL(base);
+    if (bu.hostname.endsWith(".supabase.co") && /\/ai-brand\//i.test(bu.pathname)) return raw;
+  } catch {
+    /* ignore */
+  }
+  try {
     const u = new URL(raw);
     const prefix = "/storage/v1/object/public/";
     if (!u.pathname.startsWith(prefix)) return raw;
@@ -138,6 +144,17 @@ export function isPreoptimizedAiHeroPublishVariantObjectUrl(raw: string): boolea
   }
 }
 
+/** AI-merkmark (`…/ai-brand/…`) — direct `object/public` laten; geen `render/image`-omzetting. */
+export function isAiBrandAssetObjectUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (!u.hostname.endsWith(".supabase.co")) return false;
+    return /\/ai-brand\//i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export function rewriteSupabaseStorageObjectUrlsForWebDelivery(
   html: string,
   opts?: SupabaseImageDeliveryOptions,
@@ -145,6 +162,7 @@ export function rewriteSupabaseStorageObjectUrlsForWebDelivery(
   return html.replace(SUPABASE_OBJECT_PUBLIC_IMAGE_RE, (match) => {
     if (match.includes("/storage/v1/render/image/public/")) return match;
     if (isPreoptimizedAiHeroPublishVariantObjectUrl(match)) return match;
+    if (isAiBrandAssetObjectUrl(match)) return match;
     return supabaseStorageObjectUrlToRenderUrl(match, opts);
   });
 }
@@ -205,7 +223,8 @@ function escapeHtmlAttrAmpersands(value: string): string {
   return value.replace(/&/g, "&amp;");
 }
 
-function decodeAttrUrl(url: string): string {
+/** Decode `&amp;` in attribute values (DOMPurify / SSR). */
+export function decodeAttrUrl(url: string): string {
   return url.replace(/&amp;/g, "&").replace(/&#38;/g, "&");
 }
 
@@ -295,6 +314,36 @@ export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
  * Hero-HTML: elke `<img>` met Supabase **render**-`src` krijgt `srcset` + afgeleide `sizes`.
  * Slaat over als `srcset` of `sizes` al gezet is.
  */
+/**
+ * Publieke `…/ai-hero/<stem>/<w>.webp`-set (object/public): vult `srcset` + `sizes` als die ontbreken.
+ * Breedtes moeten gelijk lopen aan {@link HERO_PUBLISH_WEBP_WIDTH_TARGETS} in `hero-responsive-webp-variants.ts`.
+ */
+const AI_HERO_OBJECT_SRCSET_WIDTHS = [640, 960, 1280, 1920, 2400] as const;
+
+export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
+    if (/\bsrcset\s*=/i.test(attrs)) return full;
+    if (/\bsizes\s*=/i.test(attrs)) return full;
+    if (/\bdata-gentrix-raster-brand\s*=/i.test(attrs)) return full;
+    if (/\bdata-studio-brand-mark\s*=/i.test(attrs)) return full;
+    const m = attrs.match(/\bsrc\s*=\s*(["'])([^"']*)\1/i);
+    if (!m) return full;
+    const q = m[1];
+    const rawSrc = decodeAttrUrl(m[2].trim());
+    if (!isPreoptimizedAiHeroPublishVariantObjectUrl(rawSrc)) return full;
+    const pathOnly = rawSrc.split(/[?#]/)[0] ?? rawSrc;
+    const base = pathOnly.replace(/\/\d+\.webp$/i, "");
+    if (!base || base === pathOnly) return full;
+    const srcset = AI_HERO_OBJECT_SRCSET_WIDTHS.map((w) => {
+      const u = `${base}/${w}.webp`;
+      return `${escapeHtmlAttrAmpersands(u)} ${w}w`;
+    }).join(", ");
+    const sizesEscaped = escapeHtmlAttrAmpersands(inferHeroImgSizesFromAttrs(attrs));
+    const trimmed = attrs.trim();
+    return `<img ${trimmed} srcset=${q}${srcset}${q} sizes=${q}${sizesEscaped}${q}>`;
+  });
+}
+
 export function addResponsiveSrcsetToHeroSupabaseRenderImages(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
     /** Raster-/SVG-merk in nav of foutief in hero: geen hero-srcset (`sizes=100vw` ≠ logo). */

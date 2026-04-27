@@ -37,8 +37,6 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       return {
         ...base,
         icons: buildNextPublishedSiteIcons({
-          rasterFavicon32Url: bundle.payload.rasterBrandSet?.favicon32Url,
-          rasterFavicon192Url: bundle.payload.rasterBrandSet?.favicon192Url,
           logoFavicon: bundle.payload.logoSet?.variants?.favicon,
           displayName,
           slug,

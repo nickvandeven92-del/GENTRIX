@@ -257,16 +257,15 @@ export async function generateStudioRasterBrandSetPublicUrls(ctx: {
 
   const headerPath = `${basePath}/header.webp`;
   const headerUrl = await uploadWebpBytes(headerPath, headerWebp);
+  if (!headerUrl) return null;
+
   const fav32Url = await uploadPngBytes(`${basePath}/favicon-32.png`, fav32);
   const fav192Url = await uploadPngBytes(`${basePath}/favicon-192.png`, fav192);
 
-  if (!headerUrl || !fav32Url || !fav192Url) return null;
-
-  return {
-    headerLogoUrl: headerUrl,
-    favicon32Url: fav32Url,
-    favicon192Url: fav192Url,
-  };
+  const out: StudioRasterBrandSet = { headerLogoUrl: headerUrl };
+  if (fav32Url) out.favicon32Url = fav32Url;
+  if (fav192Url) out.favicon192Url = fav192Url;
+  return out;
 }
 
 export type StudioRasterBrandPrefetchInput = {
@@ -291,9 +290,8 @@ export type ApplyStudioRasterBrandContext = StudioRasterBrandPrefetchInput & {
 /**
  * Voegt `rasterBrandSet` toe en werkt nav/header bij (geen dubbele run wanneer al `data-gentrix-raster-brand` + URL).
  *
- * Model-`logoSet` (vaak generiek vierkant + letter) blokkeerde raster niet meer: bij geslaagde upstream
- * overschrijven we dat met het gegenereerde merkbeeld en laten we `logoSet` vallen zodat opslag/preview
- * consistent het rasterlogo + PNG-favicon’s gebruiken.
+ * Behoud `logoSet` (o.a. SVG-favicon in metadata) naast raster-header zodat tabblad/merk niet
+ * uitsluitend van storage-URL’s afhangt.
  */
 export async function applyStudioRasterBrandToGeneratedPage(
   data: GeneratedTailwindPage,
@@ -320,6 +318,5 @@ export async function applyStudioRasterBrandToGeneratedPage(
     ...data,
     sections,
     rasterBrandSet: set,
-    logoSet: undefined,
   };
 }

@@ -3,6 +3,7 @@ import {
   addResponsiveSrcsetToHeroSupabaseRenderImages,
   buildSupabaseRenderSrcsetFromRenderUrl,
   inferHeroImgSizesFromAttrs,
+  isAiBrandAssetObjectUrl,
   isPreoptimizedAiHeroPublishVariantObjectUrl,
   promoteHeroSupabaseBackgroundUrlToImg,
   qualityForSrcsetWidth,
@@ -48,6 +49,16 @@ describe("rewriteSupabaseStorageObjectUrlsForWebDelivery", () => {
     const u =
       "https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/1776-abc/1280.webp";
     expect(isPreoptimizedAiHeroPublishVariantObjectUrl(u)).toBe(true);
+    const html = `<img src="${u}" alt="" />`;
+    const out = rewriteSupabaseStorageObjectUrlsForWebDelivery(html);
+    expect(out).toContain("/object/public/");
+    expect(out).not.toContain("/render/image/public/");
+  });
+
+  it("laat AI-merkmark (ai-brand) object/public-URL ongemoeid", () => {
+    const u =
+      "https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-brand/99-abc/header.webp";
+    expect(isAiBrandAssetObjectUrl(u)).toBe(true);
     const html = `<img src="${u}" alt="" />`;
     const out = rewriteSupabaseStorageObjectUrlsForWebDelivery(html);
     expect(out).toContain("/object/public/");
