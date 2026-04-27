@@ -82,7 +82,7 @@ function pickVariantFromChrome(html: string): "bar" | "pill" {
   const hasFloatedCenter =
     /left-1\/2/.test(h) ||
     /-translate-x-1\/2/.test(h) ||
-    (/\bmx-auto\b/.test(h) && /\bmax-w-5xl\b/.test(h));
+    (/\bmx-auto\b/.test(h) && /\bmax-w-(5xl|6xl|7xl)\b/.test(h));
   if (hasFloatedInset && hasFloatedCenter && /\brounded-(2xl|3xl|xl)\b/.test(h) && /\b(shadow-(lg|xl|2xl)|shadow-md|ring-1)\b/.test(h)) {
     return "pill";
   }

@@ -326,7 +326,7 @@ export function CinematicNav({
         className="fixed top-0 left-0 right-0 z-50 w-full border-b border-zinc-200 bg-white shadow-sm pt-[env(safe-area-inset-top,0px)]"
         style={fontSans}
       >
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3.5 sm:gap-8 sm:px-6 md:gap-10">
           <div className="flex min-w-0 flex-1 basis-0 justify-start">
             <a
               href={homeHref}
@@ -385,7 +385,7 @@ export function CinematicNav({
         className="fixed top-0 left-0 right-0 z-50 w-full border-b border-white/10 bg-zinc-950 text-white pt-[env(safe-area-inset-top,0px)]"
         style={fontSans}
       >
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3.5 sm:gap-8 sm:px-6 md:gap-10">
           <div className="flex min-w-0 flex-1 basis-0 justify-start">
             <a
               href={homeHref}
@@ -460,12 +460,12 @@ export function CinematicNav({
     >
       <MotionNavShell
         className={cn(
-          "pointer-events-auto flex w-full max-w-5xl items-center rounded-none border border-white/12 px-6 py-3 backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-8 sm:py-4 md:px-10",
+          "pointer-events-auto flex w-full max-w-7xl items-center rounded-none border border-white/12 px-6 py-3 backdrop-blur-md transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-8 sm:py-4 md:px-12",
           "max-md:max-w-none max-md:border-x-0 max-md:border-t-0 max-md:border-b max-md:shadow-none",
         )}
         style={floatingShellStyle}
       >
-        <div className="flex w-full items-center gap-3 sm:gap-4">
+        <div className="flex w-full items-center gap-6 sm:gap-8 md:gap-10">
           <div className="flex min-w-0 flex-1 basis-0 shrink-0 justify-start">
             <a
               href={homeHref}

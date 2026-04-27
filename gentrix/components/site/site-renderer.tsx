@@ -66,9 +66,9 @@ function SectionBlock({ section }: { section: GeneratedSection }) {
           id={section.id}
           className="border-y border-[var(--site-fg)]/10 px-6 py-12 backdrop-blur-sm [background:color-mix(in_srgb,var(--site-surface)_92%,var(--site-bg))]"
         >
-          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {section.items.map((item, i) => (
-              <div key={i} className="text-center">
+              <div key={i} className="min-w-0 text-center">
                 <p className="text-3xl font-bold tabular-nums text-[var(--site-primary)] md:text-4xl">{item.value}</p>
                 <p className="mt-1 text-sm text-[var(--site-fg)]/65">{item.label}</p>
               </div>

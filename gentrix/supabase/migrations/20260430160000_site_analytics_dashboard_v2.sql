@@ -126,7 +126,7 @@ as $$
     from cta_aid ck
     group by 1, 2, 3, 4, 5
   ),
-  cta_clk_total as (select coalesce(nullif(sum(c.clicks), 0), 1) as t from cta_agg cta0),
+  cta_clk_total as (select coalesce(nullif(sum(cta0.clicks), 0), 1) as t from cta_agg cta0),
   first_clicks as (
     select
       coalesce(ck2.ex_aid, '(geen id)') as aid, ck2.session_id, min(ck2.created_at) as t1

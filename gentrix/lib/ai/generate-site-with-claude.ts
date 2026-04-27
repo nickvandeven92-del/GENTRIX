@@ -1466,7 +1466,7 @@ ${buildContactStackStructureLine()}
   - **Verboden:** \`example.com\`, \`via.placeholder\`, verzonnen of generieke externe stock-foto-URL's.
   - **Overige secties:** gradient, patroon, typografie, SVG ??? geen stock-foto; geen decoratieve fotomuur.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
-${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
+${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar. **KPI-/bewijsbanden:** gebruik niet \`grid-cols-2\` als basis met daarna \`md:grid-cols-4\` / \`lg:grid-cols-4\` voor vier tegels — dat knijpt tekst op smalle telefoons; kies \`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4\` (of \`xl:\` voor vier kolommen).
 
 === 5. OUTPUT-FORMAAT (strikt JSON) ===
 
@@ -1828,7 +1828,7 @@ ${preserve ? `- **Upgrade-modus:** Bestaande sectie-\`html\` ongewijzigd laten *
   - **Verboden:** \`example.com\`, \`via.placeholder\`, verzonnen of generieke externe stock-foto-URL's.
   - **Overige secties:** gradient, patroon, typografie, SVG ??? geen stock-foto; geen decoratieve fotomuur.
 - Fragment per sectie: geen \`<html>\` / \`<body>\` wrapper.
-${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar.
+${section4Nav}- **Responsief:** flex/grid met breakpoints; mobiel blijft bruikbaar. **KPI-/bewijsbanden:** gebruik niet \`grid-cols-2\` als basis met daarna \`md:grid-cols-4\` / \`lg:grid-cols-4\` voor vier tegels — dat knijpt tekst op smalle telefoons; kies \`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4\` (of \`xl:\` voor vier kolommen).
 
 === 5. OUTPUT-FORMAAT (strikt JSON) ===
 

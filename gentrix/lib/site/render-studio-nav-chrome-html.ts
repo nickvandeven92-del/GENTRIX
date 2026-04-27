@@ -133,7 +133,7 @@ export function renderStudioNavChromeHtml(
 
   /** Mobiel (<md): volle-breedte balk bovenaan (Vugts-patroon); vanaf tablet/desktop zwevende pill/hero-cluster waar van toepassing. */
   const hostClass = isHeroOverlay
-    ? `fixed z-50 flex w-full flex-col items-stretch overflow-visible max-md:left-0 max-md:right-0 max-md:top-0 max-md:max-w-none max-md:rounded-none max-md:ring-0 md:right-4 md:top-4 md:left-auto md:w-max md:max-w-[min(100vw-2rem,56rem)] md:rounded-none md:ring-1 md:ring-white/15${shadowPart}`.trim()
+    ? `fixed z-50 flex w-full flex-col items-stretch overflow-visible max-md:left-0 max-md:right-0 max-md:top-0 max-md:max-w-none max-md:rounded-none max-md:ring-0 md:right-4 md:top-4 md:left-auto md:w-max md:max-w-[min(100vw-2rem,80rem)] md:rounded-none md:ring-1 md:ring-white/15${shadowPart}`.trim()
     : contract.variant === "pill"
       ? `fixed left-0 right-0 z-50 flex overflow-visible max-md:top-0 max-md:justify-stretch max-md:px-0 max-md:pointer-events-auto md:pointer-events-none md:top-4 md:justify-center md:px-4`.trim()
       : `fixed top-0 left-0 right-0 z-50 w-full overflow-visible ${tone.barBottomRadiusClass}${shadowPart}`.trim();
@@ -141,10 +141,10 @@ export function renderStudioNavChromeHtml(
   const innerPad = innerYClasses(contract);
   const innerWrapClass =
     contract.variant === "pill"
-      ? `flex w-full min-w-0 items-center justify-between gap-3 sm:gap-6 ${innerPad}`
+      ? `flex w-full min-w-0 items-center justify-between gap-6 sm:gap-8 md:gap-10 ${innerPad}`
       : isHeroOverlay
         ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 px-4 py-2 sm:gap-3 sm:px-6 sm:py-2.5 md:justify-end md:px-8 ${innerPad}`
-        : `mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 sm:gap-6 ${innerPad}`;
+        : `mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-6 px-4 sm:gap-8 sm:px-6 md:gap-10 lg:px-8 ${innerPad}`;
 
   const r = tone.ctaRadiusClass;
   const ind = linkIndicatorClasses(contract.activeIndicator, r);
@@ -252,7 +252,7 @@ export function renderStudioNavChromeHtml(
   const headerStyleAttr = usePillFlexCenter
     ? ` style="${escapeAttr(tone.chromeScopeStyle)}"`
     : ` style="${escapeAttr(hostStyle)}"`;
-  const pillInnerClass = `pointer-events-auto flex w-full min-w-0 max-w-5xl items-center justify-between gap-3 sm:gap-6 px-5 sm:px-7 md:px-9 max-md:max-w-none max-md:rounded-none max-md:shadow-none ${innerPad} ${pillShellVisual}`.trim();
+  const pillInnerClass = `pointer-events-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-6 sm:gap-8 md:gap-10 px-5 sm:px-7 md:px-11 max-md:max-w-none max-md:rounded-none max-md:shadow-none ${innerPad} ${pillShellVisual}`.trim();
   const innerStyleAttr = usePillFlexCenter ? ` style="${escapeAttr(hostStyle)}"` : "";
 
   const innerBlock = usePillFlexCenter

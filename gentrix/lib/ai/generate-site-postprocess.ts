@@ -1972,6 +1972,23 @@ export function dedupeExcessTelAndWhatsAppAnchorsAcrossSections(
   });
 }
 
+/**
+ * KPI-/trustbanden met `grid-cols-2` op alle breedtes + `*:grid-cols-4` op desktop maken teksten
+ * op zeer smalle telefoons (<360px) onleesbaar (overlap). Mobiel eerst één kolom.
+ */
+export function repairDenseTwoColumnProofGridsInHtml(html: string): string {
+  return html.replace(/\bclass\s*=\s*(["'])((?:(?!\1)[^])*)\1/gi, (_full, quote: string, classes: string) => {
+    if (!/\bgrid\b/.test(classes) || !/\bgrid-cols-2\b/.test(classes)) {
+      return `class=${quote}${classes}${quote}`;
+    }
+    if (!/\b(?:sm|md|lg|xl):grid-cols-4\b/.test(classes)) {
+      return `class=${quote}${classes}${quote}`;
+    }
+    const next = classes.replace(/\bgrid-cols-2\b/, "grid-cols-1 sm:grid-cols-2").replace(/\bmd:grid-cols-4\b/g, "lg:grid-cols-4");
+    return `class=${quote}${next}${quote}`;
+  });
+}
+
 export function postProcessClaudeTailwindPage(
   page: ClaudeTailwindPageOutput,
   options?: PostProcessClaudeTailwindPageOptions,
@@ -2000,19 +2017,20 @@ export function postProcessClaudeTailwindPage(
     const html2bb = ensureAlpineMobileOverlayHasLgHidden(html2ba);
     const html2c = stripDecorativeScrollCueMarkup(html2bb);
     const html2d = stripStudioMarqueeMarkupFromHtml(html2c);
+    const html2e = repairDenseTwoColumnProofGridsInHtml(html2d);
     let html3: string;
     if (row.id === "hero") {
       html3 = addHeroLcpImageHints(
         addResponsiveSrcsetToHeroSupabaseRenderImages(
           promoteHeroSupabaseBackgroundUrlToImg(
-            rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2d)),
+            rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2e)),
           ),
         ),
       );
     } else {
       /** Eerste sectie vaak (deels) above-the-fold; vanaf sectie 2 standaard lazy voor bandbreedte. */
       html3 =
-        sectionIndex > 0 ? addDefaultLazyLoadingToBelowFoldSectionImages(html2d) : html2d;
+        sectionIndex > 0 ? addDefaultLazyLoadingToBelowFoldSectionImages(html2e) : html2e;
     }
     return { ...row, html: html3 };
   });
