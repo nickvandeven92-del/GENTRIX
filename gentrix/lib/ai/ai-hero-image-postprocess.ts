@@ -263,8 +263,8 @@ export function shouldAttemptAiHeroImageForHtml(heroHtml: string): boolean {
 
 export type BuildOpenAiHeroPromptOptions = {
   /**
-   * Site-assistent / opvolgbeurt: unieke seed zodat Gemini niet telkens quasi-dezelfde compositie levert
-   * bij gelijkwaardige korte prompts.
+   * Unieke seed per upstream-call zodat Gemini/OpenAI niet telkens quasi-dezelfde compositie levert
+   * bij gelijkwaardige korte prompts of een lang gedeeld instructieblok.
    */
   variationSeed?: string;
 };
@@ -536,7 +536,9 @@ export async function generateStudioHeroImagePublicUrl(ctx: {
   subfolderSlug?: string | null;
 }): Promise<StudioHeroImageUploadResult | null> {
   if (!isAiHeroImagePostProcessEnabled()) return null;
-  const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract);
+  const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract, {
+    variationSeed: randomBytes(6).toString("hex"),
+  });
   const raster = await createHeroImageRasterB64(prompt);
   if (!raster) return null;
   let bytes: Buffer;
@@ -604,6 +606,7 @@ export function startOpenAiHeroImagePrefetch(
     input.businessName,
     input.description,
     input.designContract,
+    { variationSeed: randomBytes(6).toString("hex") },
   );
   return createHeroImageRasterB64(prompt);
 }
@@ -911,7 +914,8 @@ export async function applyAiHeroImageToGeneratedPage(
   }
 
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract, {
-    variationSeed: siteChatAi ? randomBytes(6).toString("hex") : undefined,
+    /** Elke upstream-poging krijgt een eigen seed (site-chat had dit al; hoofdstroom niet → te gelijksoortige composities). */
+    variationSeed: randomBytes(6).toString("hex"),
   });
   let prefetch: StudioHeroImageRasterPrefetch | null =
     ctx.prefetchedHeroB64Promise != null ? await ctx.prefetchedHeroB64Promise : null;

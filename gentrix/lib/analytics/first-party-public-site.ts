@@ -1,4 +1,6 @@
 import { attachGentrixMainWindowScrollDepth } from "@/lib/analytics/main-window-scroll-depth";
+import { inferAnalyticsElementRoleFromId } from "@/lib/analytics/infer-analytics-element-role";
+import type { PublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
 
 const VID_KEY = "gentrix_fp_vid";
 const SID_KEY = "gentrix_fp_sid";
@@ -14,6 +16,8 @@ export type FirstPartySiteContext = {
   bookingModuleEnabled: boolean;
   webshopModuleEnabled: boolean;
   renderSurface: string;
+  /** Optioneel: generator/snapshot-hints op page_view (lichte strings). */
+  generatorMeta?: PublicSiteGeneratorMeta;
 };
 
 type OutEvent = {
@@ -165,52 +169,82 @@ function afterLoadAndIdle(run: () => void) {
   else window.addEventListener("load", go, { once: true });
 }
 
-function readAnalyticsKey(el: Element | null): string | null {
-  if (!el) return null;
-  const withAttr = el.closest("[data-analytics]") as HTMLElement | null;
-  if (!withAttr) return null;
-  const v = withAttr.getAttribute("data-analytics");
-  return v && v.trim() ? v.trim().slice(0, 200) : null;
-}
-
 function onClickCapture(e: MouseEvent) {
   if (!ctx) return;
   const t = e.target;
   if (!(t instanceof Element)) return;
-  const el = t.closest("a, button, [role='button']");
-  if (!el) return;
-  const key = readAnalyticsKey(el);
-  if (!key) {
-    if (el instanceof HTMLAnchorElement) {
-      const h = el.getAttribute("href");
-      if (h && h !== "#" && !h.startsWith("javascript:")) {
-        /* optional: too noisy — only data-analytics + CTA per spec */
-      }
-    }
-    return;
+  const root = t.closest("[data-analytics]");
+  if (!root) return;
+  const key = (root.getAttribute("data-analytics") ?? "").trim().slice(0, 200);
+  if (!key) return;
+
+  const fromSectionAttr = (root.getAttribute("data-analytics-section") ?? "").trim().slice(0, 64);
+  const idxRaw = root.getAttribute("data-analytics-index");
+  const index =
+    idxRaw != null && /^\d+$/.test(idxRaw.trim()) ? Number.parseInt(idxRaw.trim(), 10) : undefined;
+
+  const clickable = t.closest("a, button, [role='button']");
+  const host =
+    root.matches("a, button, [role='button']")
+      ? root
+      : clickable && root.contains(clickable)
+        ? clickable
+        : null;
+
+  const text = (host ?? root).textContent?.replace(/\s+/g, " ").trim().slice(0, 200) ?? "";
+  const href =
+    host instanceof HTMLAnchorElement
+      ? host.getAttribute("href")
+      : host instanceof Element && host.closest("a")
+        ? (host.closest("a") as HTMLAnchorElement).getAttribute("href")
+        : null;
+
+  let sectionId = fromSectionAttr;
+  if (!sectionId) {
+    const sec = root.closest("section[id]");
+    if (sec?.id) sectionId = sec.id.trim().slice(0, 64);
   }
-  const text = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
-  const href = el instanceof HTMLAnchorElement ? el.getAttribute("href") : null;
+
+  const path = window.location.pathname + window.location.search;
+  const elementRole = inferAnalyticsElementRoleFromId(key);
+
+  const props: Record<string, string | number | boolean> = {
+    analytics_id: key,
+    analytics_key: key,
+    label: text,
+    link_text: text,
+    href: (href ?? "").slice(0, 500),
+    page_path: path,
+    page_key: ctx.pageKey,
+    element_role: elementRole,
+  };
+  if (sectionId) props.section_id = sectionId;
+  if (index !== undefined) props.index = index;
+
   pushEvent({
     event_type: "click_event",
-    page_path: window.location.pathname + window.location.search,
+    page_path: path,
     page_key: ctx.pageKey,
-    properties: {
-      analytics_key: key,
-      link_text: text,
-      href: (href ?? "").slice(0, 500),
-    },
+    properties: props,
   });
 }
 
 function trackPageView() {
   if (!ctx) return;
+  const gm = ctx.generatorMeta;
+  const genProps: Record<string, string | number | boolean> = {};
+  if (gm) {
+    for (const [k, v] of Object.entries(gm)) {
+      if (typeof v === "string" && v.length > 0) genProps[k] = v.slice(0, 500);
+    }
+  }
   pushEvent({
     event_type: "page_view",
     page_path: window.location.pathname + window.location.search,
     page_key: ctx.pageKey,
     properties: {
       page_key: ctx.pageKey,
+      ...genProps,
     },
   });
 }

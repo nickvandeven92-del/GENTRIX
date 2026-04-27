@@ -2146,6 +2146,8 @@ export function sanitizeTailwindFragment(html: string): string {
       "data-lucide",
       "data-studio-brand-mark",
       "data-studio-visibility",
+      /** First-party nav events (`lib/analytics/first-party-public-site.ts`). */
+      "data-analytics",
       /** Compose / nav / contrast — anders strip DOMPurify ze weg (`ALLOW_DATA_ATTR: false`). */
       "data-studio-skip-nav-tone",
       "data-studio-module",

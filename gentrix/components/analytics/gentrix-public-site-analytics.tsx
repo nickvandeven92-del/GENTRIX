@@ -5,6 +5,7 @@ import {
   bootFirstPartyPublicSiteAnalytics,
   installFirstPartyGlobal,
 } from "@/lib/analytics/first-party-public-site";
+import type { PublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
 
 type Props = {
   siteSlug: string;
@@ -14,6 +15,8 @@ type Props = {
   webshopModuleEnabled: boolean;
   sessionType: "public_site" | "public_preview" | "client_portal_iframe" | "other";
   renderSurface: "public_inline" | "public_iframe" | "react_page" | "other";
+  /** Optioneel: generator-snapshot (page_view). */
+  generatorMeta?: PublicSiteGeneratorMeta;
 };
 
 /**
@@ -27,6 +30,7 @@ export function GentrixPublicSiteAnalytics({
   webshopModuleEnabled,
   sessionType,
   renderSurface,
+  generatorMeta,
 }: Props) {
   useEffect(() => {
     installFirstPartyGlobal();
@@ -38,6 +42,7 @@ export function GentrixPublicSiteAnalytics({
       bookingModuleEnabled,
       webshopModuleEnabled,
       renderSurface,
+      generatorMeta,
     });
   }, [
     siteSlug,
@@ -47,6 +52,7 @@ export function GentrixPublicSiteAnalytics({
     webshopModuleEnabled,
     sessionType,
     renderSurface,
+    generatorMeta,
   ]);
 
   return null;

@@ -75,24 +75,6 @@ function linkIndicatorClasses(ai: NavVisualContract["activeIndicator"], linkRadi
   return "";
 }
 
-function ctaDesktopClasses(cta: NavVisualContract["ctaStyle"], radiusClass: string): string {
-  const base = `inline-flex shrink-0 items-center ${radiusClass} px-3 py-1.5 text-sm font-medium transition-opacity`;
-  if (cta === "solid")
-    return `${base} border border-transparent bg-[color:var(--studio-nav-accent)] text-white shadow-sm hover:opacity-92`;
-  if (cta === "ghost")
-    return `${base} border border-transparent text-[color:var(--studio-nav-fg-muted)] hover:bg-[color:var(--studio-nav-hover-bg)] hover:text-[color:var(--studio-nav-fg-hover)]`;
-  return `${base} border border-[color:var(--studio-nav-accent)] text-[color:var(--studio-nav-accent)] hover:opacity-90`;
-}
-
-function ctaMobileClasses(cta: NavVisualContract["ctaStyle"], radiusClass: string): string {
-  const base = `mt-2 block ${radiusClass} px-3 py-2 text-center text-sm font-medium transition-opacity`;
-  if (cta === "solid")
-    return `${base} border border-transparent bg-[color:var(--studio-nav-accent)] text-white hover:opacity-92`;
-  if (cta === "ghost")
-    return `${base} border border-transparent text-[color:var(--studio-nav-fg-muted)] hover:bg-[color:var(--studio-nav-hover-bg)]`;
-  return `${base} border border-[color:var(--studio-nav-accent)] text-[color:var(--studio-nav-accent)] hover:opacity-90`;
-}
-
 function spacerClass(contract: NavVisualContract, heroOverlay: boolean): string {
   if (heroOverlay) {
     return "studio-nav-chrome-spacer studio-nav-chrome-spacer--hero-overlay w-full shrink-0 h-0 min-h-0 max-h-0 overflow-hidden border-0 p-0 m-0 pointer-events-none";
@@ -171,9 +153,6 @@ export function renderStudioNavChromeHtml(
   const linkMobile =
     `block ${r} px-2 py-2 text-base font-medium text-[color:var(--studio-nav-fg-muted)] transition-colors hover:bg-[color:var(--studio-nav-hover-bg)] hover:text-[color:var(--studio-nav-fg-hover)] ${ind}`.trim();
 
-  const ctaClass = ctaDesktopClasses(contract.ctaStyle, r);
-  const ctaMobileClass = ctaMobileClasses(contract.ctaStyle, r);
-
   const markChar = escapeAttr(pickMarkCharForSiteIdentity(config.brandLabel, config.brandLabel));
   const brandLabelEsc = escapeAttr(config.brandLabel);
   /**
@@ -188,45 +167,41 @@ export function renderStudioNavChromeHtml(
     ? `<div class="flex min-w-0 flex-1 shrink-0 items-center justify-start">${brandLink}</div>`
     : brandLink;
 
-  const desktopLinks = config.items
-    .map(
-      (it, i) =>
-        `<a href="${escapeAttr(it.href)}" data-analytics="nav:link:${i}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`,
-    )
-    .join("");
+  const desktopLinks =
+    config.items
+      .map(
+        (it, i) =>
+          `<a href="${escapeAttr(it.href)}" data-analytics="nav-link-${i}" class="${linkDesktop}">${escapeAttr(it.label)}</a>`,
+      )
+      .join("") +
+    (config.cta
+      ? `<a href="${escapeAttr(config.cta.href)}" data-analytics="nav-cta" class="${linkDesktop}">${escapeAttr(config.cta.label)}</a>`
+      : "");
 
-  const ctaBlock = config.cta
-    ? `<a href="${escapeAttr(config.cta.href)}" data-analytics="nav:cta" class="${ctaClass}">${escapeAttr(config.cta.label)}</a>`
-    : "";
-
-  const mobileLinks = config.items
-    .map(
-      (it, i) =>
-        `<a href="${escapeAttr(it.href)}" data-analytics="nav:link:${i}" class="${linkMobile}">${escapeAttr(it.label)}</a>`,
-    )
-    .join("");
-
-  const mobileCta = config.cta
-    ? `<a href="${escapeAttr(config.cta.href)}" data-analytics="nav:cta" class="${ctaMobileClass}">${escapeAttr(config.cta.label)}</a>`
-    : "";
+  const mobileLinks =
+    config.items
+      .map(
+        (it, i) =>
+          `<a href="${escapeAttr(it.href)}" data-analytics="nav-link-${i}" class="${linkMobile}">${escapeAttr(it.label)}</a>`,
+      )
+      .join("") +
+    (config.cta
+      ? `<a href="${escapeAttr(config.cta.href)}" data-analytics="nav-cta" class="${linkMobile}">${escapeAttr(config.cta.label)}</a>`
+      : "");
 
   const menuBtn = `<button type="button" class="studio-nav-chrome-menu-btn gentrix-menu-repaired inline-flex h-11 w-11 shrink-0 items-center justify-center ${r} text-[color:var(--studio-nav-fg)] hover:bg-[color:var(--studio-nav-hover-bg)] md:hidden" aria-label="Menu" @click.stop="${NAV_KEY} = !${NAV_KEY}" :aria-expanded="${NAV_KEY}.toString()">${buildGentrixMenuIconToggle(NAV_KEY)}</button>`;
 
   const mobileMenuTriggerRow = isHeroOverlay
-    ? `<div class="studio-nav-chrome-mobile-triggers flex shrink-0 items-center gap-2 md:hidden">${ctaBlock}${menuBtn}</div>`
+    ? `<div class="studio-nav-chrome-mobile-triggers flex shrink-0 items-center gap-2 md:hidden">${menuBtn}</div>`
     : menuBtn;
 
   const desktopLinksCluster = `<div class="flex flex-nowrap items-center justify-center gap-4 sm:gap-6">${desktopLinks}</div>`;
 
-  const desktopRowStandard = `<div class="hidden min-w-0 flex-nowrap items-center gap-4 sm:gap-6 md:flex">${desktopLinks}${
-    ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
-  }</div>`;
+  const desktopRowStandard = `<div class="hidden min-w-0 flex-nowrap items-center gap-4 sm:gap-6 md:flex">${desktopLinks}</div>`;
 
   const desktopRowCentered = `<div class="hidden min-w-0 flex-1 justify-center md:flex">${desktopLinksCluster}</div>`;
 
-  const desktopTrailing = `<div class="flex flex-1 justify-end items-center gap-2">${
-    navBarLayout === "centeredLinks" && ctaBlock ? `<span class="hidden sm:inline">${ctaBlock}</span>` : ""
-  }${menuBtn}</div>`;
+  const desktopTrailing = `<div class="flex flex-1 justify-end items-center gap-2">${menuBtn}</div>`;
 
   const desktopRow = isHeroOverlay
     ? `${desktopRowStandard}${mobileMenuTriggerRow}`
@@ -236,29 +211,15 @@ export function renderStudioNavChromeHtml(
 
   const sheetPT = isHeroOverlay ? "pt-3" : "pt-2";
   /**
-   * `top` moet overeenkomen met de echte balkhoogte (anders een lichte spleet met hero erdoor).
-   * - bar: typisch `h-16`-achtig → `4rem`
-   * - hero-overlay mobiel: compactere rij (`py-2`) → `3.75rem`
-   * - pill: `py-3` + `h-11` knop ≈ 68px → `4.25rem`
-   * `-mt-px`: sluit subpixel-haartje tussen shell en sheet.
-   *
-   * Geen `-translate-y-full`: `max-h` 0 → open vouwt omlaag (Vugts-patroon).
+   * Mobiel sheet: **`absolute top-full`** onder de `<header>` i.p.v. `fixed` + gegokte `top-*`
+   * (padding/hoogte verschilt per preset → anders 1px spleet met hero).
+   * `-mt-px`: subpixel tussen balk en sheet. `max-h`: ruim onder viewport-top gereserveerd voor balk + safe area.
    */
-  const mobileSheetClass =
-    contract.variant === "bar"
-      ? `fixed inset-x-0 z-[60] top-16 -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl md:hidden max-h-[min(88dvh,calc(100dvh-4rem))]`
-      : isHeroOverlay
-        ? `fixed inset-x-0 z-[60] top-[3.75rem] -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl ring-1 ring-black/10 md:hidden max-h-[min(88dvh,calc(100dvh-3.75rem))]`
-        : `fixed inset-x-0 z-[60] top-[4.25rem] -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl md:hidden max-h-[min(88dvh,calc(100dvh-4.25rem))]`;
+  const sheetMaxHExpr = "min(88dvh,calc(100dvh-5rem))";
+  const mobileSheetBase = `absolute left-0 right-0 top-full z-[60] -mt-px overflow-y-auto overscroll-contain px-4 pb-5 ${sheetPT} shadow-2xl md:hidden max-h-[${sheetMaxHExpr}]`;
+  const mobileSheetClass = isHeroOverlay ? `${mobileSheetBase} ring-1 ring-black/10` : mobileSheetBase;
 
   const mobileSheetClassFinal = usePillFlexCenter ? `${mobileSheetClass} pointer-events-auto` : mobileSheetClass;
-
-  const sheetMaxHExpr =
-    contract.variant === "bar"
-      ? "min(88dvh,calc(100dvh-4rem))"
-      : isHeroOverlay
-        ? "min(88dvh,calc(100dvh-3.75rem))"
-        : "min(88dvh,calc(100dvh-4.25rem))";
 
   const mobileSheet = `<div
     id="studio-nav-chrome-mobile-sheet"
@@ -272,8 +233,8 @@ export function renderStudioNavChromeHtml(
     x-transition:leave-start="!max-h-[${sheetMaxHExpr}] !opacity-100"
     x-transition:leave-end="!max-h-0 !opacity-0"
     class="${mobileSheetClassFinal}"
-    style="background:var(--studio-nav-sheet-bg, rgba(250,251,253,0.97));border-top:1px solid var(--studio-nav-sheet-border, rgba(15,23,42,0.14))"
-  >${mobileLinks}${mobileCta}</div>`;
+    style="background:var(--studio-nav-sheet-bg, rgba(250,251,253,0.97))"
+  >${mobileLinks}</div>`;
 
   const spacer = spacerClass(contract, isHeroOverlay);
   const presetAttr = presetId ? ` data-studio-nav-preset="${escapeAttr(presetId)}"` : "";

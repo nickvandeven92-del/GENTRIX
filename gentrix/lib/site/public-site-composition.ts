@@ -14,6 +14,7 @@ import {
   type PublicSiteModuleFlags,
 } from "@/lib/site/public-site-modules-registry";
 import { ensurePublicSiteAnalyticsDataAttributesOnHtml } from "@/lib/site/ensure-public-site-analytics-attrs";
+import { addFallbackDataAnalyticsToSectionHtml } from "@/lib/site/section-html-analytics-fallback";
 import {
   stripInactivePublicModuleMarkupFromHtml,
   stripPublicSiteComposeDataAttributesFromHtml,
@@ -63,10 +64,15 @@ export function composePublicMarketingTailwindSections(
         })
       : ordered;
 
-  const tagged = preTagged.map((s) => ({
-    ...s,
-    html: ensurePublicSiteAnalyticsDataAttributesOnHtml(ensureStudioModuleMarkersOnAnchors(s.html)),
-  }));
+  const tagged = preTagged.map((s) => {
+    const id = (s.id ?? "section").trim() || "section";
+    const withStudio = ensureStudioModuleMarkersOnAnchors(s.html);
+    const withEnsure = ensurePublicSiteAnalyticsDataAttributesOnHtml(withStudio);
+    return {
+      ...s,
+      html: addFallbackDataAnalyticsToSectionHtml(withEnsure, id),
+    };
+  });
 
   const strippedMarkup = tagged.map((s) => ({
     ...s,

@@ -120,7 +120,10 @@ export async function POST(request: Request) {
       return new NextResponse(null, { status: 204 });
     }
     events = body.events.slice(0, MAX_EVENTS);
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[api/analytics/events] invalid JSON body", err);
+    }
     return new NextResponse(null, { status: 204 });
   }
 
@@ -165,6 +168,14 @@ export async function POST(request: Request) {
       const mergedProps = stripForbiddenKeysFromProperties(
         (e && typeof e === "object" ? (e as IncomingEvent).properties : null) as Record<string, unknown> | null,
       );
+      if (t === "conversion_event") {
+        const rawName = mergedProps.conversion_name ?? mergedProps.name ?? (mergedProps as { conversionName?: unknown }).conversionName;
+        if (typeof rawName === "string" && rawName.trim() && mergedProps.conversion_name == null) {
+          mergedProps.conversion_name = rawName.trim().slice(0, 200);
+        }
+        delete mergedProps.name;
+        delete (mergedProps as { conversionName?: unknown }).conversionName;
+      }
       const vid = sanitizeId((e?.visitor_id ?? (mergedProps.visitor_id as string) ?? null) as string | null);
       const sid = sanitizeId((e?.session_id ?? (mergedProps.session_id as string) ?? null) as string | null);
       delete mergedProps.visitor_id;
@@ -189,6 +200,9 @@ export async function POST(request: Request) {
     }
 
     if (rows.length === 0) {
+      if (process.env.NODE_ENV === "development" && events.length > 0) {
+        console.warn("[api/analytics/events] no valid events after validation (check allowlist and properties).");
+      }
       return new NextResponse(null, { status: 204 });
     }
 

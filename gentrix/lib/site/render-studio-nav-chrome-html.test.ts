@@ -155,11 +155,12 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("px-5 sm:px-7 md:px-9");
     expect(html).toMatch(/<header class="[^"]*" style="[^"]*--studio-nav-sheet-bg:/);
     expect(html).toContain("var(--studio-nav-sheet-bg, rgba(250,251,253,0.97))");
-    expect(html).toContain("top-[4.25rem]");
+    expect(html).toContain("top-full");
+    expect(html).toContain("absolute left-0 right-0");
     expect(html).toContain("-mt-px");
   });
 
-  it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd, CTA rechts, data-attribuut", () => {
+  it("navBarLayout centeredLinks: desktop-linkcluster gecentreerd (inclusief CTA als gewone link), data-attribuut", () => {
     const html = renderStudioNavChromeHtml(
       {
         variant: "bar",
@@ -191,7 +192,6 @@ describe("renderStudioNavChromeHtml", () => {
       },
       { primary: "#0f172a", accent: "#ca8a04" },
     );
-    expect(html).toContain("inline-flex shrink-0 items-center rounded-none");
     expect(html).toContain('data-studio-nav-chrome="1"');
     expect(html).toContain('data-gentrix-scroll-nav="1"');
     expect(html).toContain("gentrix-menu-icon");
@@ -201,7 +201,8 @@ describe("renderStudioNavChromeHtml", () => {
     expect(html).toContain("@click.outside");
     expect(html).toContain("x-transition:enter-start");
     expect(html).toContain("!max-h-0");
-    expect(html).toContain("top-16");
+    expect(html).toContain("top-full");
+    expect(html).toContain("absolute left-0 right-0");
     expect(html).toContain("-mt-px");
     expect(html).not.toContain("-translate-y-full");
     expect(html).not.toContain("@scroll.window");
@@ -222,7 +223,7 @@ describe("renderStudioNavChromeHtml", () => {
       { primary: "#0f172a", accent: "#ca8a04" },
     );
     expect(html).toContain('data-studio-nav-preset="luxuryGold"');
-    expect(html).toContain("border-[color:var(--studio-nav-accent)]");
+    expect(html).toContain('data-analytics="nav-cta"');
     expect(html).toMatch(/border-bottom:2px solid #ca8a04/i);
     expect(html).toMatch(/background:rgba\(15,\s*23,\s*42/i);
   });
@@ -331,7 +332,7 @@ describe("buildTailwindSectionsBodyInnerHtml + studioNav", () => {
     expect(body).toMatch(/background:\s*transparent/i);
   });
 
-  it("designContract luxury tone → outline CTA + donkere shell (luxuryGold)", () => {
+  it("designContract luxury tone → CTA als gewone nav-link + donkere shell (luxuryGold)", () => {
     const pageConfig = minimalMasterConfig({
       variant: "bar",
       brandLabel: "Maison",
@@ -351,7 +352,8 @@ describe("buildTailwindSectionsBodyInnerHtml + studioNav", () => {
     } as DesignGenerationContract;
     const body = buildTailwindSectionsBodyInnerHtml(sections, pageConfig, { designContract: dc });
     expect(body).toContain("rgba(15,23,42,0.9)");
-    expect(body).toMatch(/border border-\[color:var\(--studio-nav-accent\)\]/);
+    expect(body).toContain('data-analytics="nav-cta"');
+    expect(body).toMatch(/hover:decoration-\[color:var\(--studio-nav-accent\)\]/);
   });
 
   it("studioShellNav: zonder geldige studioNav → throw (server policy)", () => {

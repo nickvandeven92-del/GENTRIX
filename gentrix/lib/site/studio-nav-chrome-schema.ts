@@ -95,8 +95,8 @@ export const studioNavChromeConfigSchema = z
    *
    * `linksRightInHero`: voor **lichte/glas bar-presets** (`minimalLight`, `softBrand`, `compactBar`, `glassLight`) en
    * **`floatingPill`** (zwevende pill): **zwevende** cluster rechtsboven op de hero (`rounded-2xl`, donker glas + lichte type),
-   * geen volle-breedte balk; **pill** (alle layouts) heeft geen layout-spacer — nav `fixed` boven de eerste sectie. Desktop links + CTA rechts; mobiel **CTA + hamburger** en rechts
-   * uitklapbaar sheet. Bij donkere/gouden presets wordt dit veld **genegeerd** (normale bar + spacer).
+   * geen volle-breedte balk; **pill** (alle layouts) heeft geen layout-spacer — nav `fixed` boven de eerste sectie. Desktop: links + CTA in dezelfde rij; mobiel: **hamburger** + sheet met CTA als gewone link in de lijst.
+   * Bij donkere/gouden presets wordt dit veld **genegeerd** (normale bar + spacer).
    */
   navBarLayout: studioNavBarLayoutSchema.optional(),
   /** Eigen primary/accent hex voor de nav-shell; overschrijft niet `config.theme` voor de rest van de pagina. */

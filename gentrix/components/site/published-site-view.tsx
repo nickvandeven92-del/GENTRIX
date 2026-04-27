@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { formatSlugForDisplay } from "@/lib/slug";
 import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
 import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
+import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -83,6 +84,9 @@ export function PublishedSiteView({
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";
     const isPreview = Boolean(draftPublicPreviewToken?.trim());
+    const generatorMeta = buildPublicSiteGeneratorMeta({
+      generationPackage: payload.generationPackage,
+    });
     return (
       <div className="relative flex min-h-screen w-full flex-1 flex-col">
         {visibility === "public" && slugForA ? (
@@ -94,6 +98,7 @@ export function PublishedSiteView({
             webshopModuleEnabled={webshopEnabled}
             sessionType={isPreview ? "public_preview" : "public_site"}
             renderSurface="react_page"
+            generatorMeta={generatorMeta}
           />
         ) : null}
         <ReactPublishedSiteView
@@ -211,6 +216,12 @@ export function PublishedSiteView({
     if (visibility === "public") {
       const slugForA = publishedSlug?.trim() ?? "";
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
+      const generatorMeta = buildPublicSiteGeneratorMeta({
+        generationPackage: payload.generationPackage,
+        sectionIdsOrdered: payload.sectionIdsOrdered,
+        siteIr: payload.siteIr,
+        config: payload.config,
+      });
       const publishedSiteSoftNav: PublishedSiteSoftNavContext | null =
         slugForA && contactNavBase ? { siteSlug: slugForA, prettyPublicUrls } : null;
       const publicInlinePreview = (
@@ -247,6 +258,7 @@ export function PublishedSiteView({
               webshopModuleEnabled={webshopEnabled}
               sessionType={isPreview ? "public_preview" : "public_site"}
               renderSurface={studioTailwindPreviewIframe ? "public_iframe" : "public_inline"}
+              generatorMeta={generatorMeta}
             />
           ) : null}
           {studioTailwindPreviewIframe ? (
