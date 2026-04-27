@@ -88,6 +88,7 @@ function buildPremiumBrandMarkPrompt(
 
   parts.push(
     "**Strict:** no photorealistic people, faces, hands, or stock lifestyle. No watermarks, no UI mockups, no QR codes.",
+    "**Avoid** a lazy “one letter centered in a plain square” as the whole design — include a **designed symbol, badge shape, or stylized wordmark** that fits the sector.",
     "**Strict:** do **not** imitate famous global brands, luxury fashion houses, or recognizable third-party trademarks — invent an **original** mark for this client only.",
     "The business name may appear as **stylized lettering** in the image — spelling must match the briefing name exactly when shown.",
     "Leave comfortable margin at the edges; the mark must stay **readable when scaled down** to a browser favicon.",
@@ -289,14 +290,15 @@ export type ApplyStudioRasterBrandContext = StudioRasterBrandPrefetchInput & {
 
 /**
  * Voegt `rasterBrandSet` toe en werkt nav/header bij (geen dubbele run wanneer al `data-gentrix-raster-brand` + URL).
+ *
+ * Model-`logoSet` (vaak generiek vierkant + letter) blokkeerde raster niet meer: bij geslaagde upstream
+ * overschrijven we dat met het gegenereerde merkbeeld en laten we `logoSet` vallen zodat opslag/preview
+ * consistent het rasterlogo + PNG-favicon’s gebruiken.
  */
 export async function applyStudioRasterBrandToGeneratedPage(
   data: GeneratedTailwindPage,
   ctx: ApplyStudioRasterBrandContext,
 ): Promise<GeneratedTailwindPage> {
-  if (data.logoSet?.variants?.primary?.trim()) {
-    return data;
-  }
   if (data.rasterBrandSet?.headerLogoUrl?.trim()) {
     return data;
   }
@@ -314,5 +316,10 @@ export async function applyStudioRasterBrandToGeneratedPage(
   if (!set) return data;
 
   const sections = applyRasterBrandMarkToSections(data.sections, set, ctx.businessName);
-  return { ...data, sections, rasterBrandSet: set };
+  return {
+    ...data,
+    sections,
+    rasterBrandSet: set,
+    logoSet: undefined,
+  };
 }

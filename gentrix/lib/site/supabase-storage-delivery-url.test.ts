@@ -146,4 +146,11 @@ describe("addResponsiveSrcsetToHeroSupabaseRenderImages", () => {
     const html = `<img src="https://ab.supabase.co/storage/v1/render/image/public/b/x.jpg?width=100" srcset="x 1x" alt="">`;
     expect(addResponsiveSrcsetToHeroSupabaseRenderImages(html)).toBe(html);
   });
+
+  it("past geen hero-srcset toe op raster-merk-img", () => {
+    const src =
+      "https://ab.supabase.co/storage/v1/render/image/public/site-assets/p/header.webp?width=2400&quality=82&resize=cover";
+    const html = `<section id="hero"><img data-gentrix-raster-brand="1" class="h-8 w-auto object-contain" src="${src}" alt=""/></section>`;
+    expect(addResponsiveSrcsetToHeroSupabaseRenderImages(html)).toBe(html);
+  });
 });

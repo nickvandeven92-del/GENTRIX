@@ -487,9 +487,9 @@ const tailwindPayloadStrictObjectSchema = z
     customCss: z.string().max(48_000).optional(),
     /** Eigen JS (editor); iframe sandbox / live same-origin — alleen vertrouwde code. */
     customJs: z.string().max(48_000).optional(),
-    /** SVG-first merkset (premium logo-pipeline). */
+    /** Optioneel model-`logoSet`; na succesvolle server-rasterpost wordt dit weggelaten i.f.v. `rasterBrandSet`. */
     logoSet: generatedLogoSetSchema.optional(),
-    /** Server Gemini/OpenAI raster-merk (header + favicon); wint op tabblad i.p.v. kale letter-favicon. */
+    /** Server Gemini/OpenAI raster-merk (header + favicon); bij succes het zichtbare merk i.p.v. generiek SVG-letterlogo. */
     rasterBrandSet: studioRasterBrandSetSchema.optional(),
     /** Optioneel: server-gecompileerde utilities (geen Tailwind Play CDN op live/preview). */
     tailwindCompiledCss: z.string().max(SNAPSHOT_TAILWIND_COMPILED_CSS_MAX).optional(),

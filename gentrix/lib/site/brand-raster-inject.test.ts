@@ -3,6 +3,7 @@ import type { StudioRasterBrandSet } from "@/lib/ai/tailwind-sections-schema";
 import {
   applyRasterBrandMarkToSections,
   rasterHeaderUrlIsConfusableWithFavicon,
+  stripHeroRasterBrandDuplicateAfterStudioNav,
 } from "@/lib/site/brand-raster-inject";
 
 const baseRaster = (over: Partial<StudioRasterBrandSet>): StudioRasterBrandSet => ({
@@ -44,16 +45,48 @@ describe("applyRasterBrandMarkToSections", () => {
     expect(out[0]!.html).not.toContain("data-gentrix-raster-brand");
   });
 
-  it("injecteert geen raster wanneer declaratieve studio-nav-chrome al in de HTML staat", () => {
+  it("zet raster in studio-nav-chrome merk-link (class group)", () => {
     const raster = baseRaster({});
     const sections = [
       {
         sectionName: "Hero",
-        html: `<header data-studio-nav-chrome="1"><a href="#top">G</a></header><section id="hero"><a href="__STUDIO_SITE_BASE__">In hero</a></section>`,
+        html: `<header data-studio-nav-chrome="1"><a href="/" class="group flex min-w-0 shrink-0 items-center gap-2.5"><span class="inline-flex h-9 w-9">G</span><span>GENTRIX</span></a></header><section id="hero"><div class="grid">OK</div></section>`,
       },
     ];
     const out = applyRasterBrandMarkToSections(sections, raster, "Gentrix");
-    expect(out[0]!.html).toContain(">In hero</a>");
-    expect(out[0]!.html).not.toContain("data-gentrix-raster-brand");
+    expect(out[0]!.html).toContain("data-gentrix-raster-brand");
+    expect(out[0]!.html).toContain("cdn.example/header.webp");
+    expect(out[0]!.html).toContain(">OK</div>");
+    expect(out[0]!.html).not.toContain("<span class=\"inline-flex h-9 w-9\">G</span>");
+  });
+
+  it("laat secties ongewijzigd wanneer chrome geen group-merklink heeft", () => {
+    const raster = baseRaster({});
+    const sections = [
+      {
+        sectionName: "Hero",
+        html: `<header data-studio-nav-chrome="1"><a href="#top">G</a></header><section id="hero"><p>x</p></section>`,
+      },
+    ];
+    const out = applyRasterBrandMarkToSections(sections, raster, "Gentrix");
+    expect(out[0]!.html).toBe(sections[0]!.html);
+  });
+});
+
+describe("stripHeroRasterBrandDuplicateAfterStudioNav", () => {
+  it("verwijdert foutief voor hero geïnjecteerd raster-blok als studio-chrome bestaat", () => {
+    const html = `<header data-studio-nav-chrome="1"></header>
+<section id="hero" class="flex items-stretch">
+<div class="flex shrink-0 items-center" data-gentrix-raster-brand="1"><a href="/" data-studio-brand-mark="1"><img src="https://x/header.webp" alt=""/></a></div>
+<div class="grid">body</div>
+</section>`;
+    const out = stripHeroRasterBrandDuplicateAfterStudioNav(html);
+    expect(out).not.toContain("data-gentrix-raster-brand");
+    expect(out).toContain('<div class="grid">body</div>');
+  });
+
+  it("laat hero ongemoeid zonder studio-chrome", () => {
+    const html = `<section id="hero"><div data-gentrix-raster-brand="1">x</div></section>`;
+    expect(stripHeroRasterBrandDuplicateAfterStudioNav(html)).toBe(html);
   });
 });

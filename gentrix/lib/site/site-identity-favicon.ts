@@ -162,13 +162,16 @@ export function buildNextPublishedSiteIcons(input: ResolvePublicSiteFaviconInput
       icon.push({ url: r192, type: "image/png", sizes: "192x192" });
     }
     icon.push({ url: r32, type: "image/png", sizes: "32x32" });
+    /**
+     * Verplicht `apple` meegeven: anders blijft `app/layout.tsx` (Portaal) `apple-touch-icon` in de merge
+     * hangen — tabblad / iOS-toast toont dan overal het studio-icoon i.p.v. de klantfavicon.
+     * Zonder 192px-asset: 32px- PNG (klein maar uniek per site).
+     */
+    const appleUrl = isHttpsRasterUrl(r192) ? r192! : r32;
+    const appleSizes = isHttpsRasterUrl(r192) ? "192x192" : "32x32";
     return {
       icon,
-      ...(isHttpsRasterUrl(r192)
-        ? {
-            apple: [{ url: r192, sizes: "192x192", type: "image/png" }],
-          }
-        : {}),
+      apple: [{ url: appleUrl, sizes: appleSizes, type: "image/png" }],
     } as NonNullable<Metadata["icons"]>;
   }
 
@@ -177,12 +180,9 @@ export function buildNextPublishedSiteIcons(input: ResolvePublicSiteFaviconInput
     svg.length <= MAX_FAVICON_DATA_URL_CHARS
       ? svg
       : renderSiteIdentityFaviconSvg({ displayName: "G", slug: "g", pageConfig: null, themePrimaryHex: "#4f46e5" });
+  const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(safe)}`;
   return {
-    icon: [
-      {
-        url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(safe)}`,
-        type: "image/svg+xml",
-      },
-    ],
+    icon: [{ url: svgDataUrl, type: "image/svg+xml" }],
+    apple: [{ url: svgDataUrl, type: "image/svg+xml" }],
   };
 }

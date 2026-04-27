@@ -297,6 +297,9 @@ export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
  */
 export function addResponsiveSrcsetToHeroSupabaseRenderImages(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
+    /** Raster-/SVG-merk in nav of foutief in hero: geen hero-srcset (`sizes=100vw` ≠ logo). */
+    if (/\bdata-gentrix-raster-brand\s*=/i.test(attrs)) return full;
+    if (/\bdata-studio-brand-mark\s*=/i.test(attrs)) return full;
     if (/\bsrcset\s*=/i.test(attrs)) return full;
     if (/\bsizes\s*=/i.test(attrs)) return full;
     const m = attrs.match(/\bsrc\s*=\s*(["'])([^"']*)\1/i);

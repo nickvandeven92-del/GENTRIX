@@ -5,6 +5,20 @@ import { STUDIO_BRAND_MARK_ATTR } from "@/lib/site/brand-logo-inject";
 
 const RASTER_BRAND_ATTR = "data-gentrix-raster-brand";
 
+/**
+ * Wanneer `studioNav`-chrome al bestaat maar `replaceFirstHomeAnchorWithImg` faalt (bv. `brandHref` is `/`
+ * i.p.v. `__STUDIO_SITE_BASE__`), valt `applyRasterBrandMarkToSections` terug op inject na `<section id="hero">`.
+ * Dat wordt het eerste flex-kind naast het hero-grid → een “postzegel” langs de linkerkant.
+ * Strip dat blok zolang declaratieve chrome aanwezig is (merk staat al in de topbalk).
+ */
+export function stripHeroRasterBrandDuplicateAfterStudioNav(html: string): string {
+  if (!/\bdata-studio-nav-chrome\s*=\s*["']1["']/i.test(html)) return html;
+  return html.replace(
+    /(<section\b[^>]*\bid\s*=\s*["']hero["'][^>]*>)\s*<div\b[^>]*\bdata-gentrix-raster-brand\s*=\s*["']1["'][^>]*>[\s\S]*?<\/div>\s*/i,
+    "$1\n",
+  );
+}
+
 /** `headerLogoUrl` mag nooit het 32×32/192×192 favicon zijn — dat geeft een onleesbare “postzegel” in de navbar. */
 export function rasterHeaderUrlIsConfusableWithFavicon(headerUrl: string, raster: StudioRasterBrandSet): boolean {
   const h = headerUrl.trim().toLowerCase();
@@ -33,6 +47,56 @@ function injectAfterFirstTag(html: string, tagName: string, block: string): stri
   const openEnd = findHtmlOpenTagEnd(html, m.index);
   if (openEnd <= m.index) return null;
   return html.slice(0, openEnd) + block + html.slice(openEnd);
+}
+
+/**
+ * Merk-link in declaratieve studio-nav (`<header data-studio-nav-chrome>`): eerste `<a class="…group…">`.
+ * Hiermee werkt raster ook als `brandHref` al naar `/` is herschreven i.p.v. `__STUDIO_SITE_BASE__`.
+ */
+function replaceStudioNavChromeBrandWithRasterImg(
+  html: string,
+  imgInner: string,
+  ariaLabel: string,
+): { next: string; ok: true } | { ok: false } {
+  const lower = html.toLowerCase();
+  const hIdx = lower.search(/<header\b[^>]*\bdata-studio-nav-chrome\s*=\s*["']1["']/i);
+  if (hIdx < 0) return { ok: false };
+  const innerStart = findHtmlOpenTagEnd(html, hIdx);
+  const headerClose = lower.indexOf("</header>", innerStart);
+  if (headerClose < 0) return { ok: false };
+  const innerBlock = html.slice(innerStart, headerClose);
+  const aRel = innerBlock.search(/<a\b[^>]*\bclass\s*=\s*["'][^"']*\bgroup\b[^"']*["']/i);
+  if (aRel < 0) return { ok: false };
+  const aStart = innerStart + aRel;
+  const gt = html.indexOf(">", aStart);
+  if (gt < 0 || gt >= headerClose) return { ok: false };
+  const innerContentStart = gt + 1;
+  let depth = 0;
+  let pos = innerContentStart;
+  while (pos < headerClose) {
+    const o = lower.indexOf("<a", pos);
+    const c = lower.indexOf("</a>", pos);
+    if (c < 0 || c > headerClose) return { ok: false };
+    if (o >= 0 && o < c) {
+      depth++;
+      pos = o + 2;
+      continue;
+    }
+    if (depth === 0) {
+      let openTag = html.slice(aStart, gt + 1);
+      if (!new RegExp(`\\b${STUDIO_BRAND_MARK_ATTR}\\s*=`, "i").test(openTag)) {
+        openTag = openTag.replace(/<a\b/i, `<a ${STUDIO_BRAND_MARK_ATTR}="1"`);
+      }
+      if (!/\baria-label\s*=/i.test(openTag)) {
+        openTag = openTag.replace(/>$/, ` aria-label="${escapeHtmlAttr(ariaLabel)}">`);
+      }
+      const next = html.slice(0, aStart) + openTag + imgInner + html.slice(c);
+      return { next, ok: true };
+    }
+    depth--;
+    pos = c + 4;
+  }
+  return { ok: false };
 }
 
 /**
@@ -91,12 +155,6 @@ export function applyRasterBrandMarkToSections(
   if (rasterHeaderUrlIsConfusableWithFavicon(url, raster)) return sections;
 
   const full = sections.map((s) => s.html).join("\n");
-  /**
-   * `config.studioNav` → `prependStudioNavChromeToFirstSection` zet al merk (monogram + label).
-   * Raster vervangt anders de **eerste** `href="__STUDIO_SITE_BASE__"` elders (bv. in de hero) wanneer
-   * `brandHref` geen placeholder is — dat levert een tweede postzegel-logo naast de balk.
-   */
-  if (/\bdata-studio-nav-chrome\s*=\s*["']1["']/i.test(full)) return sections;
   if (full.includes(RASTER_BRAND_ATTR) && full.includes(url)) {
     return sections;
   }
@@ -106,6 +164,22 @@ export function applyRasterBrandMarkToSections(
   const imgInner = `<img src="${escapeHtmlAttr(url)}" alt="${brandEsc}" width="220" height="48" class="h-8 w-auto max-h-9 max-w-[min(100%,280px)] object-contain object-left" loading="eager" decoding="async" ${RASTER_BRAND_ATTR}="1"/>`;
 
   const copy = sections.map((s) => ({ ...s, html: s.html }));
+
+  /**
+   * Declaratieve chrome: raster in de echte nav-balk i.p.v. fallback-inject in `#hero`
+   * (anders dubbel logo / “postzegel” naast het grid).
+   */
+  if (/\bdata-studio-nav-chrome\s*=\s*["']1["']/i.test(full)) {
+    for (let i = 0; i < copy.length; i++) {
+      const rep = replaceStudioNavChromeBrandWithRasterImg(copy[i]!.html, imgInner, label);
+      if (rep.ok) {
+        copy[i] = { ...copy[i]!, html: rep.next };
+        return copy;
+      }
+    }
+    return sections;
+  }
+
   for (let i = 0; i < copy.length; i++) {
     const rep = replaceFirstHomeAnchorWithImg(copy[i]!.html, imgInner, label);
     if (rep.ok) {

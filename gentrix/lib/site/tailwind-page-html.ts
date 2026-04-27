@@ -27,7 +27,10 @@ import { STUDIO_ALPINE_CDN_SRC } from "@/lib/site/studio-alpine-cdn";
 import { STUDIO_LUCIDE_UMD_SRC } from "@/lib/site/studio-lucide-cdn";
 import { STUDIO_TAILWIND_PLAY_CDN_SRC } from "@/lib/site/studio-tailwind-cdn";
 import { applyBrandLogoFallbackToSections } from "@/lib/site/brand-logo-inject";
-import { applyRasterBrandMarkToSections } from "@/lib/site/brand-raster-inject";
+import {
+  applyRasterBrandMarkToSections,
+  stripHeroRasterBrandDuplicateAfterStudioNav,
+} from "@/lib/site/brand-raster-inject";
 import { inferStudioNavChromeFromSections } from "@/lib/site/infer-studio-nav-chrome";
 import {
   parseStudioNavChromeConfig,
@@ -2311,7 +2314,7 @@ export function buildRootCssVarsForTailwindPage(pageConfig: TailwindPageConfig |
 
 /**
  * `<link rel="icon">` voor geëxporteerde HTML en iframe-srcDoc.
- * Premium `logoSet.variants.favicon` wint; anders deterministische site-identiteit (kleur + teken).
+ * `rasterBrandSet`-PNG’s wanneer aanwezig; anders `logoSet.variants.favicon`; anders deterministische site-identiteit.
  */
 export function buildFaviconLinkTagForPublishedSite(input: {
   logoSet?: GeneratedLogoSet | null;
@@ -2401,7 +2404,7 @@ export function buildTailwindSectionsBodyInnerHtml(
   }
 
   const raster = bodyOptions?.rasterBrandSet?.headerLogoUrl?.trim();
-  const prepared =
+  const preparedRaw =
     raster && bodyOptions?.rasterBrandSet
       ? applyRasterBrandMarkToSections(
           sectionRows,
@@ -2411,6 +2414,10 @@ export function buildTailwindSectionsBodyInnerHtml(
       : bodyOptions?.logoSet != null
         ? applyBrandLogoFallbackToSections(sectionRows, bodyOptions.logoSet)
         : sectionRows;
+  const prepared = preparedRaw.map((s) => ({
+    ...s,
+    html: stripHeroRasterBrandDuplicateAfterStudioNav(s.html),
+  }));
   return prepared
     .map((s) => {
       const portalKeyMatch = s.html.match(/\bdata-portal-section-key="([^"]*)"/i);

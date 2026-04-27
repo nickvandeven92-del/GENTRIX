@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildNextPublishedSiteIcons,
   pickMarkCharForSiteIdentity,
   pickPrimaryHexForSiteIdentity,
   resolvePublicSiteFaviconSvg,
@@ -52,5 +53,28 @@ describe("site-identity-favicon", () => {
   it("picks first letter or digit from display name", () => {
     expect(pickMarkCharForSiteIdentity("123 Events", "x")).toBe("1");
     expect(pickMarkCharForSiteIdentity("", "zorg-huis")).toBe("Z");
+  });
+});
+
+describe("buildNextPublishedSiteIcons", () => {
+  it("zet altijd apple naast raster icon (ook zonder 192)", () => {
+    const icons = buildNextPublishedSiteIcons({
+      rasterFavicon32Url: "https://cdn.example/fav32.png",
+      rasterFavicon192Url: undefined,
+      displayName: "X",
+      slug: "x",
+    });
+    expect(icons.apple?.length).toBe(1);
+    expect(icons.apple?.[0]?.url).toBe("https://cdn.example/fav32.png");
+    expect(icons.icon?.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("zet apple op dezelfde SVG data-URL als tabblad-icon bij fallback", () => {
+    const icons = buildNextPublishedSiteIcons({
+      displayName: "Bakker",
+      slug: "bakker",
+    });
+    expect(icons.icon?.[0]?.url).toContain("data:image/svg+xml");
+    expect(icons.apple?.[0]?.url).toBe(icons.icon?.[0]?.url);
   });
 });
