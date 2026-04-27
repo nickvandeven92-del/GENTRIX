@@ -410,6 +410,8 @@ export type OpenAiHeroPrefetchInput = {
    * de hero krijgt dan meestal een klant-`<img>` en zou `shouldAttemptAiHeroImageForHtml` blokkeren.
    */
   skipPrefetchBecauseLikelyClientHero: boolean;
+  /** Zelfde seed als site `varianceNonce` zodat parallel prefetch bij dezelfde run hoort. */
+  variationSeed?: string;
 };
 
 /**
@@ -607,10 +609,12 @@ export async function generateStudioHeroImagePublicUrl(ctx: {
   description: string;
   designContract: DesignGenerationContract | null;
   subfolderSlug?: string | null;
+  /** Zelfde run als `varianceNonce` in site-generatie: herhaalbaar binnen de run, verschillend per run. */
+  variationSeed?: string | null;
 }): Promise<StudioHeroImageUploadResult | null> {
   if (!isAiHeroImagePostProcessEnabled()) return null;
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract, {
-    variationSeed: randomBytes(6).toString("hex"),
+    variationSeed: ctx.variationSeed?.trim() || randomBytes(6).toString("hex"),
   });
   const raster = await createHeroImageRasterB64(prompt);
   if (!raster) return null;
@@ -679,7 +683,7 @@ export function startOpenAiHeroImagePrefetch(
     input.businessName,
     input.description,
     input.designContract,
-    { variationSeed: randomBytes(6).toString("hex") },
+    { variationSeed: input.variationSeed?.trim() || randomBytes(6).toString("hex") },
   );
   return createHeroImageRasterB64(prompt);
 }
@@ -937,6 +941,8 @@ export type ApplyAiHeroImageContext = {
    * `background-image` / Tailwind arbitrary background-url uit Claude-output strippen vóór inject (anders blijft een geplakte screenshot staan).
    */
   siteChatRequestedAiHeroRaster?: boolean;
+  /** Zelfde waarde als site-`varianceNonce` wanneer beschikbaar; anders willekeurige fallback in apply. */
+  variationSeed?: string | null;
 };
 
 export async function applyAiHeroImageToGeneratedPage(
@@ -987,8 +993,7 @@ export async function applyAiHeroImageToGeneratedPage(
   }
 
   const prompt = buildOpenAiHeroPrompt(ctx.businessName, ctx.description, ctx.designContract, {
-    /** Elke upstream-poging krijgt een eigen seed (site-chat had dit al; hoofdstroom niet → te gelijksoortige composities). */
-    variationSeed: randomBytes(6).toString("hex"),
+    variationSeed: ctx.variationSeed?.trim() || randomBytes(6).toString("hex"),
   });
   let prefetch: StudioHeroImageRasterPrefetch | null =
     ctx.prefetchedHeroB64Promise != null ? await ctx.prefetchedHeroB64Promise : null;

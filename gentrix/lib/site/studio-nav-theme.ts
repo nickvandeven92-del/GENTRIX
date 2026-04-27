@@ -93,8 +93,9 @@ function borderBottomCss(
 ): string {
   if (visual.border === "none") return "border-bottom:none";
   if (visual.border === "accent") return `border-bottom:2px solid ${accent}`;
-  /* subtle */
-  const line = isDarkChrome ? "rgba(255,255,255,0.14)" : rgbaFromHex(primary, 0.22);
+  /* subtle: neutrale hairline. Oude `rgbaFromHex(primary, 0.22)` oogt als een donkere/zwarte
+   * streep onder een lichte balk wanneer `primary` diep slate is (typisch merk-basis in theme). */
+  const line = isDarkChrome ? "rgba(255,255,255,0.14)" : "rgba(15, 23, 42, 0.07)";
   return `border-bottom:1px solid ${line}`;
 }
 

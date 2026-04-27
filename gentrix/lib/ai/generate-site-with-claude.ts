@@ -2027,6 +2027,11 @@ export type PreparedGenerateSiteClaudeCall = {
   userContent: string | ContentBlockParam[];
   homepagePlan: HomepagePlan;
   pipelineFeedback: GenerationPipelineFeedback;
+  /**
+   * Zelfde run-id als in de bouwprompt (caller-kant of elke `prepare` een UUID).
+   * Gebruik voor AI-hero `variationSeed` zodat prebake, prefetch en apply-consistent.
+   */
+  varianceNonce: string;
   /** `true` = Claude levert `sections` + `contactSections` (geen one-pager-upgrade). */
   useMarketingMultiPage: boolean;
   /** Geen upgrade: harde 3/4/5-sectie-validatie op landings-`sections` na parse. */
@@ -2217,6 +2222,7 @@ export async function prepareGenerateSiteClaudeCall(
     userContent,
     homepagePlan,
     pipelineFeedback,
+    varianceNonce: mergedPromptOptions.varianceNonce?.trim() || randomUUID(),
     useMarketingMultiPage,
     strictLandingContract,
     ...(marketingPageSlugs ? { marketingPageSlugs } : {}),
@@ -2562,6 +2568,7 @@ export async function executeGenerateSitePhase2(
     subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
     prefetchedHeroB64Promise,
     prebakedHero: prebakedHero ?? null,
+    variationSeed: p.varianceNonce,
   });
 
   data = await applyStudioRasterBrandToGeneratedPage(data, {
@@ -2646,6 +2653,7 @@ export async function generateSiteWithClaude(
       description,
       designContract,
       subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+      variationSeed: p.varianceNonce,
     });
     if (prebakedHero) {
       userContentWithComposition = appendPrebakedHeroImageToUserContent(
@@ -2663,6 +2671,7 @@ export async function generateSiteWithClaude(
           description,
           designContract,
           skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
+          variationSeed: p.varianceNonce,
         })
       : Promise.resolve(null);
 
@@ -2938,6 +2947,7 @@ export function createGenerateSiteReadableStream(
               description,
               designContract,
               subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+              variationSeed: p.varianceNonce,
             });
           } finally {
             stopHeroPrebakeKeepalive();
@@ -2968,6 +2978,7 @@ export function createGenerateSiteReadableStream(
                 description,
                 designContract,
                 skipPrefetchBecauseLikelyClientHero: skipHeroPrefetch,
+                variationSeed: p.varianceNonce,
               })
             : Promise.resolve(null);
         if (isAiHeroImagePostProcessEnabled() && !skipHeroPrefetch && !prebakedHero) {
@@ -3167,6 +3178,7 @@ export function createGenerateSiteReadableStream(
             subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
             prefetchedHeroB64Promise,
             prebakedHero,
+            variationSeed: p.varianceNonce,
           });
         } finally {
           stopAiHeroKeepalive();

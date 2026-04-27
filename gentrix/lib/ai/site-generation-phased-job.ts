@@ -20,12 +20,16 @@ import {
 } from "@/lib/ai/ai-hero-image-postprocess";
 import { getAnthropicApiKey } from "@/lib/ai/anthropic-env";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
+import { randomUUID } from "crypto";
 
 /** Alles behalve `client` en `userContent` — die worden in fase 2 opnieuw opgebouwd. */
 export type SerializedPreparedGenerateSiteClaudeCallV1 = Omit<
   PreparedGenerateSiteClaudeCall,
-  "client" | "userContent"
->;
+  "client" | "userContent" | "varianceNonce"
+> & {
+  /** Oudere checkpoints: ontbreekt; {@link hydratePrepared} vult met `randomUUID()`. */
+  varianceNonce?: string;
+};
 
 export type SiteGenerationJobCheckpointV1 = {
   v: 1;
@@ -54,10 +58,12 @@ function hydratePrepared(serialized: SerializedPreparedGenerateSiteClaudeCallV1)
     throw new Error("ANTHROPIC_API_KEY ontbreekt — checkpoint fase 2 kan niet starten.");
   }
   const client = new Anthropic({ apiKey });
+  const varianceNonce = serialized.varianceNonce?.trim() || randomUUID();
   return {
     ...serialized,
     client,
     userContent: "",
+    varianceNonce,
   };
 }
 
@@ -140,6 +146,7 @@ export async function buildSiteGenerationCheckpointPhase1(params: {
       description,
       designContract,
       subfolderSlug: promptOptions?.siteStorageSubfolderSlug ?? null,
+      variationSeed: p.varianceNonce,
     });
     if (prebakedHero) {
       userContentWithComposition = appendPrebakedHeroImageToUserContent(
