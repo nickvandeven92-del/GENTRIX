@@ -315,7 +315,7 @@ export function CinematicNav({
     return (
       <header
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-50 w-full border-b border-zinc-200/90 bg-white/92 backdrop-blur-md shadow-sm"
+        className="fixed top-0 left-0 right-0 z-50 w-full border-b border-zinc-200 bg-white shadow-sm pt-[env(safe-area-inset-top,0px)]"
         style={fontSans}
       >
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">
@@ -374,7 +374,7 @@ export function CinematicNav({
     return (
       <header
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-50 w-full border-b border-white/10 bg-zinc-950/92 text-white backdrop-blur-md"
+        className="fixed top-0 left-0 right-0 z-50 w-full border-b border-white/10 bg-zinc-950 text-white pt-[env(safe-area-inset-top,0px)]"
         style={fontSans}
       >
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">

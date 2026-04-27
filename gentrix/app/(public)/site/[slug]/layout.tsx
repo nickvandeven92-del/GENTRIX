@@ -31,6 +31,7 @@ export default function SiteSlugLayout({ children }: { children: ReactNode }) {
         <>
       {/* Inline override: voorkomt donkere body-achtergrond op apparaten met dark mode */}
       <style>{`
+        html{background:#fff!important}
         body{background:#fff!important;color:#171717!important}
         a,button,[role="button"],summary{
           -webkit-tap-highlight-color:transparent;

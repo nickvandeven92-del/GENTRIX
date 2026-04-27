@@ -17,6 +17,7 @@ export default function PreviewSlugLayout({ children }: { children: ReactNode })
   return (
     <>
       <style>{`
+        html{background:#fff!important}
         body{background:#fff!important;color:#171717!important}
         a,button,[role="button"],summary{
           -webkit-tap-highlight-color:transparent;
