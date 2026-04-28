@@ -36,6 +36,7 @@ export function PortalSocialGalleryCard({ slug }: Props) {
     accountHandle: "",
     hasToken: false,
   });
+  const showHowTo = settings.enabled && !settings.hasToken;
 
   useEffect(() => {
     let cancelled = false;
@@ -202,6 +203,25 @@ export function PortalSocialGalleryCard({ slug }: Props) {
           {syncing ? "Syncen..." : "Nu syncen"}
         </button>
       </div>
+
+      {showHowTo ? (
+        <div className="mt-4 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/50 dark:bg-blue-950/25">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">
+            Volgende stappen
+          </p>
+          <ol className="mt-2 space-y-2 text-sm text-blue-950 dark:text-blue-100">
+            <li className="animate-[fadeSlideIn_.25s_ease-out]">1. Klik op “Koppel via {settings.provider === "instagram" ? "Instagram" : "Facebook"} OAuth”.</li>
+            <li className="animate-[fadeSlideIn_.35s_ease-out]">2. Log in bij Meta en geef toestemming.</li>
+            <li className="animate-[fadeSlideIn_.45s_ease-out]">3. Terug in portaal: klik op “Nu syncen”.</li>
+          </ol>
+          <style>{`
+            @keyframes fadeSlideIn {
+              0% { opacity: 0; transform: translateY(6px); }
+              100% { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+        </div>
+      ) : null}
 
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
         Laatste sync: {settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString() : "nog niet"}{" "}

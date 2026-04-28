@@ -75,7 +75,6 @@ type PublishedSiteViewProps = {
 function injectSocialGalleryBlueprintSection(
   sections: TailwindSection[],
   socialGallery: PublicSocialGallery | null,
-  previewMode: boolean,
 ): TailwindSection[] {
   if (!socialGallery?.enabled) return sections;
   if (sections.some((s) => (s.id ?? "").trim() === "social-gallery-placeholder")) return sections;
@@ -101,9 +100,7 @@ function injectSocialGalleryBlueprintSection(
 </a>`;
     })
         .join("")
-    : previewMode
-      ? placeholderCards
-      : "";
+    : placeholderCards;
 
   if (!cards) return sections;
 
@@ -249,7 +246,6 @@ export function PublishedSiteView({
         ? injectSocialGalleryBlueprintSection(
             twSectionsBase,
             socialGallery,
-            Boolean(draftPublicPreviewToken?.trim()),
           )
         : twSectionsBase;
     const twSectionsForDelivery = twSections.map((row) =>
