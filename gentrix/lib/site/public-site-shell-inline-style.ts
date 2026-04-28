@@ -16,7 +16,11 @@ function safeCssColorToken(raw: string, fallback: string): string {
 export function computePublicSiteShellColors(payload: PublishedSitePayload): PublicSiteShellColors {
   if (payload.kind === "tailwind") {
     const cfg = payload.config != null && !isLegacyTailwindPageConfig(payload.config) ? payload.config : undefined;
-    const bgRaw = cfg?.theme?.background?.trim() || cfg?.theme?.primary?.trim() || "#ffffff";
+    /**
+     * Shell moet de pagina-achtergrond volgen (niet de merk-primary). Primary is vaak donker en gaf op desktop
+     * een zwarte balk onder een fixed nav-spacer als `theme.background` ontbrak.
+     */
+    const bgRaw = cfg?.theme?.background?.trim() || "#ffffff";
     const fgRaw = cfg?.theme?.textColor?.trim() || "#171717";
     return {
       bg: safeCssColorToken(bgRaw, "#ffffff"),
