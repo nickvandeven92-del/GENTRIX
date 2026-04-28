@@ -101,7 +101,7 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
 
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
   const hasCompiledTailwindCss = Boolean(bundle.payload.tailwindCompiledCss?.trim());
-  const flyerRelaxedTailwindCdn = showFlyer && !hasCompiledTailwindCss;
+  const relaxedTailwindCdnLoading = !hasCompiledTailwindCss;
   const siteLabel = bundle.payload.clientName?.trim() || formatSlugForDisplay(slug);
   const flyerTailwindPageConfig =
     bundle.payload.config != null && !isLegacyTailwindPageConfig(bundle.payload.config) ? bundle.payload.config : null;
@@ -119,7 +119,7 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
         marketingSubpageKey={resolvedSeg}
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
         prettyPublicUrls={prettyPublicUrls}
-        relaxedTailwindCdnLoading={flyerRelaxedTailwindCdn}
+        relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
         flyerPreview={showFlyer}
       />
       {showFlyer ? (

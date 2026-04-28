@@ -38,12 +38,11 @@ export async function GET(request: Request) {
     .select("id, social_gallery_settings")
     .eq("status", "active")
     .order("id", { ascending: true })
-    .limit(batchSize)
-    .returns<ClientRow[]>();
+    .limit(batchSize);
   if (cursor) {
     query = query.gt("id", cursor);
   }
-  const { data, error } = await query;
+  const { data, error } = (await query) as { data: ClientRow[] | null; error: { message: string } | null };
 
   if (error) {
     if (isPostgrestUnknownColumnError(error, "social_gallery_settings")) {

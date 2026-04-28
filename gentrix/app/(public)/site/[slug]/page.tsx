@@ -91,7 +91,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
   const showFlyer = sp.flyer === "1" && bundle.isConceptTokenAccess;
   const hasCompiledTailwindCss =
     bundle.payload.kind === "tailwind" && Boolean(bundle.payload.tailwindCompiledCss?.trim());
-  const flyerRelaxedTailwindCdn = showFlyer && !hasCompiledTailwindCss;
+  const relaxedTailwindCdnLoading = !hasCompiledTailwindCss;
   const shell = computePublicSiteShellColors(bundle.payload);
   const siteLabel =
     bundle.payload.kind === "tailwind"
@@ -115,7 +115,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
         webshopEnabled={bundle.webshopEnabled}
         draftPublicPreviewToken={bundle.isConceptTokenAccess ? (bundle.conceptPreviewToken ?? previewToken) : null}
         prettyPublicUrls={prettyPublicUrls}
-        relaxedTailwindCdnLoading={flyerRelaxedTailwindCdn}
+        relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
         flyerPreview={showFlyer}
         socialGallery={socialGallery}
       />
