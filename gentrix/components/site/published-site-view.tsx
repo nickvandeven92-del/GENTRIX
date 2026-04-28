@@ -84,9 +84,8 @@ function injectSocialGalleryBlueprintSection(
     return `<div class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);"><img src="data:image/svg+xml;utf8,${encoded}" alt="GENTRIX preview placeholder" class="h-full w-full object-cover" /></div>`;
   }).join("");
 
-  const cards = socialGallery.items.length
-    ? socialGallery.items
-        .slice(0, 9)
+  const realCards = socialGallery.items
+    .slice(0, 9)
     .map((item) => {
       const href = item.permalink ?? item.url;
       const caption = (item.caption ?? "")
@@ -98,8 +97,16 @@ function injectSocialGalleryBlueprintSection(
   <img src="${item.url}" alt="${caption}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
 </a>`;
     })
-        .join("")
-    : placeholderCards;
+    .join("");
+  const cards =
+    socialGallery.items.length >= 9
+      ? realCards
+      : `${realCards}${placeholderCards
+          .split("</div>")
+          .filter(Boolean)
+          .slice(0, Math.max(0, 9 - socialGallery.items.length))
+          .map((part) => `${part}</div>`)
+          .join("")}`;
 
   if (!cards) return sections;
 

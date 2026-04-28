@@ -8,10 +8,38 @@ type Props = {
   items: SocialGalleryItem[];
 };
 
+function useVisibleSlots(): 1 | 3 {
+  const [slots, setSlots] = useState<1 | 3>(3);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 639px)");
+    const sync = () => setSlots(media.matches ? 1 : 3);
+    sync();
+    const onChange = () => sync();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  return slots;
+}
+
 export function SocialGalleryLandingSection({ items }: Props) {
   if (items.length === 0) return null;
-  const cards = items.slice(0, 9);
-  const maxStartIndex = useMemo(() => Math.max(0, cards.length - 3), [cards.length]);
+  const visibleSlots = useVisibleSlots();
+  const placeholderSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
+  const placeholderUrl = `data:image/svg+xml;utf8,${encodeURIComponent(placeholderSvg)}`;
+  const cards = useMemo(() => {
+    const base = items.slice(0, 9);
+    if (base.length >= 9) return base;
+    const placeholders: SocialGalleryItem[] = Array.from({ length: 9 - base.length }, (_, index) => ({
+      id: `placeholder-${index}`,
+      url: placeholderUrl,
+      caption: "Placeholder",
+    }));
+    return [...base, ...placeholders];
+  }, [items, placeholderUrl]);
+  const maxStartIndex = useMemo(() => Math.max(0, cards.length - visibleSlots), [cards.length, visibleSlots]);
   const [startIndex, setStartIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
   const canGoPrev = startIndex > 0;
@@ -66,8 +94,11 @@ export function SocialGalleryLandingSection({ items }: Props) {
         >
           <ChevronRight className="size-4" />
         </button>
-        <div className="grid grid-cols-3 gap-3">
-          {cards.slice(startIndex, startIndex + 3).map((item) => (
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${visibleSlots}, minmax(0, 1fr))` }}
+        >
+          {cards.slice(startIndex, startIndex + visibleSlots).map((item) => (
           <a
             key={item.id}
             href={item.permalink ?? item.url}

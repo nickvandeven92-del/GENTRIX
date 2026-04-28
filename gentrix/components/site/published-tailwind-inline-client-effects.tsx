@@ -47,8 +47,13 @@ function initSocialGalleryCarousel(root: ParentNode) {
 
     const cards = Array.from(track.children) as HTMLElement[];
     if (cards.length === 0) return;
+    const mobileMedia = window.matchMedia("(max-width: 639px)");
+    const visibleCount = () => (mobileMedia.matches ? 1 : 3);
+    const applyTrackColumns = () => {
+      track.style.gridTemplateColumns = `repeat(${visibleCount()}, minmax(0, 1fr))`;
+    };
     track.style.display = "grid";
-    track.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+    applyTrackColumns();
     track.style.overflowX = "hidden";
     track.style.scrollBehavior = "auto";
     track.style.gridAutoFlow = "";
@@ -65,19 +70,20 @@ function initSocialGalleryCarousel(root: ParentNode) {
       socialGalleryTimers.delete(section);
     }
 
-    const visibleCount = 3;
-    const maxStartIndex = Math.max(0, cards.length - visibleCount);
+    const maxStartIndex = () => Math.max(0, cards.length - visibleCount());
     let startIndex = 0;
     const goToIndex = (nextStart: number) => {
-      startIndex = Math.max(0, Math.min(maxStartIndex, nextStart));
+      startIndex = Math.max(0, Math.min(maxStartIndex(), nextStart));
       render();
     };
     const render = () => {
+      applyTrackColumns();
+      const slots = visibleCount();
       cards.forEach((card, index) => {
-        card.style.display = index >= startIndex && index < startIndex + visibleCount ? "" : "none";
+        card.style.display = index >= startIndex && index < startIndex + slots ? "" : "none";
       });
       prevBtn.disabled = startIndex === 0;
-      nextBtn.disabled = startIndex >= maxStartIndex;
+      nextBtn.disabled = startIndex >= maxStartIndex();
     };
 
     const stopAutoPlay = () => {
@@ -98,9 +104,10 @@ function initSocialGalleryCarousel(root: ParentNode) {
     };
 
     render();
-    if (maxStartIndex > 0) {
+    if (maxStartIndex() > 0) {
       const timerId = window.setInterval(() => {
-        const nextStart = startIndex >= maxStartIndex ? 0 : startIndex + 1;
+        const currentMax = maxStartIndex();
+        const nextStart = startIndex >= currentMax ? 0 : startIndex + 1;
         goToIndex(nextStart);
       }, 10_000);
       socialGalleryTimers.set(section, timerId);
