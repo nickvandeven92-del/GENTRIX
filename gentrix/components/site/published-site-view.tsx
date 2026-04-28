@@ -77,7 +77,6 @@ function injectSocialGalleryBlueprintSection(
   socialGallery: PublicSocialGallery | null,
 ): TailwindSection[] {
   if (!socialGallery?.enabled) return sections;
-  if (sections.some((s) => (s.id ?? "").trim() === "social-gallery-placeholder")) return sections;
 
   const placeholderCards = Array.from({ length: 9 }, () => {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
@@ -171,18 +170,19 @@ function injectSocialGalleryBlueprintSection(
   </script>
 </section>`;
 
+  const baseSections = sections.filter((section) => (section.id ?? "").trim() !== "social-gallery-placeholder");
   const socialSection: TailwindSection = {
     id: "social-gallery-placeholder",
     sectionName: "Social Gallery",
     semanticRole: "gallery",
     html,
   };
-  const heroIndex = sections.findIndex((section) => (section.id ?? "").trim() === "hero");
+  const heroIndex = baseSections.findIndex((section) => (section.id ?? "").trim() === "hero");
   if (heroIndex >= 0) {
-    return [...sections.slice(0, heroIndex + 1), socialSection, ...sections.slice(heroIndex + 1)];
+    return [...baseSections.slice(0, heroIndex + 1), socialSection, ...baseSections.slice(heroIndex + 1)];
   }
-  if (sections.length > 0) {
-    return [sections[0], socialSection, ...sections.slice(1)];
+  if (baseSections.length > 0) {
+    return [baseSections[0], socialSection, ...baseSections.slice(1)];
   }
   return [socialSection];
 }
