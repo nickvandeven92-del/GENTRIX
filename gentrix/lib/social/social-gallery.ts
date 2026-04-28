@@ -67,18 +67,18 @@ function normalizeInstagramPayload(json: unknown): SocialGalleryItem[] {
     .safeParse(json);
   if (!rows.success) return [];
   return rows.data.data
-    .map((row) => {
+    .reduce<SocialGalleryItem[]>((acc, row) => {
       const url = row.media_url ?? row.thumbnail_url;
-      if (!url) return null;
-      return {
+      if (!url) return acc;
+      acc.push({
         id: row.id,
         url,
         caption: row.caption,
         permalink: row.permalink,
         timestamp: row.timestamp,
-      } satisfies SocialGalleryItem;
-    })
-    .filter((row): row is SocialGalleryItem => Boolean(row))
+      });
+      return acc;
+    }, [])
     .slice(0, 9);
 }
 
@@ -100,18 +100,18 @@ function normalizeFacebookPayload(json: unknown): SocialGalleryItem[] {
     .safeParse(json);
   if (!rows.success) return [];
   return rows.data.data
-    .map((row) => {
+    .reduce<SocialGalleryItem[]>((acc, row) => {
       const img = row.images?.[0]?.source;
-      if (!img) return null;
-      return {
+      if (!img) return acc;
+      acc.push({
         id: row.id,
         url: img,
         caption: row.name,
         permalink: row.link,
         timestamp: row.created_time,
-      } satisfies SocialGalleryItem;
-    })
-    .filter((row): row is SocialGalleryItem => Boolean(row))
+      });
+      return acc;
+    }, [])
     .slice(0, 9);
 }
 
