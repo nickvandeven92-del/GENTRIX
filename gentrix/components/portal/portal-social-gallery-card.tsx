@@ -21,13 +21,13 @@ type Props = { slug: string };
 
 export function PortalSocialGalleryCard({ slug }: Props) {
   const searchParams = useSearchParams();
+  const oauthState = searchParams.get("social_oauth");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<SocialGalleryItem[]>([]);
-  const [tokenInput, setTokenInput] = useState("");
   const [settings, setSettings] = useState<SocialSettings>({
     customerOptIn: true,
     enabled: false,
@@ -36,7 +36,6 @@ export function PortalSocialGalleryCard({ slug }: Props) {
     accountHandle: "",
     hasToken: false,
   });
-  const showHowTo = settings.enabled && !settings.hasToken;
 
   useEffect(() => {
     let cancelled = false;
@@ -59,36 +58,28 @@ export function PortalSocialGalleryCard({ slug }: Props) {
     };
   }, [slug]);
 
-  async function save() {
+  async function updateEnabled(nextEnabled: boolean) {
     setSaving(true);
     setError(null);
+    setSettings((s) => ({ ...s, enabled: nextEnabled }));
     try {
       const res = await fetch(`/api/portal/clients/${encodeURIComponent(slug)}/social-gallery`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          enabled: settings.enabled,
+          enabled: nextEnabled,
           provider: settings.provider,
-          accountId: settings.accountId ?? "",
-          accountHandle: settings.accountHandle ?? "",
-          ...(tokenInput.trim() ? { accessToken: tokenInput.trim() } : {}),
         }),
       });
       const json = await res.json();
       if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Opslaan mislukt.");
       setSettings(json.settings);
-      setTokenInput("");
     } catch (e) {
+      setSettings((s) => ({ ...s, enabled: !nextEnabled }));
       setError(e instanceof Error ? e.message : "Opslaan mislukt.");
     } finally {
       setSaving(false);
     }
-  }
-
-  function connectWithMeta() {
-    setConnecting(true);
-    const href = `/api/portal/clients/${encodeURIComponent(slug)}/social-gallery/oauth/start?provider=${settings.provider}`;
-    window.location.href = href;
   }
 
   function connectWithProvider(provider: SocialProvider) {
@@ -131,9 +122,10 @@ export function PortalSocialGalleryCard({ slug }: Props) {
           <input
             type="checkbox"
             checked={settings.enabled}
-            onChange={(e) => setSettings((s) => ({ ...s, enabled: e.target.checked }))}
+            onChange={(e) => void updateEnabled(e.target.checked)}
+            disabled={saving}
           />
-          Actief
+          {saving ? "Opslaan..." : "Actief"}
         </label>
       </div>
       {settings.customerOptIn === false ? (
@@ -142,68 +134,35 @@ export function PortalSocialGalleryCard({ slug }: Props) {
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="text-sm text-zinc-700 dark:text-zinc-200">
-          Provider
-          <select
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            value={settings.provider}
-            onChange={(e) => setSettings((s) => ({ ...s, provider: e.target.value as SocialProvider }))}
-          >
-            <option value="instagram">Instagram</option>
-            <option value="facebook">Facebook</option>
-          </select>
-        </label>
-        <label className="text-sm text-zinc-700 dark:text-zinc-200">
-          Account ID (Meta)
-          <input
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            value={settings.accountId ?? ""}
-            onChange={(e) => setSettings((s) => ({ ...s, accountId: e.target.value }))}
-            placeholder="bijv. IG user id of FB page id"
-          />
-        </label>
-        <label className="text-sm text-zinc-700 dark:text-zinc-200">
-          Handle (optioneel)
-          <input
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            value={settings.accountHandle ?? ""}
-            onChange={(e) => setSettings((s) => ({ ...s, accountHandle: e.target.value }))}
-            placeholder="bijv. salon_naam"
-          />
-        </label>
-        <label className="text-sm text-zinc-700 dark:text-zinc-200">
-          Access token
-          <input
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder={settings.hasToken ? "Token aanwezig (nieuw token optioneel)" : "Meta Graph token"}
-          />
-        </label>
-      </div>
-
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => void save()}
-          disabled={saving}
-          className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-70 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          onClick={() => connectWithProvider("instagram")}
+          disabled={connecting}
+          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            settings.provider === "instagram"
+              ? "border-pink-300 bg-pink-50 text-pink-900 dark:border-pink-700 dark:bg-pink-950/40 dark:text-pink-200"
+              : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          }`}
         >
-          {saving ? "Opslaan..." : "Opslaan"}
+          {connecting && settings.provider === "instagram" ? "Doorsturen..." : "Verbind met Instagram"}
         </button>
         <button
           type="button"
-          onClick={connectWithMeta}
+          onClick={() => connectWithProvider("facebook")}
           disabled={connecting}
-          className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-70 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900/60"
+          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            settings.provider === "facebook"
+              ? "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-200"
+              : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          }`}
         >
-          {connecting ? "Doorsturen..." : `Koppel via ${settings.provider === "instagram" ? "Instagram" : "Facebook"} OAuth`}
+          {connecting && settings.provider === "facebook" ? "Doorsturen..." : "Verbind met Facebook"}
         </button>
         <button
           type="button"
           onClick={() => void syncNow()}
-          disabled={syncing}
+          disabled={syncing || !settings.enabled}
           className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-70 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
           <RefreshCcw className="size-4" />
@@ -211,43 +170,16 @@ export function PortalSocialGalleryCard({ slug }: Props) {
         </button>
       </div>
 
-      {showHowTo ? (
+      {settings.enabled ? (
         <div className="mt-4 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/50 dark:bg-blue-950/25">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">
-            Interactieve koppeling
+            Zo maak je je content zichtbaar
           </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => connectWithProvider("instagram")}
-              disabled={connecting}
-              className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
-                settings.provider === "instagram"
-                  ? "border-pink-300 bg-pink-50 text-pink-900 dark:border-pink-700 dark:bg-pink-950/40 dark:text-pink-200"
-                  : "border-blue-200 bg-white text-zinc-800 dark:border-blue-900 dark:bg-zinc-900 dark:text-zinc-100"
-              }`}
-            >
-              <span className="block font-semibold">Instagram koppelen</span>
-              <span className="block text-xs opacity-80">Login -&gt; toestemming -&gt; terug naar portaal</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => connectWithProvider("facebook")}
-              disabled={connecting}
-              className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
-                settings.provider === "facebook"
-                  ? "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-200"
-                  : "border-blue-200 bg-white text-zinc-800 dark:border-blue-900 dark:bg-zinc-900 dark:text-zinc-100"
-              }`}
-            >
-              <span className="block font-semibold">Facebook koppelen</span>
-              <span className="block text-xs opacity-80">Login -&gt; toestemming -&gt; terug naar portaal</span>
-            </button>
-          </div>
           <ol className="mt-2 space-y-2 text-sm text-blue-950 dark:text-blue-100">
-            <li className="animate-[fadeSlideIn_.25s_ease-out]">1. Klik op “Koppel via {settings.provider === "instagram" ? "Instagram" : "Facebook"} OAuth”.</li>
-            <li className="animate-[fadeSlideIn_.35s_ease-out]">2. Log in bij Meta en geef toestemming.</li>
-            <li className="animate-[fadeSlideIn_.45s_ease-out]">3. Terug in portaal: klik op “Nu syncen”.</li>
+            <li className="animate-[fadeSlideIn_.25s_ease-out]">1. Klik op “Verbind met Instagram” of “Verbind met Facebook”.</li>
+            <li className="animate-[fadeSlideIn_.35s_ease-out]">2. Log in bij Meta en geef toegang tot je pagina/account.</li>
+            <li className="animate-[fadeSlideIn_.45s_ease-out]">3. Terug in het portaal: klik op “Nu syncen”.</li>
+            <li className="animate-[fadeSlideIn_.55s_ease-out]">4. Je 9 nieuwste posts worden daarna automatisch getoond op je landingspagina.</li>
           </ol>
           <style>{`
             @keyframes fadeSlideIn {
@@ -265,6 +197,25 @@ export function PortalSocialGalleryCard({ slug }: Props) {
       {searchParams.get("social_oauth") === "ok" ? (
         <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">OAuth koppeling gelukt. Klik op &quot;Nu syncen&quot;.</p>
       ) : null}
+      {oauthState === "missing_env" ? (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="font-semibold">Meta app ontbreekt nog in serverconfiguratie</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs">
+            <li>Ga naar developers.facebook.com en open je app.</li>
+            <li>Kopieer App ID en App Secret uit Settings -&gt; Basic.</li>
+            <li>Zet ze in Vercel als META_APP_ID en META_APP_SECRET.</li>
+            <li>Redeploy en klik daarna opnieuw op Koppel via OAuth.</li>
+          </ol>
+          <a
+            href="https://developers.facebook.com/apps/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 dark:hover:bg-amber-900/60"
+          >
+            Open Meta Developers
+          </a>
+        </div>
+      ) : null}
 
       {error ? <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
@@ -275,6 +226,16 @@ export function PortalSocialGalleryCard({ slug }: Props) {
             <img src={item.url} alt={item.caption ?? ""} className="h-full w-full object-cover" />
           </div>
         ))}
+        {settings.enabled && items.length === 0
+          ? Array.from({ length: 9 }).map((_, index) => (
+              <div
+                key={`placeholder-${index}`}
+                className="aspect-square rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-2 text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400"
+              >
+                <div className="flex h-full items-center justify-center text-center">Placeholder {index + 1}</div>
+              </div>
+            ))
+          : null}
       </div>
     </section>
   );

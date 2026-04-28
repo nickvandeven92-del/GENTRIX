@@ -316,6 +316,15 @@ export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
  */
 const AI_HERO_OBJECT_SRCSET_WIDTHS = [640, 960, 1280, 1920, 2400] as const;
 
+function maxPublishedAiHeroWidthFromUrl(rawSrc: string): number | null {
+  const pathOnly = rawSrc.split(/[?#]/)[0] ?? rawSrc;
+  const m = pathOnly.match(/\/(\d+)\.webp$/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return n;
+}
+
 export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
     if (/\bsrcset\s*=/i.test(attrs)) return full;
@@ -330,7 +339,11 @@ export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
     const pathOnly = rawSrc.split(/[?#]/)[0] ?? rawSrc;
     const base = pathOnly.replace(/\/\d+\.webp$/i, "");
     if (!base || base === pathOnly) return full;
-    const srcset = AI_HERO_OBJECT_SRCSET_WIDTHS.map((w) => {
+    const maxWidth = maxPublishedAiHeroWidthFromUrl(rawSrc);
+    const widths =
+      maxWidth == null ? AI_HERO_OBJECT_SRCSET_WIDTHS : AI_HERO_OBJECT_SRCSET_WIDTHS.filter((w) => w <= maxWidth);
+    if (widths.length === 0) return full;
+    const srcset = widths.map((w) => {
       const u = `${base}/${w}.webp`;
       return `${escapeHtmlAttrAmpersands(u)} ${w}w`;
     }).join(", ");

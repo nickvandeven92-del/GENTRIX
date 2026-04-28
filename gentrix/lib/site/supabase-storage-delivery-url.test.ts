@@ -135,14 +135,16 @@ describe("promoteHeroSupabaseBackgroundUrlToImg", () => {
 });
 
 describe("addResponsiveSrcsetToAiHeroObjectImages", () => {
-  it("vult srcset en sizes voor publish-time ai-hero object/public-URL", () => {
+  it("vult srcset en sizes en capped op hoogste bestaande variantbreedte", () => {
     const src =
       "https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/1776-abc/1280.webp";
     const html = `<section id="hero"><img class="absolute inset-0 w-full h-full object-cover object-center" src="${src}" alt="X"/></section>`;
     const out = addResponsiveSrcsetToAiHeroObjectImages(html);
     expect(out).toContain("srcset=");
     expect(out).toContain("640w");
-    expect(out).toContain("1920w");
+    expect(out).toContain("1280w");
+    expect(out).not.toContain("1920w");
+    expect(out).not.toContain("2400w");
     expect(out).toMatch(/sizes="/);
   });
 
