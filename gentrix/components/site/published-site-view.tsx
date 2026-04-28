@@ -80,10 +80,10 @@ function injectSocialGalleryBlueprintSection(
   if (!socialGallery?.enabled) return sections;
   if (sections.some((s) => (s.id ?? "").trim() === "social-gallery-placeholder")) return sections;
 
-  const placeholderCards = Array.from({ length: 9 }, (_, i) => {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#e2e8f0' offset='0'/><stop stop-color='#cbd5e1' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='52%' dominant-baseline='middle' text-anchor='middle' fill='#334155' font-size='28' font-family='Arial'>Preview ${i + 1}</text></svg>`;
+  const placeholderCards = Array.from({ length: 9 }, () => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
     const encoded = encodeURIComponent(svg);
-    return `<div class="group relative block aspect-square overflow-hidden rounded-2xl border border-[var(--site-fg)]/15 shadow-sm"><img src="data:image/svg+xml;utf8,${encoded}" alt="Preview placeholder ${i + 1}" class="h-full w-full object-cover" /></div>`;
+    return `<div class="group relative block aspect-square overflow-hidden rounded-2xl border border-[var(--site-fg)]/15 shadow-sm"><img src="data:image/svg+xml;utf8,${encoded}" alt="GENTRIX preview placeholder" class="h-full w-full object-cover" /></div>`;
   }).join("");
 
   const cards = socialGallery.items.length
