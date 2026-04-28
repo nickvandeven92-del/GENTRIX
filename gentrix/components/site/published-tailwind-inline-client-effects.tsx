@@ -14,10 +14,22 @@ function initSocialGalleryCarousel(root: ParentNode) {
     root.querySelectorAll<HTMLElement>("[data-social-gallery-carousel='1'], #social-gallery-placeholder"),
   );
   sections.forEach((section) => {
-    section.querySelectorAll("h2").forEach((heading) => heading.remove());
-    const track =
-      section.querySelector<HTMLElement>("[data-social-gallery-track='1']") ??
-      section.querySelector<HTMLElement>(".grid");
+    const heading = section.querySelector("h2");
+    if (heading) heading.remove();
+
+    let track = section.querySelector<HTMLElement>("[data-social-gallery-track='1']");
+    if (!track) {
+      const candidateTracks = Array.from(section.querySelectorAll<HTMLElement>(".grid")).filter((node) => {
+        const children = Array.from(node.children) as HTMLElement[];
+        if (children.length < 3) return false;
+        return children.every((child) => {
+          const className = child.className ?? "";
+          return className.includes("aspect-square") || className.includes("group");
+        });
+      });
+      track = candidateTracks[0] ?? null;
+      if (track) track.setAttribute("data-social-gallery-track", "1");
+    }
     if (!track) return;
 
     let prevBtn = section.querySelector<HTMLButtonElement>("[data-social-gallery-prev='1']");
@@ -45,7 +57,9 @@ function initSocialGalleryCarousel(root: ParentNode) {
       if (index > 0) btn.remove();
     });
 
-    const cards = Array.from(track.children) as HTMLElement[];
+    const cards = Array.from(track.children)
+      .filter((node): node is HTMLElement => node instanceof HTMLElement)
+      .slice(0, 9);
     if (cards.length === 0) return;
     const mobileMedia = window.matchMedia("(max-width: 639px)");
     const visibleCount = () => (mobileMedia.matches ? 1 : 3);
