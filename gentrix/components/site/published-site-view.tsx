@@ -105,18 +105,15 @@ function injectSocialGalleryBlueprintSection(
 
   const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery" data-social-gallery-carousel="1" class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
   <div class="mx-auto max-w-6xl">
-    <div class="mb-6 flex items-end justify-between gap-3">
-      <h2 class="text-2xl font-semibold tracking-tight text-zinc-900">Laatste social posts</h2>
-      <div class="flex items-center gap-2">
-        <button type="button" data-social-gallery-prev="1" aria-label="Vorige social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
-          <span aria-hidden="true">←</span>
-        </button>
-        <button type="button" data-social-gallery-next="1" aria-label="Volgende social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
+    <div class="relative px-10">
+      <button type="button" data-social-gallery-prev="1" aria-label="Vorige social posts" class="absolute left-0 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40" style="border-color:var(--site-border, var(--site-fg, #d4d4d8)); color:var(--site-foreground, var(--site-fg, #111827)); background:var(--site-surface, var(--site-bg, #ffffff));">
+        <span aria-hidden="true">←</span>
+      </button>
+      <button type="button" data-social-gallery-next="1" aria-label="Volgende social posts" class="absolute right-0 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40" style="border-color:var(--site-border, var(--site-fg, #d4d4d8)); color:var(--site-foreground, var(--site-fg, #111827)); background:var(--site-surface, var(--site-bg, #ffffff));">
+        <span aria-hidden="true">→</span>
+      </button>
+      <div data-social-gallery-track="1" class="grid grid-cols-3 gap-3">${cards}</div>
     </div>
-    <div data-social-gallery-track="1" class="grid grid-cols-3 gap-3">${cards}</div>
   </div>
 </section>`;
 

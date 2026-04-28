@@ -11,72 +11,63 @@ type Props = {
 export function SocialGalleryLandingSection({ items }: Props) {
   if (items.length === 0) return null;
   const cards = items.slice(0, 9);
-  const pages = useMemo(() => {
-    const chunkSize = 3;
-    const result: SocialGalleryItem[][] = [];
-    for (let i = 0; i < cards.length; i += chunkSize) result.push(cards.slice(i, i + chunkSize));
-    return result;
-  }, [cards]);
-  const [pageIndex, setPageIndex] = useState(0);
+  const maxStartIndex = useMemo(() => Math.max(0, cards.length - 3), [cards.length]);
+  const [startIndex, setStartIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const canGoPrev = pageIndex > 0;
-  const canGoNext = pageIndex < pages.length - 1;
+  const canGoPrev = startIndex > 0;
+  const canGoNext = startIndex < maxStartIndex;
 
   useEffect(() => {
-    if (pageIndex > pages.length - 1) setPageIndex(0);
-  }, [pageIndex, pages.length]);
+    if (startIndex > maxStartIndex) setStartIndex(0);
+  }, [startIndex, maxStartIndex]);
 
   useEffect(() => {
-    if (!autoPlay || pages.length <= 1) return;
+    if (!autoPlay || maxStartIndex <= 0) return;
     const timer = window.setInterval(() => {
-      setPageIndex((p) => (p >= pages.length - 1 ? 0 : p + 1));
+      setStartIndex((p) => (p >= maxStartIndex ? 0 : p + 1));
     }, 10_000);
     return () => window.clearInterval(timer);
-  }, [autoPlay, pages.length]);
+  }, [autoPlay, maxStartIndex]);
 
   return (
     <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:px-10 lg:px-16">
-      <div className="mb-6 flex items-end justify-between gap-3">
-        <h2 className="text-2xl font-semibold tracking-tight" style={{ color: "var(--site-foreground, var(--site-fg, #111827))" }}>
-          Laatste social posts
-        </h2>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Vorige social posts"
-            onClick={() => {
-              setAutoPlay(false);
-              setPageIndex((p) => Math.max(0, p - 1));
-            }}
-            disabled={!canGoPrev}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
-            style={{
-              borderColor: "var(--site-border, var(--site-fg, #d4d4d8))",
-              color: "var(--site-foreground, var(--site-fg, #111827))",
-            }}
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Volgende social posts"
-            onClick={() => {
-              setAutoPlay(false);
-              setPageIndex((p) => Math.min(pages.length - 1, p + 1));
-            }}
-            disabled={!canGoNext}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
-            style={{
-              borderColor: "var(--site-border, var(--site-fg, #d4d4d8))",
-              color: "var(--site-foreground, var(--site-fg, #111827))",
-            }}
-          >
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        {(pages[pageIndex] ?? []).map((item) => (
+      <div className="relative px-10">
+        <button
+          type="button"
+          aria-label="Vorige social posts"
+          onClick={() => {
+            setAutoPlay(false);
+            setStartIndex((p) => Math.max(0, p - 1));
+          }}
+          disabled={!canGoPrev}
+          className="absolute left-0 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40"
+          style={{
+            borderColor: "var(--site-border, var(--site-fg, #d4d4d8))",
+            color: "var(--site-foreground, var(--site-fg, #111827))",
+            background: "var(--site-surface, var(--site-bg, #ffffff))",
+          }}
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <button
+          type="button"
+          aria-label="Volgende social posts"
+          onClick={() => {
+            setAutoPlay(false);
+            setStartIndex((p) => Math.min(maxStartIndex, p + 1));
+          }}
+          disabled={!canGoNext}
+          className="absolute right-0 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40"
+          style={{
+            borderColor: "var(--site-border, var(--site-fg, #d4d4d8))",
+            color: "var(--site-foreground, var(--site-fg, #111827))",
+            background: "var(--site-surface, var(--site-bg, #ffffff))",
+          }}
+        >
+          <ChevronRight className="size-4" />
+        </button>
+        <div className="grid grid-cols-3 gap-3">
+          {cards.slice(startIndex, startIndex + 3).map((item) => (
           <a
             key={item.id}
             href={item.permalink ?? item.url}
@@ -100,7 +91,8 @@ export function SocialGalleryLandingSection({ items }: Props) {
               className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
             />
           </a>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );
