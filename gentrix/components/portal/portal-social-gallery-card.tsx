@@ -91,6 +91,13 @@ export function PortalSocialGalleryCard({ slug }: Props) {
     window.location.href = href;
   }
 
+  function connectWithProvider(provider: SocialProvider) {
+    setSettings((s) => ({ ...s, provider }));
+    setConnecting(true);
+    const href = `/api/portal/clients/${encodeURIComponent(slug)}/social-gallery/oauth/start?provider=${provider}`;
+    window.location.href = href;
+  }
+
   async function syncNow() {
     setSyncing(true);
     setError(null);
@@ -207,8 +214,36 @@ export function PortalSocialGalleryCard({ slug }: Props) {
       {showHowTo ? (
         <div className="mt-4 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/50 dark:bg-blue-950/25">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">
-            Volgende stappen
+            Interactieve koppeling
           </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => connectWithProvider("instagram")}
+              disabled={connecting}
+              className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                settings.provider === "instagram"
+                  ? "border-pink-300 bg-pink-50 text-pink-900 dark:border-pink-700 dark:bg-pink-950/40 dark:text-pink-200"
+                  : "border-blue-200 bg-white text-zinc-800 dark:border-blue-900 dark:bg-zinc-900 dark:text-zinc-100"
+              }`}
+            >
+              <span className="block font-semibold">Instagram koppelen</span>
+              <span className="block text-xs opacity-80">Login -&gt; toestemming -&gt; terug naar portaal</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => connectWithProvider("facebook")}
+              disabled={connecting}
+              className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                settings.provider === "facebook"
+                  ? "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-200"
+                  : "border-blue-200 bg-white text-zinc-800 dark:border-blue-900 dark:bg-zinc-900 dark:text-zinc-100"
+              }`}
+            >
+              <span className="block font-semibold">Facebook koppelen</span>
+              <span className="block text-xs opacity-80">Login -&gt; toestemming -&gt; terug naar portaal</span>
+            </button>
+          </div>
           <ol className="mt-2 space-y-2 text-sm text-blue-950 dark:text-blue-100">
             <li className="animate-[fadeSlideIn_.25s_ease-out]">1. Klik op “Koppel via {settings.provider === "instagram" ? "Instagram" : "Facebook"} OAuth”.</li>
             <li className="animate-[fadeSlideIn_.35s_ease-out]">2. Log in bij Meta en geef toestemming.</li>
