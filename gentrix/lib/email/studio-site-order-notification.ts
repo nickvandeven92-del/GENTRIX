@@ -16,6 +16,7 @@ export type StudioSiteOrderPayload = {
   city: string;
   iban: string;
   accountHolder: string;
+  includeSocialGallery?: boolean;
   notes?: string;
 };
 
@@ -51,7 +52,7 @@ export async function notifyStudioOfSiteOrder(payload: StudioSiteOrderPayload): 
   )}${row("Straat", payload.street)}${row("Plaats", payload.city)}${row("IBAN", payload.iban)}${row(
     "Ten name van",
     payload.accountHolder,
-  )}${payload.notes ? row("Opmerkingen", payload.notes) : ""}</table>
+  )}${row("Social gallery", payload.includeSocialGallery === false ? "Nee" : "Ja")}${payload.notes ? row("Opmerkingen", payload.notes) : ""}</table>
   <p style="margin-top:16px;font-size:12px;color:#71717a">Automatisch bericht vanaf het bestelformulier op de publieke site.</p>
   </body></html>`;
 
@@ -68,6 +69,7 @@ export async function notifyStudioOfSiteOrder(payload: StudioSiteOrderPayload): 
     `Huisnr: ${payload.houseNumber}${payload.houseSuffix ? ` ${payload.houseSuffix}` : ""}`,
     `IBAN: ${payload.iban}`,
     `Rekeninghouder: ${payload.accountHolder}`,
+    `Social gallery: ${payload.includeSocialGallery === false ? "nee" : "ja"}`,
     payload.notes ? `Opmerkingen: ${payload.notes}` : "",
   ]
     .filter(Boolean)

@@ -53,6 +53,8 @@ export type Database = {
           appointments_enabled: boolean;
           webshop_enabled: boolean;
           booking_settings: Json | null;
+          social_gallery_settings: Json;
+          social_gallery_items: Json;
           portal_invoices_enabled: boolean;
           portal_account_enabled: boolean;
           subscription_cancel_at_period_end: boolean;
@@ -131,6 +133,8 @@ export type Database = {
           appointments_enabled?: boolean;
           webshop_enabled?: boolean;
           booking_settings?: Json | null;
+          social_gallery_settings?: Json;
+          social_gallery_items?: Json;
           portal_invoices_enabled?: boolean;
           portal_account_enabled?: boolean;
           subscription_cancel_at_period_end?: boolean;
@@ -199,6 +203,8 @@ export type Database = {
           appointments_enabled?: boolean;
           webshop_enabled?: boolean;
           booking_settings?: Json | null;
+          social_gallery_settings?: Json;
+          social_gallery_items?: Json;
           portal_invoices_enabled?: boolean;
           portal_account_enabled?: boolean;
           subscription_cancel_at_period_end?: boolean;

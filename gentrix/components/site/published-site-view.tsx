@@ -22,6 +22,9 @@ import { formatSlugForDisplay } from "@/lib/slug";
 import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft-nav";
 import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
 import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
+import type { PublicSocialGallery } from "@/lib/data/social-gallery";
+import { SocialGalleryLandingSection } from "@/components/site/social-gallery-landing-section";
+import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import {
   enhanceTailwindHeroSectionHtmlForPublicDelivery,
   invokeHeroLcpImagePreloadFromHtml,
@@ -66,7 +69,64 @@ type PublishedSiteViewProps = {
    * browsertab (niet het getransformeerde preview-paneel — dat gaf uitlijningverschil t.o.v. live `/site`).
    */
   studioTailwindPreviewIframe?: boolean;
+  socialGallery?: PublicSocialGallery | null;
 };
+
+function injectSocialGalleryBlueprintSection(
+  sections: TailwindSection[],
+  socialGallery: PublicSocialGallery | null,
+  previewMode: boolean,
+): TailwindSection[] {
+  if (!socialGallery?.enabled) return sections;
+  if (sections.some((s) => (s.id ?? "").trim() === "social-gallery-placeholder")) return sections;
+
+  const placeholderCards = Array.from({ length: 9 }, (_, i) => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#e2e8f0' offset='0'/><stop stop-color='#cbd5e1' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='52%' dominant-baseline='middle' text-anchor='middle' fill='#334155' font-size='28' font-family='Arial'>Preview ${i + 1}</text></svg>`;
+    const encoded = encodeURIComponent(svg);
+    return `<div class="group relative block aspect-square overflow-hidden rounded-2xl border border-[var(--site-fg)]/15 shadow-sm"><img src="data:image/svg+xml;utf8,${encoded}" alt="Preview placeholder ${i + 1}" class="h-full w-full object-cover" /></div>`;
+  }).join("");
+
+  const cards = socialGallery.items.length
+    ? socialGallery.items
+        .slice(0, 9)
+    .map((item) => {
+      const href = item.permalink ?? item.url;
+      const caption = (item.caption ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="group relative block aspect-square overflow-hidden rounded-2xl border border-[var(--site-fg)]/15 shadow-sm">
+  <img src="${item.url}" alt="${caption}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+</a>`;
+    })
+        .join("")
+    : previewMode
+      ? placeholderCards
+      : "";
+
+  if (!cards) return sections;
+
+  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery" class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
+  <div class="mx-auto max-w-6xl">
+    <div class="mb-6 flex items-end justify-between gap-3">
+      <h2 class="text-2xl font-semibold tracking-tight text-zinc-900">Laatste social posts</h2>
+      <p class="text-sm text-zinc-500">Automatisch ververst</p>
+    </div>
+    <div class="grid grid-cols-3 gap-3">${cards}</div>
+  </div>
+</section>`;
+
+  return [
+    ...sections,
+    {
+      id: "social-gallery-placeholder",
+      sectionName: "Social Gallery",
+      semanticRole: "gallery",
+      html,
+    },
+  ];
+}
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
 export function PublishedSiteView({
@@ -84,7 +144,11 @@ export function PublishedSiteView({
   relaxedTailwindCdnLoading = false,
   flyerPreview = false,
   studioTailwindPreviewIframe = false,
+  socialGallery = null,
 }: PublishedSiteViewProps) {
+  const socialGallerySection = socialGallery?.enabled ? (
+    <SocialGalleryLandingSection items={socialGallery.items} />
+  ) : null;
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";
     const isPreview = Boolean(draftPublicPreviewToken?.trim());
@@ -114,6 +178,7 @@ export function PublishedSiteView({
           appointmentsEnabled={appointmentsEnabled}
           webshopEnabled={webshopEnabled}
         />
+        {visibility === "public" ? socialGallerySection : null}
       </div>
     );
   }
@@ -176,9 +241,17 @@ export function PublishedSiteView({
       visibility === "public" &&
       ((marketingPageSections != null && marketingPageSections.length > 0) ||
         (publicSiteTailwindPath === "contact" && hasResolvedPublicContactRoute(contactPlan)));
-    const twSections = isPublicSubpage
+    const twSectionsBase = isPublicSubpage
       ? ensureFooterAppendedFromLanding(twSectionsRaw, sections)
       : twSectionsRaw;
+    const twSections =
+      visibility === "public" && !isPublicSubpage && publicSiteTailwindPath === "landing" && marketingKey === ""
+        ? injectSocialGalleryBlueprintSection(
+            twSectionsBase,
+            socialGallery,
+            Boolean(draftPublicPreviewToken?.trim()),
+          )
+        : twSectionsBase;
     const twSectionsForDelivery = twSections.map((row) =>
       row.id === "hero"
         ? { ...row, html: enhanceTailwindHeroSectionHtmlForPublicDelivery(row.html) }
@@ -359,6 +432,7 @@ export function PublishedSiteView({
         <strong>Legacy-site</strong>. Genereer opnieuw in de site-studio (HTML + Tailwind).
       </div>
       <SiteRenderer data={payload.site} publishedSlug={publishedSlug} className="min-h-0 flex-1" />
+      {visibility === "public" ? socialGallerySection : null}
     </div>
   );
 }

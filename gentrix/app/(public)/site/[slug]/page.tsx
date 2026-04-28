@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ConceptFlyerExperienceLazy } from "@/components/site/concept-flyer-experience-lazy";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { loadPublicSocialGalleryBySlug } from "@/lib/data/social-gallery";
 import { readPrettyPublicUrlContext } from "@/lib/site/pretty-public-url";
 import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { isLegacyTailwindPageConfig } from "@/lib/ai/tailwind-sections-schema";
@@ -80,9 +81,10 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
 
   const sp = await searchParams;
   const previewToken = typeof sp.token === "string" ? sp.token : "";
-  const [bundle, prettyCtx] = await Promise.all([
+  const [bundle, prettyCtx, socialGallery] = await Promise.all([
     getPublishedSiteBySlug(slug, previewToken),
     readPrettyPublicUrlContext(),
+    loadPublicSocialGalleryBySlug(slug),
   ]);
   if (!bundle) notFound();
   const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
@@ -115,6 +117,7 @@ export default async function PublicClientSitePage({ params, searchParams }: Sit
         prettyPublicUrls={prettyPublicUrls}
         relaxedTailwindCdnLoading={flyerRelaxedTailwindCdn}
         flyerPreview={showFlyer}
+        socialGallery={socialGallery}
       />
       {showFlyer ? (
         <ConceptFlyerExperienceLazy

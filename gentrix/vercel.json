@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/lead-follow-up-reminders",
       "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/social-gallery-sync",
+      "schedule": "15 */2 * * *"
     }
   ]
 }

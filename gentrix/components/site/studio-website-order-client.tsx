@@ -228,6 +228,7 @@ export function StudioWebsiteOrderClient({ slug, siteLabel, previewToken, backHr
 
   // Step 1: modules
   const [selectedModules, setSelectedModules] = useState<Set<ModuleId>>(new Set());
+  const [includeSocialGallery, setIncludeSocialGallery] = useState(true);
 
   // Step 2: contact
   const [firstName, setFirstName] = useState("");
@@ -341,6 +342,7 @@ export function StudioWebsiteOrderClient({ slug, siteLabel, previewToken, backHr
           accountHolder: accountHolder.trim(),
           notes: notes.trim() || undefined,
           selectedModules: Array.from(selectedModules),
+          includeSocialGallery,
           acceptTerms: true as const,
           acceptSepa: true as const,
           acceptWithdrawal: true as const,
@@ -378,6 +380,7 @@ export function StudioWebsiteOrderClient({ slug, siteLabel, previewToken, backHr
     accountHolder,
     notes,
     selectedModules,
+    includeSocialGallery,
   ]);
 
   // ── Bevestiging ──────────────────────────────────────────────────────────
@@ -536,6 +539,33 @@ export function StudioWebsiteOrderClient({ slug, siteLabel, previewToken, backHr
                 );
               })}
             </div>
+          </div>
+
+          <div className={cardCls}>
+            <h2 className="mb-3 font-semibold text-zinc-900 dark:text-zinc-50">Social gallery</h2>
+            <label
+              className={cn(
+                checkboxRowCls,
+                includeSocialGallery
+                  ? "border-zinc-900 bg-zinc-50 dark:border-zinc-400 dark:bg-zinc-800/60"
+                  : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900",
+              )}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 rounded accent-zinc-900 dark:accent-zinc-100"
+                checked={includeSocialGallery}
+                onChange={(e) => setIncludeSocialGallery(e.target.checked)}
+              />
+              <div>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                  Toon social gallery op mijn landingspagina
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Zet uit als je geen Instagram/Facebook galerij op je website wilt.
+                </p>
+              </div>
+            </label>
           </div>
 
           {/* Prijs samenvatting */}

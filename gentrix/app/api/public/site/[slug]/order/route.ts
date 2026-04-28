@@ -5,6 +5,7 @@ import { extractClientIp } from "@/lib/api/request-client-ip";
 import { isValidIban, normalizeIban } from "@/lib/banking/iban";
 import { notifyStudioOfSiteOrder } from "@/lib/email/studio-site-order-notification";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { parseSocialGallerySettings } from "@/lib/social/social-gallery";
 import { decodeRouteSlugParam } from "@/lib/slug";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -32,6 +33,8 @@ const bodySchema = z.object({
   notes: z.string().trim().max(5000).optional().or(z.literal("")),
   /** Geselecteerde add-on modules (bijv. ["booking", "webshop"]). */
   selectedModules: z.array(z.string().max(40)).max(10).optional().default([]),
+  /** Klant wil social gallery op de website tonen. */
+  includeSocialGallery: z.boolean().optional().default(true),
   /** Akkoord algemene voorwaarden + privacy. */
   acceptTerms: z.literal(true),
   /** SEPA-incassomachtiging gegeven. */
@@ -105,6 +108,7 @@ export async function POST(request: Request, context: RouteCtx) {
     accountHolder: body.accountHolder,
     notes: body.notes || null,
     selectedModules: body.selectedModules ?? [],
+    includeSocialGallery: body.includeSocialGallery !== false,
     consentVersion: "v1",
     acceptSepa: true,
     acceptWithdrawal: true,
@@ -124,6 +128,29 @@ export async function POST(request: Request, context: RouteCtx) {
     return NextResponse.json({ ok: false as const, error: msg }, { status: 503 });
   }
 
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("id, social_gallery_settings")
+    .eq("subfolder_slug", slug)
+    .maybeSingle();
+  if (clientRow?.id) {
+    const settings = parseSocialGallerySettings(clientRow.social_gallery_settings);
+    await supabase
+      .from("clients")
+      .update({
+        social_gallery_settings: {
+          ...settings,
+          customerOptIn: body.includeSocialGallery !== false,
+          enabled: body.includeSocialGallery !== false ? settings.enabled : false,
+          lastSyncStatus:
+            body.includeSocialGallery !== false
+              ? settings.lastSyncStatus
+              : "Uitgezet tijdens bestelling.",
+        },
+      })
+      .eq("id", clientRow.id);
+  }
+
   await notifyStudioOfSiteOrder({
     clientSubfolderSlug: slug,
     isConceptPreview,
@@ -140,6 +167,7 @@ export async function POST(request: Request, context: RouteCtx) {
     iban,
     accountHolder: body.accountHolder,
     notes: body.notes || undefined,
+    includeSocialGallery: body.includeSocialGallery !== false,
   });
 
   return NextResponse.json({ ok: true as const });
