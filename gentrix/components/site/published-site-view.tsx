@@ -82,7 +82,7 @@ function injectSocialGalleryBlueprintSection(
   const placeholderCards = Array.from({ length: 9 }, () => {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
     const encoded = encodeURIComponent(svg);
-    return `<div class="group relative block aspect-square overflow-hidden rounded-2xl border border-[var(--site-fg)]/15 shadow-sm"><img src="data:image/svg+xml;utf8,${encoded}" alt="GENTRIX preview placeholder" class="h-full w-full object-cover" /></div>`;
+    return `<div class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);"><img src="data:image/svg+xml;utf8,${encoded}" alt="GENTRIX preview placeholder" class="h-full w-full object-cover" /></div>`;
   }).join("");
 
   const cards = socialGallery.items.length
@@ -95,7 +95,7 @@ function injectSocialGalleryBlueprintSection(
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="group relative block aspect-square overflow-hidden rounded-2xl border border-[var(--site-fg)]/15 shadow-sm">
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);">
   <img src="${item.url}" alt="${caption}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
 </a>`;
     })
@@ -117,7 +117,7 @@ function injectSocialGalleryBlueprintSection(
         </button>
       </div>
     </div>
-    <div id="social-gallery-track" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">${cards}</div>
+    <div id="social-gallery-track" class="grid grid-cols-3 gap-3">${cards}</div>
   </div>
   <script>
     (function () {
@@ -130,6 +130,8 @@ function injectSocialGalleryBlueprintSection(
       var cards = Array.prototype.slice.call(track.children);
       var pageSize = 3;
       var pageIndex = 0;
+      var autoPlay = true;
+      var timer = null;
       var maxPage = Math.max(0, Math.ceil(cards.length / pageSize) - 1);
       function render() {
         for (var i = 0; i < cards.length; i++) {
@@ -139,15 +141,32 @@ function injectSocialGalleryBlueprintSection(
         prevBtn.disabled = pageIndex === 0;
         nextBtn.disabled = pageIndex >= maxPage;
       }
+      function stopAutoPlay() {
+        autoPlay = false;
+        if (timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+      }
+      function startAutoPlay() {
+        if (!autoPlay || maxPage <= 0 || timer) return;
+        timer = window.setInterval(function () {
+          pageIndex = pageIndex >= maxPage ? 0 : pageIndex + 1;
+          render();
+        }, 10000);
+      }
       prevBtn.addEventListener("click", function () {
+        stopAutoPlay();
         pageIndex = Math.max(0, pageIndex - 1);
         render();
       });
       nextBtn.addEventListener("click", function () {
+        stopAutoPlay();
         pageIndex = Math.min(maxPage, pageIndex + 1);
         render();
       });
       render();
+      startAutoPlay();
     })();
   </script>
 </section>`;

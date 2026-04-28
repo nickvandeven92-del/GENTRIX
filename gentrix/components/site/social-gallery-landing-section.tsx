@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SocialGalleryItem } from "@/lib/social/social-gallery";
 
@@ -18,8 +18,21 @@ export function SocialGalleryLandingSection({ items }: Props) {
     return result;
   }, [cards]);
   const [pageIndex, setPageIndex] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(true);
   const canGoPrev = pageIndex > 0;
   const canGoNext = pageIndex < pages.length - 1;
+
+  useEffect(() => {
+    if (pageIndex > pages.length - 1) setPageIndex(0);
+  }, [pageIndex, pages.length]);
+
+  useEffect(() => {
+    if (!autoPlay || pages.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setPageIndex((p) => (p >= pages.length - 1 ? 0 : p + 1));
+    }, 10_000);
+    return () => window.clearInterval(timer);
+  }, [autoPlay, pages.length]);
 
   return (
     <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:px-10 lg:px-16">
@@ -31,7 +44,10 @@ export function SocialGalleryLandingSection({ items }: Props) {
           <button
             type="button"
             aria-label="Vorige social posts"
-            onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+            onClick={() => {
+              setAutoPlay(false);
+              setPageIndex((p) => Math.max(0, p - 1));
+            }}
             disabled={!canGoPrev}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
             style={{
@@ -44,7 +60,10 @@ export function SocialGalleryLandingSection({ items }: Props) {
           <button
             type="button"
             aria-label="Volgende social posts"
-            onClick={() => setPageIndex((p) => Math.min(pages.length - 1, p + 1))}
+            onClick={() => {
+              setAutoPlay(false);
+              setPageIndex((p) => Math.min(pages.length - 1, p + 1));
+            }}
             disabled={!canGoNext}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
             style={{
@@ -56,7 +75,7 @@ export function SocialGalleryLandingSection({ items }: Props) {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-3 gap-3">
         {(pages[pageIndex] ?? []).map((item) => (
           <a
             key={item.id}
@@ -67,8 +86,10 @@ export function SocialGalleryLandingSection({ items }: Props) {
             style={{
               borderWidth: "1px",
               borderStyle: "solid",
-              borderColor: "var(--site-border, var(--site-fg, var(--site-foreground, #d4d4d8)))",
-              borderRadius: "var(--radius-lg, 1rem)",
+              borderColor: "var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent))",
+              borderRadius: "var(--radius-xl, var(--radius-lg, 1rem))",
+              background: "var(--site-surface, var(--site-bg, #ffffff))",
+              boxShadow: "0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent)",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
