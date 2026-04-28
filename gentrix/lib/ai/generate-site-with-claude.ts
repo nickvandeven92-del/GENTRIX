@@ -1687,9 +1687,10 @@ ${faqDetect}
 `;
   }
 
-  const countLine = "**4** rijen in `sections` (exact deze volgorde)";
-  const navAnchors = "`#hero`, `#stats`/`#brands`, `#steps`/`#features`, `#footer`";
-  const tailList = `4. \`footer\` - **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op \`sections\` in deze studio-run - FAQ hoort op de marketing-subpagina \`faq\`; **link FAQ in deze footer** met \`href="__STUDIO_SITE_BASE__/faq"\` - **niet** in de topnav/\`<header>\`.`;
+  const countLine = `**${n}** rijen in \`sections\` (exact deze volgorde)`;
+  const navAnchors = sectionIds.map((id) => `\`#${id}\``).join(", ");
+  const allowsGallery = sectionIds.includes("gallery");
+  const tailList = `${n}. \`footer\` - **eind-CTA + footer** in **dezelfde** sectie; dit is de **enige** volle conversie-CTA onder de hero/nav (geen aparte \`cta\`-sectie of tweede CTA-band daartussen). **Geen** \`faq\`-sectie op \`sections\` in deze studio-run - FAQ hoort op de marketing-subpagina \`faq\`; **link FAQ in deze footer** met \`href="__STUDIO_SITE_BASE__/faq"\` - **niet** in de topnav/\`<header>\`.`;
 
   return `
 === STRIKTE LANDINGS - STUDIO (min. 3, max. ${HOMEPAGE_SECTION_BUDGET_MAX} secties op de homepage; vaste volgorde) ===
@@ -1700,14 +1701,14 @@ ${faqDetect}
 
 **FAQ op de site:** als naam+briefing FAQ-trefwoorden of het brancheprofiel FAQ relevant vindt, lever **inhoudelijke FAQ** op de **subpagina** \`marketingPages["faq"]\` - **niet** als aparte \`faq\`-rij in \`sections\` (homepage max. ${HOMEPAGE_SECTION_BUDGET_MAX} secties).
 
-**Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan - \`stats\` **of** \`brands\`, en \`steps\` **of** \`features\`, conform die regel):
+**Van toepassing op deze opdracht:** lever precies ${countLine} met **exact** deze JSON-\`id\`'s (gebruik de id's die in de opdrachtregel hieronder staan):
 
 1. \`hero\` - volg **HERO-CONTRACT** exact (hier **geen** lange herhaling; ook geen tweede, parallelle hero-regelwerk-lijst in dit blok).
-2. \`stats\` **of** \`brands\` - precies **een** bewijsblok: KPI-rij **of** logo/partnerband, **niet** beide typen. **Geen** tweede "wij werken met"-strook in \`features\`/\`footer\` die hetzelfde doet - een trust-laag op de homepage.
-3. \`steps\` **of** \`features\` - precies **een** blok: werkwijze (stappen) **of** diensten/USP's, **niet** beide. Bij **kapper/barbershop/salon**-profielen: **uitsluitend** \`features\` (geen \`steps\` op de landing). Elk item **titel + max. een korte regel** - geen kaart-vullende alinea's.
+2. \`${sectionIds[1] ?? "features"}\` - volg de rol uit de opdrachtregel: trust, diensten, over-ons of galerij; geen dubbele laag met identieke functie elders.
+3. \`${sectionIds[2] ?? "features"}\` - duidelijke eigen rol t.o.v. sectie 2; geen herhaling van dezelfde lijst/boodschap.
 ${tailList}
 
-**Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); sectie \`about\` / "Over ons"; team, prijzen, shop, galerij, testimonials als aparte sectie; een \`faq\`-sectie op \`sections\`.
+**Verboden:** scrollende tickers (\`studio-marquee\`, \`studio-marquee-track\`, \`<marquee>\`); een \`faq\`-sectie op \`sections\`; extra homepage-secties buiten de afgesproken \`id\`-set van deze run.${allowsGallery ? "" : " Voeg geen losse galerij-sectie toe als die niet in de opgegeven id-volgorde staat."}
 
 **Nav-ankers:** alleen ${navAnchors} - **geen** \`#over-ons\`; **FAQ** alleen in de **footer** via \`__STUDIO_SITE_BASE__/faq\` wanneer \`marketingPages\` een \`faq\`-key heeft (niet in \`<header>\`).
 
