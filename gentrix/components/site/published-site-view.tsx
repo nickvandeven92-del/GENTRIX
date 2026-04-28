@@ -103,71 +103,21 @@ function injectSocialGalleryBlueprintSection(
 
   if (!cards) return sections;
 
-  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery" class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
+  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery" data-social-gallery-carousel="1" class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-end justify-between gap-3">
       <h2 class="text-2xl font-semibold tracking-tight text-zinc-900">Laatste social posts</h2>
       <div class="flex items-center gap-2">
-        <button type="button" id="social-gallery-prev" aria-label="Vorige social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
+        <button type="button" data-social-gallery-prev="1" aria-label="Vorige social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
           <span aria-hidden="true">←</span>
         </button>
-        <button type="button" id="social-gallery-next" aria-label="Volgende social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
+        <button type="button" data-social-gallery-next="1" aria-label="Volgende social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
           <span aria-hidden="true">→</span>
         </button>
       </div>
     </div>
-    <div id="social-gallery-track" class="grid grid-cols-3 gap-3">${cards}</div>
+    <div data-social-gallery-track="1" class="grid grid-cols-3 gap-3">${cards}</div>
   </div>
-  <script>
-    (function () {
-      var section = document.getElementById("social-gallery-placeholder");
-      if (!section) return;
-      var track = section.querySelector("#social-gallery-track");
-      var prevBtn = section.querySelector("#social-gallery-prev");
-      var nextBtn = section.querySelector("#social-gallery-next");
-      if (!track || !prevBtn || !nextBtn) return;
-      var cards = Array.prototype.slice.call(track.children);
-      var pageSize = 3;
-      var pageIndex = 0;
-      var autoPlay = true;
-      var timer = null;
-      var maxPage = Math.max(0, Math.ceil(cards.length / pageSize) - 1);
-      function render() {
-        for (var i = 0; i < cards.length; i++) {
-          var cardPage = Math.floor(i / pageSize);
-          cards[i].style.display = cardPage === pageIndex ? "" : "none";
-        }
-        prevBtn.disabled = pageIndex === 0;
-        nextBtn.disabled = pageIndex >= maxPage;
-      }
-      function stopAutoPlay() {
-        autoPlay = false;
-        if (timer) {
-          window.clearInterval(timer);
-          timer = null;
-        }
-      }
-      function startAutoPlay() {
-        if (!autoPlay || maxPage <= 0 || timer) return;
-        timer = window.setInterval(function () {
-          pageIndex = pageIndex >= maxPage ? 0 : pageIndex + 1;
-          render();
-        }, 10000);
-      }
-      prevBtn.addEventListener("click", function () {
-        stopAutoPlay();
-        pageIndex = Math.max(0, pageIndex - 1);
-        render();
-      });
-      nextBtn.addEventListener("click", function () {
-        stopAutoPlay();
-        pageIndex = Math.min(maxPage, pageIndex + 1);
-        render();
-      });
-      render();
-      startAutoPlay();
-    })();
-  </script>
 </section>`;
 
   const baseSections = sections.filter((section) => (section.id ?? "").trim() !== "social-gallery-placeholder");
