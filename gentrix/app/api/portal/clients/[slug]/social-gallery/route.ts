@@ -18,6 +18,7 @@ type PublicSettings = ReturnType<typeof toPublicSettings>;
 const patchSchema = socialGallerySettingsSchema
   .pick({
     enabled: true,
+    layout: true,
     provider: true,
     accountId: true,
     accountHandle: true,
@@ -33,6 +34,7 @@ function toPublicSettings(settings: ReturnType<typeof parseSocialGallerySettings
   return {
     customerOptIn: settings.customerOptIn !== false,
     enabled: settings.enabled,
+    layout: settings.layout,
     provider: settings.provider,
     accountId: settings.accountId ?? "",
     accountHandle: settings.accountHandle ?? "",

@@ -10,9 +10,7 @@ type WindowWithUiRuntimes = Window & {
 const socialGalleryTimers = new WeakMap<Element, number>();
 
 function initSocialGalleryCarousel(root: ParentNode) {
-  const sections = Array.from(
-    root.querySelectorAll<HTMLElement>("[data-social-gallery-carousel='1'], #social-gallery-placeholder"),
-  );
+  const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-social-gallery-carousel='1']"));
   sections.forEach((section) => {
     const heading = section.querySelector("h2");
     if (heading) heading.remove();

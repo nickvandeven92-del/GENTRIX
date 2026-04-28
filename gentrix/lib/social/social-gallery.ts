@@ -3,6 +3,8 @@ import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
 
 export const socialProviderSchema = z.enum(["instagram", "facebook"]);
 export type SocialProvider = z.infer<typeof socialProviderSchema>;
+export const socialGalleryLayoutSchema = z.enum(["carousel", "grid"]);
+export type SocialGalleryLayout = z.infer<typeof socialGalleryLayoutSchema>;
 
 export const socialGalleryItemSchema = z.object({
   id: z.string().min(1).max(120),
@@ -16,6 +18,7 @@ export type SocialGalleryItem = z.infer<typeof socialGalleryItemSchema>;
 export const socialGallerySettingsSchema = z.object({
   customerOptIn: z.boolean().default(true),
   enabled: z.boolean().default(false),
+  layout: socialGalleryLayoutSchema.default("carousel"),
   provider: socialProviderSchema.default("instagram"),
   accountId: z.string().max(180).optional(),
   accountHandle: z.string().max(180).optional(),

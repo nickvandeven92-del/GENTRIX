@@ -5,10 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
 
 type SocialProvider = "instagram" | "facebook";
+type SocialGalleryLayout = "carousel" | "grid";
 type SocialGalleryItem = { id: string; url: string; caption?: string };
 type SocialSettings = {
   customerOptIn?: boolean;
   enabled: boolean;
+  layout: SocialGalleryLayout;
   provider: SocialProvider;
   accountId?: string;
   accountHandle?: string;
@@ -31,6 +33,7 @@ export function PortalSocialGalleryCard({ slug }: Props) {
   const [settings, setSettings] = useState<SocialSettings>({
     customerOptIn: true,
     enabled: false,
+    layout: "carousel",
     provider: "instagram",
     accountId: "",
     accountHandle: "",
@@ -68,6 +71,7 @@ export function PortalSocialGalleryCard({ slug }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           enabled: nextEnabled,
+          layout: settings.layout,
           provider: settings.provider,
         }),
       });
@@ -76,6 +80,31 @@ export function PortalSocialGalleryCard({ slug }: Props) {
       setSettings(json.settings);
     } catch (e) {
       setSettings((s) => ({ ...s, enabled: !nextEnabled }));
+      setError(e instanceof Error ? e.message : "Opslaan mislukt.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateLayout(nextLayout: SocialGalleryLayout) {
+    setSaving(true);
+    setError(null);
+    setSettings((s) => ({ ...s, layout: nextLayout }));
+    try {
+      const res = await fetch(`/api/portal/clients/${encodeURIComponent(slug)}/social-gallery`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          enabled: settings.enabled,
+          layout: nextLayout,
+          provider: settings.provider,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Opslaan mislukt.");
+      setSettings(json.settings);
+    } catch (e) {
+      setSettings((s) => ({ ...s, layout: nextLayout === "carousel" ? "grid" : "carousel" }));
       setError(e instanceof Error ? e.message : "Opslaan mislukt.");
     } finally {
       setSaving(false);
@@ -169,6 +198,37 @@ export function PortalSocialGalleryCard({ slug }: Props) {
           {syncing ? "Syncen..." : "Nu syncen"}
         </button>
       </div>
+      {settings.enabled ? (
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Weergave</span>
+          <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
+            <button
+              type="button"
+              onClick={() => void updateLayout("carousel")}
+              disabled={saving}
+              className={`px-3 py-1.5 text-xs font-medium transition ${
+                settings.layout === "carousel"
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : "bg-white text-zinc-700 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Carousel
+            </button>
+            <button
+              type="button"
+              onClick={() => void updateLayout("grid")}
+              disabled={saving}
+              className={`px-3 py-1.5 text-xs font-medium transition ${
+                settings.layout === "grid"
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : "bg-white text-zinc-700 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              }`}
+            >
+              Alles zichtbaar
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {settings.enabled ? (
         <div className="mt-4 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/50 dark:bg-blue-950/25">

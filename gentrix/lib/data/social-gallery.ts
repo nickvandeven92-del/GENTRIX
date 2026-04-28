@@ -11,6 +11,7 @@ import { decryptSocialToken } from "@/lib/social/social-gallery-secrets";
 
 export type PublicSocialGallery = {
   enabled: boolean;
+  layout: "carousel" | "grid";
   items: SocialGalleryItem[];
 };
 
@@ -83,9 +84,9 @@ export async function loadPublicSocialGalleryBySlug(slug: string): Promise<Publi
     }
 
     if (!settings.enabled || settings.customerOptIn === false || items.length === 0) {
-      return { enabled: Boolean(settings.enabled), items: [] };
+      return { enabled: Boolean(settings.enabled), layout: settings.layout, items: [] };
     }
-    return { enabled: true, items: items.slice(0, 9) };
+    return { enabled: true, layout: settings.layout, items: items.slice(0, 9) };
   } catch {
     return null;
   }

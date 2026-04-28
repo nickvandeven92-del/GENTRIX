@@ -6,6 +6,7 @@ import type { SocialGalleryItem } from "@/lib/social/social-gallery";
 
 type Props = {
   items: SocialGalleryItem[];
+  layout?: "carousel" | "grid";
 };
 
 function useVisibleSlots(): 1 | 3 {
@@ -24,7 +25,7 @@ function useVisibleSlots(): 1 | 3 {
   return slots;
 }
 
-export function SocialGalleryLandingSection({ items }: Props) {
+export function SocialGalleryLandingSection({ items, layout = "carousel" }: Props) {
   if (items.length === 0) return null;
   const visibleSlots = useVisibleSlots();
   const placeholderSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
@@ -42,6 +43,7 @@ export function SocialGalleryLandingSection({ items }: Props) {
   const maxStartIndex = useMemo(() => Math.max(0, cards.length - visibleSlots), [cards.length, visibleSlots]);
   const [startIndex, setStartIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
+  const isCarousel = layout === "carousel";
   const canGoPrev = startIndex > 0;
   const canGoNext = startIndex < maxStartIndex;
 
@@ -50,17 +52,17 @@ export function SocialGalleryLandingSection({ items }: Props) {
   }, [startIndex, maxStartIndex]);
 
   useEffect(() => {
-    if (!autoPlay || maxStartIndex <= 0) return;
+    if (!isCarousel || !autoPlay || maxStartIndex <= 0) return;
     const timer = window.setInterval(() => {
       setStartIndex((p) => (p >= maxStartIndex ? 0 : p + 1));
     }, 10_000);
     return () => window.clearInterval(timer);
-  }, [autoPlay, maxStartIndex]);
+  }, [autoPlay, maxStartIndex, isCarousel]);
 
   return (
     <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:px-10 lg:px-16">
       <div className="relative px-10">
-        <button
+        {isCarousel ? <button
           type="button"
           aria-label="Vorige social posts"
           onClick={() => {
@@ -76,8 +78,8 @@ export function SocialGalleryLandingSection({ items }: Props) {
           }}
         >
           <ChevronLeft className="size-4" />
-        </button>
-        <button
+        </button> : null}
+        {isCarousel ? <button
           type="button"
           aria-label="Volgende social posts"
           onClick={() => {
@@ -93,12 +95,12 @@ export function SocialGalleryLandingSection({ items }: Props) {
           }}
         >
           <ChevronRight className="size-4" />
-        </button>
+        </button> : null}
         <div
           className="grid gap-3"
           style={{ gridTemplateColumns: `repeat(${visibleSlots}, minmax(0, 1fr))` }}
         >
-          {cards.slice(startIndex, startIndex + visibleSlots).map((item) => (
+          {(isCarousel ? cards.slice(startIndex, startIndex + visibleSlots) : cards).map((item) => (
           <a
             key={item.id}
             href={item.permalink ?? item.url}

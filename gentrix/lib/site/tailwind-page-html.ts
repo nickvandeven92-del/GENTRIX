@@ -1906,6 +1906,11 @@ export function stripLikelyBrokenImgTags(html: string): string {
 function appendImgOnErrorHide(html: string): string {
   return replaceAllOpenTagsByLocalName(html, "img", (full) => {
     if (/\bonerror\s*=/i.test(full)) return full;
+    /**
+     * Responsive afbeeldingen met `srcset` (o.a. hero) niet verwijderen op error:
+     * één kapotte kandidaat-URL mag niet de hele image-node weghalen op desktop.
+     */
+    if (/\bsrcset\s*=/i.test(full)) return full;
     let body = full.replace(/^<img\b/i, "").trim();
     if (body.endsWith("/>")) body = body.slice(0, -2).trim();
     else if (body.endsWith(">")) body = body.slice(0, -1).trim();

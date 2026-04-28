@@ -110,9 +110,10 @@ function injectSocialGalleryBlueprintSection(
 
   if (!cards) return sections;
 
-  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery" data-social-gallery-carousel="1" class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
+  const useCarousel = socialGallery.layout !== "grid";
+  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery"${useCarousel ? ' data-social-gallery-carousel="1"' : ""} class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
   <div class="mx-auto max-w-6xl">
-    <div class="relative px-10">
+    <div class="${useCarousel ? "relative px-10" : ""}">
       <div data-social-gallery-track="1" class="grid grid-cols-3 gap-3">${cards}</div>
     </div>
   </div>
@@ -154,7 +155,7 @@ export function PublishedSiteView({
   socialGallery = null,
 }: PublishedSiteViewProps) {
   const socialGallerySection = socialGallery?.enabled ? (
-    <SocialGalleryLandingSection items={socialGallery.items} />
+    <SocialGalleryLandingSection items={socialGallery.items} layout={socialGallery.layout} />
   ) : null;
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";
