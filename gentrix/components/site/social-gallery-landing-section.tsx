@@ -1,3 +1,7 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SocialGalleryItem } from "@/lib/social/social-gallery";
 
 type Props = {
@@ -6,18 +10,54 @@ type Props = {
 
 export function SocialGalleryLandingSection({ items }: Props) {
   if (items.length === 0) return null;
+  const cards = items.slice(0, 9);
+  const pages = useMemo(() => {
+    const chunkSize = 3;
+    const result: SocialGalleryItem[][] = [];
+    for (let i = 0; i < cards.length; i += chunkSize) result.push(cards.slice(i, i + chunkSize));
+    return result;
+  }, [cards]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const canGoPrev = pageIndex > 0;
+  const canGoNext = pageIndex < pages.length - 1;
+
   return (
     <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:px-10 lg:px-16">
       <div className="mb-6 flex items-end justify-between gap-3">
         <h2 className="text-2xl font-semibold tracking-tight" style={{ color: "var(--site-foreground, var(--site-fg, #111827))" }}>
           Laatste social posts
         </h2>
-        <p className="text-sm" style={{ color: "var(--site-muted-foreground, var(--site-fg, #6b7280))" }}>
-          Automatisch ververst
-        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Vorige social posts"
+            onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+            disabled={!canGoPrev}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
+            style={{
+              borderColor: "var(--site-border, var(--site-fg, #d4d4d8))",
+              color: "var(--site-foreground, var(--site-fg, #111827))",
+            }}
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Volgende social posts"
+            onClick={() => setPageIndex((p) => Math.min(pages.length - 1, p + 1))}
+            disabled={!canGoNext}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
+            style={{
+              borderColor: "var(--site-border, var(--site-fg, #d4d4d8))",
+              color: "var(--site-foreground, var(--site-fg, #111827))",
+            }}
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        {items.slice(0, 9).map((item) => (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {(pages[pageIndex] ?? []).map((item) => (
           <a
             key={item.id}
             href={item.permalink ?? item.url}

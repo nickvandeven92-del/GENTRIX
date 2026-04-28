@@ -108,21 +108,64 @@ function injectSocialGalleryBlueprintSection(
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-end justify-between gap-3">
       <h2 class="text-2xl font-semibold tracking-tight text-zinc-900">Laatste social posts</h2>
-      <p class="text-sm text-zinc-500">Automatisch ververst</p>
+      <div class="flex items-center gap-2">
+        <button type="button" id="social-gallery-prev" aria-label="Vorige social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
+          <span aria-hidden="true">←</span>
+        </button>
+        <button type="button" id="social-gallery-next" aria-label="Volgende social posts" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 disabled:opacity-40">
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
     </div>
-    <div class="grid grid-cols-3 gap-3">${cards}</div>
+    <div id="social-gallery-track" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">${cards}</div>
   </div>
+  <script>
+    (function () {
+      var section = document.getElementById("social-gallery-placeholder");
+      if (!section) return;
+      var track = section.querySelector("#social-gallery-track");
+      var prevBtn = section.querySelector("#social-gallery-prev");
+      var nextBtn = section.querySelector("#social-gallery-next");
+      if (!track || !prevBtn || !nextBtn) return;
+      var cards = Array.prototype.slice.call(track.children);
+      var pageSize = 3;
+      var pageIndex = 0;
+      var maxPage = Math.max(0, Math.ceil(cards.length / pageSize) - 1);
+      function render() {
+        for (var i = 0; i < cards.length; i++) {
+          var cardPage = Math.floor(i / pageSize);
+          cards[i].style.display = cardPage === pageIndex ? "" : "none";
+        }
+        prevBtn.disabled = pageIndex === 0;
+        nextBtn.disabled = pageIndex >= maxPage;
+      }
+      prevBtn.addEventListener("click", function () {
+        pageIndex = Math.max(0, pageIndex - 1);
+        render();
+      });
+      nextBtn.addEventListener("click", function () {
+        pageIndex = Math.min(maxPage, pageIndex + 1);
+        render();
+      });
+      render();
+    })();
+  </script>
 </section>`;
 
-  return [
-    ...sections,
-    {
-      id: "social-gallery-placeholder",
-      sectionName: "Social Gallery",
-      semanticRole: "gallery",
-      html,
-    },
-  ];
+  const socialSection: TailwindSection = {
+    id: "social-gallery-placeholder",
+    sectionName: "Social Gallery",
+    semanticRole: "gallery",
+    html,
+  };
+  const heroIndex = sections.findIndex((section) => (section.id ?? "").trim() === "hero");
+  if (heroIndex >= 0) {
+    return [...sections.slice(0, heroIndex + 1), socialSection, ...sections.slice(heroIndex + 1)];
+  }
+  if (sections.length > 0) {
+    return [sections[0], socialSection, ...sections.slice(1)];
+  }
+  return [socialSection];
 }
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
