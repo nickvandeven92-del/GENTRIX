@@ -31,7 +31,11 @@ function initSocialGalleryCarousel(root: ParentNode) {
       if (track) track.setAttribute("data-social-gallery-track", "1");
     }
     if (!track) return;
-    section.querySelectorAll("[data-social-gallery-prev='1'], [data-social-gallery-next='1']").forEach((btn) => btn.remove());
+    section
+      .querySelectorAll(
+        "[data-social-gallery-prev='1'], [data-social-gallery-next='1'], button[aria-label='Vorige social posts'], button[aria-label='Volgende social posts']",
+      )
+      .forEach((btn) => btn.remove());
 
     let viewport = section.querySelector<HTMLElement>("[data-social-gallery-viewport='1']");
     if (!viewport) {
