@@ -31,31 +31,38 @@ function initSocialGalleryCarousel(root: ParentNode) {
       if (track) track.setAttribute("data-social-gallery-track", "1");
     }
     if (!track) return;
+    section.querySelectorAll("[data-social-gallery-prev='1'], [data-social-gallery-next='1']").forEach((btn) => btn.remove());
 
-    let prevBtn = section.querySelector<HTMLButtonElement>("[data-social-gallery-prev='1']");
-    let nextBtn = section.querySelector<HTMLButtonElement>("[data-social-gallery-next='1']");
-    if (!prevBtn || !nextBtn) {
-      const titleRow =
-        section.querySelector<HTMLElement>(".relative") ??
-        section.querySelector<HTMLElement>("div");
-      if (!titleRow) return;
-      const controls = document.createElement("div");
-      controls.className = "";
-      controls.innerHTML = `
-        <button type="button" data-social-gallery-prev="1" aria-label="Vorige social posts" class="absolute left-0 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40" style="border-color:var(--site-border, var(--site-fg, #d4d4d8)); color:var(--site-foreground, var(--site-fg, #111827)); background:var(--site-surface, var(--site-bg, #ffffff));"><span aria-hidden="true">←</span></button>
-        <button type="button" data-social-gallery-next="1" aria-label="Volgende social posts" class="absolute right-0 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40" style="border-color:var(--site-border, var(--site-fg, #d4d4d8)); color:var(--site-foreground, var(--site-fg, #111827)); background:var(--site-surface, var(--site-bg, #ffffff));"><span aria-hidden="true">→</span></button>
-      `;
-      titleRow.appendChild(controls);
-      prevBtn = controls.querySelector<HTMLButtonElement>("[data-social-gallery-prev='1']");
-      nextBtn = controls.querySelector<HTMLButtonElement>("[data-social-gallery-next='1']");
+    let viewport = section.querySelector<HTMLElement>("[data-social-gallery-viewport='1']");
+    if (!viewport) {
+      viewport = document.createElement("div");
+      viewport.setAttribute("data-social-gallery-viewport", "1");
+      viewport.className = "relative px-10";
+      track.parentElement?.insertBefore(viewport, track);
+      viewport.appendChild(track);
     }
-    if (!prevBtn || !nextBtn) return;
-    section.querySelectorAll("[data-social-gallery-prev='1']").forEach((btn, index) => {
-      if (index > 0) btn.remove();
-    });
-    section.querySelectorAll("[data-social-gallery-next='1']").forEach((btn, index) => {
-      if (index > 0) btn.remove();
-    });
+
+    const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.setAttribute("data-social-gallery-prev", "1");
+    prevBtn.setAttribute("aria-label", "Vorige social posts");
+    prevBtn.className = "absolute left-0 top-1/2 z-20 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40";
+    prevBtn.style.borderColor = "var(--site-border, var(--site-fg, #d4d4d8))";
+    prevBtn.style.color = "var(--site-foreground, var(--site-fg, #111827))";
+    prevBtn.style.background = "var(--site-surface, var(--site-bg, #ffffff))";
+    prevBtn.innerHTML = "<span aria-hidden='true'>←</span>";
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.setAttribute("data-social-gallery-next", "1");
+    nextBtn.setAttribute("aria-label", "Volgende social posts");
+    nextBtn.className = "absolute right-0 top-1/2 z-20 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border disabled:opacity-40";
+    nextBtn.style.borderColor = "var(--site-border, var(--site-fg, #d4d4d8))";
+    nextBtn.style.color = "var(--site-foreground, var(--site-fg, #111827))";
+    nextBtn.style.background = "var(--site-surface, var(--site-bg, #ffffff))";
+    nextBtn.innerHTML = "<span aria-hidden='true'>→</span>";
+    viewport.appendChild(prevBtn);
+    viewport.appendChild(nextBtn);
 
     const cards = Array.from(track.children)
       .filter((node): node is HTMLElement => node instanceof HTMLElement)
@@ -68,6 +75,7 @@ function initSocialGalleryCarousel(root: ParentNode) {
     };
     track.style.display = "grid";
     applyTrackColumns();
+    track.style.gap = "12px";
     track.style.overflowX = "hidden";
     track.style.scrollBehavior = "auto";
     track.style.gridAutoFlow = "";
