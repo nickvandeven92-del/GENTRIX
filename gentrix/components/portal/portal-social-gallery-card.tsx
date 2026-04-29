@@ -40,6 +40,65 @@ export function PortalSocialGalleryCard({ slug }: Props) {
     hasToken: false,
   });
 
+  const oauthMessage = (() => {
+    switch (oauthState) {
+      case "ok":
+        return {
+          tone: "success" as const,
+          text: 'OAuth koppeling gelukt. Klik op "Nu syncen".',
+        };
+      case "denied":
+        return {
+          tone: "error" as const,
+          text: "Meta-login is afgebroken of geweigerd. Rond de toestemming volledig af en selecteer de juiste pagina/account.",
+        };
+      case "no_instagram_business":
+        return {
+          tone: "error" as const,
+          text: "Meta vond geen gekoppeld Instagram bedrijfsaccount. Zet Instagram om naar professioneel en koppel het aan een Facebook-pagina.",
+        };
+      case "no_page":
+        return {
+          tone: "error" as const,
+          text: "Meta gaf geen Facebook-pagina met paginatoken terug. Kies in Meta de juiste pagina en geef alle pagina-toestemmingen toestemming.",
+        };
+      case "token_error":
+      case "token_empty":
+        return {
+          tone: "error" as const,
+          text: "Meta gaf geen geldig toegangstoken terug. Probeer opnieuw en rond alle toestemmingsstappen af.",
+        };
+      case "state_error":
+        return {
+          tone: "error" as const,
+          text: "De koppelsessie is verlopen of ongeldig geworden. Start de Instagram-koppeling opnieuw vanuit het portaal.",
+        };
+      case "network_error":
+        return {
+          tone: "error" as const,
+          text: "Meta reageerde niet op tijd. Probeer de koppeling opnieuw.",
+        };
+      case "forbidden":
+        return {
+          tone: "error" as const,
+          text: "Je hebt geen toegang tot deze portal-koppeling. Log opnieuw in en probeer het nog eens.",
+        };
+      case "rate_limited":
+        return {
+          tone: "error" as const,
+          text: "Er zijn te veel koppelpogingen kort na elkaar gedaan. Wacht even en probeer opnieuw.",
+        };
+      case "crypto_error":
+      case "no_client":
+        return {
+          tone: "error" as const,
+          text: "De koppeling kon niet opgeslagen worden. Probeer opnieuw; blijft dit gebeuren, dan zit het aan de serverkant.",
+        };
+      default:
+        return null;
+    }
+  })();
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -254,8 +313,16 @@ export function PortalSocialGalleryCard({ slug }: Props) {
         Laatste sync: {settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString() : "nog niet"}{" "}
         {settings.lastSyncStatus ? `- ${settings.lastSyncStatus}` : ""}
       </p>
-      {searchParams.get("social_oauth") === "ok" ? (
-        <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">OAuth koppeling gelukt. Klik op &quot;Nu syncen&quot;.</p>
+      {oauthMessage ? (
+        <p
+          className={`mt-2 text-sm ${
+            oauthMessage.tone === "success"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-red-600 dark:text-red-400"
+          }`}
+        >
+          {oauthMessage.text}
+        </p>
       ) : null}
       {oauthState === "missing_env" ? (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">

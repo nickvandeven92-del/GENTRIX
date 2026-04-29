@@ -43,10 +43,15 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const state = url.searchParams.get("state") ?? "";
   const code = url.searchParams.get("code") ?? "";
+  const oauthError = url.searchParams.get("error") ?? "";
   const parsedState = parseState(state);
   const slug = parsedState?.slug ?? "";
   const provider = parsedState?.provider ?? "instagram";
   const fallbackRedirect = slug ? `/portal/${encodeURIComponent(slug)}/website` : "/portal";
+
+  if (oauthError) {
+    return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=denied`, request.url));
+  }
 
   const cookieStore = await cookies();
   const storedState = cookieStore.get(COOKIE_NAME)?.value ?? "";

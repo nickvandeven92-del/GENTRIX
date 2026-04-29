@@ -27,8 +27,13 @@ export async function GET(request: Request, context: RouteContext) {
   const url = new URL(request.url);
   const state = url.searchParams.get("state") ?? "";
   const code = url.searchParams.get("code") ?? "";
+  const oauthError = url.searchParams.get("error") ?? "";
   const provider = state.startsWith("facebook.") ? "facebook" : "instagram";
   const fallbackRedirect = `/portal/${encodeURIComponent(slug)}/website`;
+
+  if (oauthError) {
+    return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=denied`, request.url));
+  }
 
   const access = await requirePortalApiAccessForSlug(slug);
   if (!access.ok) {
