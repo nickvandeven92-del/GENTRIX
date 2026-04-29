@@ -167,7 +167,8 @@ export function SocialGallery({
     width: "100%",
     overflowX: "auto",
     scrollSnapType: "x mandatory",
-    scrollbarWidth: "thin",
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
     WebkitOverflowScrolling: "touch",
   };
 
@@ -289,7 +290,8 @@ export function SocialGallery({
   // Carousel layout — wrapped in a relative container so arrows can overlay.
   return (
     <div style={{ position: "relative", width: "100%" }}>
-      <div ref={trackRef} style={containerStyle}>
+      <style>{`.gentrix-social-gallery-track::-webkit-scrollbar{display:none;}`}</style>
+      <div ref={trackRef} style={containerStyle} className="gentrix-social-gallery-track">
         {visible.map((photo) => (
           <div key={photo.id} style={cardStyle}>
             <img
