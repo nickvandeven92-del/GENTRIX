@@ -24,7 +24,6 @@ import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-publi
 import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
 import type { PublicSocialGallery } from "@/lib/data/social-gallery";
 import { SocialGalleryLandingSection } from "@/components/site/social-gallery-landing-section";
-import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import {
   enhanceTailwindHeroSectionHtmlForPublicDelivery,
   invokeHeroLcpImagePreloadFromHtml,
@@ -34,109 +33,19 @@ type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
   className?: string;
   publishedSlug?: string;
-  /** Concept met geldige token (`/site/...?token=`): iframe interne nav idem als live. */
   draftPublicPreviewToken?: string | null;
   visibility?: "public" | "portal";
   appointmentsEnabled?: boolean;
   webshopEnabled?: boolean;
-  /**
-   * Publieke Tailwind: `contact` = weergave voor `/site/[slug]/contact`
-   * (`contactSections` in payload, of legacy split met `SITE_CONTACT_SUBPAGE=1`).
-   */
   publicSiteTailwindPath?: "landing" | "contact";
-  /**
-   * Tailwind `marketingPages[key]` — echte subroute `/site/[slug]/[key]` (en preview-variant).
-   */
   marketingSubpageKey?: string | null;
-  /**
-   * Admin-routes (concept-preview): `nav_overlay` gebruikt `position:fixed` — zonder dit kleef je aan de hele viewport.
-   */
   embedReactInChrome?: boolean;
-  /**
-   * Publieke weergave op een pretty-URL-host (primair studio-domein of klant-domein):
-   * strip `/site/{slug}` uit alle anchor-hrefs zodat bezoekers alleen `gentrix.nl/werkwijze` zien.
-   */
   prettyPublicUrls?: boolean;
-  /**
-   * Flyer/QR-concept (`?flyer=1`): bij ontbrekende gecompileerde Tailwind geen “lege pagina” tot Play CDN klaar is.
-   */
   relaxedTailwindCdnLoading?: boolean;
-  /** Flyer/QR: interne links behouden `flyer=1` zodat de actiebalk op alle subpagina’s blijft. */
   flyerPreview?: boolean;
-  /**
-   * Site-studio generator (split-pane): **iframe**-preview (`PublicPublishedTailwind`) i.p.v. inline + `transform`,
-   * zodat `position: fixed` / zwevende nav dezelfde containing block heeft als de HTML-editor-preview en een echte
-   * browsertab (niet het getransformeerde preview-paneel — dat gaf uitlijningverschil t.o.v. live `/site`).
-   */
   studioTailwindPreviewIframe?: boolean;
   socialGallery?: PublicSocialGallery | null;
 };
-
-function injectSocialGalleryBlueprintSection(
-  sections: TailwindSection[],
-  socialGallery: PublicSocialGallery | null,
-): TailwindSection[] {
-  if (!socialGallery?.enabled) return sections;
-
-  const placeholderCards = Array.from({ length: 9 }, () => {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
-    const encoded = encodeURIComponent(svg);
-    return `<div class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);"><img src="data:image/svg+xml;utf8,${encoded}" alt="GENTRIX preview placeholder" class="h-full w-full object-cover" /></div>`;
-  }).join("");
-
-  const realCards = socialGallery.items
-    .slice(0, 9)
-    .map((item) => {
-      const href = item.permalink ?? item.url;
-      const caption = (item.caption ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);">
-  <img src="${item.url}" alt="${caption}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-</a>`;
-    })
-    .join("");
-  const cards =
-    socialGallery.items.length >= 9
-      ? realCards
-      : `${realCards}${placeholderCards
-          .split("</div>")
-          .filter(Boolean)
-          .slice(0, Math.max(0, 9 - socialGallery.items.length))
-          .map((part) => `${part}</div>`)
-          .join("")}`;
-
-  if (!cards) return sections;
-
-  // Public landing should always render social feed as carousel.
-  // This avoids stale/incorrect persisted layout values forcing grid output.
-  const useCarousel = true;
-  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery"${useCarousel ? ' data-social-gallery-carousel="1"' : ""} class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
-  <div class="mx-auto max-w-6xl">
-    <div class="${useCarousel ? "relative px-10" : ""}">
-      <div data-social-gallery-track="1" class="grid grid-cols-3 gap-3">${cards}</div>
-    </div>
-  </div>
-</section>`;
-
-  const baseSections = sections.filter((section) => (section.id ?? "").trim() !== "social-gallery-placeholder");
-  const socialSection: TailwindSection = {
-    id: "social-gallery-placeholder",
-    sectionName: "Social Gallery",
-    semanticRole: "gallery",
-    html,
-  };
-  const heroIndex = baseSections.findIndex((section) => (section.id ?? "").trim() === "hero");
-  if (heroIndex >= 0) {
-    return [...baseSections.slice(0, heroIndex + 1), socialSection, ...baseSections.slice(heroIndex + 1)];
-  }
-  if (baseSections.length > 0) {
-    return [baseSections[0], socialSection, ...baseSections.slice(1)];
-  }
-  return [socialSection];
-}
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
 export function PublishedSiteView({
@@ -242,11 +151,6 @@ export function PublishedSiteView({
             )
           : sections;
 
-    /**
-     * Elke publieke pagina sluit af met dezelfde footer als de landing. Contact- en marketing-
-     * subpagina's worden door de generator zelden met een eigen footer-sectie opgeleverd;
-     * daarom wordt de landings-footer hier idempotent achter de subpagina-secties gezet.
-     */
     const isPublicSubpage =
       visibility === "public" &&
       ((marketingPageSections != null && marketingPageSections.length > 0) ||
@@ -254,13 +158,20 @@ export function PublishedSiteView({
     const twSectionsBase = isPublicSubpage
       ? ensureFooterAppendedFromLanding(twSectionsRaw, sections)
       : twSectionsRaw;
-    const twSections =
-      visibility === "public" && !isPublicSubpage && publicSiteTailwindPath === "landing" && marketingKey === ""
-        ? injectSocialGalleryBlueprintSection(
-            twSectionsBase,
-            socialGallery,
-          )
-        : twSectionsBase;
+
+    // ── PROFESSIONAL FIX ─────────────────────────────────────────────────────
+    // Geen statische HTML-injectie meer voor de social gallery. De React-
+    // component <SocialGalleryLandingSection /> wordt na de Tailwind-render
+    // gemount, zodat Embla/carousel-logica correct hydrateert.
+    const twSections = twSectionsBase;
+    const shouldRenderSocialGalleryOnLanding =
+      visibility === "public" &&
+      !isPublicSubpage &&
+      publicSiteTailwindPath === "landing" &&
+      marketingKey === "" &&
+      socialGallery?.enabled === true;
+    // ─────────────────────────────────────────────────────────────────────────
+
     const twSectionsForDelivery = twSections.map((row) =>
       row.id === "hero"
         ? { ...row, html: enhanceTailwindHeroSectionHtmlForPublicDelivery(row.html) }
@@ -277,7 +188,6 @@ export function PublishedSiteView({
           ? `${docTitle} · Contact`
           : docTitle;
 
-    /** Contact-subpage nav — gedeeld door SSR-build en client-prop. */
     const contactNavBase: Omit<ContactSubpageNavScriptInput, "pageOrigin"> | null =
       publishedSlug?.trim() &&
       visibility === "public" &&
@@ -307,7 +217,6 @@ export function PublishedSiteView({
           ? "contact"
           : "home";
 
-    /** Publieke weergave: standaard `PublicPublishedTailwindInline` als live `/site`; studio-generator gebruikt iframe (zie `studioTailwindPreviewIframe`). */
     if (visibility === "public") {
       const slugForA = publishedSlug?.trim() ?? "";
       const isPreview = Boolean(draftPublicPreviewToken?.trim());
@@ -387,6 +296,7 @@ export function PublishedSiteView({
           ) : (
             publicInlinePreview
           )}
+          {shouldRenderSocialGalleryOnLanding ? socialGallerySection : null}
         </div>
       );
     }
