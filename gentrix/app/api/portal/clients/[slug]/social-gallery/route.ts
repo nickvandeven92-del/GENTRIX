@@ -7,9 +7,11 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   parseSocialGalleryItems,
   parseSocialGallerySettings,
+  socialGalleryItemSchema,
   socialGallerySettingsSchema,
   syncSocialGalleryFeed,
 } from "@/lib/social/social-gallery";
+import { z } from "zod";
 import { decryptSocialToken, encryptSocialToken } from "@/lib/social/social-gallery-secrets";
 
 type RouteContext = { params: Promise<{ slug: string }> };
@@ -24,7 +26,13 @@ const patchSchema = socialGallerySettingsSchema
     accountHandle: true,
     accessToken: true,
   })
-  .partial()
+  .partial();
+
+const patchBodySchema = z
+  .object({
+    settings: patchSchema.optional(),
+    items: z.array(socialGalleryItemSchema).max(9).optional(),
+  })
   .strict();
 
 function toPublicSettings(settings: ReturnType<typeof parseSocialGallerySettings>) {
@@ -100,7 +108,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   } catch {
     return NextResponse.json({ ok: false, error: "Ongeldige JSON." }, { status: 400 });
   }
-  const parsed = patchSchema.safeParse(body);
+  const parsed = patchBodySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.issues.map((i) => i.message).join(" ") }, { status: 400 });
   }
@@ -115,20 +123,33 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ ok: false, error: existingErr.message }, { status: 500 });
     }
     const existing = parseSocialGallerySettings(existingData?.social_gallery_settings);
-    const incoming = parsed.data;
+    const incomingSettings = parsed.data.settings ?? {};
+    const incomingItems = parsed.data.items;
+    const hasAccessTokenInput = typeof incomingSettings.accessToken === "string";
     const encryptedFromInput =
-      typeof incoming.accessToken === "string" && incoming.accessToken.trim() !== ""
-        ? encryptSocialToken(incoming.accessToken)
+      hasAccessTokenInput && incomingSettings.accessToken.trim() !== ""
+        ? encryptSocialToken(incomingSettings.accessToken)
         : null;
     const settings = {
       ...existing,
-      ...incoming,
+      ...incomingSettings,
       accessToken: undefined,
-      accessTokenEncrypted: encryptedFromInput ?? existing.accessTokenEncrypted,
+      accessTokenEncrypted: hasAccessTokenInput
+        ? (encryptedFromInput ?? undefined)
+        : existing.accessTokenEncrypted,
     };
+    const updates: {
+      social_gallery_settings: typeof settings;
+      social_gallery_items?: ReturnType<typeof parseSocialGalleryItems>;
+    } = {
+      social_gallery_settings: settings,
+    };
+    if (incomingItems) {
+      updates.social_gallery_items = parseSocialGalleryItems(incomingItems);
+    }
     const { error } = await supabase
       .from("clients")
-      .update({ social_gallery_settings: settings })
+      .update(updates)
       .eq("id", auth.clientId);
     if (error) {
       if (isPostgrestUnknownColumnError(error, "social_gallery_settings")) {
@@ -136,7 +157,11 @@ export async function PATCH(request: Request, context: RouteContext) {
       }
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, settings: toPublicSettings(settings) });
+    return NextResponse.json({
+      ok: true,
+      settings: toPublicSettings(settings),
+      items: updates.social_gallery_items,
+    });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Onbekende fout" }, { status: 503 });
   }

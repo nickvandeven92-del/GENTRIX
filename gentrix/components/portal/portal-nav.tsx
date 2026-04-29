@@ -7,6 +7,7 @@ import {
   CircleHelp,
   CreditCard,
   FileText,
+  Images,
   LayoutDashboard,
   MonitorSmartphone,
   Settings,
@@ -107,6 +108,7 @@ export function PortalNav({
   const items: { href: string; label: string; icon: typeof LayoutDashboard; support?: boolean }[] = [
     { href: base, label: "Overzicht", icon: LayoutDashboard },
     { href: `${base}/website`, label: "Website", icon: Sparkles },
+    { href: `${base}/gallerij`, label: "Gallerij", icon: Images },
     ...(appointmentsEnabled ? [{ href: `${base}/boekingen`, label: "Boekingen-app", icon: MonitorSmartphone }] : []),
     { href: supportHref, label: "Support", icon: CircleHelp, support: true },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),

@@ -54,7 +54,7 @@ export interface SocialPhoto {
 export type SocialGalleryLayout = "grid" | "carousel";
 
 export interface SocialGalleryProps {
-  photos: SocialPhoto[];
+  photos?: SocialPhoto[];
   columns?: 2 | 3;
   accentColor?: string;
   borderColor?: string;
@@ -66,13 +66,22 @@ export interface SocialGalleryProps {
 }
 
 const MAX_PHOTOS = 9;
+const FALLBACK_PHOTOS: SocialPhoto[] = Array.from({ length: MAX_PHOTOS }).map((_, i) => {
+  const bg = i % 3 === 0 ? "#111827" : i % 3 === 1 ? "#374151" : "#6b7280";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800"><rect width="800" height="800" fill="${bg}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="6">GENTRIX</text></svg>`;
+  return {
+    id: `gentrix-placeholder-${i + 1}`,
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    caption: "GENTRIX placeholder",
+  };
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Photo grid (embeddable)
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function SocialGallery({
-  photos,
+  photos = [],
   columns = 3,
   accentColor = "#000000",
   borderColor = "#e5e5e5",
@@ -90,7 +99,7 @@ export function SocialGallery({
     : slots === 1
       ? 1
       : safeColumns;
-  const visible = photos.slice(0, MAX_PHOTOS);
+  const visible = (photos.length > 0 ? photos : FALLBACK_PHOTOS).slice(0, MAX_PHOTOS);
 
   // Carousel scroll state — drives arrow visibility/disabled state.
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -170,7 +179,7 @@ export function SocialGallery({
     scrollbarWidth: "none",
     msOverflowStyle: "none",
     WebkitOverflowScrolling: "touch",
-  };
+  } as React.CSSProperties;
 
   const cardStyle: React.CSSProperties = {
     position: "relative",
@@ -244,29 +253,6 @@ export function SocialGallery({
     );
   }
 
-  if (visible.length === 0) {
-    return (
-      <div style={gridStyle}>
-        <div
-          style={{
-            ...cardStyle,
-            aspectRatio: "auto",
-            padding: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "transparent",
-            color: borderColor,
-            fontSize: "14px",
-            gridColumn: `span ${visibleColumns}`,
-          }}
-        >
-          No photos to display
-        </div>
-      </div>
-    );
-  }
-
   // Grid layout — no arrows needed.
   if (!isCarousel) {
     return (
@@ -290,8 +276,8 @@ export function SocialGallery({
   // Carousel layout — wrapped in a relative container so arrows can overlay.
   return (
     <div style={{ position: "relative", width: "100%" }}>
-      <style>{`.gentrix-social-gallery-track::-webkit-scrollbar{display:none;}`}</style>
-      <div ref={trackRef} style={containerStyle} className="gentrix-social-gallery-track">
+      <style>{`.gentrix-carousel-track::-webkit-scrollbar{display:none;width:0;height:0;}`}</style>
+      <div ref={trackRef} className="gentrix-carousel-track" style={containerStyle}>
         {visible.map((photo) => (
           <div key={photo.id} style={cardStyle}>
             <img
@@ -370,9 +356,32 @@ export interface SocialGallerySettingsProps {
   layout?: SocialGalleryLayout;
   /** Fired when the client toggles between carousel and "show all" grid. */
   onLayoutChange?: (layout: SocialGalleryLayout) => void;
+  /**
+   * Manually managed photos (used when no social connection is active, or
+   * when the client prefers to curate the gallery themselves). Max 9.
+   */
+  photos?: SocialPhoto[];
+  /**
+   * Fired whenever the manual photo list changes (add, remove, reorder).
+   * Parent is responsible for persistence and (optionally) uploading the
+   * underlying File objects to permanent storage. The current implementation
+   * passes data: URLs as a stand-in so the UI works without storage wired up.
+   */
+  onPhotosChange?: (photos: SocialPhoto[]) => void;
   accentColor?: string;
   borderColor?: string;
   borderRadius?: string;
+}
+
+const MANUAL_PHOTO_LIMIT = 9;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 export function SocialGallerySettings({
@@ -381,6 +390,8 @@ export function SocialGallerySettings({
   onDisconnect,
   layout = "grid",
   onLayoutChange,
+  photos,
+  onPhotosChange,
   accentColor = "#111111",
   borderColor = "#e5e5e5",
   borderRadius = "8px",
@@ -389,6 +400,12 @@ export function SocialGallerySettings({
     connection?.provider ?? "instagram",
   );
   const [busy, setBusy] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const manualPhotos = photos ?? [];
+  const canAddMore = manualPhotos.length < MANUAL_PHOTO_LIMIT;
 
   const containerStyle: React.CSSProperties = {
     border: `1px solid ${borderColor}`,
@@ -492,6 +509,180 @@ export function SocialGallerySettings({
     </div>
   ) : null;
 
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !onPhotosChange) return;
+    const remaining = MANUAL_PHOTO_LIMIT - manualPhotos.length;
+    const incoming = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, Math.max(0, remaining));
+    if (incoming.length === 0) return;
+
+    const next: SocialPhoto[] = [...manualPhotos];
+    for (const file of incoming) {
+      try {
+        const url = await readFileAsDataUrl(file);
+        next.push({
+          id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          url,
+          caption: file.name,
+        });
+      } catch {
+        // Skip files we can't read.
+      }
+    }
+    onPhotosChange(next);
+  };
+
+  const removePhoto = (id: string) => {
+    if (!onPhotosChange) return;
+    onPhotosChange(manualPhotos.filter((p) => p.id !== id));
+  };
+
+  const reorder = (from: number, to: number) => {
+    if (!onPhotosChange || from === to) return;
+    const next = [...manualPhotos];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onPhotosChange(next);
+  };
+
+  const tileStyle = (isOver: boolean, isDragging: boolean): React.CSSProperties => ({
+    position: "relative",
+    aspectRatio: "1 / 1",
+    border: `2px ${isOver ? "solid" : "dashed"} ${isOver ? accentColor : borderColor}`,
+    borderRadius,
+    background: "#fafafa",
+    overflow: "hidden",
+    boxSizing: "border-box",
+    cursor: "grab",
+    opacity: isDragging ? 0.4 : 1,
+    transition: "border-color 120ms ease, opacity 120ms ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  });
+
+  const addTileStyle: React.CSSProperties = {
+    aspectRatio: "1 / 1",
+    border: `2px dashed ${borderColor}`,
+    borderRadius,
+    background: "#fafafa",
+    color: "#888",
+    cursor: canAddMore ? "pointer" : "not-allowed",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "12px",
+    gap: "4px",
+    boxSizing: "border-box",
+  };
+
+  const removeBtnStyle: React.CSSProperties = {
+    position: "absolute",
+    top: "4px",
+    right: "4px",
+    width: "22px",
+    height: "22px",
+    borderRadius: "9999px",
+    border: "none",
+    background: "rgba(0,0,0,0.65)",
+    color: "#fff",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "14px",
+    lineHeight: 1,
+    padding: 0,
+  };
+
+  const manualManager = onPhotosChange ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={labelStyle}>Your photos</span>
+        <span style={{ fontSize: "12px", color: "#888" }}>
+          {manualPhotos.length} / {MANUAL_PHOTO_LIMIT}
+        </span>
+      </div>
+      <p style={{ fontSize: "12px", color: "#888", margin: 0 }}>
+        Drag to reorder. Drop images below or click a slot to upload.
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: "8px",
+        }}
+      >
+        {manualPhotos.map((photo, index) => (
+          <div
+            key={photo.id}
+            draggable
+            onDragStart={() => setDragIndex(index)}
+            onDragEnter={() => setOverIndex(index)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragIndex !== null) reorder(dragIndex, index);
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            onDragEnd={() => {
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            style={tileStyle(overIndex === index && dragIndex !== index, dragIndex === index)}
+          >
+            <img
+              src={photo.url}
+              alt={photo.caption ?? ""}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              draggable={false}
+            />
+            <button
+              type="button"
+              aria-label="Remove photo"
+              onClick={() => removePhoto(photo.id)}
+              style={removeBtnStyle}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {canAddMore ? (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              void handleFilesSelected(e.dataTransfer.files);
+            }}
+            style={addTileStyle}
+            disabled={!canAddMore}
+          >
+            <span style={{ fontSize: "22px", lineHeight: 1 }}>+</span>
+            <span>Add photo</span>
+          </button>
+        ) : null}
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => {
+          void handleFilesSelected(e.target.files);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  ) : null;
+
   if (connection) {
     return (
       <div style={containerStyle}>
@@ -522,6 +713,7 @@ export function SocialGallerySettings({
           </button>
         </div>
         {layoutToggle}
+        {manualManager}
       </div>
     );
   }
@@ -561,6 +753,7 @@ export function SocialGallerySettings({
       </button>
 
       {layoutToggle}
+      {manualManager}
     </div>
   );
 }

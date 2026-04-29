@@ -3,10 +3,15 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
+import {
+  SocialGallerySettings,
+  type SocialConnection,
+  type SocialPhoto,
+} from "../../frontends/gentrix-photo-grid-main/src/components/SocialGallery";
 
 type SocialProvider = "instagram" | "facebook";
 type SocialGalleryLayout = "carousel" | "grid";
-type SocialGalleryItem = { id: string; url: string; caption?: string };
+type SocialGalleryItem = SocialPhoto;
 type SocialSettings = {
   customerOptIn?: boolean;
   enabled: boolean;
@@ -27,7 +32,6 @@ export function PortalSocialGalleryCard({ slug }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<SocialGalleryItem[]>([]);
   const [settings, setSettings] = useState<SocialSettings>({
@@ -129,9 +133,11 @@ export function PortalSocialGalleryCard({ slug }: Props) {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          enabled: nextEnabled,
-          layout: settings.layout,
-          provider: settings.provider,
+          settings: {
+            enabled: nextEnabled,
+            layout: settings.layout,
+            provider: settings.provider,
+          },
         }),
       });
       const json = await res.json();
@@ -154,9 +160,11 @@ export function PortalSocialGalleryCard({ slug }: Props) {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          enabled: settings.enabled,
-          layout: nextLayout,
-          provider: settings.provider,
+          settings: {
+            enabled: settings.enabled,
+            layout: nextLayout,
+            provider: settings.provider,
+          },
         }),
       });
       const json = await res.json();
@@ -172,9 +180,64 @@ export function PortalSocialGalleryCard({ slug }: Props) {
 
   function connectWithProvider(provider: SocialProvider) {
     setSettings((s) => ({ ...s, provider }));
-    setConnecting(true);
     const href = `/api/portal/clients/${encodeURIComponent(slug)}/social-gallery/oauth/start?provider=${provider}`;
     window.location.href = href;
+  }
+
+  async function disconnectSocial() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/portal/clients/${encodeURIComponent(slug)}/social-gallery`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            enabled: false,
+            layout: settings.layout,
+            provider: settings.provider,
+            accountId: "",
+            accountHandle: "",
+            accessToken: "",
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Ontkoppelen mislukt.");
+      if (json.settings) setSettings(json.settings);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ontkoppelen mislukt.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function persistManualPhotos(nextPhotos: SocialPhoto[]) {
+    setSaving(true);
+    setError(null);
+    setItems(nextPhotos.slice(0, 9));
+    try {
+      const res = await fetch(`/api/portal/clients/${encodeURIComponent(slug)}/social-gallery`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            enabled: settings.enabled,
+            layout: settings.layout,
+            provider: settings.provider,
+          },
+          items: nextPhotos.slice(0, 9),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Opslaan mislukt.");
+      if (Array.isArray(json.items)) setItems(json.items);
+      if (json.settings) setSettings(json.settings);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Opslaan mislukt.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function syncNow() {
@@ -225,30 +288,6 @@ export function PortalSocialGalleryCard({ slug }: Props) {
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => connectWithProvider("instagram")}
-          disabled={connecting}
-          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-            settings.provider === "instagram"
-              ? "border-pink-300 bg-pink-50 text-pink-900 dark:border-pink-700 dark:bg-pink-950/40 dark:text-pink-200"
-              : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-          }`}
-        >
-          {connecting && settings.provider === "instagram" ? "Doorsturen..." : "Instagram koppelen (via Meta)"}
-        </button>
-        <button
-          type="button"
-          onClick={() => connectWithProvider("facebook")}
-          disabled={connecting}
-          className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-            settings.provider === "facebook"
-              ? "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-200"
-              : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-          }`}
-        >
-          {connecting && settings.provider === "facebook" ? "Doorsturen..." : "Facebook-pagina koppelen"}
-        </button>
-        <button
-          type="button"
           onClick={() => void syncNow()}
           disabled={syncing || !settings.enabled}
           className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-70 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
@@ -260,37 +299,24 @@ export function PortalSocialGalleryCard({ slug }: Props) {
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
         Instagram opent ook het Meta/Facebook inlogscherm. Dat is normaal: Meta levert daarna je Instagram business-account of Facebook-pagina terug.
       </p>
-      {settings.enabled ? (
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Weergave</span>
-          <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
-            <button
-              type="button"
-              onClick={() => void updateLayout("carousel")}
-              disabled={saving}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                settings.layout === "carousel"
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "bg-white text-zinc-700 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              }`}
-            >
-              Carousel
-            </button>
-            <button
-              type="button"
-              onClick={() => void updateLayout("grid")}
-              disabled={saving}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                settings.layout === "grid"
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "bg-white text-zinc-700 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              }`}
-            >
-              Alles zichtbaar
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <div className="mt-4">
+        <SocialGallerySettings
+          connection={
+            settings.accountHandle?.trim()
+              ? ({
+                  provider: settings.provider,
+                  handle: settings.accountHandle,
+                } satisfies SocialConnection)
+              : null
+          }
+          onConnect={(provider) => connectWithProvider(provider)}
+          onDisconnect={() => disconnectSocial()}
+          layout={settings.layout}
+          onLayoutChange={(nextLayout) => void updateLayout(nextLayout)}
+          photos={items}
+          onPhotosChange={(next) => void persistManualPhotos(next)}
+        />
+      </div>
 
       {settings.enabled ? (
         <div className="mt-4 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/50 dark:bg-blue-950/25">

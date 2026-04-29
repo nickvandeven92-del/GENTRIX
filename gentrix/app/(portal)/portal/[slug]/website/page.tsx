@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalVisualSiteEditor } from "@/components/portal/portal-visual-site-editor";
-import { PortalSocialGalleryCard } from "@/components/portal/portal-social-gallery-card";
 import { PortalWebsitePanel } from "@/components/portal/portal-website-panel";
 import { getDraftPublishedSitePayloadBySlug, getDraftSiteJsonBySlug } from "@/lib/data/client-draft-site";
 import { getActivePortalClient } from "@/lib/data/get-portal-client";
@@ -125,9 +124,6 @@ export default async function PortalWebsitePage({ params }: Props) {
           domainVerified={client.domain_verified}
           domainDnsTarget={client.domain_dns_target}
         />
-      </div>
-      <div className="mt-6">
-        <PortalSocialGalleryCard slug={slug} />
       </div>
     </main>
   );

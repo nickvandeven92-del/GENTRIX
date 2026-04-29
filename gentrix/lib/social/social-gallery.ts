@@ -8,7 +8,8 @@ export type SocialGalleryLayout = z.infer<typeof socialGalleryLayoutSchema>;
 
 export const socialGalleryItemSchema = z.object({
   id: z.string().min(1).max(120),
-  url: z.string().url().max(1200),
+  // Allow temporary data: URLs for manual uploads before parent-side CDN storage.
+  url: z.string().url().max(750_000),
   caption: z.string().max(1200).optional(),
   permalink: z.string().url().max(1200).optional(),
   timestamp: z.string().max(120).optional(),
