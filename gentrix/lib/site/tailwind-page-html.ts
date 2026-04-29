@@ -2152,6 +2152,11 @@ export function sanitizeTailwindFragment(html: string): string {
       "data-aos-anchor",
       "data-aos-anchor-placement",
       "data-lucide",
+      "data-social-gallery-carousel",
+      "data-social-gallery-track",
+      "data-social-gallery-viewport",
+      "data-social-gallery-prev",
+      "data-social-gallery-next",
       "data-studio-brand-mark",
       "data-studio-visibility",
       /** First-party nav events (`lib/analytics/first-party-public-site.ts`). */
