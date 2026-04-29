@@ -233,7 +233,7 @@ export function PortalSocialGalleryCard({ slug }: Props) {
               : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
           }`}
         >
-          {connecting && settings.provider === "instagram" ? "Doorsturen..." : "Verbind met Instagram"}
+          {connecting && settings.provider === "instagram" ? "Doorsturen..." : "Instagram koppelen (via Meta)"}
         </button>
         <button
           type="button"
@@ -245,7 +245,7 @@ export function PortalSocialGalleryCard({ slug }: Props) {
               : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
           }`}
         >
-          {connecting && settings.provider === "facebook" ? "Doorsturen..." : "Verbind met Facebook"}
+          {connecting && settings.provider === "facebook" ? "Doorsturen..." : "Facebook-pagina koppelen"}
         </button>
         <button
           type="button"
@@ -257,6 +257,9 @@ export function PortalSocialGalleryCard({ slug }: Props) {
           {syncing ? "Syncen..." : "Nu syncen"}
         </button>
       </div>
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        Instagram opent ook het Meta/Facebook inlogscherm. Dat is normaal: Meta levert daarna je Instagram business-account of Facebook-pagina terug.
+      </p>
       {settings.enabled ? (
         <div className="mt-3 flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Weergave</span>
