@@ -24,11 +24,14 @@ import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-publi
 import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
 import type { PublicSocialGallery } from "@/lib/data/social-gallery";
 import { SocialGallery } from "../../frontends/gentrix-photo-grid-main/src/components/SocialGallery";
+import { PublicSocialGalleryMount } from "@/components/site/public-social-gallery-mount";
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import {
   enhanceTailwindHeroSectionHtmlForPublicDelivery,
   invokeHeroLcpImagePreloadFromHtml,
 } from "@/lib/site/tailwind-hero-public-delivery";
+
+const PUBLIC_SOCIAL_GALLERY_MOUNT_ID = "social-gallery-react-mount";
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -77,8 +80,22 @@ function injectSocialGalleryBlueprintSection(
   socialGallery: PublicSocialGallery | null,
 ): TailwindSection[] {
   if (!socialGallery?.enabled) return sections;
-  if ((socialGallery.items?.length ?? 0) === 0) return sections;
-  return sections;
+
+  const baseSections = sections.filter((section) => (section.id ?? "").trim() !== "social-gallery-placeholder");
+  const socialSection: TailwindSection = {
+    id: "social-gallery-placeholder",
+    sectionName: "Social Gallery",
+    semanticRole: "gallery",
+    html: `<section id="social-gallery-placeholder" data-studio-section-role="gallery" class="px-6 py-16 sm:px-10 lg:px-16"><div class="mx-auto max-w-6xl"><div id="${PUBLIC_SOCIAL_GALLERY_MOUNT_ID}"></div></div></section>`,
+  };
+  const heroIndex = baseSections.findIndex((section) => (section.id ?? "").trim() === "hero");
+  if (heroIndex >= 0) {
+    return [...baseSections.slice(0, heroIndex + 1), socialSection, ...baseSections.slice(heroIndex + 1)];
+  }
+  if (baseSections.length > 0) {
+    return [baseSections[0], socialSection, ...baseSections.slice(1)];
+  }
+  return [socialSection];
 }
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
@@ -118,10 +135,14 @@ export function PublishedSiteView({
         }));
   const socialGallerySection =
     socialGallery?.enabled ? (
-    <SocialGallery
-      photos={socialGalleryPhotos}
-      layout={socialGallery.layout}
-    />
+    <section className="px-6 py-16 sm:px-10 lg:px-16">
+      <div className="mx-auto max-w-6xl">
+        <SocialGallery
+          photos={socialGalleryPhotos}
+          layout={socialGallery.layout}
+        />
+      </div>
+    </section>
   ) : null;
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";
@@ -351,7 +372,13 @@ export function PublishedSiteView({
           ) : (
             publicInlinePreview
           )}
-          {socialGallerySection}
+          {socialGallery?.enabled ? (
+            <PublicSocialGalleryMount
+              targetId={PUBLIC_SOCIAL_GALLERY_MOUNT_ID}
+              photos={socialGalleryPhotos}
+              layout={socialGallery.layout}
+            />
+          ) : null}
         </div>
       );
     }
