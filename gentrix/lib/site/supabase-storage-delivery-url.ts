@@ -313,8 +313,13 @@ export function promoteHeroSupabaseBackgroundUrlToImg(html: string): string {
 /**
  * Publieke `…/ai-hero/<stem>/<w>.webp`-set (object/public): vult `srcset` + `sizes` als die ontbreken.
  * Breedtes moeten gelijk lopen aan `HERO_PUBLISH_WEBP_WIDTH_TARGETS` in `hero-responsive-webp-variants.ts`.
+ *
+ * **Max src-breedte**: 1280 px. Varianten boven 1280 worden niet altijd gegenereerd (bronafbeelding
+ * kleiner dan target → geen upscale). Browser krijgt 400 op een niet-bestaand bestand; daarom cappen
+ * we de `src` en de srcset op 1280 w zodat desktop nooit een ontbrekende 1920/2400-variant aanvraagt.
  */
 const AI_HERO_OBJECT_SRCSET_WIDTHS = [640, 960, 1280, 1920, 2400] as const;
+const AI_HERO_OBJECT_MAX_SRC_WIDTH = 1280;
 
 function maxPublishedAiHeroWidthFromUrl(rawSrc: string): number | null {
   const pathOnly = rawSrc.split(/[?#]/)[0] ?? rawSrc;
@@ -340,15 +345,21 @@ export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
     const base = pathOnly.replace(/\/\d+\.webp$/i, "");
     if (!base || base === pathOnly) return full;
     const maxWidth = maxPublishedAiHeroWidthFromUrl(rawSrc);
-    const widths =
-      maxWidth == null ? AI_HERO_OBJECT_SRCSET_WIDTHS : AI_HERO_OBJECT_SRCSET_WIDTHS.filter((w) => w <= maxWidth);
+    // Cap op AI_HERO_OBJECT_MAX_SRC_WIDTH: varianten boven 1280 worden niet altijd ge-upload
+    // (withoutEnlargement=true); een ontbrekend bestand geeft 400. Srcset en src blijven ≤ 1280 w.
+    const effectiveMax = Math.min(maxWidth ?? AI_HERO_OBJECT_MAX_SRC_WIDTH, AI_HERO_OBJECT_MAX_SRC_WIDTH);
+    const widths = (AI_HERO_OBJECT_SRCSET_WIDTHS as readonly number[]).filter((w) => w <= effectiveMax);
     if (widths.length === 0) return full;
+    const srcWidth = widths[widths.length - 1]!;
+    const srcFallback = `${base}/${srcWidth}.webp`;
     const srcset = widths.map((w) => {
       const u = `${base}/${w}.webp`;
       return `${escapeHtmlAttrAmpersands(u)} ${w}w`;
     }).join(", ");
     const sizesEscaped = escapeHtmlAttrAmpersands(inferHeroImgSizesFromAttrs(attrs));
-    const trimmed = attrs.trim();
+    // Vervang ook de src zodat de browser bij fallback niet een niet-bestaande breedte aanvraagt
+    const newSrcAttr = `src=${q}${escapeHtmlAttrAmpersands(srcFallback)}${q}`;
+    const trimmed = attrs.replace(/\bsrc\s*=\s*(["'])[^"']*\1/i, newSrcAttr).trim();
     return `<img ${trimmed} srcset=${q}${srcset}${q} sizes=${q}${sizesEscaped}${q}>`;
   });
 }
