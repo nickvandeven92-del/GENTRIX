@@ -99,15 +99,26 @@ export function PublishedSiteView({
   studioTailwindPreviewIframe = false,
   socialGallery = null,
 }: PublishedSiteViewProps) {
+  const placeholderSvg =
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>";
+  const placeholderUrl = `data:image/svg+xml;utf8,${encodeURIComponent(placeholderSvg)}`;
+  const socialGalleryPhotos =
+    (socialGallery?.items?.length ?? 0) > 0
+      ? socialGallery.items.map((item) => ({
+          id: item.id,
+          url: item.url,
+          caption: item.caption,
+        }))
+      : Array.from({ length: 9 }, (_, index) => ({
+          id: `placeholder-${index}`,
+          url: placeholderUrl,
+          caption: "Placeholder",
+        }));
   const socialGallerySection =
-    socialGallery?.enabled && (socialGallery.items?.length ?? 0) > 0 ? (
+    socialGallery?.enabled ? (
     <SocialGallery
-      photos={socialGallery.items.map((item) => ({
-        id: item.id,
-        url: item.url,
-        caption: item.caption,
-      }))}
-      layout="carousel"
+      photos={socialGalleryPhotos}
+      layout={socialGallery.layout}
     />
   ) : null;
   if (payload.kind === "react") {
