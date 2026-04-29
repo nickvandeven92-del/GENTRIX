@@ -23,7 +23,7 @@ import type { PublishedSiteSoftNavContext } from "@/lib/site/published-site-soft
 import { GentrixPublicSiteAnalytics } from "@/components/analytics/gentrix-public-site-analytics";
 import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-generator-meta";
 import type { PublicSocialGallery } from "@/lib/data/social-gallery";
-import { SocialGalleryLandingSection } from "@/components/site/social-gallery-landing-section";
+import { SocialGallery } from "../../frontends/gentrix-photo-grid-main/src/components/SocialGallery";
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import {
   enhanceTailwindHeroSectionHtmlForPublicDelivery,
@@ -77,66 +77,8 @@ function injectSocialGalleryBlueprintSection(
   socialGallery: PublicSocialGallery | null,
 ): TailwindSection[] {
   if (!socialGallery?.enabled) return sections;
-  if (socialGallery.items.length > 0) return sections;
-
-  const placeholderCards = Array.from({ length: 9 }, () => {
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
-    const encoded = encodeURIComponent(svg);
-    return `<div class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);"><img src="data:image/svg+xml;utf8,${encoded}" alt="GENTRIX preview placeholder" class="h-full w-full object-cover" /></div>`;
-  }).join("");
-
-  const realCards = socialGallery.items
-    .slice(0, 9)
-    .map((item) => {
-      const href = item.permalink ?? item.url;
-      const caption = (item.caption ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="group relative block aspect-square overflow-hidden" style="border:1px solid var(--site-border, color-mix(in srgb, var(--site-fg, #111827) 18%, transparent)); border-radius:var(--radius-xl, var(--radius-lg, 1rem)); background:var(--site-surface, var(--site-bg, #ffffff)); box-shadow:0 6px 20px color-mix(in srgb, var(--site-fg, #111827) 10%, transparent);">
-  <img src="${item.url}" alt="${caption}" loading="lazy" class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-</a>`;
-    })
-    .join("");
-  const cards =
-    socialGallery.items.length >= 9
-      ? realCards
-      : `${realCards}${placeholderCards
-          .split("</div>")
-          .filter(Boolean)
-          .slice(0, Math.max(0, 9 - socialGallery.items.length))
-          .map((part) => `${part}</div>`)
-          .join("")}`;
-
-  if (!cards) return sections;
-
-  // Public landing should always render social feed as carousel.
-  // This avoids stale/incorrect persisted layout values forcing grid output.
-  const useCarousel = true;
-  const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery"${useCarousel ? ' data-social-gallery-carousel="1"' : ""} class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
-  <div class="mx-auto max-w-6xl">
-    <div class="${useCarousel ? "relative px-10" : ""}">
-      <div data-social-gallery-track="1" class="grid grid-cols-3 gap-3">${cards}</div>
-    </div>
-  </div>
-</section>`;
-
-  const baseSections = sections.filter((section) => (section.id ?? "").trim() !== "social-gallery-placeholder");
-  const socialSection: TailwindSection = {
-    id: "social-gallery-placeholder",
-    sectionName: "Social Gallery",
-    semanticRole: "gallery",
-    html,
-  };
-  const heroIndex = baseSections.findIndex((section) => (section.id ?? "").trim() === "hero");
-  if (heroIndex >= 0) {
-    return [...baseSections.slice(0, heroIndex + 1), socialSection, ...baseSections.slice(heroIndex + 1)];
-  }
-  if (baseSections.length > 0) {
-    return [baseSections[0], socialSection, ...baseSections.slice(1)];
-  }
-  return [socialSection];
+  if ((socialGallery.items?.length ?? 0) === 0) return sections;
+  return sections;
 }
 
 /** Publieke weergave: `tailwind_sections` (HTML) of `react_sections` (legacy JSON-contract); legacy vrije JSON via `SiteRenderer`. */
@@ -158,8 +100,15 @@ export function PublishedSiteView({
   socialGallery = null,
 }: PublishedSiteViewProps) {
   const socialGallerySection =
-    socialGallery?.enabled && socialGallery.items.length > 0 ? (
-    <SocialGalleryLandingSection items={socialGallery.items} layout="carousel" />
+    socialGallery?.enabled && (socialGallery.items?.length ?? 0) > 0 ? (
+    <SocialGallery
+      photos={socialGallery.items.map((item) => ({
+        id: item.id,
+        url: item.url,
+        caption: item.caption,
+      }))}
+      layout="carousel"
+    />
   ) : null;
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";
