@@ -302,10 +302,10 @@ export function PortalSocialGalleryCard({ slug }: Props) {
       <div className="mt-4">
         <SocialGallerySettings
           connection={
-            settings.accountHandle?.trim()
+            settings.accountHandle?.trim() || settings.accountId?.trim()
               ? ({
                   provider: settings.provider,
-                  handle: settings.accountHandle,
+                  handle: settings.accountHandle?.trim() || settings.accountId || settings.provider,
                 } satisfies SocialConnection)
               : null
           }

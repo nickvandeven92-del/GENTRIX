@@ -30,18 +30,18 @@ export async function GET(request: Request, context: RouteContext) {
   const appId = process.env.META_APP_ID?.trim();
   if (!appId) {
     const origin = requestOrigin(request);
-    return NextResponse.redirect(`${origin}/portal/site/${encodeURIComponent(slug)}?social_oauth=missing_env`);
+    return NextResponse.redirect(`${origin}/portal/${encodeURIComponent(slug)}/gallerij?social_oauth=missing_env`);
   }
 
   const origin = requestOrigin(request);
-  const redirectUri = `${origin}/api/portal/social-gallery/oauth/callback`;
+  const redirectUri = `${origin}/api/portal/clients/${encodeURIComponent(slug)}/social-gallery/oauth/callback`;
   const state = `${provider}:${encodeURIComponent(slug)}:${randomUUID()}`;
   (await cookies()).set(COOKIE_NAME, state, {
     httpOnly: true,
     sameSite: "lax",
     secure: true,
     maxAge: 600,
-    path: "/api/portal/social-gallery/oauth",
+    path: "/api/portal/clients",
   });
 
   // Email scope is not valid/needed for this integration and can break OAuth for non-dev users.

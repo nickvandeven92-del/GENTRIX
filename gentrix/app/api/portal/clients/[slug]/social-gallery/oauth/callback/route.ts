@@ -29,7 +29,7 @@ export async function GET(request: Request, context: RouteContext) {
   const code = url.searchParams.get("code") ?? "";
   const oauthError = url.searchParams.get("error") ?? "";
   const requestedProvider = state.startsWith("facebook:") ? "facebook" : "instagram";
-  const fallbackRedirect = `/portal/${encodeURIComponent(slug)}/website`;
+  const fallbackRedirect = `/portal/${encodeURIComponent(slug)}/gallerij`;
 
   if (oauthError) {
     return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=denied`, request.url));
