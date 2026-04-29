@@ -125,10 +125,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     const existing = parseSocialGallerySettings(existingData?.social_gallery_settings);
     const incomingSettings = parsed.data.settings ?? {};
     const incomingItems = parsed.data.items;
-    const hasAccessTokenInput = typeof incomingSettings.accessToken === "string";
+    const accessTokenInput = incomingSettings.accessToken;
+    const hasAccessTokenInput = typeof accessTokenInput === "string";
     const encryptedFromInput =
-      hasAccessTokenInput && incomingSettings.accessToken.trim() !== ""
-        ? encryptSocialToken(incomingSettings.accessToken)
+      hasAccessTokenInput && accessTokenInput.trim() !== ""
+        ? encryptSocialToken(accessTokenInput)
         : null;
     const settings = {
       ...existing,
