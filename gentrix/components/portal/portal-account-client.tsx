@@ -68,7 +68,7 @@ export function PortalAccountClient({ slug, initial }: Props) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Abonnement & betaling</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -100,7 +100,7 @@ export function PortalAccountClient({ slug, initial }: Props) {
         {isSubscription ? (
           <div className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
             {initial.subscription_cancel_at_period_end ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
                 <p className="font-medium">Opzegging geregistreerd</p>
                 <p className="mt-1 text-amber-900/90 dark:text-amber-200/90">
                   Je abonnement loopt tot de eerstvolgende verlengingsdatum hierboven (of volgens je contract). Geen verdere
@@ -121,7 +121,7 @@ export function PortalAccountClient({ slug, initial }: Props) {
                 Abonnement opzeggen
               </button>
             ) : (
-              <div className="max-w-md space-y-3 rounded-lg border border-red-200 bg-red-50/50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
+              <div className="max-w-md space-y-3 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
                 <p className="text-sm text-zinc-800 dark:text-zinc-200">
                   Maandelijks opzegbaar. Typ <strong>OPZEGGEN</strong> om te bevestigen. Geen vragen, geen telefoon —
                   direct geregistreerd.

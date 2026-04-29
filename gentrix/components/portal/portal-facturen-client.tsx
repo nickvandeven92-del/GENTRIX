@@ -31,7 +31,8 @@ export function PortalFacturenClient({ slug, invoices }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-zinc-500">Filter:</span>
         {(
           [
@@ -46,7 +47,7 @@ export function PortalFacturenClient({ slug, invoices }: Props) {
             type="button"
             onClick={() => setFilter(value)}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium",
+              "rounded-lg px-3 py-1.5 text-xs font-medium",
               filter === value
                 ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                 : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
@@ -56,11 +57,12 @@ export function PortalFacturenClient({ slug, invoices }: Props) {
           </button>
         ))}
       </div>
+      </div>
 
       {filtered.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Geen facturen in deze filter.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-medium uppercase text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
               <tr>

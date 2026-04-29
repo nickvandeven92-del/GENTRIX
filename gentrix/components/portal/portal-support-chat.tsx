@@ -154,7 +154,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Nieuw onderwerp</h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Je vraag wordt automatisch bij je dossier geregistreerd. We antwoorden zo snel mogelijk; je ziet bij elk studio-antwoord van wie het komt.
@@ -203,7 +203,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Je gesprekken</h2>
           <div className="flex gap-1 rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700">
@@ -243,7 +243,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
         {error ? <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div className="min-h-[200px] rounded-lg border border-zinc-100 dark:border-zinc-800">
+          <div className="min-h-[200px] rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950/30">
             {threads.length === 0 ? (
               <p className="p-4 text-sm text-zinc-500 dark:text-zinc-400">
                 {tab === "open" ? "Geen open gesprekken." : "Geen gearchiveerde gesprekken."}
@@ -283,7 +283,7 @@ export function PortalSupportChat({ slug, initialOpen, initialClosed }: Props) {
             )}
           </div>
 
-          <div className="min-h-[280px] rounded-lg border border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-900/40">
+          <div className="min-h-[280px] rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/40">
             {!selectedId ? (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Kies een gesprek om berichten te zien.</p>
             ) : loadingMsgs ? (

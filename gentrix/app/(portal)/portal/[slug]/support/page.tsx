@@ -36,7 +36,7 @@ export default async function PortalSupportPage({ params }: Props) {
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Support</h1>
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Support</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Stel een vraag aan de studio of volg je lopende onderwerpen. Gesloten onderwerpen vind je terug onder Archief.
         </p>
