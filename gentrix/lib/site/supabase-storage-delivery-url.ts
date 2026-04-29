@@ -332,8 +332,6 @@ function maxPublishedAiHeroWidthFromUrl(rawSrc: string): number | null {
 
 export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
   return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
-    if (/\bsrcset\s*=/i.test(attrs)) return full;
-    if (/\bsizes\s*=/i.test(attrs)) return full;
     if (/\bdata-gentrix-raster-brand\s*=/i.test(attrs)) return full;
     if (/\bdata-studio-brand-mark\s*=/i.test(attrs)) return full;
     const m = attrs.match(/\bsrc\s*=\s*(["'])([^"']*)\1/i);
@@ -359,7 +357,11 @@ export function addResponsiveSrcsetToAiHeroObjectImages(html: string): string {
     const sizesEscaped = escapeHtmlAttrAmpersands(inferHeroImgSizesFromAttrs(attrs));
     // Vervang ook de src zodat de browser bij fallback niet een niet-bestaande breedte aanvraagt
     const newSrcAttr = `src=${q}${escapeHtmlAttrAmpersands(srcFallback)}${q}`;
-    const trimmed = attrs.replace(/\bsrc\s*=\s*(["'])[^"']*\1/i, newSrcAttr).trim();
+    const trimmed = attrs
+      .replace(/\bsrc\s*=\s*(["'])[^"']*\1/i, newSrcAttr)
+      .replace(/\ssrcset\s*=\s*(["'])[^"']*\1/gi, "")
+      .replace(/\ssizes\s*=\s*(["'])[^"']*\1/gi, "")
+      .trim();
     return `<img ${trimmed} srcset=${q}${srcset}${q} sizes=${q}${sizesEscaped}${q}>`;
   });
 }

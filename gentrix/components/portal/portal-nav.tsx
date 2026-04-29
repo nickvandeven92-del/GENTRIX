@@ -3,22 +3,35 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import {
+  CircleHelp,
+  CreditCard,
+  FileText,
+  LayoutDashboard,
+  MonitorSmartphone,
+  Settings,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const POLL_MS = 30_000;
 
 type PortalNavProps = {
   slug: string;
+  appointmentsEnabled: boolean;
   invoicesEnabled: boolean;
   accountEnabled: boolean;
+  showStudioNav: boolean;
   supportUnreadInitial?: number;
 };
 
 export function PortalNav({
   slug,
+  appointmentsEnabled,
   invoicesEnabled,
   accountEnabled,
+  showStudioNav,
   supportUnreadInitial = 0,
 }: PortalNavProps) {
   const pathname = usePathname();
@@ -91,12 +104,14 @@ export function PortalNav({
     return () => window.removeEventListener("keydown", onKey);
   }, [supportToast]);
 
-  const items: { href: string; label: string; support?: boolean }[] = [
-    { href: base, label: "Dashboard" },
-    { href: supportHref, label: "Support", support: true },
-    { href: `${base}/website`, label: "Website" },
-    ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen" }] : []),
-    ...(accountEnabled ? [{ href: `${base}/account`, label: "Account" }] : []),
+  const items: { href: string; label: string; icon: typeof LayoutDashboard; support?: boolean }[] = [
+    { href: base, label: "Overzicht", icon: LayoutDashboard },
+    { href: `${base}/website`, label: "Website", icon: Sparkles },
+    ...(appointmentsEnabled ? [{ href: `${base}/boekingen`, label: "Boekingen-app", icon: MonitorSmartphone }] : []),
+    { href: supportHref, label: "Support", icon: CircleHelp, support: true },
+    ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),
+    ...(accountEnabled ? [{ href: `${base}/account`, label: "Account", icon: CreditCard }] : []),
+    ...(showStudioNav ? [{ href: "/admin/ops", label: "Studio", icon: Settings }] : []),
   ];
 
   const badge =
@@ -114,35 +129,60 @@ export function PortalNav({
 
   return (
     <>
-      <nav
-        className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-        aria-label="Portaal"
-      >
+      <nav className="w-full lg:w-60 lg:shrink-0" aria-label="Portaal">
         <div
           className={cn(
-            "mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2",
+            "flex gap-1 overflow-x-auto rounded-xl border border-zinc-200 bg-white p-1",
             "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "dark:border-zinc-800 dark:bg-zinc-900 lg:hidden",
           )}
         >
-          {items.map(({ href, label, support }) => {
-            const active =
-              href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
+          {items.map(({ href, label, icon: Icon, support }) => {
+            const active = href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "inline-flex shrink-0 items-center rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap",
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap",
                   active
-                    ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                     : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800",
                 )}
               >
+                <Icon className="size-4 shrink-0" aria-hidden />
                 {label}
                 {support ? badge : null}
               </Link>
             );
           })}
+        </div>
+
+        <div className="hidden lg:block lg:sticky lg:top-[5.25rem]">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Navigatie</p>
+            <div className="space-y-0.5">
+              {items.map(({ href, label, icon: Icon, support }) => {
+                const active = href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                      active
+                        ? "bg-zinc-900 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+                        : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0 opacity-90" aria-hidden />
+                    <span>{label}</span>
+                    {support ? badge : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </nav>
 

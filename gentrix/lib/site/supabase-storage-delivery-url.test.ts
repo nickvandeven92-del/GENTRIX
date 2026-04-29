@@ -148,9 +148,16 @@ describe("addResponsiveSrcsetToAiHeroObjectImages", () => {
     expect(out).toMatch(/sizes="/);
   });
 
-  it("laat bestaande srcset met rust", () => {
-    const html = `<img src="https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/x/1280.webp" srcset="x 1x" alt="">`;
-    expect(addResponsiveSrcsetToAiHeroObjectImages(html)).toBe(html);
+  it("normaliseert bestaande srcset en houdt alleen veilige breedtes", () => {
+    const html =
+      `<img src="https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/x/1280.webp" ` +
+      `srcset="https://xx.supabase.co/storage/v1/object/public/site-assets/home/ai-hero/x/2400.webp 2400w" alt="">`;
+    const out = addResponsiveSrcsetToAiHeroObjectImages(html);
+    expect(out).toContain("640w");
+    expect(out).toContain("960w");
+    expect(out).toContain("1280w");
+    expect(out).not.toContain("1920w");
+    expect(out).not.toContain("2400w");
   });
 });
 

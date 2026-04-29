@@ -60,7 +60,7 @@ export function PortalShell({
       ) : null}
       <div className="sticky top-0 z-40">
         <header className="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex max-w-6xl min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mx-auto flex max-w-7xl min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Klantportaal</p>
               <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">{clientName}</p>
@@ -78,12 +78,6 @@ export function PortalShell({
             </div>
           </div>
         </header>
-        <PortalNav
-          slug={slug}
-          invoicesEnabled={invoicesEnabled}
-          accountEnabled={accountEnabled}
-          supportUnreadInitial={supportUnreadInitial}
-        />
       </div>
       <PortalPushEnrollment
         slug={slug}
@@ -91,7 +85,21 @@ export function PortalShell({
         studioPreview={portalSessionMismatch}
       />
       <PortalAppointmentNotifier slug={slug} appointmentsEnabled={appointmentsEnabled} />
-      <div className="mx-auto max-w-6xl px-4 py-6">{children}</div>
+      <div className="mx-auto max-w-7xl px-4 py-4 lg:py-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <PortalNav
+            slug={slug}
+            appointmentsEnabled={appointmentsEnabled}
+            invoicesEnabled={invoicesEnabled}
+            accountEnabled={accountEnabled}
+            showStudioNav={showStudioNav}
+            supportUnreadInitial={supportUnreadInitial}
+          />
+          <main className="min-w-0 flex-1 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:p-6">
+            {children}
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
