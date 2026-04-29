@@ -1768,6 +1768,7 @@ function buildSiteGenerationOperationalTail(input: SiteGenerationOperationalTail
   return `=== 3B. OPERATIONELE SITE - TEKSTEN & WERKENDE LINKS (verplicht) ===
 
 - **Copy:** **Nederlands, strak en menselijk** - **geen** Lorem ipsum. **Niet** betekenen: lange alinea's overal; zie **HERO-CONTRACT** + **COPY (niet-hero)**. **Geen verzonnen** prijzen, kortingen, testimonials, cijfers, awards of garanties (CONTENT AUTHORITY). FAQ/footer: geen fictieve policies of stats. **Spelling:** correct Nederlands.
+- **Reviews placeholder (preview):** als er geen geverifieerde reviewbron in de briefing staat, mag je in de testimonials-/reviews-sectie maximaal 3-4 **duidelijk gelabelde** placeholders tonen (bijv. "Voorbeeldreview - wordt vervangen na koppeling"). Gebruik **geen** echte namen, datums, cijfers of platform-claims; het zijn alleen tijdelijke preview-kaarten.
 ${buildSiteGenerationSalesCopyGuidanceLine()}
 - **Sectie-ankers:** Het **buitenste** element van elke sectie-\`html\` (eerste tag, meestal \`<section>\`) heeft een \`id\` dat **exact gelijk** is aan de JSON-\`id\` van die sectie (bijv. \`"id": "faq"\` -> \`<section id="faq" class="...">\`). Zo werkt elke interne link.
 - **Interne links (hash):** Verzamel **alle** sectie-\`id\`'s uit jouw \`sections\`-array. Elke \`<a href="#<sectie-id>">\` (en vergelijkbare CTA's) mag **alleen** naar die id's verwijzen - plus optioneel \`#top\` **als** de hero (of eerste blok) \`id="top"\` heeft. **Verboden:** \`href="#"\`, lege \`href\`, verzonnen fragmenten (\`#sectie-die-niet-bestaat\`).

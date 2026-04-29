@@ -271,7 +271,18 @@ export function ShowroomFallback() {
       </main>
 
       <footer className="relative z-10 border-t border-white/[0.06] px-5 py-12 text-center">
-        <p className="text-xs text-zinc-600">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-zinc-500">
+          <Link href="/privacy" className="transition hover:text-cyan-200/90">
+            Privacy
+          </Link>
+          <Link href="/data-deletion" className="transition hover:text-cyan-200/90">
+            Data deletion
+          </Link>
+          <Link href="/terms" className="transition hover:text-cyan-200/90">
+            Terms
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-zinc-600">
           © {new Date().getFullYear()} {PUBLIC_BRAND}
         </p>
       </footer>

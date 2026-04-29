@@ -10,6 +10,7 @@ import {
   Images,
   LayoutDashboard,
   MonitorSmartphone,
+  Star,
   Sparkles,
   X,
 } from "lucide-react";
@@ -106,6 +107,7 @@ export function PortalNav({
     { href: base, label: "Overzicht", icon: LayoutDashboard },
     { href: `${base}/website`, label: "Website", icon: Sparkles },
     { href: `${base}/gallerij`, label: "Gallerij", icon: Images },
+    { href: `${base}/reviews`, label: "Reviews", icon: Star },
     ...(appointmentsEnabled ? [{ href: `${base}/boekingen`, label: "Boekingen-app", icon: MonitorSmartphone }] : []),
     { href: supportHref, label: "Support", icon: CircleHelp, support: true },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),
