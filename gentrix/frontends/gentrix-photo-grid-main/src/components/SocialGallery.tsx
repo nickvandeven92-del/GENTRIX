@@ -1,4 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+/**
+ * Internal responsive hook — returns the number of photos that should be
+ * visible side-by-side based on the current viewport width.
+ *
+ *   < 640px  → 1  (mobile: one photo at a time)
+ *   ≥ 640px  → 3  (tablet/iPad and desktop: three side-by-side)
+ *
+ * Kept inline so SocialGallery.tsx stays a single self-contained file.
+ */
+function useVisibleSlots(): 1 | 3 {
+  const [slots, setSlots] = useState<1 | 3>(() => {
+    if (typeof window === "undefined") return 3;
+    return window.innerWidth < 640 ? 1 : 3;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 639px)");
+    const update = () => setSlots(mql.matches ? 1 : 3);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  return slots;
+}
 
 /**
  * GENTRIX — SocialGallery
@@ -22,6 +49,8 @@ export interface SocialPhoto {
   caption?: string;
 }
 
+export type SocialGalleryLayout = "grid" | "carousel";
+
 export interface SocialGalleryProps {
   photos: SocialPhoto[];
   columns?: 2 | 3;
@@ -30,6 +59,8 @@ export interface SocialGalleryProps {
   borderRadius?: string;
   /** When true, render skeleton placeholders instead of photos. */
   loading?: boolean;
+  /** "grid" shows all photos (up to MAX_PHOTOS), "carousel" shows 3 side-by-side and scrolls. */
+  layout?: SocialGalleryLayout;
 }
 
 const MAX_PHOTOS = 9;
@@ -45,15 +76,41 @@ export function SocialGallery({
   borderColor = "#e5e5e5",
   borderRadius = "8px",
   loading = false,
+  layout = "grid",
 }: SocialGalleryProps) {
   const safeColumns: 2 | 3 = columns === 2 ? 2 : 3;
+  const isCarousel = layout === "carousel";
+  const slots = useVisibleSlots(); // 1 on mobile, 3 on tablet/desktop
+  // Carousel: follows responsive slots (1 mobile / 3 otherwise).
+  // Grid: 1 column on mobile, otherwise the chosen columns prop.
+  const visibleColumns: number = isCarousel
+    ? slots
+    : slots === 1
+      ? 1
+      : safeColumns;
   const visible = photos.slice(0, MAX_PHOTOS);
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: `repeat(${safeColumns}, minmax(0, 1fr))`,
+    gridTemplateColumns: `repeat(${visibleColumns}, minmax(0, 1fr))`,
     gap: "12px",
     width: "100%",
+  };
+
+  const carouselTrackStyle: React.CSSProperties = {
+    display: "grid",
+    gridAutoFlow: "column",
+    // Each slide takes 1/N of the visible viewport, accounting for gaps between slides.
+    gridAutoColumns:
+      slots === 1
+        ? "100%"
+        : `calc((100% - ${(slots - 1) * 12}px) / ${slots})`,
+    gap: "12px",
+    width: "100%",
+    overflowX: "auto",
+    scrollSnapType: "x mandatory",
+    scrollbarWidth: "thin",
+    WebkitOverflowScrolling: "touch",
   };
 
   const cardStyle: React.CSSProperties = {
@@ -65,6 +122,7 @@ export function SocialGallery({
     borderRadius,
     background: "#f5f5f5",
     boxSizing: "border-box",
+    scrollSnapAlign: isCarousel ? "start" : undefined,
   };
 
   const imgStyle: React.CSSProperties = {
@@ -74,10 +132,14 @@ export function SocialGallery({
     display: "block",
   };
 
+  const containerStyle = isCarousel ? carouselTrackStyle : gridStyle;
+
   if (loading) {
-    const placeholders = Array.from({ length: safeColumns === 2 ? 4 : 6 });
+    const placeholders = Array.from({
+      length: isCarousel ? 6 : visibleColumns === 2 ? 4 : 6,
+    });
     return (
-      <div style={gridStyle} role="status" aria-label="Loading photos">
+      <div style={containerStyle} role="status" aria-label="Loading photos">
         {placeholders.map((_, i) => (
           <div
             key={i}
@@ -113,7 +175,7 @@ export function SocialGallery({
             background: "transparent",
             color: borderColor,
             fontSize: "14px",
-            gridColumn: `span ${safeColumns}`,
+            gridColumn: `span ${visibleColumns}`,
           }}
         >
           No photos to display
@@ -123,7 +185,7 @@ export function SocialGallery({
   }
 
   return (
-    <div style={gridStyle}>
+    <div style={containerStyle}>
       {visible.map((photo) => (
         <div key={photo.id} style={cardStyle}>
           <img
@@ -157,6 +219,10 @@ export interface SocialGallerySettingsProps {
   connection?: SocialConnection | null;
   onConnect: (provider: SocialProvider) => void | Promise<void>;
   onDisconnect: () => void | Promise<void>;
+  /** Current display layout for the embedded gallery. */
+  layout?: SocialGalleryLayout;
+  /** Fired when the client toggles between carousel and "show all" grid. */
+  onLayoutChange?: (layout: SocialGalleryLayout) => void;
   accentColor?: string;
   borderColor?: string;
   borderRadius?: string;
@@ -166,6 +232,8 @@ export function SocialGallerySettings({
   connection,
   onConnect,
   onDisconnect,
+  layout = "grid",
+  onLayoutChange,
   accentColor = "#111111",
   borderColor = "#e5e5e5",
   borderRadius = "8px",
@@ -251,6 +319,32 @@ export function SocialGallerySettings({
     }
   };
 
+  const layoutToggle = onLayoutChange ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <span style={labelStyle}>Display</span>
+      <div role="radiogroup" aria-label="Gallery layout" style={toggleWrap}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={layout === "carousel"}
+          onClick={() => onLayoutChange("carousel")}
+          style={toggleBtn(layout === "carousel")}
+        >
+          Carousel (3 in a row)
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={layout === "grid"}
+          onClick={() => onLayoutChange("grid")}
+          style={toggleBtn(layout === "grid")}
+        >
+          Show all
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (connection) {
     return (
       <div style={containerStyle}>
@@ -280,6 +374,7 @@ export function SocialGallerySettings({
             {busy ? "Disconnecting…" : "Disconnect"}
           </button>
         </div>
+        {layoutToggle}
       </div>
     );
   }
@@ -317,6 +412,8 @@ export function SocialGallerySettings({
       >
         {busy ? "Connecting…" : `Connect ${provider === "instagram" ? "Instagram" : "Facebook"}`}
       </button>
+
+      {layoutToggle}
     </div>
   );
 }
