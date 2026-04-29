@@ -29,7 +29,8 @@ export async function GET(request: Request, context: RouteContext) {
 
   const appId = process.env.META_APP_ID?.trim();
   if (!appId) {
-    return NextResponse.redirect("https://developers.facebook.com/apps/");
+    const origin = requestOrigin(request);
+    return NextResponse.redirect(`${origin}/portal/site/${encodeURIComponent(slug)}?social_oauth=missing_env`);
   }
 
   const origin = requestOrigin(request);
