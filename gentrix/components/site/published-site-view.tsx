@@ -338,6 +338,7 @@ export function PublishedSiteView({
           ) : (
             publicInlinePreview
           )}
+          {socialGallerySection}
         </div>
       );
     }
