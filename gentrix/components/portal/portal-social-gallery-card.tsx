@@ -324,7 +324,7 @@ export function PortalSocialGalleryCard({ slug }: Props) {
             Zo maak je je content zichtbaar
           </p>
           <ol className="mt-2 space-y-2 text-sm text-blue-950 dark:text-blue-100">
-            <li className="animate-[fadeSlideIn_.25s_ease-out]">1. Klik op “Verbind met Instagram” of “Verbind met Facebook”.</li>
+            <li className="animate-[fadeSlideIn_.25s_ease-out]">1. Klik op “Connect via Meta”.</li>
             <li className="animate-[fadeSlideIn_.35s_ease-out]">2. Log in bij Meta en geef toegang tot je pagina/account.</li>
             <li className="animate-[fadeSlideIn_.45s_ease-out]">3. Terug in het portaal: klik op “Nu syncen”.</li>
             <li className="animate-[fadeSlideIn_.55s_ease-out]">4. Je 9 nieuwste posts worden daarna automatisch getoond op je landingspagina.</li>

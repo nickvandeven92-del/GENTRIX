@@ -396,9 +396,6 @@ export function SocialGallerySettings({
   borderColor = "#e5e5e5",
   borderRadius = "8px",
 }: SocialGallerySettingsProps) {
-  const [provider, setProvider] = useState<SocialProvider>(
-    connection?.provider ?? "instagram",
-  );
   const [busy, setBusy] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -468,7 +465,7 @@ export function SocialGallerySettings({
   const handleConnect = async () => {
     setBusy(true);
     try {
-      await onConnect(provider);
+      await onConnect("instagram");
     } finally {
       setBusy(false);
     }
@@ -722,34 +719,13 @@ export function SocialGallerySettings({
     <div style={containerStyle}>
       <span style={labelStyle}>Connect a social account</span>
 
-      <div role="radiogroup" aria-label="Social provider" style={toggleWrap}>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={provider === "instagram"}
-          onClick={() => setProvider("instagram")}
-          style={toggleBtn(provider === "instagram")}
-        >
-          Instagram
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={provider === "facebook"}
-          onClick={() => setProvider("facebook")}
-          style={toggleBtn(provider === "facebook")}
-        >
-          Facebook
-        </button>
-      </div>
-
       <button
         type="button"
         onClick={handleConnect}
         disabled={busy}
         style={primaryBtn}
       >
-        {busy ? "Connecting…" : `Connect ${provider === "instagram" ? "Instagram" : "Facebook"}`}
+        {busy ? "Connecting…" : "Connect via Meta"}
       </button>
 
       {layoutToggle}
