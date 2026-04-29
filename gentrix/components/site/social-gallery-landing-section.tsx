@@ -43,7 +43,8 @@ export function SocialGalleryLandingSection({ items, layout = "carousel" }: Prop
   const maxStartIndex = useMemo(() => Math.max(0, cards.length - visibleSlots), [cards.length, visibleSlots]);
   const [startIndex, setStartIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const isCarousel = layout === "carousel";
+  // Backward compatible: treat unknown layout values as carousel.
+  const isCarousel = layout !== "grid";
   const canGoPrev = startIndex > 0;
   const canGoNext = startIndex < maxStartIndex;
 
