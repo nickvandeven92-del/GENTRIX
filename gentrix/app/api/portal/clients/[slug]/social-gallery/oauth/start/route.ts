@@ -44,8 +44,8 @@ export async function GET(request: Request, context: RouteContext) {
     path: "/api/portal/social-gallery/oauth",
   });
 
-  // Email scope is not valid/needed for this integration and can break OAuth for non-dev users.
-  const scope = "public_profile";
+  // Scopes required to discover linked FB pages / IG business accounts and read feed media.
+  const scope = "public_profile,pages_show_list,pages_read_engagement,instagram_basic";
   const authUrl =
     `https://www.facebook.com/v20.0/dialog/oauth` +
     `?client_id=${encodeURIComponent(appId)}` +

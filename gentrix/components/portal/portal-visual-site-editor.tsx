@@ -73,7 +73,14 @@ function escapeAttr(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function isStructuralSectionHtml(html: string): boolean {
+  const trimmed = html.trimStart();
+  return /^<(header|nav|footer)\b/i.test(trimmed);
+}
+
 function wrapSectionHtml(html: string, key: string, sectionName: string): string {
+  // Laat structurele blokken ongemoeid om navbar/footer rendering niet te verstoren.
+  if (isStructuralSectionHtml(html)) return html;
   return `<div data-portal-section-key="${escapeAttr(key)}" data-portal-section-name="${escapeAttr(sectionName)}">${html}</div>`;
 }
 
