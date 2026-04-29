@@ -1741,6 +1741,32 @@ export function ensureHeroRootMinViewportClass(html: string): string {
 }
 
 /**
+ * Sommige model-outputs zetten per ongeluk `md:hidden`/`lg:hidden` op de primaire hero-`<img>`.
+ * Gevolg: afbeelding zichtbaar op mobiel, verdwenen op desktop. Voor object-cover hero-foto's
+ * strippen we alleen breakpoint-hide utilities; niet de basis-`hidden` utility.
+ */
+export function ensureHeroPrimaryImageVisibleOnDesktop(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
+    const isLikelyPrimaryHeroImage =
+      /\bobject-cover\b/i.test(attrs) &&
+      (/\bdata-gentrix-ai-hero-img\s*=\s*(["'])1\1/i.test(attrs) ||
+        /\b(?:absolute|fixed)\b/i.test(attrs) ||
+        /\binset-0\b/i.test(attrs));
+    if (!isLikelyPrimaryHeroImage) return full;
+    if (!/\b(?:sm|md|lg|xl|2xl):hidden\b/i.test(attrs)) return full;
+    const nextAttrs = attrs.replace(/\bclass\s*=\s*(["'])([^"']*)\1/i, (_m, q: string, classes: string) => {
+      const nextClasses = classes
+        .replace(/\b(?:sm|md|lg|xl|2xl):hidden\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      return `class=${q}${nextClasses}${q}`;
+    });
+    if (nextAttrs === attrs) return full;
+    return `<img ${nextAttrs.trim()}>`;
+  });
+}
+
+/**
  * Na Zod-validatie: stabiele id's, root-id in markup, werkende interne links.
  */
 /**
@@ -1977,7 +2003,9 @@ export function postProcessClaudeTailwindPage(
     let html3: string;
     if (row.id === "hero") {
       html3 = enhanceTailwindHeroSectionHtmlForPublish(
-        rewriteSupabaseStorageObjectUrlsForWebDelivery(ensureHeroRootMinViewportClass(html2e)),
+        rewriteSupabaseStorageObjectUrlsForWebDelivery(
+          ensureHeroPrimaryImageVisibleOnDesktop(ensureHeroRootMinViewportClass(html2e)),
+        ),
       );
     } else {
       /** Eerste sectie vaak (deels) above-the-fold; vanaf sectie 2 standaard lazy voor bandbreedte. */

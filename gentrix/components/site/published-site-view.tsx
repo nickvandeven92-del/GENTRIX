@@ -110,7 +110,9 @@ function injectSocialGalleryBlueprintSection(
 
   if (!cards) return sections;
 
-  const useCarousel = socialGallery.layout !== "grid";
+  // Public landing should always render social feed as carousel.
+  // This avoids stale/incorrect persisted layout values forcing grid output.
+  const useCarousel = true;
   const html = `<section id="social-gallery-placeholder" data-studio-section-role="gallery"${useCarousel ? ' data-social-gallery-carousel="1"' : ""} class="bg-white px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
   <div class="mx-auto max-w-6xl">
     <div class="${useCarousel ? "relative px-10" : ""}">
@@ -155,7 +157,7 @@ export function PublishedSiteView({
   socialGallery = null,
 }: PublishedSiteViewProps) {
   const socialGallerySection = socialGallery?.enabled ? (
-    <SocialGalleryLandingSection items={socialGallery.items} layout={socialGallery.layout} />
+    <SocialGalleryLandingSection items={socialGallery.items} layout="carousel" />
   ) : null;
   if (payload.kind === "react") {
     const slugForA = publishedSlug?.trim() ?? "";

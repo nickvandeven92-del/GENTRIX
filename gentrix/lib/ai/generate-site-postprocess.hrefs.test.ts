@@ -412,6 +412,30 @@ describe("postProcessClaudeTailwindPage path href integration", () => {
     expect(joined).toContain('href="#hero"');
     expect(joined).toContain('href="#diensten"');
   });
+
+  it("keeps primary hero image visible on desktop when model adds md:hidden", () => {
+    const page: ClaudeTailwindPageOutput = {
+      config: {
+        style: "tailwind",
+        theme: { primary: "#0f172a", accent: "#0d9488", secondary: "#64748b" },
+        font: "system-ui, sans-serif",
+      },
+      sections: [
+        {
+          id: "hero",
+          html:
+            `<section id="hero" class="relative">` +
+            `<img src="https://x.supabase.co/storage/v1/object/public/site-assets/demo/hero.jpg" alt="" class="absolute inset-0 h-full w-full object-cover md:hidden" data-gentrix-ai-hero-img="1">` +
+            `<div class="relative z-10">content</div>` +
+            `</section>`,
+        },
+      ],
+    };
+    const out = postProcessClaudeTailwindPage(page);
+    const heroHtml = out.sections[0]?.html ?? "";
+    expect(heroHtml).toContain("object-cover");
+    expect(heroHtml).not.toMatch(/\bmd:hidden\b/);
+  });
 });
 
 describe("ensureClaudeMarketingSiteJsonHasContactSections", () => {
