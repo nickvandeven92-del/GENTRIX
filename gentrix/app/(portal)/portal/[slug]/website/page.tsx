@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PortalVisualSiteEditor } from "@/components/portal/portal-visual-site-editor";
-import { PortalWebsitePanel } from "@/components/portal/portal-website-panel";
 import { getDraftPublishedSitePayloadBySlug, getDraftSiteJsonBySlug } from "@/lib/data/client-draft-site";
 import { getActivePortalClient } from "@/lib/data/get-portal-client";
 import { loadTailwindPayloadFromDraftJson } from "@/lib/portal/portal-draft-section-mutate";
@@ -86,14 +85,6 @@ export default async function PortalWebsitePage({ params }: Props) {
 
   return (
     <main>
-      <div className="mb-6">
-        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Website &amp; domein</h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Pas hier je concept aan; daarna kun je live zetten en je domein volgen. Grote layoutwijzigingen of nieuwe
-          blokken lopen via je studio.
-        </p>
-      </div>
-
       {loadedDraft.ok && draftPayload?.kind === "tailwind" ? (
         <PortalVisualSiteEditor
           slug={slug}
@@ -116,15 +107,6 @@ export default async function PortalWebsitePage({ params }: Props) {
           concepten moeten eerst door de studio worden gemigreerd.
         </section>
       )}
-
-      <div className="mt-10">
-        <PortalWebsitePanel
-          slug={slug}
-          customDomain={client.custom_domain}
-          domainVerified={client.domain_verified}
-          domainDnsTarget={client.domain_dns_target}
-        />
-      </div>
     </main>
   );
 }

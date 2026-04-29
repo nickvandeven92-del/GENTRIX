@@ -10,7 +10,6 @@ import {
   Images,
   LayoutDashboard,
   MonitorSmartphone,
-  Settings,
   Sparkles,
   X,
 } from "lucide-react";
@@ -23,7 +22,6 @@ type PortalNavProps = {
   appointmentsEnabled: boolean;
   invoicesEnabled: boolean;
   accountEnabled: boolean;
-  showStudioNav: boolean;
   supportUnreadInitial?: number;
 };
 
@@ -32,7 +30,6 @@ export function PortalNav({
   appointmentsEnabled,
   invoicesEnabled,
   accountEnabled,
-  showStudioNav,
   supportUnreadInitial = 0,
 }: PortalNavProps) {
   const pathname = usePathname();
@@ -113,7 +110,6 @@ export function PortalNav({
     { href: supportHref, label: "Support", icon: CircleHelp, support: true },
     ...(invoicesEnabled ? [{ href: `${base}/facturen`, label: "Facturen", icon: FileText }] : []),
     ...(accountEnabled ? [{ href: `${base}/account`, label: "Account", icon: CreditCard }] : []),
-    ...(showStudioNav ? [{ href: "/admin/ops", label: "Studio", icon: Settings }] : []),
   ];
 
   const badge =

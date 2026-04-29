@@ -12,8 +12,6 @@ type PortalShellProps = {
   accountEnabled: boolean;
   /** Aantal ongelezen studio-berichten in open support-threads (SSR + polling in navigatie). */
   supportUnreadInitial?: number;
-  /** Studio/medewerker: snelkoppeling naar /admin/ops. Klanten: uit. */
-  showStudioNav: boolean;
   /** Volledige URL (https://host/site/slug) zodat de site in een echte browsertab opent. */
   publicSiteAbsoluteUrl?: string;
   /** Studio bekijkt het dossier; niet de gekoppelde klant-sessie (push e.d.). */
@@ -29,7 +27,6 @@ export function PortalShell({
   appointmentsEnabled,
   invoicesEnabled,
   accountEnabled,
-  showStudioNav,
   supportUnreadInitial = 0,
   publicSiteAbsoluteUrl,
   portalSessionMismatch = false,
@@ -93,10 +90,9 @@ export function PortalShell({
             appointmentsEnabled={appointmentsEnabled}
             invoicesEnabled={invoicesEnabled}
             accountEnabled={accountEnabled}
-            showStudioNav={showStudioNav}
             supportUnreadInitial={supportUnreadInitial}
           />
-          <main className="min-w-0 flex-1 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:p-6">
+          <main className="min-w-0 flex-1">
             {children}
           </main>
         </div>

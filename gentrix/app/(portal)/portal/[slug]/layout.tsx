@@ -7,7 +7,6 @@ import {
   canAccessPortalForUserId,
   isStudioPortalPreview,
 } from "@/lib/portal/studio-portal-preview";
-import { userMayActAsStudioForPortalApis } from "@/lib/portal/portal-access-policy";
 import { getPortalSupportUnreadSummary } from "@/lib/data/portal-support-unread";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -39,7 +38,6 @@ export default async function PortalSlugLayout({ children, params }: Props) {
 
   const portalSessionMismatch = await isStudioPortalPreview(client.portal_user_id);
   const showStudioPreviewBanner = portalSessionMismatch && isPortalStrictAccessEnabled();
-  const showStudioNav = userMayActAsStudioForPortalApis(user.id);
 
   const origin = await getRequestOrigin();
   const publicSiteAbsoluteUrl = origin ? `${origin}/site/${enc}` : undefined;
@@ -56,7 +54,6 @@ export default async function PortalSlugLayout({ children, params }: Props) {
       invoicesEnabled={client.portal_invoices_enabled}
       accountEnabled={client.portal_account_enabled}
       supportUnreadInitial={supportUnread.totalUnreadStaffMessages}
-      showStudioNav={showStudioNav}
       publicSiteAbsoluteUrl={publicSiteAbsoluteUrl}
       portalSessionMismatch={portalSessionMismatch}
       showStudioPreviewBanner={showStudioPreviewBanner}
