@@ -102,9 +102,11 @@ export function PublishedSiteView({
   const placeholderSvg =
     "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>";
   const placeholderUrl = `data:image/svg+xml;utf8,${encodeURIComponent(placeholderSvg)}`;
+  const socialGalleryItems = socialGallery?.items ?? [];
+  const hasSocialGalleryItems = socialGalleryItems.length > 0;
   const socialGalleryPhotos =
-    (socialGallery?.items?.length ?? 0) > 0
-      ? socialGallery.items.map((item) => ({
+    hasSocialGalleryItems
+      ? socialGalleryItems.map((item) => ({
           id: item.id,
           url: item.url,
           caption: item.caption,
