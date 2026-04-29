@@ -1071,7 +1071,7 @@ export function PortalVisualSiteEditor({
   }, [bindIframeEditor, markIframeEditables]);
 
   return (
-    <div className="relative left-1/2 right-1/2 w-screen max-w-none -translate-x-1/2 px-2 sm:px-4 lg:px-6 xl:px-8">
+    <div className="relative w-full min-w-0">
       <section className="overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:rounded-2xl sm:border">
 
         {/* ── Header: titel + knoppen ── */}
@@ -1242,7 +1242,7 @@ export function PortalVisualSiteEditor({
             id="site-preview"
             ref={iframeRef}
             title="Klant website editor"
-            className="h-[70dvh] min-h-[520px] w-full border-0 bg-white lg:h-[calc(100dvh-14rem)] lg:min-h-[700px]"
+            className="h-[58dvh] min-h-[420px] w-full border-0 bg-white lg:h-[calc(100dvh-19rem)] lg:min-h-[560px]"
             sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
             srcDoc={srcDoc}
             onLoad={onIframeLoad}
