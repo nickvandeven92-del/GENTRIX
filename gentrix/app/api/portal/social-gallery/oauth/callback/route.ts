@@ -46,8 +46,8 @@ export async function GET(request: Request) {
   const oauthError = url.searchParams.get("error") ?? "";
   const parsedState = parseState(state);
   const slug = parsedState?.slug ?? "";
-  const provider = parsedState?.provider ?? "instagram";
-  const fallbackRedirect = slug ? `/portal/${encodeURIComponent(slug)}/website` : "/portal";
+  const requestedProvider = parsedState?.provider ?? "instagram";
+  const fallbackRedirect = slug ? `/portal/${encodeURIComponent(slug)}/gallerij` : "/portal";
 
   if (oauthError) {
     return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=denied`, request.url));
@@ -91,39 +91,40 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=token_empty`, request.url));
     }
 
+    let provider: "instagram" | "facebook" = requestedProvider;
     let accountId = "";
     let accountHandle = "";
     let accountToken = userToken;
 
-    if (provider === "facebook") {
+    const igRes = await fetchWithTimeout(
+      `https://graph.facebook.com/v20.0/me/accounts?fields=access_token,instagram_business_account{id,username}&access_token=${encodeURIComponent(userToken)}`,
+      { cache: "no-store", timeoutMs: 12_000 },
+    );
+    const igJson = (await igRes.json()) as { data?: IgPage[] };
+    const igFirst = igJson.data?.find((row) => row.instagram_business_account?.id && row.access_token);
+    const igId = igFirst?.instagram_business_account?.id ?? "";
+    const igUser = igFirst?.instagram_business_account?.username ?? "";
+    const igToken = igFirst?.access_token ?? "";
+
+    if (igId && igToken) {
+      provider = "instagram";
+      accountId = igId;
+      accountHandle = igUser;
+      accountToken = igToken;
+    } else {
       const pagesRes = await fetchWithTimeout(
         `https://graph.facebook.com/v20.0/me/accounts?fields=id,name,access_token&access_token=${encodeURIComponent(userToken)}`,
         { cache: "no-store", timeoutMs: 12_000 },
       );
       const pagesJson = (await pagesRes.json()) as { data?: FbAccount[] };
-      const first = pagesJson.data?.[0];
-      if (!first?.id || !first.access_token) {
+      const firstPage = pagesJson.data?.find((row) => row.id && row.access_token);
+      if (!firstPage?.id || !firstPage.access_token) {
         return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=no_page`, request.url));
       }
-      accountId = first.id;
-      accountHandle = first.name ?? "";
-      accountToken = first.access_token;
-    } else {
-      const igRes = await fetchWithTimeout(
-        `https://graph.facebook.com/v20.0/me/accounts?fields=access_token,instagram_business_account{id,username}&access_token=${encodeURIComponent(userToken)}`,
-        { cache: "no-store", timeoutMs: 12_000 },
-      );
-      const igJson = (await igRes.json()) as { data?: IgPage[] };
-      const first = igJson.data?.find((row) => row.instagram_business_account?.id && row.access_token);
-      const igId = first?.instagram_business_account?.id ?? "";
-      const igUser = first?.instagram_business_account?.username ?? "";
-      const pageToken = first?.access_token ?? "";
-      if (!igId || !pageToken) {
-        return NextResponse.redirect(new URL(`${fallbackRedirect}?social_oauth=no_instagram_business`, request.url));
-      }
-      accountId = igId;
-      accountHandle = igUser;
-      accountToken = pageToken;
+      provider = "facebook";
+      accountId = firstPage.id;
+      accountHandle = firstPage.name ?? "";
+      accountToken = firstPage.access_token;
     }
 
     const encrypted = encryptSocialToken(accountToken);

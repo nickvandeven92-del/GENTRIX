@@ -34,14 +34,14 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const origin = requestOrigin(request);
-  const redirectUri = `${origin}/api/portal/clients/${encodeURIComponent(slug)}/social-gallery/oauth/callback`;
+  const redirectUri = `${origin}/api/portal/social-gallery/oauth/callback`;
   const state = `${provider}:${encodeURIComponent(slug)}:${randomUUID()}`;
   (await cookies()).set(COOKIE_NAME, state, {
     httpOnly: true,
     sameSite: "lax",
     secure: true,
     maxAge: 600,
-    path: "/api/portal/clients",
+    path: "/api/portal/social-gallery/oauth",
   });
 
   // Email scope is not valid/needed for this integration and can break OAuth for non-dev users.
