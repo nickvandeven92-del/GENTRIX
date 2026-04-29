@@ -77,6 +77,7 @@ function injectSocialGalleryBlueprintSection(
   socialGallery: PublicSocialGallery | null,
 ): TailwindSection[] {
   if (!socialGallery?.enabled) return sections;
+  if (socialGallery.items.length > 0) return sections;
 
   const placeholderCards = Array.from({ length: 9 }, () => {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>`;
@@ -156,7 +157,8 @@ export function PublishedSiteView({
   studioTailwindPreviewIframe = false,
   socialGallery = null,
 }: PublishedSiteViewProps) {
-  const socialGallerySection = socialGallery?.enabled ? (
+  const socialGallerySection =
+    socialGallery?.enabled && socialGallery.items.length > 0 ? (
     <SocialGalleryLandingSection items={socialGallery.items} layout="carousel" />
   ) : null;
   if (payload.kind === "react") {
