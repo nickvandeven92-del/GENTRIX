@@ -29,6 +29,7 @@ export function PortalShell({
   appointmentsEnabled,
   invoicesEnabled,
   accountEnabled,
+  showStudioNav,
   supportUnreadInitial = 0,
   publicSiteAbsoluteUrl,
   portalSessionMismatch = false,
