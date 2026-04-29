@@ -375,24 +375,16 @@ export function PortalSocialGalleryCard({ slug }: Props) {
 
       {error ? <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
-      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {items.slice(0, 9).map((item) => (
-          <div key={item.id} className="aspect-square overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.url} alt={item.caption ?? ""} className="h-full w-full object-cover" />
-          </div>
-        ))}
-        {settings.enabled && items.length === 0
-          ? Array.from({ length: 9 }).map((_, index) => (
-              <div
-                key={`placeholder-${index}`}
-                className="aspect-square rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-2 text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400"
-              >
-                <div className="flex h-full items-center justify-center text-center">Placeholder {index + 1}</div>
-              </div>
-            ))
-          : null}
-      </div>
+      {items.length > 0 ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {items.slice(0, 9).map((item) => (
+            <div key={item.id} className="aspect-square overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.url} alt={item.caption ?? ""} className="h-full w-full object-cover" />
+            </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

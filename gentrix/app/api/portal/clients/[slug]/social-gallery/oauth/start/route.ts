@@ -44,7 +44,8 @@ export async function GET(request: Request, context: RouteContext) {
     path: "/api/portal/social-gallery/oauth",
   });
 
-  const scope = "public_profile,email";
+  // Email scope is not valid/needed for this integration and can break OAuth for non-dev users.
+  const scope = "public_profile";
   const authUrl =
     `https://www.facebook.com/v20.0/dialog/oauth` +
     `?client_id=${encodeURIComponent(appId)}` +
