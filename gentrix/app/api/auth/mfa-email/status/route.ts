@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+const REQUIRE_MFA = process.env.REQUIRE_MFA === "true";
+
 export async function GET(): Promise<NextResponse> {
+  if (!REQUIRE_MFA) {
+    return NextResponse.json({ enabled: false });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

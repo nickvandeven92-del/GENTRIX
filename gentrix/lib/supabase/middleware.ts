@@ -3,6 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { safePostAuthRedirectPath } from "@/lib/auth/safe-same-origin-next-path";
 import { EMAIL_MFA_COOKIE_NAME, verifyEmailMfaCookie } from "@/lib/auth/email-mfa-cookie";
 
+const REQUIRE_MFA = process.env.REQUIRE_MFA === "true";
+
 function isLoginPath(pathname: string) {
   return pathname === "/login" || pathname.startsWith("/login/");
 }
@@ -107,6 +109,10 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
+    if (!REQUIRE_MFA) {
+      return supabaseResponse;
+    }
+
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     const needsTotp = aalData?.nextLevel === "aal2" && aalData?.currentLevel !== "aal2";
 
@@ -128,6 +134,11 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isLoginPath(pathname) && user) {
+    if (!REQUIRE_MFA && pathname === "/login") {
+      const to = resolvePostAuthRedirect(request);
+      return to ? NextResponse.redirect(to) : supabaseResponse;
+    }
+
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     const needsTotp = aalData?.nextLevel === "aal2" && aalData?.currentLevel !== "aal2";
 

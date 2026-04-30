@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { EMAIL_MFA_COOKIE_NAME, verifyEmailMfaCookie } from "@/lib/auth/email-mfa-cookie";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+const REQUIRE_MFA = process.env.REQUIRE_MFA === "true";
+
 export type AdminAuthResult =
   | { ok: true; userId: string; email: string | null }
   | { ok: false; status: 401 | 403; message: string };
@@ -25,6 +27,10 @@ export async function requireAdminApiAuth(): Promise<AdminAuthResult> {
 
     if (userError || !user) {
       return { ok: false, status: 401, message: "Niet ingelogd." };
+    }
+
+    if (!REQUIRE_MFA) {
+      return { ok: true, userId: user.id, email: user.email ?? null };
     }
 
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
