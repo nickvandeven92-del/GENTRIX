@@ -19,6 +19,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=config`);
   }
 
+  let response = NextResponse.redirect(`${origin}${next}`);
+
   const cookieStore = await cookies();
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -27,6 +29,7 @@ export async function GET(request: Request) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
   });
@@ -35,9 +38,8 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const res = NextResponse.redirect(`${origin}${next}`);
-      res.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
-      return res;
+      response.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
+      return response;
     }
     return NextResponse.redirect(`${origin}/login?error=auth_callback`);
   }
@@ -47,9 +49,8 @@ export async function GET(request: Request) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error) {
-      const res = NextResponse.redirect(`${origin}${next}`);
-      res.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
-      return res;
+      response.cookies.set(EMAIL_MFA_COOKIE_NAME, "", clearEmailMfaCookieOptions());
+      return response;
     }
     return NextResponse.redirect(`${origin}/login?error=auth_confirm`);
   }
