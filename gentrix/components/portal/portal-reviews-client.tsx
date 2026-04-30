@@ -298,6 +298,26 @@ export function PortalReviewsClient({ slug }: Props) {
     }
   }
 
+  async function toggleEnabled() {
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(base, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !settings.enabled }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings };
+      if (!res.ok || !json.ok) throw new Error(json.error || "Kunnen review systeem niet wijzigen.");
+      if (json.settings) setSettings(json.settings);
+      const action = !settings.enabled ? "ingeschakeld" : "uitgeschakeld";
+      setSuccess(`Review systeem ${action}. Website toont ${!settings.enabled ? "live reviews" : "placeholders"}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Onbekende fout.");
+    }
+  }
+
   if (loading) {
     return <p className="text-sm text-zinc-600 dark:text-zinc-400">Reviewinstellingen laden...</p>;
   }
@@ -383,11 +403,23 @@ export function PortalReviewsClient({ slug }: Props) {
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={() => void toggleEnabled()}
+            disabled={syncing}
+            className={`rounded-lg px-4 py-2 text-sm font-medium border ${
+              settings.enabled
+                ? "border-amber-200 bg-white text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
+                : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300"
+            } disabled:opacity-60`}
+          >
+            {settings.enabled ? "📴 Review systeem uitschakelen" : "▶ Review systeem inschakelen"}
+          </button>
+          <button
+            type="button"
             onClick={() => void disconnect()}
             disabled={syncing}
-            className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-60"
+            className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-60 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/20 dark:text-red-300"
           >
-            Loskoppelen
+            🔗 Loskoppelen
           </button>
         </div>
       </div>
