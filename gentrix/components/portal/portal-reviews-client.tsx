@@ -308,32 +308,7 @@ export function PortalReviewsClient({ slug }: Props) {
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Bron koppelen</h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{statusLine}</p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setSettings((s) => ({ ...s, platform: "google", identifier: "" }))}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-              settings.platform === "google"
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                : "border-zinc-300 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-            }`}
-          >
-            Google Reviews
-          </button>
-          <button
-            type="button"
-            onClick={() => setSettings((s) => ({ ...s, platform: "trustpilot", identifier: "" }))}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-              settings.platform === "trustpilot"
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                : "border-zinc-300 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-            }`}
-          >
-            Trustpilot
-          </button>
-        </div>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <button
             type="button"
             disabled={syncing || (isConnected && settings.platform !== "google")}
