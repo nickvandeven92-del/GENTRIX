@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { ConceptFlyerExperienceLazy } from "@/components/site/concept-flyer-experience-lazy";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { loadPublicSocialGalleryBySlug } from "@/lib/data/social-gallery";
+import { loadPublicReviewsBySlug } from "@/lib/data/public-reviews";
 import { composePublicMarketingTailwindSections } from "@/lib/site/public-site-composition";
 import { filterSectionsForPublicSite } from "@/lib/site/studio-section-visibility";
 import { readPrettyPublicUrlContext, toPrettyPublicRedirectTarget } from "@/lib/site/pretty-public-url";
@@ -76,9 +78,11 @@ export default async function PublicClientSiteContactPage({ params, searchParams
   if (sp.flyer === "1") qs.set("flyer", "1");
   const tq = qs.toString() ? `?${qs.toString()}` : "";
 
-  const [bundle, prettyCtx] = await Promise.all([
+  const [bundle, prettyCtx, socialGallery, reviews] = await Promise.all([
     getPublishedSiteBySlug(slug, previewToken),
     readPrettyPublicUrlContext(),
+    loadPublicSocialGalleryBySlug(slug),
+    loadPublicReviewsBySlug(slug),
   ]);
   if (!bundle) notFound();
   const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
@@ -128,6 +132,8 @@ export default async function PublicClientSiteContactPage({ params, searchParams
         prettyPublicUrls={prettyPublicUrls}
         relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
         flyerPreview={showFlyer}
+        socialGallery={socialGallery}
+        reviews={reviews}
       />
       {showFlyer ? (
         <ConceptFlyerExperienceLazy

@@ -253,6 +253,7 @@ export function PortalReviewsClient({ slug }: Props) {
 
   const placeHolderMode = !settings.enabled || items.length === 0;
   const isConnected = settings.connected || Boolean(settings.identifier.trim());
+  const isEnabledOnSite = settings.enabled && isConnected;
   const statusLine = useMemo(() => {
     if (placeHolderMode) return "Website gebruikt nu tijdelijke previewreviews.";
     const stamp = settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString("nl-NL") : "onbekend";
@@ -318,6 +319,14 @@ export function PortalReviewsClient({ slug }: Props) {
     }
   }
 
+  async function activateOnSite() {
+    if (!isConnected) {
+      setError("Je moet eerst een bron koppelen voordat je dit op de site kunt activeren.");
+      return;
+    }
+    await toggleEnabled();
+  }
+
   if (loading) {
     return <p className="text-sm text-zinc-600 dark:text-zinc-400">Reviewinstellingen laden...</p>;
   }
@@ -333,12 +342,12 @@ export function PortalReviewsClient({ slug }: Props) {
             type="button"
             disabled={syncing || (isConnected && settings.platform !== "google")}
             onClick={() => {
-              if (isConnected) return;
+              if (isConnected && settings.platform === "google") return;
               openOauthInNewTab("google");
             }}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium inline-flex items-center justify-center gap-2 ${
+            className={`rounded-lg border px-3 py-2 text-sm font-medium inline-flex items-center justify-center gap-2 transition ${
               isConnected && settings.platform === "google"
-                ? "border-emerald-300 bg-emerald-100/40 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100/60 dark:border-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                 : "border-zinc-300 bg-white text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
             }`}
           >
@@ -349,12 +358,12 @@ export function PortalReviewsClient({ slug }: Props) {
             type="button"
             disabled={syncing || (isConnected && settings.platform !== "trustpilot")}
             onClick={() => {
-              if (isConnected) return;
+              if (isConnected && settings.platform === "trustpilot") return;
               openOauthInNewTab("trustpilot");
             }}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium inline-flex items-center justify-center gap-2 ${
+            className={`rounded-lg border px-3 py-2 text-sm font-medium inline-flex items-center justify-center gap-2 transition ${
               isConnected && settings.platform === "trustpilot"
-                ? "border-emerald-300 bg-emerald-100/40 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100/60 dark:border-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                 : "border-zinc-300 bg-white text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
             }`}
           >
@@ -403,15 +412,15 @@ export function PortalReviewsClient({ slug }: Props) {
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void toggleEnabled()}
-            disabled={syncing}
+            onClick={() => void activateOnSite()}
+            disabled={syncing || !isConnected}
             className={`rounded-lg px-4 py-2 text-sm font-medium border ${
-              settings.enabled
+              isEnabledOnSite
                 ? "border-amber-200 bg-white text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
-                : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300"
-            } disabled:opacity-60`}
+                : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300"
+            }`}
           >
-            {settings.enabled ? "📴 Review systeem uitschakelen" : "▶ Review systeem inschakelen"}
+            {isEnabledOnSite ? "📴 Uitschakelen op website" : "▶ Inschakelen op website"}
           </button>
           <button
             type="button"

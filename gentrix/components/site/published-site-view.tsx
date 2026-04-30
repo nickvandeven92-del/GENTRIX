@@ -25,6 +25,8 @@ import { buildPublicSiteGeneratorMeta } from "@/lib/analytics/public-site-genera
 import type { PublicSocialGallery } from "@/lib/data/social-gallery";
 import { SocialGallery } from "../../frontends/gentrix-photo-grid-main/src/components/SocialGallery";
 import { PublicSocialGalleryMount } from "@/components/site/public-social-gallery-mount";
+import { PublicReviewsMount } from "@/components/site/public-reviews-mount";
+import type { Review } from "../../frontends/gentrix-review-display-main/src/components/ReviewStrip";
 import type { TailwindSection } from "@/lib/ai/tailwind-sections-schema";
 import {
   enhanceTailwindHeroSectionHtmlForPublicDelivery,
@@ -32,6 +34,12 @@ import {
 } from "@/lib/site/tailwind-hero-public-delivery";
 
 const PUBLIC_SOCIAL_GALLERY_MOUNT_ID = "social-gallery-react-mount";
+const PUBLIC_REVIEWS_MOUNT_ID = "reviews-react-mount";
+
+type PublicReviews = {
+  enabled: boolean;
+  items: Review[];
+};
 
 type PublishedSiteViewProps = {
   payload: PublishedSitePayload;
@@ -73,6 +81,7 @@ type PublishedSiteViewProps = {
    */
   studioTailwindPreviewIframe?: boolean;
   socialGallery?: PublicSocialGallery | null;
+  reviews?: PublicReviews | null;
 };
 
 function injectSocialGalleryBlueprintSection(
@@ -115,6 +124,7 @@ export function PublishedSiteView({
   flyerPreview = false,
   studioTailwindPreviewIframe = false,
   socialGallery = null,
+  reviews = null,
 }: PublishedSiteViewProps) {
   const placeholderSvg =
     "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f172a' offset='0'/><stop stop-color='#1e293b' offset='1'/></linearGradient></defs><rect width='600' height='600' fill='url(#g)'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#e2e8f0' font-size='46' font-family='Arial, Helvetica, sans-serif' letter-spacing='4'>GENTRIX</text></svg>";
@@ -377,6 +387,14 @@ export function PublishedSiteView({
               targetId={PUBLIC_SOCIAL_GALLERY_MOUNT_ID}
               photos={socialGalleryPhotos}
               layout={socialGallery.layout}
+            />
+          ) : null}
+          {reviews?.enabled && reviews.items.length > 0 ? (
+            <PublicReviewsMount
+              targetId={PUBLIC_REVIEWS_MOUNT_ID}
+              reviews={reviews.items}
+              maxReviews={4}
+              layout="strip"
             />
           ) : null}
         </div>

@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { ConceptFlyerExperienceLazy } from "@/components/site/concept-flyer-experience-lazy";
 import { PublishedSiteView } from "@/components/site/published-site-view";
 import { getPublishedSiteBySlug } from "@/lib/data/get-published-site";
+import { loadPublicSocialGalleryBySlug } from "@/lib/data/social-gallery";
+import { loadPublicReviewsBySlug } from "@/lib/data/public-reviews";
 import { readPrettyPublicUrlContext, toPrettyPublicRedirectTarget } from "@/lib/site/pretty-public-url";
 import { buildNextPublishedSiteIcons } from "@/lib/site/site-identity-favicon";
 import { resolveMarketingPageKeyForUrlSegment } from "@/lib/site/marketing-path-aliases";
@@ -74,9 +76,11 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
   if (sp.flyer === "1") qs.set("flyer", "1");
   const tq = qs.toString() ? `?${qs.toString()}` : "";
 
-  const [bundle, prettyCtx] = await Promise.all([
+  const [bundle, prettyCtx, socialGallery, reviews] = await Promise.all([
     getPublishedSiteBySlug(slug, previewToken),
     readPrettyPublicUrlContext(),
+    loadPublicSocialGalleryBySlug(slug),
+    loadPublicReviewsBySlug(slug),
   ]);
   if (!bundle) notFound();
   const prettyPublicUrls = prettyCtx.active && !bundle.isConceptTokenAccess;
@@ -121,6 +125,8 @@ export default async function PublicClientSiteMarketingSubPage({ params, searchP
         prettyPublicUrls={prettyPublicUrls}
         relaxedTailwindCdnLoading={relaxedTailwindCdnLoading}
         flyerPreview={showFlyer}
+        socialGallery={socialGallery}
+        reviews={reviews}
       />
       {showFlyer ? (
         <ConceptFlyerExperienceLazy
