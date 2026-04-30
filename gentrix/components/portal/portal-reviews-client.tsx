@@ -23,6 +23,9 @@ type Item = {
 
 type Props = { slug: string };
 
+const OAUTH_TAB_NAME = "gentrix-reviews-oauth";
+const OAUTH_RESULT_STORAGE_KEY = "gentrix:reviews:oauth-result";
+
 const initialSettings: Settings = {
   enabled: false,
   platform: "google",
@@ -124,23 +127,59 @@ export function PortalReviewsClient({ slug }: Props) {
   const base = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews`;
   const oauthStartBase = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews/oauth/start`;
 
+  async function loadState() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(base, { credentials: "include" });
+      const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings; items?: Item[] };
+      if (!res.ok || !json.ok) throw new Error(json.error || "Kan reviewinstellingen niet laden.");
+      setSettings(json.settings ?? initialSettings);
+      setItems(Array.isArray(json.items) ? json.items : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Onbekende fout.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function applyOauthStatus(status: string) {
+    const resolved = oauthStatusToNl(status);
+    if (resolved.kind === "success") {
+      setSuccess(resolved.message);
+      setError(null);
+      if (status === "google_ok") setOauthAutoSync("google");
+      if (status === "trustpilot_ok") setOauthAutoSync("trustpilot");
+      return;
+    }
+    setSuccess(null);
+    setError(resolved.message);
+  }
+
+  function stripOauthStatusFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    if (!p.has("reviews_oauth")) return;
+    p.delete("reviews_oauth");
+    const query = p.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
+  }
+
+  function openOauthInNewTab(provider: Platform) {
+    const targetUrl = `${oauthStartBase}?provider=${provider}`;
+    const win = window.open(targetUrl, OAUTH_TAB_NAME);
+    if (!win) {
+      window.location.href = targetUrl;
+      return;
+    }
+    win.focus();
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(base, { credentials: "include" });
-        const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings; items?: Item[] };
-        if (!res.ok || !json.ok) throw new Error(json.error || "Kan reviewinstellingen niet laden.");
-        if (cancelled) return;
-        setSettings(json.settings ?? initialSettings);
-        setItems(Array.isArray(json.items) ? json.items : []);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Onbekende fout.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      await loadState();
+      if (cancelled) return;
     }
     void load();
     return () => {
@@ -152,21 +191,32 @@ export function PortalReviewsClient({ slug }: Props) {
     const p = new URLSearchParams(window.location.search);
     const status = p.get("reviews_oauth");
     if (!status) return;
-    const resolved = oauthStatusToNl(status);
-    if (resolved.kind === "success") {
-      setSuccess(resolved.message);
-      setError(null);
-      if (status === "google_ok") setOauthAutoSync("google");
-      if (status === "trustpilot_ok") setOauthAutoSync("trustpilot");
-    } else {
-      setError(resolved.message);
+    const fromOauthTab = window.name === OAUTH_TAB_NAME;
+
+    if (fromOauthTab) {
+      localStorage.setItem(OAUTH_RESULT_STORAGE_KEY, JSON.stringify({ status, at: Date.now() }));
+      stripOauthStatusFromUrl();
+      window.close();
+      return;
     }
 
-    // Keep status feedback once, but remove query param so refresh won't trigger sync again.
-    p.delete("reviews_oauth");
-    const query = p.toString();
-    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
-    window.history.replaceState({}, "", nextUrl);
+    applyOauthStatus(status);
+    stripOauthStatusFromUrl();
+  }, []);
+
+  useEffect(() => {
+    function onStorage(event: StorageEvent) {
+      if (event.key !== OAUTH_RESULT_STORAGE_KEY || !event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue) as { status?: string };
+        if (typeof parsed.status !== "string") return;
+        applyOauthStatus(parsed.status);
+      } catch {
+        // ignore malformed cross-tab message
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   useEffect(() => {
@@ -268,7 +318,7 @@ export function PortalReviewsClient({ slug }: Props) {
             type="button"
             disabled={syncing}
             onClick={() => {
-              window.location.href = `${oauthStartBase}?provider=google`;
+              openOauthInNewTab("google");
             }}
             className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
           >
@@ -278,7 +328,7 @@ export function PortalReviewsClient({ slug }: Props) {
             type="button"
             disabled={syncing}
             onClick={() => {
-              window.location.href = `${oauthStartBase}?provider=trustpilot`;
+              openOauthInNewTab("trustpilot");
             }}
             className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
           >
