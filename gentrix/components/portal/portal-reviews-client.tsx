@@ -106,6 +106,10 @@ function oauthStatusToNl(status: string): { kind: "success" | "error"; message: 
       kind: "error",
       message: "Er is geen bruikbare Google-bedrijfslocatie gevonden om automatisch reviews te koppelen.",
     },
+    google_save_error: {
+      kind: "error",
+      message: "Google-koppeling is gelukt, maar opslaan in je account mislukte. Probeer opnieuw.",
+    },
     trustpilot_token_error: {
       kind: "error",
       message: "Trustpilot-token ophalen is mislukt. Probeer opnieuw.",
@@ -117,6 +121,10 @@ function oauthStatusToNl(status: string): { kind: "success" | "error"; message: 
     trustpilot_no_business_unit: {
       kind: "error",
       message: "Er is geen Trustpilot-bedrijf gevonden dat we automatisch konden koppelen.",
+    },
+    trustpilot_save_error: {
+      kind: "error",
+      message: "Trustpilot-koppeling is gelukt, maar opslaan in je account mislukte. Probeer opnieuw.",
     },
     no_client: {
       kind: "error",
@@ -156,17 +164,20 @@ export function PortalReviewsClient({ slug }: Props) {
     }
   }
 
-  async function loadState() {
+  async function loadState(): Promise<Settings | null> {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(base, { credentials: "include" });
       const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings; items?: Item[] };
       if (!res.ok || !json.ok) throw new Error(json.error || "Kan reviewinstellingen niet laden.");
-      setSettings(json.settings ?? initialSettings);
+      const nextSettings = json.settings ?? initialSettings;
+      setSettings(nextSettings);
       setItems(Array.isArray(json.items) ? json.items : []);
+      return nextSettings;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout.");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -176,20 +187,24 @@ export function PortalReviewsClient({ slug }: Props) {
     const resolved = oauthStatusToNl(status);
     if (resolved.kind === "success") {
       const provider = status === "trustpilot_ok" ? "trustpilot" : "google";
-      // Optimistic UI: toon direct gekoppelde provider als groen.
-      setSettings((prev) => ({
-        ...prev,
-        connected: true,
-        enabled: true,
-        platform: provider,
-      }));
-      setSuccess(resolved.message);
+      setSuccess("Koppeling bevestigd. Status wordt gecontroleerd...");
       setError(null);
       if (status === "google_ok") setOauthAutoSync("google");
       if (status === "trustpilot_ok") setOauthAutoSync("trustpilot");
       clearOauthPoll();
       setOauthInFlight(null);
-      await loadState();
+      const fresh = await loadState();
+      const connectedToProvider = Boolean(fresh?.identifier?.trim()) && fresh?.platform === provider;
+      if (!connectedToProvider) {
+        setSuccess(null);
+        setError(
+          provider === "google"
+            ? "Google login is afgerond, maar er is nog geen gekoppelde locatie opgeslagen. Probeer opnieuw."
+            : "Trustpilot login is afgerond, maar er is nog geen gekoppeld domein opgeslagen. Probeer opnieuw.",
+        );
+      } else {
+        setSuccess(resolved.message);
+      }
       return;
     }
     clearOauthPoll();

@@ -157,7 +157,7 @@ export async function GET(request: Request) {
         const accountPath = acc.name?.trim();
         if (!accountPath) continue;
         const locRes = await fetchWithTimeout(
-          `https://mybusinessbusinessinformation.googleapis.com/v1/${encodeURIComponent(accountPath)}/locations?pageSize=20&readMask=name,title,metadata`,
+          `https://mybusinessbusinessinformation.googleapis.com/v1/${accountPath}/locations?pageSize=20&readMask=name,title,metadata`,
           {
             headers: { Authorization: `Bearer ${accessToken}` },
             cache: "no-store",
@@ -186,7 +186,13 @@ export async function GET(request: Request) {
         businessName: businessName || settings.businessName,
         lastSyncStatus: "Google gekoppeld. Automatische synchronisatie gestart.",
       };
-      await supabase.from("clients").update({ review_source_settings: next }).eq("id", resolved.clientId);
+      const { error: upErr } = await supabase
+        .from("clients")
+        .update({ review_source_settings: next })
+        .eq("id", resolved.clientId);
+      if (upErr) {
+        return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=google_save_error`, request.url));
+      }
       return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=google_ok`, request.url));
     }
 
@@ -247,7 +253,13 @@ export async function GET(request: Request) {
       businessName,
       lastSyncStatus: "Trustpilot gekoppeld. Automatische synchronisatie gestart.",
     };
-    await supabase.from("clients").update({ review_source_settings: next }).eq("id", resolved.clientId);
+    const { error: upErr } = await supabase
+      .from("clients")
+      .update({ review_source_settings: next })
+      .eq("id", resolved.clientId);
+    if (upErr) {
+      return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=trustpilot_save_error`, request.url));
+    }
     return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=trustpilot_ok`, request.url));
   } catch {
     return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=network_error`, request.url));
