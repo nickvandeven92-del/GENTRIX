@@ -117,6 +117,8 @@ export function PortalReviewsClient({ slug }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [oauthAutoSync, setOauthAutoSync] = useState<Platform | null>(null);
+  const [autoSyncBusy, setAutoSyncBusy] = useState(false);
 
   const base = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews`;
   const oauthStartBase = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews/oauth/start`;
@@ -153,10 +155,32 @@ export function PortalReviewsClient({ slug }: Props) {
     if (resolved.kind === "success") {
       setSuccess(resolved.message);
       setError(null);
+      if (status === "google_ok") setOauthAutoSync("google");
+      if (status === "trustpilot_ok") setOauthAutoSync("trustpilot");
     } else {
       setError(resolved.message);
     }
+
+    // Keep status feedback once, but remove query param so refresh won't trigger sync again.
+    p.delete("reviews_oauth");
+    const query = p.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
   }, []);
+
+  useEffect(() => {
+    if (!oauthAutoSync) return;
+    void (async () => {
+      setAutoSyncBusy(true);
+      setSuccess(`Koppeling met ${oauthAutoSync === "google" ? "Google" : "Trustpilot"} gelukt. Automatisch synchroniseren...`);
+      try {
+        await syncNow();
+      } finally {
+        setAutoSyncBusy(false);
+        setOauthAutoSync(null);
+      }
+    })();
+  }, [oauthAutoSync]);
 
   const placeHolderMode = !settings.enabled || items.length === 0;
   const statusLine = useMemo(() => {
@@ -313,6 +337,9 @@ export function PortalReviewsClient({ slug }: Props) {
         </div>
 
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+        {autoSyncBusy ? (
+          <p className="mt-3 text-sm text-blue-600">Automatische synchronisatie na inloggen is bezig...</p>
+        ) : null}
         {success ? <p className="mt-3 text-sm text-emerald-600">{success}</p> : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
