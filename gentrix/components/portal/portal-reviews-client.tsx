@@ -232,6 +232,7 @@ export function PortalReviewsClient({ slug }: Props) {
   }, [oauthAutoSync]);
 
   const placeHolderMode = !settings.enabled || items.length === 0;
+  const isConnected = settings.connected || Boolean(settings.identifier.trim());
   const statusLine = useMemo(() => {
     if (placeHolderMode) return "Website gebruikt nu tijdelijke previewreviews.";
     const stamp = settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString("nl-NL") : "onbekend";
@@ -274,7 +275,6 @@ export function PortalReviewsClient({ slug }: Props) {
       setSuccess("Reviewbron losgekoppeld. Website toont weer placeholders.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout.");
-    } finally {
     }
   }
 
@@ -313,28 +313,34 @@ export function PortalReviewsClient({ slug }: Props) {
           </button>
         </div>
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            disabled={syncing}
-            onClick={() => {
-              openOauthInNewTab("google");
-            }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-          >
-            Inloggen met Google
-          </button>
-          <button
-            type="button"
-            disabled={syncing}
-            onClick={() => {
-              openOauthInNewTab("trustpilot");
-            }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-          >
-            Inloggen met Trustpilot
-          </button>
-        </div>
+        {!isConnected ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={syncing}
+              onClick={() => {
+                openOauthInNewTab("google");
+              }}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            >
+              Inloggen met Google
+            </button>
+            <button
+              type="button"
+              disabled={syncing}
+              onClick={() => {
+                openOauthInNewTab("trustpilot");
+              }}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            >
+              Inloggen met Trustpilot
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+            Bron is gekoppeld. Inlogknoppen zijn verborgen totdat je loskoppelt.
+          </div>
+        )}
 
         {settings.connected || settings.businessName || settings.identifier ? (
           <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
@@ -357,6 +363,17 @@ export function PortalReviewsClient({ slug }: Props) {
         ) : null}
         {success ? <p className="mt-3 text-sm text-emerald-600">{success}</p> : null}
 
+        {settings.lastSyncAt || settings.lastSyncStatus ? (
+          <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+            <p>
+              Laatste sync: {settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString("nl-NL") : "nog niet uitgevoerd"}
+            </p>
+            <p className="mt-1 break-words text-xs text-zinc-500 dark:text-zinc-400">
+              Status: {settings.lastSyncStatus?.trim() || "geen status beschikbaar"}
+            </p>
+          </div>
+        ) : null}
+
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -373,7 +390,7 @@ export function PortalReviewsClient({ slug }: Props) {
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Voorbeeld van huidige live set</h3>
         {items.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Nog geen live reviews in cache. Na synchroniseren worden ze automatisch in je gegenereerde review-borders gezet.
+            Nog geen live reviews in cache. Controleer hierboven de sync-status; bij een geslaagde sync verschijnen reviews hier automatisch.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
