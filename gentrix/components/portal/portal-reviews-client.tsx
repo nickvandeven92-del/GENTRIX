@@ -163,17 +163,27 @@ export function PortalReviewsClient({ slug }: Props) {
     }
   }
 
-  function applyOauthStatus(status: string) {
+  async function applyOauthStatus(status: string) {
     const resolved = oauthStatusToNl(status);
     if (resolved.kind === "success") {
+      const provider = status === "trustpilot_ok" ? "trustpilot" : "google";
+      // Optimistic UI: toon direct gekoppelde provider als groen.
+      setSettings((prev) => ({
+        ...prev,
+        connected: true,
+        enabled: true,
+        platform: provider,
+      }));
       setSuccess(resolved.message);
       setError(null);
       if (status === "google_ok") setOauthAutoSync("google");
       if (status === "trustpilot_ok") setOauthAutoSync("trustpilot");
+      await loadState();
       return;
     }
     setSuccess(null);
     setError(resolved.message);
+    await loadState();
   }
 
   function stripOauthStatusFromUrl() {
@@ -220,7 +230,7 @@ export function PortalReviewsClient({ slug }: Props) {
       return;
     }
 
-    applyOauthStatus(status);
+    void applyOauthStatus(status);
     stripOauthStatusFromUrl();
   }, []);
 
@@ -230,7 +240,7 @@ export function PortalReviewsClient({ slug }: Props) {
       try {
         const parsed = JSON.parse(event.newValue) as { status?: string };
         if (typeof parsed.status !== "string") return;
-        applyOauthStatus(parsed.status);
+        void applyOauthStatus(parsed.status);
       } catch {
         // ignore malformed cross-tab message
       }
@@ -307,7 +317,7 @@ export function PortalReviewsClient({ slug }: Props) {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !settings.enabled }),
+        body: JSON.stringify({ settings: { enabled: !settings.enabled } }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !json.ok) throw new Error(json.error || "Kunnen review systeem niet wijzigen.");
