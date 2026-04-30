@@ -3106,6 +3106,125 @@ function buildStudioIframeNavResetOnDesktopViewportScript(): string {
 <\/script>`;
 }
 
+/**
+ * Review-hydrator voor unieke AI-layouts:
+ * - Generator bepaalt look & feel (borders, spacing, typography).
+ * - Runtime vervangt alleen card-inhoud via data-attributen.
+ *
+ * Contract:
+ * - container: data-gx-reviews="slot"
+ * - card template: data-gx-review-template
+ * - velden (optioneel maar aanbevolen):
+ *   data-gx-review-author, data-gx-review-text, data-gx-review-date, data-gx-review-platform
+ *
+ * Data-bron:
+ * - window.__GENTRIX_REVIEWS__ = [{ authorName, text, rating, date, platform }, ...]
+ */
+const STUDIO_REVIEWS_HYDRATION_SCRIPT = `<script>
+(function(){
+  function normalize(raw){
+    try{
+      if(!Array.isArray(raw))return [];
+      return raw.filter(function(r){
+        return r&&typeof r==="object"&&typeof r.authorName==="string"&&typeof r.text==="string";
+      });
+    }catch(_){return [];}
+  }
+  function readReviews(){ return normalize(window.__GENTRIX_REVIEWS__); }
+  function slugFromPath(){
+    try{
+      var m=(window.location.pathname||"").match(/^\\/site\\/([^\\/?#]+)/i);
+      return m&&m[1]?decodeURIComponent(m[1]):"";
+    }catch(_){ return ""; }
+  }
+  async function loadReviews(){
+    var local=readReviews();
+    if(local.length) return local;
+    var slug=slugFromPath();
+    if(!slug) return [];
+    try{
+      var res=await fetch("/api/public/site/"+encodeURIComponent(slug)+"/reviews",{credentials:"omit"});
+      if(!res.ok) return [];
+      var json=await res.json();
+      var fromApi=normalize(json&&json.items);
+      if(fromApi.length){
+        window.__GENTRIX_REVIEWS__=fromApi;
+      }
+      return fromApi;
+    }catch(_){ return []; }
+  }
+  function pickField(root,sel,fallback){
+    var n=root.querySelector(sel);
+    if(n)return n;
+    return fallback?fallback(root):null;
+  }
+  function pickTemplate(slot){
+    return slot.querySelector("[data-gx-review-template]")||slot.querySelector("article,li,div");
+  }
+  function writeText(node,val){
+    if(!node)return;
+    node.textContent=String(val||"");
+  }
+  function hydrateOne(card,item){
+    var author=pickField(card,"[data-gx-review-author]",function(root){
+      return root.querySelector("h3,h4,strong,[data-role='author']");
+    });
+    var text=pickField(card,"[data-gx-review-text]",function(root){
+      var ps=root.querySelectorAll("p");
+      if(!ps||!ps.length)return null;
+      var best=ps[0],i;
+      for(i=1;i<ps.length;i++) if((ps[i].textContent||"").length>(best.textContent||"").length) best=ps[i];
+      return best;
+    });
+    var date=pickField(card,"[data-gx-review-date]",function(root){
+      return root.querySelector("time,[data-role='date']");
+    });
+    var platform=pickField(card,"[data-gx-review-platform]",function(root){
+      return root.querySelector("[data-role='platform']");
+    });
+    var rating=pickField(card,"[data-gx-review-rating],[data-gx-review-stars]",function(root){
+      return root.querySelector("[aria-label*='out of 5'],[data-role='rating']");
+    });
+    writeText(author,item.authorName||"");
+    writeText(text,item.text||"");
+    if(date) writeText(date,item.date||"");
+    if(platform) writeText(platform,item.platform||"");
+    if(rating){
+      var rv=Number(item.rating||0);
+      if(rv>0) rating.setAttribute("aria-label",String(rv)+" out of 5");
+      if(rating.getAttribute("data-gx-review-rating")==="text"){
+        rating.textContent=(rv>0?String(rv.toFixed?rv.toFixed(1):rv):"");
+      }
+    }
+  }
+  async function run(){
+    var reviews=await loadReviews();
+    if(!reviews.length)return;
+    var slots=document.querySelectorAll('[data-gx-reviews="slot"]');
+    slots.forEach(function(slot){
+      var tpl=pickTemplate(slot);
+      if(!tpl)return;
+      var parent=tpl.parentElement||slot;
+      parent.querySelectorAll('[data-gx-review-clone="1"]').forEach(function(n){n.remove();});
+      hydrateOne(tpl,reviews[0]);
+      var maxAttr=Number(slot.getAttribute("data-gx-max-reviews")||"0");
+      var max=maxAttr>0?Math.min(maxAttr,reviews.length):Math.min(reviews.length,4);
+      for(var i=1;i<max;i++){
+        var clone=tpl.cloneNode(true);
+        if(clone&&clone.nodeType===1){
+          clone.setAttribute("data-gx-review-clone","1");
+          hydrateOne(clone,reviews[i]);
+          parent.appendChild(clone);
+        }
+      }
+      slot.setAttribute("data-gx-reviews-hydrated","1");
+    });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",function(){ void run(); });
+  else void run();
+})();
+</script>`;
+
 export function buildTailwindIframeSrcDoc(
   sections: TailwindSection[],
   pageConfig?: TailwindPageConfig | null,
@@ -3330,6 +3449,7 @@ ${buildStudioSinglePageInternalNavScript(
     previewOriginTrimmed || null,
     options?.studioHtmlEditorParentNav ? STUDIO_HTML_EDITOR_IFRAME_NAV_SOURCE : STUDIO_PUBLIC_NAV_MESSAGE_SOURCE,
   )}
+${STUDIO_REVIEWS_HYDRATION_SCRIPT}
 ${bridge}
 ${userJsBlock}
 </body>
