@@ -37,11 +37,11 @@ function oauthStatusToNl(status: string): { kind: "success" | "error"; message: 
   const map: Record<string, { kind: "success" | "error"; message: string }> = {
     google_ok: {
       kind: "success",
-      message: "Google-koppeling gelukt. Klik op 'Nu synchroniseren' om direct live reviews op te halen.",
+      message: "Google-koppeling gelukt. We starten nu automatisch met synchroniseren.",
     },
     trustpilot_ok: {
       kind: "success",
-      message: "Trustpilot-koppeling gelukt. Klik op 'Nu synchroniseren' om direct live reviews op te halen.",
+      message: "Trustpilot-koppeling gelukt. We starten nu automatisch met synchroniseren.",
     },
     denied: {
       kind: "error",
@@ -118,7 +118,6 @@ export function PortalReviewsClient({ slug }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [oauthAutoSync, setOauthAutoSync] = useState<Platform | null>(null);
-  const [autoSyncBusy, setAutoSyncBusy] = useState(false);
 
   const base = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews`;
   const oauthStartBase = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews/oauth/start`;
@@ -171,12 +170,10 @@ export function PortalReviewsClient({ slug }: Props) {
   useEffect(() => {
     if (!oauthAutoSync) return;
     void (async () => {
-      setAutoSyncBusy(true);
       setSuccess(`Koppeling met ${oauthAutoSync === "google" ? "Google" : "Trustpilot"} gelukt. Automatisch synchroniseren...`);
       try {
         await syncNow();
       } finally {
-        setAutoSyncBusy(false);
         setOauthAutoSync(null);
       }
     })();
@@ -210,7 +207,8 @@ export function PortalReviewsClient({ slug }: Props) {
       const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !json.ok) throw new Error(json.error || "Opslaan mislukt.");
       if (json.settings) setSettings(json.settings);
-      setSuccess("Bron opgeslagen. Klik op 'Nu synchroniseren' om reviews op te halen.");
+      setSuccess("Bron opgeslagen. We synchroniseren nu automatisch...");
+      await syncNow();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout.");
     } finally {
@@ -230,7 +228,8 @@ export function PortalReviewsClient({ slug }: Props) {
       setItems(Array.isArray(json.items) ? json.items : []);
       setSuccess("Reviews gesynchroniseerd. Live data overschrijft nu de placeholders op de website.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
+      const detail = e instanceof Error ? e.message : "Onbekende fout.";
+      setError(`Synchroniseren mislukt: ${detail}`);
     } finally {
       setSyncing(false);
     }
@@ -337,8 +336,10 @@ export function PortalReviewsClient({ slug }: Props) {
         </div>
 
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-        {autoSyncBusy ? (
-          <p className="mt-3 text-sm text-blue-600">Automatische synchronisatie na inloggen is bezig...</p>
+        {syncing ? (
+          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200">
+            Bezig met synchroniseren. Even wachten, we halen nu de laatste reviews op.
+          </div>
         ) : null}
         {success ? <p className="mt-3 text-sm text-emerald-600">{success}</p> : null}
 
@@ -350,14 +351,6 @@ export function PortalReviewsClient({ slug }: Props) {
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
           >
             {saving ? "Opslaan..." : "Opslaan"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void syncNow()}
-            disabled={saving || syncing}
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-          >
-            {syncing ? "Synchroniseren..." : "Nu synchroniseren"}
           </button>
           <button
             type="button"

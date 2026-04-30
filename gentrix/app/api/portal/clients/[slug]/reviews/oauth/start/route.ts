@@ -55,7 +55,7 @@ export async function GET(request: Request, context: RouteContext) {
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&response_type=code` +
       `&access_type=offline` +
-      `&prompt=consent` +
+      `&include_granted_scopes=true` +
       `&scope=${encodeURIComponent(scope)}` +
       `&state=${encodeURIComponent(state)}`;
     return NextResponse.redirect(authUrl);
