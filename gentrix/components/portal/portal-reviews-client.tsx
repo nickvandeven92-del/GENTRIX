@@ -81,8 +81,7 @@ function oauthStatusToNl(status: string): { kind: "success" | "error"; message: 
     },
     google_no_place: {
       kind: "error",
-      message:
-        "Er is geen Place ID gevonden in je gekoppelde Google-bedrijfslocaties. Vul handmatig een Place ID in.",
+      message: "Er is geen bruikbare Google-bedrijfslocatie gevonden om automatisch reviews te koppelen.",
     },
     trustpilot_token_error: {
       kind: "error",
@@ -91,6 +90,10 @@ function oauthStatusToNl(status: string): { kind: "success" | "error"; message: 
     trustpilot_token_empty: {
       kind: "error",
       message: "Trustpilot gaf geen geldig toegangstoken terug. Probeer opnieuw.",
+    },
+    trustpilot_no_business_unit: {
+      kind: "error",
+      message: "Er is geen Trustpilot-bedrijf gevonden dat we automatisch konden koppelen.",
     },
     no_client: {
       kind: "error",
@@ -113,7 +116,6 @@ export function PortalReviewsClient({ slug }: Props) {
   const [settings, setSettings] = useState<Settings>(initialSettings);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -186,36 +188,6 @@ export function PortalReviewsClient({ slug }: Props) {
     return `Live reviews actief (${items.length} in cache). Laatste sync: ${stamp}.`;
   }, [items.length, placeHolderMode, settings.lastSyncAt]);
 
-  async function saveConnection() {
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const res = await fetch(base, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          settings: {
-            enabled: true,
-            platform: settings.platform,
-            identifier: settings.identifier,
-            businessName: settings.businessName,
-          },
-        }),
-      });
-      const json = (await res.json()) as { ok?: boolean; error?: string; settings?: Settings };
-      if (!res.ok || !json.ok) throw new Error(json.error || "Opslaan mislukt.");
-      if (json.settings) setSettings(json.settings);
-      setSuccess("Bron opgeslagen. We synchroniseren nu automatisch...");
-      await syncNow();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function syncNow() {
     setSyncing(true);
     setError(null);
@@ -236,7 +208,6 @@ export function PortalReviewsClient({ slug }: Props) {
   }
 
   async function disconnect() {
-    setSaving(true);
     setError(null);
     setSuccess(null);
     try {
@@ -254,7 +225,6 @@ export function PortalReviewsClient({ slug }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout.");
     } finally {
-      setSaving(false);
     }
   }
 
@@ -296,44 +266,38 @@ export function PortalReviewsClient({ slug }: Props) {
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <button
             type="button"
+            disabled={syncing}
             onClick={() => {
               window.location.href = `${oauthStartBase}?provider=google`;
             }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
           >
             Inloggen met Google
           </button>
           <button
             type="button"
+            disabled={syncing}
             onClick={() => {
               window.location.href = `${oauthStartBase}?provider=trustpilot`;
             }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
           >
             Inloggen met Trustpilot
           </button>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">
-            Bedrijfsnaam
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-              value={settings.businessName}
-              onChange={(e) => setSettings((s) => ({ ...s, businessName: e.target.value }))}
-              placeholder="Jouw bedrijfsnaam"
-            />
-          </label>
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">
-            {settings.platform === "google" ? "Google Place ID" : "Trustpilot domein"}
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-              value={settings.identifier}
-              onChange={(e) => setSettings((s) => ({ ...s, identifier: e.target.value }))}
-              placeholder={settings.platform === "google" ? "ChIJN1t_tDeuEmsRUsoyG83frY4" : "example.com"}
-            />
-          </label>
-        </div>
+        {settings.connected || settings.businessName || settings.identifier ? (
+          <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+            <p className="font-medium text-zinc-900 dark:text-zinc-100">
+              {settings.businessName || (settings.platform === "google" ? "Google-bron gekoppeld" : "Trustpilot-bron gekoppeld")}
+            </p>
+            {settings.identifier ? (
+              <p className="mt-1 break-all text-xs text-zinc-500 dark:text-zinc-400">
+                {settings.platform === "google" ? "Place ID" : "Domein"}: {settings.identifier}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
         {syncing ? (
@@ -346,16 +310,8 @@ export function PortalReviewsClient({ slug }: Props) {
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void saveConnection()}
-            disabled={saving || syncing}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            {saving ? "Opslaan..." : "Opslaan"}
-          </button>
-          <button
-            type="button"
             onClick={() => void disconnect()}
-            disabled={saving || syncing}
+            disabled={syncing}
             className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-60"
           >
             Loskoppelen

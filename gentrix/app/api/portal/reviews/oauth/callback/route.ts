@@ -184,7 +184,7 @@ export async function GET(request: Request) {
         platform: "google" as const,
         identifier: placeId,
         businessName: businessName || settings.businessName,
-        lastSyncStatus: "Google gekoppeld. Klik op 'Nu synchroniseren'.",
+        lastSyncStatus: "Google gekoppeld. Automatische synchronisatie gestart.",
       };
       await supabase.from("clients").update({ review_source_settings: next }).eq("id", resolved.clientId);
       return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=google_ok`, request.url));
@@ -236,15 +236,16 @@ export async function GET(request: Request) {
       if (maybeDomain) identifier = maybeDomain;
       if (maybeName) businessName = maybeName;
     }
+    if (!identifier) {
+      return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=trustpilot_no_business_unit`, request.url));
+    }
     const next = {
       ...settings,
       enabled: true,
       platform: "trustpilot" as const,
       identifier,
       businessName,
-      lastSyncStatus: identifier
-        ? "Trustpilot gekoppeld. Klik op 'Nu synchroniseren'."
-        : "Trustpilot gekoppeld. Vul nog je domein in en klik op 'Nu synchroniseren'.",
+      lastSyncStatus: "Trustpilot gekoppeld. Automatische synchronisatie gestart.",
     };
     await supabase.from("clients").update({ review_source_settings: next }).eq("id", resolved.clientId);
     return NextResponse.redirect(new URL(`${fallbackRedirect}?reviews_oauth=trustpilot_ok`, request.url));
