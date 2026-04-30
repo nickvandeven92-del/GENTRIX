@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /* Icon components */
 function GoogleIcon() {
@@ -143,9 +143,18 @@ export function PortalReviewsClient({ slug }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [oauthAutoSync, setOauthAutoSync] = useState<Platform | null>(null);
+  const [oauthInFlight, setOauthInFlight] = useState<Platform | null>(null);
+  const oauthPollRef = useRef<number | null>(null);
 
   const base = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews`;
   const oauthStartBase = `/api/portal/clients/${encodeURIComponent(decodeURIComponent(slug))}/reviews/oauth/start`;
+
+  function clearOauthPoll() {
+    if (oauthPollRef.current != null) {
+      window.clearInterval(oauthPollRef.current);
+      oauthPollRef.current = null;
+    }
+  }
 
   async function loadState() {
     setLoading(true);
@@ -178,9 +187,13 @@ export function PortalReviewsClient({ slug }: Props) {
       setError(null);
       if (status === "google_ok") setOauthAutoSync("google");
       if (status === "trustpilot_ok") setOauthAutoSync("trustpilot");
+      clearOauthPoll();
+      setOauthInFlight(null);
       await loadState();
       return;
     }
+    clearOauthPoll();
+    setOauthInFlight(null);
     setSuccess(null);
     setError(resolved.message);
     await loadState();
@@ -202,6 +215,15 @@ export function PortalReviewsClient({ slug }: Props) {
       window.location.href = targetUrl;
       return;
     }
+    setOauthInFlight(provider);
+    clearOauthPoll();
+    oauthPollRef.current = window.setInterval(() => {
+      if (win.closed) {
+        clearOauthPoll();
+        setOauthInFlight(null);
+        void loadState();
+      }
+    }, 800);
     win.focus();
   }
 
@@ -247,6 +269,12 @@ export function PortalReviewsClient({ slug }: Props) {
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearOauthPoll();
+    };
   }, []);
 
   useEffect(() => {
@@ -350,7 +378,7 @@ export function PortalReviewsClient({ slug }: Props) {
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            disabled={syncing || (isConnected && settings.platform !== "google")}
+            disabled={syncing || Boolean(oauthInFlight) || (isConnected && settings.platform !== "google")}
             onClick={() => {
               if (isConnected && settings.platform === "google") return;
               openOauthInNewTab("google");
@@ -366,7 +394,7 @@ export function PortalReviewsClient({ slug }: Props) {
           </button>
           <button
             type="button"
-            disabled={syncing || (isConnected && settings.platform !== "trustpilot")}
+            disabled={syncing || Boolean(oauthInFlight) || (isConnected && settings.platform !== "trustpilot")}
             onClick={() => {
               if (isConnected && settings.platform === "trustpilot") return;
               openOauthInNewTab("trustpilot");
@@ -435,10 +463,10 @@ export function PortalReviewsClient({ slug }: Props) {
           <button
             type="button"
             onClick={() => void disconnect()}
-            disabled={syncing}
+            disabled={syncing || !isConnected}
             className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-60 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/20 dark:text-red-300"
           >
-            🔗 Loskoppelen
+            {isConnected ? "🔗 Loskoppelen" : "Niet gekoppeld"}
           </button>
         </div>
       </div>
